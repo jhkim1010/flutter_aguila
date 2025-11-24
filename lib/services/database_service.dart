@@ -32,7 +32,7 @@ class DatabaseService {
   Future<bool> connectToDatabase(DatabaseConnectionRequest request) async {
     try {
       final response = await http.post(
-        Uri.parse('$serverUrl/api/connect'),
+        Uri.parse('$serverUrl/api/health'),
         headers: {
           'Content-Type': 'application/json',
         },
