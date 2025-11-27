@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:math';
 import '../models/connection_info.dart';
 import '../services/connection_storage_service.dart';
 import '../services/database_service.dart';
 import 'celebration_screen.dart';
+
+enum ServerType {
+  hostinger,
+  local,
+}
 
 class ConnectionScreen extends StatefulWidget {
   final ConnectionInfo? connection;
@@ -22,8 +28,10 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
   final _passwordController = TextEditingController();
   final _portController = TextEditingController();
   final _serverUrlController = TextEditingController();
+  final _localIpController = TextEditingController();
   
   final ConnectionStorageService _storageService = ConnectionStorageService();
+  ServerType _selectedServerType = ServerType.hostinger;
   bool _isLoading = false;
   String? _errorMessage;
   String? _connectionId;
@@ -41,11 +49,23 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       _databaseNameController.text = widget.connection!.databaseName;
       _usernameController.text = widget.connection!.username;
       _passwordController.text = widget.connection!.password;
-      _portController.text = widget.connection!.port.toString();
+      
+      // 서버 URL에서 서버 타입 판단
+      if (_serverUrlController.text.contains('sync.coolsistema.com')) {
+        _selectedServerType = ServerType.hostinger;
+      } else {
+        _selectedServerType = ServerType.local;
+        // Local IP 추출
+        final uri = Uri.tryParse(_serverUrlController.text);
+        if (uri != null) {
+          _localIpController.text = uri.host;
+        }
+      }
     } else {
       // 새 연결 추가 모드
       _connectionId = _generateId();
-      _serverUrlController.text = 'http://localhost:3000';
+      _selectedServerType = ServerType.hostinger;
+      _serverUrlController.text = 'https://sync.coolsistema.com';
     }
   }
   
@@ -62,12 +82,52 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     _passwordController.dispose();
     _portController.dispose();
     _serverUrlController.dispose();
+    _localIpController.dispose();
     super.dispose();
+  }
+  
+  // 서버 타입 변경 핸들러
+  void _onServerTypeChanged(ServerType? newType) {
+    if (newType == null) return;
+    
+    setState(() {
+      _selectedServerType = newType;
+      
+      if (newType == ServerType.hostinger) {
+        // Hostinger 선택 시
+        _serverUrlController.text = 'https://sync.coolsistema.com';
+        _localIpController.clear();
+      } else {
+        // Local 선택 시 (포트 3030 자동 사용)
+        _serverUrlController.text = _localIpController.text.isNotEmpty 
+            ? 'http://${_localIpController.text}:3030' 
+            : '';
+      }
+    });
+  }
+  
+  // 로컬 IP 변경 핸들러
+  void _onLocalIpChanged(String value) {
+    setState(() {
+      _localIpController.text = value;
+      if (_selectedServerType == ServerType.local) {
+        _serverUrlController.text = value.isNotEmpty 
+            ? 'http://$value:3030' 
+            : '';
+      }
+    });
   }
   
   // 연결 정보 저장하기
   Future<void> _saveConnectionInfo() async {
     try {
+      // 포트 번호 추출 (서버 URL에서)
+      int port = 3030; // 기본값
+      final uri = Uri.tryParse(_serverUrlController.text.trim());
+      if (uri != null && uri.hasPort) {
+        port = uri.port;
+      }
+      
       final connection = ConnectionInfo(
         id: _connectionId!,
         name: _connectionNameController.text.trim(),
@@ -75,7 +135,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         databaseName: _databaseNameController.text.trim(),
         username: _usernameController.text.trim(),
         password: _passwordController.text.trim(),
-        port: int.parse(_portController.text.trim()),
+        port: port,
       );
       
       await _storageService.saveConnection(connection);
@@ -95,8 +155,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     });
 
     try {
-      final port = int.parse(_portController.text);
-      
+      // 포트 번호는 전송하지 않음 (서버 URL에 이미 포함되어 있음)
       final service = DatabaseService(
         serverUrl: _serverUrlController.text.trim(),
       );
@@ -105,7 +164,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         databaseName: _databaseNameController.text.trim(),
         username: _usernameController.text.trim(),
         password: _passwordController.text.trim(),
-        port: port,
+        port: null, // 포트 번호는 전송하지 않음
       );
 
       final success = await service.connectToDatabase(request);
@@ -117,7 +176,9 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(
-            builder: (context) => const CelebrationScreen(),
+            builder: (context) => CelebrationScreen(
+              serverUrl: _serverUrlController.text.trim(),
+            ),
           ),
           (route) => false, // 모든 이전 화면 제거
         );
@@ -190,12 +251,12 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
               Center(
                 child: Image.asset(
                   'assets/logo.jpg',
-                  height: 120,
+                  height: 240,
                   fit: BoxFit.contain,
                   errorBuilder: (context, error, stackTrace) {
                     return const SizedBox(
-                      height: 120,
-                      child: Icon(Icons.image, size: 80, color: Colors.grey),
+                      height: 240,
+                      child: Icon(Icons.image, size: 160, color: Colors.grey),
                     );
                   },
                 ),
@@ -209,6 +270,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.label),
                 ),
+                keyboardType: TextInputType.text,
+                textInputAction: TextInputAction.next,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return '연결 이름을 입력해주세요';
@@ -216,7 +279,64 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   return null;
                 },
               ),
+              const SizedBox(height: 24),
+              // 서버 타입 선택
+              Text(
+                '서버 타입',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey[700],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: RadioListTile<ServerType>(
+                      title: const Text('Hostinger Principal'),
+                      value: ServerType.hostinger,
+                      groupValue: _selectedServerType,
+                      onChanged: _onServerTypeChanged,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                  Expanded(
+                    child: RadioListTile<ServerType>(
+                      title: const Text('Local IP'),
+                      value: ServerType.local,
+                      groupValue: _selectedServerType,
+                      onChanged: _onServerTypeChanged,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 16),
+              // 로컬 IP 입력 필드 (Local 선택 시에만 표시)
+              if (_selectedServerType == ServerType.local)
+                TextFormField(
+                  controller: _localIpController,
+                  decoration: const InputDecoration(
+                    labelText: '로컬 IP 주소',
+                    hintText: '예: 192.168.1.100',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.computer),
+                  ),
+                  keyboardType: TextInputType.number,
+                  onChanged: _onLocalIpChanged,
+                  validator: (value) {
+                    if (_selectedServerType == ServerType.local) {
+                      if (value == null || value.isEmpty) {
+                        return '로컬 IP 주소를 입력해주세요';
+                      }
+                    }
+                    return null;
+                  },
+                ),
+              if (_selectedServerType == ServerType.local)
+                const SizedBox(height: 16),
+              // 서버 URL (읽기 전용으로 표시)
               TextFormField(
                 controller: _serverUrlController,
                 decoration: const InputDecoration(
@@ -225,17 +345,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.link),
                 ),
-                keyboardType: TextInputType.url,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return '서버 URL을 입력해주세요';
-                  }
-                  final uri = Uri.tryParse(value);
-                  if (uri == null || !uri.hasAbsolutePath) {
-                    return '유효한 URL을 입력해주세요';
-                  }
-                  return null;
-                },
+                readOnly: true,
+                enabled: false,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -244,10 +355,18 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   labelText: '데이터베이스 이름',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.storage),
+                  helperText: '영어와 숫자만 입력 가능합니다',
                 ),
+                keyboardType: TextInputType.text,
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9_]')),
+                ],
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return '데이터베이스 이름을 입력해주세요';
+                  }
+                  if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) {
+                    return '영어와 숫자만 입력 가능합니다';
                   }
                   return null;
                 },
@@ -259,10 +378,18 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   labelText: '사용자 이름',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.person),
+                  helperText: '영어와 숫자만 입력 가능합니다',
                 ),
+                keyboardType: TextInputType.text,
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9_]')),
+                ],
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return '사용자 이름을 입력해주세요';
+                  }
+                  if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) {
+                    return '영어와 숫자만 입력 가능합니다';
                   }
                   return null;
                 },
@@ -279,26 +406,6 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return '암호를 입력해주세요';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _portController,
-                decoration: const InputDecoration(
-                  labelText: '포트 번호',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.numbers),
-                ),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return '포트 번호를 입력해주세요';
-                  }
-                  final port = int.tryParse(value);
-                  if (port == null || port < 1 || port > 65535) {
-                    return '유효한 포트 번호를 입력해주세요 (1-65535)';
                   }
                   return null;
                 },

@@ -75,7 +75,7 @@ class _AdditionalConnectionsScreenState extends State<AdditionalConnectionsScree
         databaseName: connection.databaseName,
         username: connection.username,
         password: connection.password,
-        port: connection.port,
+        port: null, // 포트 번호는 전송하지 않음 (서버 URL에 이미 포함되어 있음)
       );
 
       final success = await service.connectToDatabase(request);

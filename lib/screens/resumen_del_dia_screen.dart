@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../services/database_service.dart';
+import 'main_connection_screen.dart';
 
 class ResumenDelDiaScreen extends StatefulWidget {
   final String serverUrl;
@@ -37,16 +39,28 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       setState(() {
         _data = data;
         _isLoading = false;
+        _errorMessage = null;
       });
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString().replaceFirst('Exception: ', '');
-        _isLoading = false;
-      });
+      // 오류 메시지 추출
+      String errorMessage = '알 수 없는 오류가 발생했습니다.';
+      if (e is Exception) {
+        errorMessage = e.toString().replaceFirst('Exception: ', '');
+      } else {
+        errorMessage = e.toString();
+      }
+      
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = errorMessage;
+        });
+        print('❌ resumen_del_dia 오류: $errorMessage');
+      }
     }
   }
 
-  Widget _buildDataCard(String title, dynamic value, IconData icon) {
+  Widget _buildDataCard(String title, dynamic value, IconData icon, {bool isCurrency = false}) {
     return Card(
       elevation: 2,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -81,10 +95,11 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    _formatValue(value),
-                    style: const TextStyle(
+                    _formatValue(value, isCurrency: isCurrency),
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
+                      color: isCurrency ? Theme.of(context).colorScheme.primary : null,
                     ),
                   ),
                 ],
@@ -116,10 +131,17 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     );
   }
 
-  String _formatValue(dynamic value) {
+  String _formatValue(dynamic value, {bool isCurrency = false}) {
     if (value == null) return 'N/A';
     if (value is num) {
-      return value.toStringAsFixed(value is double ? 2 : 0);
+      if (isCurrency) {
+        return NumberFormat.currency(
+          symbol: '\$',
+          decimalDigits: 0,
+          locale: 'es_CO',
+        ).format(value);
+      }
+      return NumberFormat('#,###').format(value);
     }
     return value.toString();
   }
@@ -240,6 +262,22 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                         icon: const Icon(Icons.refresh),
                         label: const Text('다시 시도'),
                       ),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const MainConnectionScreen(
+                                skipAutoConnect: true,
+                              ),
+                            ),
+                            (route) => false,
+                          );
+                        },
+                        icon: const Icon(Icons.settings_backup_restore),
+                        label: const Text('다시 접속 화면으로 이동'),
+                      ),
                     ],
                   ),
                 )
@@ -251,25 +289,43 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                       onRefresh: _loadData,
                       child: ListView(
                         children: [
-                          // 요약 정보 카드들
-                          if (_data!.containsKey('resumen') ||
-                              _data!.keys.any((k) => k.toString().toLowerCase().contains('total')))
+                          // 날짜 표시
+                          if (_data!.containsKey('fecha'))
+                            _buildDateHeader(_data!['fecha']),
+
+                          // 판매 통계 (vcodes)
+                          if (_data!.containsKey('vcodes') && _data!['vcodes'] is Map)
                             _buildSection(
-                              '요약',
-                              _buildSummaryCards(),
+                              '📊 판매 통계',
+                              _buildVcodesSection(_data!['vcodes'] as Map<String, dynamic>),
                             ),
 
-                          // 테이블 데이터
-                          if (_data!.entries.any((entry) => entry.value is Map || entry.value is List))
+                          // 지출 통계 (gastos)
+                          if (_data!.containsKey('gastos') && _data!['gastos'] is Map)
                             _buildSection(
-                              '상세 데이터',
-                              _buildDetailSections(),
+                              '💸 지출 통계',
+                              _buildGastosSection(_data!['gastos'] as Map<String, dynamic>),
                             ),
 
-                          // 일반 키-값 쌍
+                          // 할인 통계 (vdetalle)
+                          if (_data!.containsKey('vdetalle') && _data!['vdetalle'] is Map)
+                            _buildSection(
+                              '🎁 할인 통계',
+                              _buildVdetalleSection(_data!['vdetalle'] as Map<String, dynamic>),
+                            ),
+
+                          // 결제 통계 (vcodes_mpago)
+                          if (_data!.containsKey('vcodes_mpago') && _data!['vcodes_mpago'] is Map)
+                            _buildSection(
+                              '💳 결제 통계',
+                              _buildMpagoSection(_data!['vcodes_mpago'] as Map<String, dynamic>),
+                            ),
+
+                          // 스크립트 결과 (scripts)
+                          if (_data!.containsKey('scripts') && _data!['scripts'] is Map)
                           _buildSection(
-                            '정보',
-                            _buildInfoCards(),
+                              '⚙️ 스크립트 실행 결과',
+                              _buildScriptsSection(_data!['scripts'] as Map<String, dynamic>),
                           ),
                         ],
                       ),
@@ -277,105 +333,240 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     );
   }
 
-  List<Widget> _buildSummaryCards() {
-    final cards = <Widget>[];
-    final summaryKeys = ['total', 'resumen', 'summary', 'count', 'amount'];
-
-    _data!.forEach((key, value) {
-      final keyLower = key.toString().toLowerCase();
-      if (summaryKeys.any((sk) => keyLower.contains(sk)) && value is! Map && value is! List) {
-        IconData icon;
-        if (keyLower.contains('total') || keyLower.contains('amount')) {
-          icon = Icons.attach_money;
-        } else if (keyLower.contains('count')) {
-          icon = Icons.numbers;
-        } else {
-          icon = Icons.info;
-        }
-
-        cards.add(_buildDataCard(key.toString(), value, icon));
-      }
-    });
-
-    return cards.isEmpty ? [const SizedBox.shrink()] : cards;
+  Widget _buildDateHeader(String fecha) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Theme.of(context).colorScheme.primary,
+            Theme.of(context).colorScheme.primary.withOpacity(0.7),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          const Icon(
+            Icons.calendar_today,
+            color: Colors.white,
+            size: 32,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Fecha: $fecha',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
-  List<Widget> _buildDetailSections() {
-    final widgets = <Widget>[];
+  List<Widget> _buildVcodesSection(Map<String, dynamic> vcodes) {
+    final cards = <Widget>[];
+    
+    if (vcodes.containsKey('operation_count')) {
+      cards.add(_buildDataCard(
+        '총 거래 건수',
+        vcodes['operation_count'],
+        Icons.shopping_cart,
+      ));
+    }
+    
+    if (vcodes.containsKey('total_venta_day')) {
+      cards.add(_buildDataCard(
+        '총 판매액',
+        vcodes['total_venta_day'],
+        Icons.attach_money,
+        isCurrency: true,
+      ));
+    }
+    
+    if (vcodes.containsKey('total_efectivo_day')) {
+      cards.add(_buildDataCard(
+        '현금 판매',
+        vcodes['total_efectivo_day'],
+        Icons.money,
+        isCurrency: true,
+      ));
+    }
+    
+    if (vcodes.containsKey('total_credito_day')) {
+      cards.add(_buildDataCard(
+        '신용 판매',
+        vcodes['total_credito_day'],
+        Icons.credit_card,
+        isCurrency: true,
+      ));
+    }
+    
+    if (vcodes.containsKey('total_banco_day')) {
+      cards.add(_buildDataCard(
+        '은행 판매',
+        vcodes['total_banco_day'],
+        Icons.account_balance,
+        isCurrency: true,
+      ));
+    }
+    
+    if (vcodes.containsKey('total_favor_day')) {
+      cards.add(_buildDataCard(
+        'Favor 판매',
+        vcodes['total_favor_day'],
+        Icons.favorite,
+        isCurrency: true,
+      ));
+    }
+    
+    if (vcodes.containsKey('total_count_ropas')) {
+      cards.add(_buildDataCard(
+        '총 의류 수',
+        vcodes['total_count_ropas'],
+        Icons.checkroom,
+      ));
+    }
 
-    _data!.forEach((key, value) {
-      if (value is Map) {
-        widgets.add(
-          Column(
+    return cards;
+  }
+
+  List<Widget> _buildGastosSection(Map<String, dynamic> gastos) {
+    final cards = <Widget>[];
+    
+    if (gastos.containsKey('gasto_count')) {
+      cards.add(_buildDataCard(
+        '지출 건수',
+        gastos['gasto_count'],
+        Icons.receipt_long,
+      ));
+    }
+    
+    if (gastos.containsKey('total_gasto_day')) {
+      cards.add(_buildDataCard(
+        '총 지출액',
+        gastos['total_gasto_day'],
+        Icons.payments,
+        isCurrency: true,
+      ));
+    }
+
+    return cards;
+  }
+
+  List<Widget> _buildVdetalleSection(Map<String, dynamic> vdetalle) {
+    final cards = <Widget>[];
+    
+    if (vdetalle.containsKey('count_discount_event')) {
+      cards.add(_buildDataCard(
+        '할인 이벤트 건수',
+        vdetalle['count_discount_event'],
+        Icons.local_offer,
+      ));
+    }
+    
+    if (vdetalle.containsKey('total_discount_day')) {
+      cards.add(_buildDataCard(
+        '총 할인액',
+        vdetalle['total_discount_day'],
+        Icons.discount,
+        isCurrency: true,
+      ));
+    }
+
+    return cards;
+  }
+
+  List<Widget> _buildMpagoSection(Map<String, dynamic> mpago) {
+    final cards = <Widget>[];
+    
+    if (mpago.containsKey('count_mpago_total')) {
+      cards.add(_buildDataCard(
+        '결제 건수',
+        mpago['count_mpago_total'],
+        Icons.payment,
+      ));
+    }
+    
+    if (mpago.containsKey('total_mpago_day')) {
+      cards.add(_buildDataCard(
+        '총 결제액',
+        mpago['total_mpago_day'],
+        Icons.account_balance_wallet,
+        isCurrency: true,
+      ));
+    }
+
+    return cards;
+  }
+
+  List<Widget> _buildScriptsSection(Map<String, dynamic> scripts) {
+    final cards = <Widget>[];
+    
+    if (scripts.containsKey('executed')) {
+      cards.add(_buildDataCard(
+        '실행된 스크립트 수',
+        scripts['executed'],
+        Icons.code,
+      ));
+    }
+    
+    if (scripts.containsKey('results') && scripts['results'] is List) {
+      final results = scripts['results'] as List;
+      if (results.isNotEmpty) {
+        cards.add(
+          Card(
+            elevation: 2,
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                child: Text(
-                  key.toString(),
-                  style: TextStyle(
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.list,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '스크립트 결과 (${results.length}개)',
+                        style: const TextStyle(
                     fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  ...results.asMap().entries.map((entry) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                        '${entry.key + 1}. ${entry.value}',
+                  style: TextStyle(
+                          fontSize: 14,
                     color: Colors.grey[700],
                   ),
                 ),
+                    );
+                  }),
+                ],
               ),
-              _buildTable(value as Map<String, dynamic>),
-            ],
-          ),
-        );
-      } else if (value is List && value.isNotEmpty && value.first is Map) {
-        // 리스트의 첫 번째 항목을 테이블 헤더로 사용
-        final firstItem = value.first as Map;
-        final tableData = <String, List>{};
-        firstItem.keys.forEach((k) {
-          tableData[k.toString()] = value.map((item) => (item as Map)[k]).toList();
-        });
-        widgets.add(
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                child: Text(
-                  key.toString(),
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[700],
-                  ),
-                ),
-              ),
-              _buildTable(tableData),
-            ],
+            ),
           ),
         );
       }
-    });
+    }
 
-    return widgets.isEmpty ? [const SizedBox.shrink()] : widgets;
+    return cards;
   }
 
-  List<Widget> _buildInfoCards() {
-    final cards = <Widget>[];
-
-    _data!.forEach((key, value) {
-      if (value is! Map && value is! List) {
-        IconData icon = Icons.info_outline;
-        if (key.toString().toLowerCase().contains('date') ||
-            key.toString().toLowerCase().contains('fecha')) {
-          icon = Icons.calendar_today;
-        } else if (key.toString().toLowerCase().contains('time') ||
-            key.toString().toLowerCase().contains('hora')) {
-          icon = Icons.access_time;
-        }
-
-        cards.add(_buildDataCard(key.toString(), value, icon));
-      }
-    });
-
-    return cards.isEmpty ? [const SizedBox.shrink()] : cards;
-  }
 }
 
 

@@ -1,8 +1,14 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'resumen_del_dia_screen.dart';
 
 class CelebrationScreen extends StatefulWidget {
-  const CelebrationScreen({super.key});
+  final String serverUrl;
+  
+  const CelebrationScreen({
+    super.key,
+    required this.serverUrl,
+  });
 
   @override
   State<CelebrationScreen> createState() => _CelebrationScreenState();
@@ -14,6 +20,8 @@ class _CelebrationScreenState extends State<CelebrationScreen>
   final List<Particle> _particles = [];
   final Random _random = Random();
 
+  bool _showButton = false;
+
   @override
   void initState() {
     super.initState();
@@ -23,6 +31,26 @@ class _CelebrationScreenState extends State<CelebrationScreen>
     )..repeat();
 
     _createParticles();
+    
+    // 2초 후 버튼 표시
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() {
+          _showButton = true;
+        });
+      }
+    });
+  }
+  
+  void _navigateToResumenDelDia() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ResumenDelDiaScreen(
+          serverUrl: widget.serverUrl,
+        ),
+      ),
+    );
   }
 
   void _createParticles() {
@@ -124,7 +152,7 @@ class _CelebrationScreenState extends State<CelebrationScreen>
                       ),
                       const SizedBox(height: 30),
                       const Text(
-                        '환영합니다',
+                        '🎉 연결 성공! 🎉',
                         style: TextStyle(
                           fontSize: 48,
                           fontWeight: FontWeight.bold,
@@ -140,10 +168,43 @@ class _CelebrationScreenState extends State<CelebrationScreen>
                       ),
                       const SizedBox(height: 20),
                       const Text(
-                        '데이터베이스 연결 성공!',
+                        '데이터베이스 연결이 성공했습니다!',
                         style: TextStyle(
                           fontSize: 20,
                           color: Colors.white70,
+                        ),
+                      ),
+                      const SizedBox(height: 60),
+                      // 2초 후 버튼 표시
+                      AnimatedOpacity(
+                        opacity: _showButton ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 500),
+                        child: AnimatedScale(
+                          scale: _showButton ? 1.0 : 0.8,
+                          duration: const Duration(milliseconds: 500),
+                          child: ElevatedButton.icon(
+                            onPressed: _showButton ? _navigateToResumenDelDia : null,
+                            icon: const Icon(Icons.bar_chart, size: 24),
+                            label: const Text(
+                              '자동으로 판매 간략 보고서 보기',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: Colors.blue.shade900,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 32,
+                                vertical: 16,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              elevation: 8,
+                            ),
+                          ),
                         ),
                       ),
                     ],

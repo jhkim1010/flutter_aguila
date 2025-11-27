@@ -1,0 +1,14 @@
+{
+  // Flutter 자동 Hot Reload 설정
+  "dart.flutterHotReloadOnSave": true,
+  "dart.flutterHotRestartOnSave": false,
+  
+  // 파일 자동 저장 설정
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 1000,
+  
+  // Flutter 관련 설정
+  "dart.enableSdkFormatter": true,
+  "dart.lineLength": 80
+}
+

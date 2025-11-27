@@ -8,6 +8,7 @@ import '../services/database_service.dart';
 class ConnectionListScreen extends StatefulWidget {
   const ConnectionListScreen({super.key});
 
+
   @override
   State<ConnectionListScreen> createState() => _ConnectionListScreenState();
 }
@@ -75,7 +76,7 @@ class _ConnectionListScreenState extends State<ConnectionListScreen> {
         databaseName: connection.databaseName,
         username: connection.username,
         password: connection.password,
-        port: connection.port,
+        port: null, // 포트 번호는 전송하지 않음 (서버 URL에 이미 포함되어 있음)
       );
 
       final success = await service.connectToDatabase(request);
@@ -84,7 +85,9 @@ class _ConnectionListScreenState extends State<ConnectionListScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => const CelebrationScreen(),
+            builder: (context) => CelebrationScreen(
+              serverUrl: connection.serverUrl,
+            ),
           ),
         );
       } else {
@@ -173,7 +176,7 @@ class _ConnectionListScreenState extends State<ConnectionListScreen> {
                             const SizedBox(height: 4),
                             Text('서버: ${connection.serverUrl}'),
                             Text('DB: ${connection.databaseName}'),
-                            Text('포트: ${connection.port}'),
+                            Text('포트: ${connection.port ?? "N/A"}'),
                           ],
                         ),
                         trailing: PopupMenuButton(
