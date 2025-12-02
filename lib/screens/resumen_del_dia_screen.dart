@@ -308,23 +308,12 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         );
       }
 
-      // serverUrl에서 host 추출
-      String host = 'localhost';
-      try {
-        final uri = Uri.parse(connection.serverUrl);
-        host = uri.host.isNotEmpty ? uri.host : 'localhost';
-      } catch (e) {
-        host = 'localhost';
-      }
-
       final service = DatabaseService(serverUrl: connection.serverUrl);
 
       final request = DatabaseConnectionRequest(
         databaseName: connection.databaseName,
         username: connection.username,
         password: connection.password,
-        host: host,
-        port: null,
       );
 
       final success = await service.connectToDatabase(request);
@@ -805,8 +794,12 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                                             l10n.salesStatistics,
                                             _buildVcodesSection(
                                               _data!['vcodes'] is List && (_data!['vcodes'] as List).isNotEmpty
-                                                  ? (_data!['vcodes'] as List).first as Map<String, dynamic>
-                                                  : _data!['vcodes'] as Map<String, dynamic>
+                                                  ? ((_data!['vcodes'] as List).first is Map<String, dynamic>
+                                                      ? (_data!['vcodes'] as List).first as Map<String, dynamic>
+                                                      : <String, dynamic>{})
+                                                  : (_data!['vcodes'] is Map<String, dynamic>
+                                                      ? _data!['vcodes'] as Map<String, dynamic>
+                                                      : <String, dynamic>{})
                                             ),
                                           ),
 
@@ -816,10 +809,12 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                                             l10n.expenseStatistics,
                                             _buildGastosSection(
                                               _data!['gastos'] is List && (_data!['gastos'] as List).isNotEmpty
-                                                  ? (_data!['gastos'] as List).first as Map<String, dynamic>
-                                                  : _data!['gastos'] is Map
+                                                  ? ((_data!['gastos'] as List).first is Map<String, dynamic>
+                                                      ? (_data!['gastos'] as List).first as Map<String, dynamic>
+                                                      : <String, dynamic>{})
+                                                  : (_data!['gastos'] is Map<String, dynamic>
                                                       ? _data!['gastos'] as Map<String, dynamic>
-                                                      : <String, dynamic>{}
+                                                      : <String, dynamic>{})
                                             ),
                                           ),
 
@@ -829,10 +824,12 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                                             l10n.discountStatistics,
                                             _buildVdetalleSection(
                                               _data!['vdetalle'] is List && (_data!['vdetalle'] as List).isNotEmpty
-                                                  ? (_data!['vdetalle'] as List).first as Map<String, dynamic>
-                                                  : _data!['vdetalle'] is Map
+                                                  ? ((_data!['vdetalle'] as List).first is Map<String, dynamic>
+                                                      ? (_data!['vdetalle'] as List).first as Map<String, dynamic>
+                                                      : <String, dynamic>{})
+                                                  : (_data!['vdetalle'] is Map<String, dynamic>
                                                       ? _data!['vdetalle'] as Map<String, dynamic>
-                                                      : <String, dynamic>{}
+                                                      : <String, dynamic>{})
                                             ),
                                           ),
 
@@ -842,10 +839,12 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                                             l10n.mercadoPagoStatistics,
                                             _buildMpagoSection(
                                               _data!['vcodes_mpago'] is List && (_data!['vcodes_mpago'] as List).isNotEmpty
-                                                  ? (_data!['vcodes_mpago'] as List).first as Map<String, dynamic>
-                                                  : _data!['vcodes_mpago'] is Map
+                                                  ? ((_data!['vcodes_mpago'] as List).first is Map<String, dynamic>
+                                                      ? (_data!['vcodes_mpago'] as List).first as Map<String, dynamic>
+                                                      : <String, dynamic>{})
+                                                  : (_data!['vcodes_mpago'] is Map<String, dynamic>
                                                       ? _data!['vcodes_mpago'] as Map<String, dynamic>
-                                                      : <String, dynamic>{}
+                                                      : <String, dynamic>{})
                                             ),
                                           ),
                                       ],
@@ -958,6 +957,25 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         'Total de Ropas',
         vcodes['total_count_ropas'],
         Icons.checkroom,
+      ));
+    }
+    
+    if (vcodes.containsKey('last_venta_hour')) {
+      final lastVentaHour = vcodes['last_venta_hour'];
+      String formattedTime = '';
+      if (lastVentaHour != null) {
+        try {
+          // ISO 8601 형식의 날짜 문자열 파싱
+          final dateTime = DateTime.parse(lastVentaHour.toString());
+          formattedTime = DateFormat('yyyy-MM-dd HH:mm').format(dateTime);
+        } catch (e) {
+          formattedTime = lastVentaHour.toString();
+        }
+      }
+      cards.add(_buildDataCard(
+        'Última Venta',
+        formattedTime,
+        Icons.access_time,
       ));
     }
 
@@ -1380,6 +1398,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         'vcodes_total_banco_day': 'Ventas Bancarias',
         'vcodes_total_favor_day': 'Ventas Favor',
         'vcodes_total_count_ropas': 'Total de Ropas',
+        'vcodes_last_venta_hour': 'Última Venta',
         'gastos_gasto_count': 'Evento de Gastos',
         'gastos_total_gasto_day': 'Total de Gastos',
         'vdetalle_count_discount_event': 'Eventos de Descuento',
@@ -1418,6 +1437,15 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
               final vcodesData = data['vcodes'];
               if (vcodesData is Map<String, dynamic>) {
                 value = vcodesData[key];
+                // last_venta_hour 필드는 날짜/시간 형식으로 포맷팅
+                if (key == 'last_venta_hour' && value != null) {
+                  try {
+                    final dateTime = DateTime.parse(value.toString());
+                    value = DateFormat('yyyy-MM-dd HH:mm').format(dateTime);
+                  } catch (e) {
+                    // 파싱 실패 시 원본 값 유지
+                  }
+                }
               }
             } else if (category == 'gastos' && data.containsKey('gastos')) {
               final gastosData = data['gastos'];
@@ -1579,93 +1607,85 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       ),
       PopupMenuItem<String>(
         value: 'clientes',
+        enabled: false,
         child: Row(
           children: [
             Icon(
               Icons.people,
-              color: _currentReport == 'clientes' ? Colors.purple : Colors.grey,
+              color: Colors.grey[400],
               size: 20,
             ),
             const SizedBox(width: 12),
             Text(
               'Clientes',
               style: TextStyle(
-                fontWeight: _currentReport == 'clientes' ? FontWeight.bold : FontWeight.normal,
+                color: Colors.grey[400],
+                fontWeight: FontWeight.normal,
               ),
             ),
-            if (_currentReport == 'clientes') ...[
-              const Spacer(),
-              const Icon(Icons.check, color: Colors.purple, size: 18),
-            ],
           ],
         ),
       ),
       PopupMenuItem<String>(
         value: 'gastos',
+        enabled: false,
         child: Row(
           children: [
             Icon(
               Icons.receipt_long,
-              color: _currentReport == 'gastos' ? Colors.red : Colors.grey,
+              color: Colors.grey[400],
               size: 20,
             ),
             const SizedBox(width: 12),
             Text(
               'Gastos',
               style: TextStyle(
-                fontWeight: _currentReport == 'gastos' ? FontWeight.bold : FontWeight.normal,
+                color: Colors.grey[400],
+                fontWeight: FontWeight.normal,
               ),
             ),
-            if (_currentReport == 'gastos') ...[
-              const Spacer(),
-              const Icon(Icons.check, color: Colors.red, size: 18),
-            ],
           ],
         ),
       ),
       PopupMenuItem<String>(
         value: 'ventas',
+        enabled: false,
         child: Row(
           children: [
             Icon(
               Icons.shopping_cart,
-              color: _currentReport == 'ventas' ? Colors.blue : Colors.grey,
+              color: Colors.grey[400],
               size: 20,
             ),
             const SizedBox(width: 12),
             Text(
               'Ventas',
               style: TextStyle(
-                fontWeight: _currentReport == 'ventas' ? FontWeight.bold : FontWeight.normal,
+                color: Colors.grey[400],
+                fontWeight: FontWeight.normal,
               ),
             ),
-            if (_currentReport == 'ventas') ...[
-              const Spacer(),
-              const Icon(Icons.check, color: Colors.blue, size: 18),
-            ],
           ],
         ),
       ),
       PopupMenuItem<String>(
         value: 'alertas',
+        enabled: false,
         child: Row(
           children: [
             Icon(
               Icons.notifications,
-              color: _currentReport == 'alertas' ? Colors.amber : Colors.grey,
+              color: Colors.grey[400],
               size: 20,
             ),
             const SizedBox(width: 12),
             Text(
               'Alertas',
               style: TextStyle(
-                fontWeight: _currentReport == 'alertas' ? FontWeight.bold : FontWeight.normal,
+                color: Colors.grey[400],
+                fontWeight: FontWeight.normal,
               ),
             ),
-            if (_currentReport == 'alertas') ...[
-              const Spacer(),
-              const Icon(Icons.check, color: Colors.amber, size: 18),
-            ],
           ],
         ),
       ),
@@ -1704,6 +1724,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         return;
     }
 
+    // 보고서 화면으로 이동하고, 돌아올 때 _currentReport를 'resumen'으로 설정
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -1712,7 +1733,14 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
           reportType: reportTypeEnum,
         ),
       ),
-    );
+    ).then((_) {
+      // 뒤로 돌아왔을 때 _currentReport를 'resumen'으로 설정
+      if (mounted) {
+        setState(() {
+          _currentReport = 'resumen';
+        });
+      }
+    });
   }
 
 }

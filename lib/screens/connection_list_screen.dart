@@ -116,23 +116,12 @@ class _ConnectionListScreenState extends State<ConnectionListScreen> {
 
   Future<void> _connectToDatabase(ConnectionInfo connection) async {
     try {
-      // serverUrl에서 host 추출
-      String host = 'localhost';
-      try {
-        final uri = Uri.parse(connection.serverUrl);
-        host = uri.host.isNotEmpty ? uri.host : 'localhost';
-      } catch (e) {
-        host = 'localhost';
-      }
-      
       final service = DatabaseService(serverUrl: connection.serverUrl);
       
       final request = DatabaseConnectionRequest(
         databaseName: connection.databaseName,
         username: connection.username,
         password: connection.password,
-        host: host, // host 정보 포함
-        port: null, // 포트 번호는 전송하지 않음 (서버 URL에 이미 포함되어 있음)
       );
 
       final success = await service.connectToDatabase(request);

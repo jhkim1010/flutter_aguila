@@ -6,35 +6,19 @@ class DatabaseConnectionRequest {
   final String databaseName;
   final String username;
   final String password;
-  final String? host;
-  final int? port;
 
   DatabaseConnectionRequest({
     required this.databaseName,
     required this.username,
     required this.password,
-    this.host,
-    this.port,
   });
 
   Map<String, dynamic> toJson() {
-    final json = <String, dynamic>{
+    return {
       'databaseName': databaseName,
       'username': username,
       'password': password,
     };
-    
-    // host가 있으면 포함
-    if (host != null) {
-      json['host'] = host!;
-    }
-    
-    // 포트 번호가 있을 때만 포함
-    if (port != null) {
-      json['port'] = port!;
-    }
-    
-    return json;
   }
 }
 

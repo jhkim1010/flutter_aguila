@@ -20,8 +20,6 @@ class _CelebrationScreenState extends State<CelebrationScreen>
   final List<Particle> _particles = [];
   final Random _random = Random();
 
-  bool _showButton = false;
-
   @override
   void initState() {
     super.initState();
@@ -32,12 +30,10 @@ class _CelebrationScreenState extends State<CelebrationScreen>
 
     _createParticles();
     
-    // 2초 후 버튼 표시
-    Future.delayed(const Duration(seconds: 2), () {
+    // 1초 후 자동으로 resumen del dia 화면으로 이동
+    Future.delayed(const Duration(seconds: 1), () {
       if (mounted) {
-        setState(() {
-          _showButton = true;
-        });
+        _navigateToResumenDelDia();
       }
     });
   }
@@ -144,6 +140,7 @@ class _CelebrationScreenState extends State<CelebrationScreen>
                 Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       const Icon(
                         Icons.check_circle,
@@ -153,6 +150,7 @@ class _CelebrationScreenState extends State<CelebrationScreen>
                       const SizedBox(height: 30),
                       const Text(
                         '🎉 ¡Conexión Exitosa! 🎉',
+                        textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 48,
                           fontWeight: FontWeight.bold,
@@ -167,44 +165,29 @@ class _CelebrationScreenState extends State<CelebrationScreen>
                         ),
                       ),
                       const SizedBox(height: 20),
-                      const Text(
-                        '¡La conexión a la base de datos fue exitosa!',
-                        style: TextStyle(
-                          fontSize: 20,
-                          color: Colors.white70,
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 32),
+                        child: Text(
+                          '¡La conexión a la base de datos fue exitosa!',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 20,
+                            color: Colors.white70,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 60),
-                      // 2초 후 버튼 표시
-                      AnimatedOpacity(
-                        opacity: _showButton ? 1.0 : 0.0,
-                        duration: const Duration(milliseconds: 500),
-                        child: AnimatedScale(
-                          scale: _showButton ? 1.0 : 0.8,
-                          duration: const Duration(milliseconds: 500),
-                          child: ElevatedButton.icon(
-                            onPressed: _showButton ? _navigateToResumenDelDia : null,
-                            icon: const Icon(Icons.bar_chart, size: 24),
-                            label: const Text(
-                              'Ver Resumen de Ventas Automáticamente',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: Colors.blue.shade900,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 32,
-                                vertical: 16,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30),
-                              ),
-                              elevation: 8,
-                            ),
-                          ),
+                      // 로딩 인디케이터 표시
+                      const CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Cargando resumen del día...',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white70,
                         ),
                       ),
                     ],

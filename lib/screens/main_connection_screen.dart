@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:local_auth/local_auth.dart';
 import 'dart:math';
 import 'dart:ui';
 import '../l10n/app_localizations.dart';
@@ -52,6 +53,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
   String? _errorMessage;
   List<ConnectionInfo> _savedConnections = [];
   bool _isLoadingConnections = false;
+  final LocalAuthentication _localAuth = LocalAuthentication();
   
   // 연결 ID 생성
   String _generateConnectionId() {
@@ -64,6 +66,47 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
     super.initState();
     _checkAndAutoConnect();
     _loadSavedConnections();
+    // 백그라운드에서 생체 인식 수행
+    _authenticateInBackground();
+  }
+
+  // 백그라운드에서 생체 인식 수행
+  Future<void> _authenticateInBackground() async {
+    try {
+      final bool isSupported = await _localAuth.isDeviceSupported();
+      final bool canCheckBiometrics = await _localAuth.canCheckBiometrics;
+      
+      if (isSupported && canCheckBiometrics) {
+        // 약간의 지연 후 백그라운드에서 인증 시도
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        if (mounted) {
+          try {
+            final bool didAuthenticate = await _localAuth.authenticate(
+              localizedReason: 'Se requiere autenticación biométrica para usar la aplicación',
+              options: const AuthenticationOptions(
+                biometricOnly: false,
+                stickyAuth: true,
+              ),
+            );
+            
+            if (!didAuthenticate && mounted) {
+              // 인증 실패 시에도 화면은 계속 표시
+              print('🔐 생체 인식 실패 또는 취소됨');
+            }
+          } on PlatformException catch (e) {
+            print('❌ 생체 인식 오류: ${e.message}');
+            // 오류 발생 시에도 화면은 계속 표시
+          } catch (e) {
+            print('❌ 생체 인식 알 수 없는 오류: $e');
+            // 오류 발생 시에도 화면은 계속 표시
+          }
+        }
+      }
+    } catch (e) {
+      print('❌ 생체 인식 확인 오류: $e');
+      // 생체 인식이 지원되지 않거나 오류가 발생해도 화면은 계속 표시
+    }
   }
 
   // 저장된 연결 목록 불러오기
@@ -98,23 +141,12 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
         _errorMessage = null;
       });
 
-      // serverUrl에서 host 추출
-      String host = 'localhost';
-      try {
-        final uri = Uri.parse(connection.serverUrl);
-        host = uri.host.isNotEmpty ? uri.host : 'localhost';
-      } catch (e) {
-        host = 'localhost';
-      }
-
       final service = DatabaseService(serverUrl: connection.serverUrl);
 
       final request = DatabaseConnectionRequest(
         databaseName: connection.databaseName,
         username: connection.username,
         password: connection.password,
-        host: host,
-        port: null,
       );
 
       final success = await service.connectToDatabase(request);
@@ -207,23 +239,12 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
     required String password,
   }) async {
     try {
-      // serverUrl에서 host 추출
-      String host = 'localhost';
-      try {
-        final uri = Uri.parse(serverUrl);
-        host = uri.host.isNotEmpty ? uri.host : 'localhost';
-      } catch (e) {
-        host = 'localhost';
-      }
-      
       final service = DatabaseService(serverUrl: serverUrl);
       
       final request = DatabaseConnectionRequest(
         databaseName: databaseName,
         username: username,
         password: password,
-        host: host, // host 정보 포함
-        port: null, // 포트 번호는 전송하지 않음
       );
 
       final success = await service.connectToDatabase(request);
@@ -446,23 +467,12 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
     try {
       final serverUrl = _serverUrlController.text.trim();
       
-      // serverUrl에서 host 추출
-      String host = 'localhost';
-      try {
-        final uri = Uri.parse(serverUrl);
-        host = uri.host.isNotEmpty ? uri.host : 'localhost';
-      } catch (e) {
-        host = 'localhost';
-      }
-      
       final service = DatabaseService(serverUrl: serverUrl);
 
       final request = DatabaseConnectionRequest(
         databaseName: _databaseNameController.text.trim(),
         username: _usernameController.text.trim(),
         password: _passwordController.text.trim(),
-        host: host, // host 정보 포함
-        port: null, // 포트 번호는 전송하지 않음
       );
 
       print('=== 연결 시작 ===');

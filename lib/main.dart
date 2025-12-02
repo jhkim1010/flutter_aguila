@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:ui';
 import 'l10n/app_localizations.dart';
 import 'screens/main_connection_screen.dart';
+import 'screens/biometric_auth_screen.dart';
 
 void main() {
   runApp(const MyApp());

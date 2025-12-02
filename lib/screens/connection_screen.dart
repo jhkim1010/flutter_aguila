@@ -158,23 +158,12 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     try {
       final serverUrl = _serverUrlController.text.trim();
       
-      // serverUrl에서 host 추출
-      String host = 'localhost';
-      try {
-        final uri = Uri.parse(serverUrl);
-        host = uri.host.isNotEmpty ? uri.host : 'localhost';
-      } catch (e) {
-        host = 'localhost';
-      }
-      
       final service = DatabaseService(serverUrl: serverUrl);
 
       final request = DatabaseConnectionRequest(
         databaseName: _databaseNameController.text.trim(),
         username: _usernameController.text.trim(),
         password: _passwordController.text.trim(),
-        host: host, // host 정보 포함
-        port: null, // 포트 번호는 전송하지 않음
       );
 
       final success = await service.connectToDatabase(request);

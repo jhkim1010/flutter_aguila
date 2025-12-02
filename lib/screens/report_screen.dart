@@ -2,15 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/database_service.dart';
 import '../l10n/app_localizations.dart';
+import '../widgets/report_utils.dart';
+import '../widgets/items_date_range_selector.dart';
+import '../widgets/report_table_builder.dart';
 
-enum ReportType {
-  stocks,
-  items,
-  clientes,
-  gastos,
-  ventas,
-  alertas,
-}
+export '../widgets/report_utils.dart' show ReportType;
 
 class ReportScreen extends StatefulWidget {
   final String serverUrl;
@@ -42,6 +38,10 @@ class _ReportScreenState extends State<ReportScreen> {
   bool _sortAscending = true;
   Map<String, String> _columnFilters = {}; // 컬럼별 필터 값
   String? _selectedSucursal; // 선택된 sucursal 필터 (null이면 "모두")
+  
+  // Items 보고서용 날짜 범위
+  DateTime? _itemsStartDate;
+  DateTime? _itemsEndDate;
 
   @override
   void initState() {
@@ -49,6 +49,12 @@ class _ReportScreenState extends State<ReportScreen> {
     _databaseService = DatabaseService(serverUrl: widget.serverUrl);
     // 스크롤 리스너 추가 (무한 스크롤)
     _scrollController.addListener(_onScroll);
+    // Items 보고서의 경우 기본 날짜 설정 (오늘 날짜)
+    if (widget.reportType == ReportType.items) {
+      final now = DateTime.now();
+      _itemsStartDate = now;
+      _itemsEndDate = now;
+    }
     _loadData();
   }
 
@@ -74,7 +80,16 @@ class _ReportScreenState extends State<ReportScreen> {
           data = await _databaseService.getStocksReport();
           break;
         case ReportType.items:
-          data = await _databaseService.getItemsReport();
+          // items 보고서는 항상 날짜 범위가 필요함 (기본값: 오늘부터 오늘까지)
+          final now = DateTime.now();
+          final startDate = _itemsStartDate ?? now;
+          final endDate = _itemsEndDate ?? now;
+          
+          final filters = <String, dynamic>{
+            'fecha_inicio': DateFormat('yyyy-MM-dd').format(startDate),
+            'fecha_fin': DateFormat('yyyy-MM-dd').format(endDate),
+          };
+          data = await _databaseService.getItemsReport(filters: filters);
           break;
         case ReportType.clientes:
           data = await _databaseService.getClientesReport();
@@ -140,55 +155,96 @@ class _ReportScreenState extends State<ReportScreen> {
     }
   }
 
-  String _getReportTitle() {
-    switch (widget.reportType) {
-      case ReportType.stocks:
-        return 'Stocks';
-      case ReportType.items:
-        return 'Items';
-      case ReportType.clientes:
-        return 'Clientes';
-      case ReportType.gastos:
-        return 'Gastos';
-      case ReportType.ventas:
-        return 'Ventas';
-      case ReportType.alertas:
-        return 'Alertas';
+  String _getReportTitle() => ReportUtils.getReportTitle(widget.reportType);
+  IconData _getReportIcon() => ReportUtils.getReportIcon(widget.reportType);
+  Color _getReportColor() => ReportUtils.getReportColor(widget.reportType);
+
+  // Items 보고서용 데이터 개수 표시
+  Widget _buildItemsDataCount() {
+    if (_data == null) return const SizedBox.shrink();
+    
+    int totalCount = 0;
+    if (_data!.containsKey('data') && _data!['data'] is List) {
+      totalCount = (_data!['data'] as List).length;
     }
+    
+    return Text(
+      'Total: $totalCount',
+      style: const TextStyle(
+        fontSize: 11,
+        color: Colors.white70,
+        fontWeight: FontWeight.normal,
+      ),
+    );
   }
 
-  IconData _getReportIcon() {
-    switch (widget.reportType) {
-      case ReportType.stocks:
-        return Icons.warehouse;
-      case ReportType.items:
-        return Icons.inventory_2;
-      case ReportType.clientes:
-        return Icons.people;
-      case ReportType.gastos:
-        return Icons.receipt_long;
-      case ReportType.ventas:
-        return Icons.shopping_cart;
-      case ReportType.alertas:
-        return Icons.notifications;
+  // Items 보고서용 필터 섹션 (데이터 개수 + 날짜 범위 + 필터링)
+  Widget _buildItemsFilterSection() {
+    // 필터링된 데이터 개수 계산
+    int totalCount = 0;
+    int filteredCount = 0;
+    
+    if (_data != null && _data!.containsKey('data') && _data!['data'] is List) {
+      final dataList = _data!['data'] as List;
+      totalCount = dataList.length;
+      
+      // filteringWord 필터 적용
+      final filteringWord = _filteringWordController.text.trim().toLowerCase();
+      if (filteringWord.isNotEmpty) {
+        filteredCount = dataList.where((item) {
+          if (item is Map<String, dynamic>) {
+            final codigo1 = item['codigo1']?.toString().toLowerCase() ?? '';
+            final desc1 = item['desc1']?.toString().toLowerCase() ?? '';
+            return codigo1.contains(filteringWord) || desc1.contains(filteringWord);
+          }
+          return false;
+        }).length;
+      } else {
+        filteredCount = totalCount;
+      }
     }
-  }
 
-  Color _getReportColor() {
-    switch (widget.reportType) {
-      case ReportType.stocks:
-        return Colors.orange;
-      case ReportType.items:
-        return Colors.green;
-      case ReportType.clientes:
-        return Colors.purple;
-      case ReportType.gastos:
-        return Colors.red;
-      case ReportType.ventas:
-        return Colors.blue;
-      case ReportType.alertas:
-        return Colors.amber;
-    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      decoration: BoxDecoration(
+        color: _getReportColor().withOpacity(0.05),
+        border: Border(
+          bottom: BorderSide(
+            color: _getReportColor().withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          // 날짜 범위 선택
+          Expanded(
+            child: ItemsDateRangeSelector(
+              reportType: widget.reportType,
+              startDate: _itemsStartDate,
+              endDate: _itemsEndDate,
+              onDateRangeChanged: (startDate, endDate) {
+                setState(() {
+                  _itemsStartDate = startDate;
+                  _itemsEndDate = endDate;
+                });
+                _loadData();
+              },
+            ),
+          ),
+          const SizedBox(width: 12),
+          // 데이터 개수 표시 (옆)
+          Text(
+            'Total: $filteredCount${filteredCount != totalCount ? ' / $totalCount' : ''}',
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey[700],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -213,17 +269,37 @@ class _ReportScreenState extends State<ReportScreen> {
                   ),
                 ],
               )
-            : Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () => Navigator.pop(context),
+            : widget.reportType == ReportType.items
+                ? Row(
+                    children: [
+                      Icon(reportIcon, color: Colors.white),
+                      const SizedBox(width: 8),
+                      Text(reportTitle),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildFilteringWordFieldInAppBar(),
+                      ),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                      Icon(reportIcon, color: Colors.white),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(reportTitle),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  Icon(reportIcon, color: Colors.white),
-                  const SizedBox(width: 8),
-                  Text(reportTitle),
-                ],
-              ),
         backgroundColor: reportColor,
       ),
       body: _isLoading
@@ -283,6 +359,9 @@ class _ReportScreenState extends State<ReportScreen> {
                     )
                   : Column(
                       children: [
+                        // Items 보고서의 날짜 범위 선택 UI 및 필터링
+                        if (widget.reportType == ReportType.items)
+                          _buildItemsFilterSection(),
                         // 스톡 보고서의 vista 타입 표시
                         if (widget.reportType == ReportType.stocks && _data != null)
                           _buildStocksViewType(),
@@ -321,7 +400,93 @@ class _ReportScreenState extends State<ReportScreen> {
       
       // 첫 번째 항목이 맵이고 여러 키를 가지고 있으면 테이블로 표시
       if (dataList.isNotEmpty && dataList.first is Map) {
-        return _buildTableFromList(dataList);
+        // Items 보고서의 경우 filteringWord 필터 적용
+        List<dynamic> filteredDataList = dataList;
+        if (widget.reportType == ReportType.items) {
+          final filteringWord = _filteringWordController.text.trim().toLowerCase();
+          if (filteringWord.isNotEmpty) {
+            filteredDataList = dataList.where((item) {
+              if (item is Map<String, dynamic>) {
+                final codigo1 = item['codigo1']?.toString().toLowerCase() ?? '';
+                final desc1 = item['desc1']?.toString().toLowerCase() ?? '';
+                return codigo1.contains(filteringWord) || desc1.contains(filteringWord);
+              }
+              return false;
+            }).toList();
+          }
+          
+          // Items 보고서의 경우 정렬 적용
+          List<dynamic> sortedDataList = List.from(filteredDataList);
+          if (_sortColumn != null) {
+            sortedDataList.sort((a, b) {
+              if (a is! Map<String, dynamic> || b is! Map<String, dynamic>) {
+                return 0;
+              }
+              
+              final aValue = a[_sortColumn];
+              final bValue = b[_sortColumn];
+              
+              // null 처리
+              if (aValue == null && bValue == null) return 0;
+              if (aValue == null) return _sortAscending ? -1 : 1;
+              if (bValue == null) return _sortAscending ? 1 : -1;
+              
+              // 숫자 비교
+              final aNum = ReportUtils.isNumeric(aValue) ? num.tryParse(aValue.toString().replaceAll(',', '')) : null;
+              final bNum = ReportUtils.isNumeric(bValue) ? num.tryParse(bValue.toString().replaceAll(',', '')) : null;
+              
+              if (aNum != null && bNum != null) {
+                final comparison = aNum.compareTo(bNum);
+                return _sortAscending ? comparison : -comparison;
+              }
+              
+              // 문자열 비교
+              final aStr = aValue.toString().toLowerCase();
+              final bStr = bValue.toString().toLowerCase();
+              final comparison = aStr.compareTo(bStr);
+              return _sortAscending ? comparison : -comparison;
+            });
+          }
+          
+          return ReportTableBuilder.buildTableFromList(
+            sortedDataList,
+            _displayedItemsCount,
+            _itemsPerPage,
+            _scrollController,
+            widget.reportType,
+            sortColumn: _sortColumn,
+            sortAscending: _sortAscending,
+            onSort: (columnIndex, ascending) {
+              setState(() {
+                // 키 목록을 정렬된 데이터에서 가져오기 (report_table_builder와 동일한 순서 보장)
+                final keys = sortedDataList.isNotEmpty 
+                    ? (sortedDataList.first as Map<String, dynamic>).keys.toList()
+                    : <String>[];
+                if (columnIndex >= 0 && columnIndex < keys.length) {
+                  final key = keys[columnIndex];
+                  if (_sortColumn == key) {
+                    // 같은 칼럼을 클릭하면 정렬 방향 변경
+                    _sortAscending = !_sortAscending;
+                  } else {
+                    // 다른 칼럼을 클릭하면 새 칼럼으로 정렬
+                    _sortColumn = key;
+                    _sortAscending = true;
+                  }
+                  // 정렬이 변경되면 처음부터 다시 표시
+                  _displayedItemsCount = _itemsPerPage;
+                }
+              });
+            },
+          );
+        }
+        
+        return ReportTableBuilder.buildTableFromList(
+          filteredDataList,
+          _displayedItemsCount,
+          _itemsPerPage,
+          _scrollController,
+          widget.reportType,
+        );
       }
       
       // 카드 형태로 표시할 때도 대량 데이터 처리
@@ -331,25 +496,6 @@ class _ReportScreenState extends State<ReportScreen> {
       
       return Column(
         children: [
-          // 데이터 개수 표시
-          if (totalCount > _itemsPerPage)
-            Container(
-              padding: const EdgeInsets.all(2),
-              color: _getReportColor().withOpacity(0.1),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Mostrando ${displayedList.length} de $totalCount items',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[700],
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           // 카드 리스트
           Expanded(
             child: ListView(
@@ -390,11 +536,11 @@ class _ReportScreenState extends State<ReportScreen> {
     // 'data' 키가 없고 직접 맵인 경우
     if (data is Map<String, dynamic>) {
       // 테이블 형태로 표시 가능한지 확인
-      if (_isTableData(data)) {
+      if (ReportTableBuilder.isTableData(data)) {
         return ListView(
           padding: EdgeInsets.zero,
           children: [
-            _buildTable(data),
+            ReportTableBuilder.buildTable(data, widget.reportType),
           ],
         );
       }
@@ -592,8 +738,8 @@ class _ReportScreenState extends State<ReportScreen> {
         if (bValue == null) return _sortAscending ? 1 : -1;
         
         // 숫자 비교
-        final aNum = _isNumeric(aValue) ? num.tryParse(aValue.toString().replaceAll(',', '')) : null;
-        final bNum = _isNumeric(bValue) ? num.tryParse(bValue.toString().replaceAll(',', '')) : null;
+        final aNum = ReportUtils.isNumeric(aValue) ? num.tryParse(aValue.toString().replaceAll(',', '')) : null;
+        final bNum = ReportUtils.isNumeric(bValue) ? num.tryParse(bValue.toString().replaceAll(',', '')) : null;
         
         if (aNum != null && bNum != null) {
           final comparison = aNum.compareTo(bNum);
@@ -619,15 +765,17 @@ class _ReportScreenState extends State<ReportScreen> {
         : dataList.first as Map<String, dynamic>;
     
     // 필드명을 스페인어로 매핑
-    final fieldNames = _getStocksFieldNames(isResumida);
+    final fieldNames = ReportUtils.getStocksFieldNames(isResumida);
     
-    // 칼럼 순서 재정렬: precio 칼럼들을 맨 뒤로 이동 (Vista Detallada일 때만)
+    // 칼럼 순서 재정렬: fecha 칼럼과 precio 칼럼들을 뒤로 이동 (Vista Detallada일 때만)
     List<String> orderedKeys = firstItem.keys.toList();
     if (!isResumida) {
       final precioKeys = ['pre1', 'pre2', 'pre3', 'pre4', 'pre5'];
-      final otherKeys = orderedKeys.where((key) => !precioKeys.contains(key)).toList();
+      final fechaKeys = ['first_date', 'last_date'];
+      final otherKeys = orderedKeys.where((key) => !precioKeys.contains(key) && !fechaKeys.contains(key)).toList();
+      final fechaKeysInData = orderedKeys.where((key) => fechaKeys.contains(key)).toList();
       final precioKeysInData = orderedKeys.where((key) => precioKeys.contains(key)).toList();
-      orderedKeys = [...otherKeys, ...precioKeysInData];
+      orderedKeys = [...otherKeys, ...fechaKeysInData, ...precioKeysInData];
     }
     
     // 표시할 컬럼 선택 (정렬 기능 추가)
@@ -684,7 +832,8 @@ class _ReportScreenState extends State<ReportScreen> {
               sortColumnIndex: _sortColumn != null ? orderedKeys.indexOf(_sortColumn!) : null,
               sortAscending: _sortAscending,
               columns: columns,
-              rows: displayedList.map((item) {
+              rows: [
+                ...displayedList.map((item) {
                   if (item is Map<String, dynamic>) {
                     return DataRow(
                       cells: orderedKeys.map((key) {
@@ -693,8 +842,8 @@ class _ReportScreenState extends State<ReportScreen> {
                         final isCodigoColumn = key == 'codigo' || key == 'tcode';
                         final formattedValue = isCodigoColumn 
                             ? (value?.toString() ?? 'N/A')
-                            : _formatValue(value);
-                        final isNumeric = isCodigoColumn ? false : _isNumeric(value);
+                            : ReportUtils.formatValue(value);
+                        final isNumeric = isCodigoColumn ? false : ReportUtils.isNumeric(value);
                         return DataCell(
                           Align(
                             alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
@@ -707,8 +856,8 @@ class _ReportScreenState extends State<ReportScreen> {
                       }).toList(),
                     );
                   }
-                  final formattedValue = _formatValue(item);
-                  final isNumeric = _isNumeric(item);
+                  final formattedValue = ReportUtils.formatValue(item);
+                  final isNumeric = ReportUtils.isNumeric(item);
                   return DataRow(
                     cells: [
                       DataCell(
@@ -722,11 +871,74 @@ class _ReportScreenState extends State<ReportScreen> {
                       ),
                     ],
                   );
-                }).toList(),
+                }),
+                // 합계 행 추가
+                _buildTotalRow(orderedKeys, sortedList, isResumida),
+              ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  // 합계 행 빌드
+  DataRow _buildTotalRow(List<String> orderedKeys, List<dynamic> dataList, bool isResumida) {
+    // 각 칼럼별 합계 계산
+    final totals = <String, num>{};
+    
+    for (var key in orderedKeys) {
+      final isCodigoColumn = key == 'codigo' || key == 'tcode' || key == 'codigo1' || key == 'id_codigo1';
+      if (isCodigoColumn) continue; // 문자 칼럼은 합계 계산 제외
+      
+      num sum = 0;
+      for (var item in dataList) {
+        if (item is Map<String, dynamic> && item.containsKey(key)) {
+          final value = item[key];
+          if (ReportUtils.isNumeric(value)) {
+            final numValue = num.tryParse(value.toString().replaceAll(',', '').replaceAll('\$', '').trim());
+            if (numValue != null) {
+              sum += numValue;
+            }
+          }
+        }
+      }
+      totals[key] = sum;
+    }
+    
+    return DataRow(
+      color: MaterialStateProperty.all(_getReportColor().withOpacity(0.1)),
+      cells: orderedKeys.map((key) {
+        final isCodigoColumn = key == 'codigo' || key == 'tcode' || key == 'codigo1' || key == 'id_codigo1';
+        if (isCodigoColumn) {
+          return DataCell(
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Total',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          );
+        }
+        
+        final total = totals[key] ?? 0;
+        return DataCell(
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              ReportUtils.formatValue(total),
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -800,7 +1012,7 @@ class _ReportScreenState extends State<ReportScreen> {
         if (!item.containsKey(columnKey)) continue;
         
         final cellValue = item[columnKey];
-        final cellValueStr = _formatValue(cellValue).toLowerCase();
+        final cellValueStr = ReportUtils.formatValue(cellValue).toLowerCase();
         
         if (!cellValueStr.contains(filterValue)) {
           return false;
@@ -839,8 +1051,8 @@ class _ReportScreenState extends State<ReportScreen> {
       }
       
       // 문자열 비교
-      final aStr = _formatValue(aValue).toLowerCase();
-      final bStr = _formatValue(bValue).toLowerCase();
+      final aStr = ReportUtils.formatValue(aValue).toLowerCase();
+      final bStr = ReportUtils.formatValue(bValue).toLowerCase();
       final comparison = aStr.compareTo(bStr);
       return _sortAscending ? comparison : -comparison;
     });
@@ -849,55 +1061,6 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   // Stocks 필드명 매핑 (스페인어)
-  Map<String, String> _getStocksFieldNames(bool isResumida) {
-    if (isResumida) {
-      // Vista Resumida 필드명
-      return {
-        'tcode': 'Código',
-        'tdesc': 'Descripción',
-        'first_date': 'Primera Fecha',
-        'last_date': 'Última Fecha',
-        'pre1': 'Precio 1',
-        'pre2': 'Precio 2',
-        'pre3': 'Precio 3',
-        'pre4': 'Precio 4',
-        'pre5': 'Precio 5',
-        'totaling3': 'Total Ingreso',
-        'totalventa3': 'Total Venta',
-        'todaying3': 'Ingreso Hoy',
-        'todayvnt3': 'Venta Hoy',
-        'totalreservado3': 'Total Reservado',
-        'cntoffset3': 'Cnt Offset',
-        'stockreal3': 'Stock Real',
-        'porcentaje': 'Porcentaje',
-        'sucursal': 'Sucursal',
-        'ref_id_todocodigo': 'Ref ID',
-      };
-    } else {
-      // Vista Detallada 필드명
-      return {
-        'codigo': 'Código',
-        'descripcion': 'Descripción',
-        'first_date': 'Primera Fecha',
-        'last_date': 'Última Fecha',
-        'pre1': 'Precio 1',
-        'pre2': 'Precio 2',
-        'pre3': 'Precio 3',
-        'pre4': 'Precio 4',
-        'pre5': 'Precio 5',
-        'totaling': 'Total Ingreso',
-        'totalventa': 'Total Venta',
-        'todayingreso': 'Ingreso Hoy',
-        'todayventa': 'Venta Hoy',
-        'totalreservado': 'Total Reservado',
-        'cntoffset': 'Cnt Offset',
-        'stockreal': 'Stock Real',
-        'porcentaje': 'Porcentaje',
-        'sucursal': 'Sucursal',
-        'id_codigo1': 'ID Código',
-      };
-    }
-  }
 
   // Filtering word 입력 필드 (AppBar용)
   Widget _buildFilteringWordFieldInAppBar() {
@@ -966,25 +1129,6 @@ class _ReportScreenState extends State<ReportScreen> {
     
     return Column(
       children: [
-        // 데이터 개수 표시
-        if (totalCount > _itemsPerPage)
-          Container(
-            padding: const EdgeInsets.all(2),
-            color: _getReportColor().withOpacity(0.1),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Mostrando ${displayedList.length} de $totalCount items',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[700],
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
         // 테이블 (가상 스크롤 사용)
         Expanded(
           child: Scrollbar(
@@ -999,14 +1143,31 @@ class _ReportScreenState extends State<ReportScreen> {
                   _getReportColor().withOpacity(0.1),
                 ),
                 columns: columns,
-                rows: displayedList.map((item) {
-                  if (item is Map<String, dynamic>) {
+                rows: [
+                  ...displayedList.map((item) {
+                    if (item is Map<String, dynamic>) {
+                      return DataRow(
+                        cells: firstItem.keys.map((key) {
+                          final value = item[key];
+                          final formattedValue = ReportUtils.formatValue(value);
+                          final isNumeric = ReportUtils.isNumeric(value);
+                          return DataCell(
+                            Align(
+                              alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+                              child: Text(
+                                formattedValue,
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      );
+                    }
+                    final formattedValue = ReportUtils.formatValue(item);
+                    final isNumeric = ReportUtils.isNumeric(item);
                     return DataRow(
-                      cells: firstItem.keys.map((key) {
-                        final value = item[key];
-                        final formattedValue = _formatValue(value);
-                        final isNumeric = _isNumeric(value);
-                        return DataCell(
+                      cells: [
+                        DataCell(
                           Align(
                             alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
                             child: Text(
@@ -1014,26 +1175,13 @@ class _ReportScreenState extends State<ReportScreen> {
                               style: const TextStyle(fontSize: 12),
                             ),
                           ),
-                        );
-                      }).toList(),
-                    );
-                  }
-                  final formattedValue = _formatValue(item);
-                  final isNumeric = _isNumeric(item);
-                  return DataRow(
-                    cells: [
-                      DataCell(
-                        Align(
-                          alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
-                          child: Text(
-                            formattedValue,
-                            style: const TextStyle(fontSize: 12),
-                          ),
                         ),
-                      ),
-                    ],
-                  );
-                }).toList(),
+                      ],
+                    );
+                  }),
+                  // 합계 행 추가
+                  _buildTotalRowForTable(firstItem.keys.toList(), dataList),
+                ],
               ),
             ),
           ),
@@ -1053,6 +1201,66 @@ class _ReportScreenState extends State<ReportScreen> {
             ),
           ),
       ],
+    );
+  }
+
+  // 테이블용 합계 행 빌드
+  DataRow _buildTotalRowForTable(List<String> keys, List<dynamic> dataList) {
+    // 각 칼럼별 합계 계산
+    final totals = <String, num>{};
+    
+    for (var key in keys) {
+      final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1';
+      if (isCodigoColumn) continue; // 문자 칼럼은 합계 계산 제외
+      
+      num sum = 0;
+      for (var item in dataList) {
+        if (item is Map<String, dynamic> && item.containsKey(key)) {
+          final value = item[key];
+          if (ReportUtils.isNumeric(value)) {
+            final numValue = num.tryParse(value.toString().replaceAll(',', '').replaceAll('\$', '').trim());
+            if (numValue != null) {
+              sum += numValue;
+            }
+          }
+        }
+      }
+      totals[key] = sum;
+    }
+    
+    return DataRow(
+      color: MaterialStateProperty.all(_getReportColor().withOpacity(0.1)),
+      cells: keys.map((key) {
+        final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1';
+        if (isCodigoColumn) {
+          return DataCell(
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Total',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          );
+        }
+        
+        final total = totals[key] ?? 0;
+        return DataCell(
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              ReportUtils.formatValue(total),
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -1087,8 +1295,8 @@ class _ReportScreenState extends State<ReportScreen> {
                   Expanded(
                     flex: 3,
                     child: Text(
-                      _formatValue(entry.value),
-                      textAlign: _isNumeric(entry.value) ? TextAlign.right : TextAlign.left,
+                      ReportUtils.formatValue(entry.value),
+                      textAlign: ReportUtils.isNumeric(entry.value) ? TextAlign.right : TextAlign.left,
                       style: const TextStyle(fontSize: 14),
                     ),
                   ),
@@ -1118,8 +1326,8 @@ class _ReportScreenState extends State<ReportScreen> {
 
   Widget _buildDataMap(Map<String, dynamic> data) {
     // 테이블 형태로 표시할 수 있는 데이터인지 확인
-    if (_isTableData(data)) {
-      return _buildTable(data);
+    if (ReportTableBuilder.isTableData(data)) {
+      return ReportTableBuilder.buildTable(data, widget.reportType);
     }
 
     // 카드 없이 직접 표시
@@ -1161,8 +1369,8 @@ class _ReportScreenState extends State<ReportScreen> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: (value as Map<String, dynamic>).entries.map((entry) {
-          final formattedValue = _formatValue(entry.value);
-          final isNumeric = _isNumeric(entry.value);
+          final formattedValue = ReportUtils.formatValue(entry.value);
+          final isNumeric = ReportUtils.isNumeric(entry.value);
           return Padding(
             padding: EdgeInsets.zero,
             child: Text(
@@ -1177,8 +1385,8 @@ class _ReportScreenState extends State<ReportScreen> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: value.asMap().entries.map((entry) {
-          final formattedValue = _formatValue(entry.value);
-          final isNumeric = _isNumeric(entry.value);
+          final formattedValue = ReportUtils.formatValue(entry.value);
+          final isNumeric = ReportUtils.isNumeric(entry.value);
           return Padding(
             padding: EdgeInsets.zero,
             child: Text(
@@ -1190,8 +1398,8 @@ class _ReportScreenState extends State<ReportScreen> {
         }).toList(),
       );
     }
-    final formattedValue = _formatValue(value);
-    final isNumeric = _isNumeric(value);
+    final formattedValue = ReportUtils.formatValue(value);
+    final isNumeric = ReportUtils.isNumeric(value);
     return Text(
       formattedValue,
       textAlign: isNumeric ? TextAlign.right : TextAlign.left,
@@ -1199,108 +1407,5 @@ class _ReportScreenState extends State<ReportScreen> {
     );
   }
 
-  bool _isTableData(Map<String, dynamic> data) {
-    // 모든 값이 리스트인 경우 테이블로 표시
-    return data.values.every((value) => value is List);
-  }
-
-  Widget _buildTable(Map<String, dynamic> data) {
-    final columns = data.keys.map((key) {
-      return DataColumn(
-        label: Text(
-          key.toString(),
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-      );
-    }).toList();
-
-    // 첫 번째 컬럼의 길이를 기준으로 행 수 결정
-    final firstKey = data.keys.first;
-    final rowCount = (data[firstKey] as List).length;
-
-    final rows = List.generate(rowCount, (index) {
-      return DataRow(
-        cells: data.keys.map((key) {
-          final value = data[key];
-          if (value is List && index < value.length) {
-            final cellValue = value[index];
-            final formattedValue = _formatValue(cellValue);
-            final isNumeric = _isNumeric(cellValue);
-            return DataCell(
-              Text(
-                formattedValue,
-                textAlign: isNumeric ? TextAlign.right : TextAlign.left,
-              ),
-            );
-          }
-          return const DataCell(Text(''));
-        }).toList(),
-      );
-    });
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        columnSpacing: 8,
-        headingRowColor: MaterialStateProperty.all(
-          _getReportColor().withOpacity(0.1),
-        ),
-        columns: columns,
-        rows: rows,
-      ),
-    );
-  }
-
-  // 숫자인지 확인하는 헬퍼 함수
-  bool _isNumeric(dynamic value) {
-    if (value == null) return false;
-    if (value is num) return true;
-    if (value is String) {
-      // 숫자로 변환 가능한 문자열인지 확인
-      return double.tryParse(value) != null || int.tryParse(value) != null;
-    }
-    return false;
-  }
-
-  String _formatValue(dynamic value) {
-    if (value == null) return 'N/A';
-    if (value is num) {
-      // 숫자는 천 단위 구분자만 사용 (통화 기호 없음)
-      return NumberFormat('#,###').format(value);
-    }
-    if (value is DateTime) {
-      return DateFormat('yyyy-MM-dd HH:mm').format(value);
-    }
-    if (value is String) {
-      // 문자열에서 $ 기호 제거
-      String cleanedValue = value.replaceAll('\$', '').trim();
-      
-      // 숫자로 변환 가능한 문자열인지 확인
-      final numValue = num.tryParse(cleanedValue.replaceAll(',', ''));
-      if (numValue != null) {
-        // 숫자로 변환 가능하면 천 단위 구분자로 포맷팅
-        return NumberFormat('#,###').format(numValue);
-      }
-      
-      // 긴 문자열은 자르기
-      if (cleanedValue.length > 50) {
-        return '${cleanedValue.substring(0, 50)}...';
-      }
-      
-      return cleanedValue;
-    }
-    // 다른 타입은 문자열로 변환하고 $ 기호 제거
-    String strValue = value.toString();
-    return strValue.replaceAll('\$', '').trim();
-  }
-
-  // 숫자면 오른쪽 정렬, 아니면 기본 정렬로 Text 위젯 생성
-  Widget _buildTextWidget(String text, {bool isNumeric = false}) {
-    return Text(
-      text,
-      textAlign: isNumeric ? TextAlign.right : TextAlign.left,
-      style: const TextStyle(fontSize: 16),
-    );
-  }
 }
 
