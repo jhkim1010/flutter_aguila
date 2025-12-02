@@ -557,6 +557,8 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    
     // 자동 연결 중일 때 로딩 화면 표시
     if (_isAutoConnecting) {
       return Scaffold(
@@ -571,17 +573,17 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
               ],
             ),
           ),
-          child: const Center(
+          child: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                CircularProgressIndicator(
+                const CircularProgressIndicator(
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
-                SizedBox(height: 24),
+                const SizedBox(height: 24),
                 Text(
                   l10n.connecting,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 18,
                     color: Colors.white,
                     fontWeight: FontWeight.w500,
@@ -593,8 +595,6 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
         ),
       );
     }
-    
-    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.databaseConnection),
@@ -761,11 +761,11 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                     flex: 3,
                     child: TextFormField(
                       controller: _profileNameController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Profile Name',
                         hintText: l10n.profileNameHint,
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.person),
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.person),
                       ),
                       keyboardType: TextInputType.text,
                       textInputAction: TextInputAction.next,
@@ -782,11 +782,11 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                               Localizations.localeOf(context).languageCode == 'ko'
                               ? Localizations.localeOf(context).languageCode
                               : 'es'),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: l10n.language,
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.language),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.language),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
                         isDense: true,
                       ),
                       isExpanded: true,
@@ -864,11 +864,11 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
               if (_selectedServerType == ServerType.local)
                 TextFormField(
                   controller: _localIpController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: l10n.localIpAddress,
                     hintText: l10n.localIpHint,
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.computer),
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.computer),
                   ),
                   keyboardType: TextInputType.number,
                   onChanged: _onLocalIpChanged,
@@ -891,11 +891,11 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
               // 서버 URL (읽기 전용으로 표시)
               TextFormField(
                 controller: _serverUrlController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: l10n.serverUrl,
                   hintText: 'http://localhost:3000',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.link),
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.link),
                 ),
                 readOnly: true,
                 enabled: false,
@@ -903,10 +903,10 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _databaseNameController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: l10n.databaseName,
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.storage),
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.storage),
                   helperText: l10n.alphanumericOnly,
                 ),
                 keyboardType: TextInputType.text,
@@ -930,10 +930,10 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                   Expanded(
                     child: TextFormField(
                       controller: _usernameController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: l10n.username,
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.person),
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.person),
                         helperText: l10n.alphanumericOnly,
                       ),
                       keyboardType: TextInputType.text,
@@ -955,10 +955,10 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                   Expanded(
                     child: TextFormField(
                       controller: _passwordController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: l10n.password,
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.lock),
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.lock),
                       ),
                       obscureText: true,
                       validator: (value) {

@@ -97,17 +97,29 @@ class DatabaseService {
   }
 
   /// 공통 GET 요청 메서드 (오류 처리 포함)
-  Future<Map<String, dynamic>> _performGetRequest(String endpoint) async {
+  Future<Map<String, dynamic>> _performGetRequest(
+    String endpoint, {
+    Map<String, String>? queryParameters,
+  }) async {
     try {
       // 데이터베이스 연결 정보를 헤더로 가져오기
       final headers = await _getDatabaseHeaders();
       
+      // 쿼리 파라미터가 있으면 URL에 추가
+      final uri = Uri.parse('$serverUrl$endpoint');
+      final uriWithQuery = queryParameters != null && queryParameters.isNotEmpty
+          ? uri.replace(queryParameters: queryParameters)
+          : uri;
+      
       print('=== GET $endpoint 요청 ===');
-      print('URL: $serverUrl$endpoint');
+      print('URL: $uriWithQuery');
       print('Headers: $headers');
+      if (queryParameters != null && queryParameters.isNotEmpty) {
+        print('Query Parameters: $queryParameters');
+      }
       
       final response = await http.get(
-        Uri.parse('$serverUrl$endpoint'),
+        uriWithQuery,
         headers: headers,
       ).timeout(
         const Duration(seconds: 10),
@@ -388,11 +400,53 @@ class DatabaseService {
 
   /// 재고 보고서 가져오기
   Future<Map<String, dynamic>> getStocksReport({
+    String? filteringWord,
     Map<String, dynamic>? filters,
   }) async {
     final endpoint = '/api/reporte/stocks';
-    final body = filters ?? <String, dynamic>{};
-    return await _performPostRequest(endpoint, body);
+    final queryParams = <String, String>{};
+    
+    // filtering word를 쿼리 파라미터에 추가
+    if (filteringWord != null && filteringWord.isNotEmpty) {
+      queryParams['filtering_word'] = filteringWord;
+    }
+    
+    // filters를 쿼리 파라미터로 변환
+    if (filters != null) {
+      filters.forEach((key, value) {
+        if (value != null) {
+          queryParams[key] = value.toString();
+        }
+      });
+    }
+    
+    // 스톡 보고서 요청 헤더와 쿼리 파라미터 출력
+    final headers = await _getDatabaseHeaders();
+    print('\n');
+    print('═══════════════════════════════════════════════════════════');
+    print('📊 스톡 보고서 GET 요청');
+    print('═══════════════════════════════════════════════════════════');
+    final uri = Uri.parse('$serverUrl$endpoint').replace(
+      queryParameters: queryParams.isNotEmpty ? queryParams : null,
+    );
+    print('🌐 URL: $uri');
+    print('');
+    print('📋 Headers:');
+    headers.forEach((key, value) {
+      final displayValue = key == 'x-db-password' ? '***' : value;
+      print('   $key: $displayValue');
+    });
+    if (queryParams.isNotEmpty) {
+      print('');
+      print('🔍 Query Parameters:');
+      queryParams.forEach((key, value) {
+        print('   $key: $value');
+      });
+    }
+    print('═══════════════════════════════════════════════════════════');
+    print('\n');
+    
+    return await _performGetRequest(endpoint, queryParameters: queryParams.isNotEmpty ? queryParams : null);
   }
 
   /// 아이템 보고서 가져오기
@@ -400,8 +454,20 @@ class DatabaseService {
     Map<String, dynamic>? filters,
   }) async {
     final endpoint = '/api/reporte/items';
-    final body = filters ?? <String, dynamic>{};
-    return await _performPostRequest(endpoint, body);
+    final queryParams = <String, String>{};
+    
+    if (filters != null) {
+      filters.forEach((key, value) {
+        if (value != null) {
+          queryParams[key] = value.toString();
+        }
+      });
+    }
+    
+    return await _performGetRequest(
+      endpoint,
+      queryParameters: queryParams.isNotEmpty ? queryParams : null,
+    );
   }
 
   /// 고객 보고서 가져오기
@@ -409,8 +475,20 @@ class DatabaseService {
     Map<String, dynamic>? filters,
   }) async {
     final endpoint = '/api/reporte/clientes';
-    final body = filters ?? <String, dynamic>{};
-    return await _performPostRequest(endpoint, body);
+    final queryParams = <String, String>{};
+    
+    if (filters != null) {
+      filters.forEach((key, value) {
+        if (value != null) {
+          queryParams[key] = value.toString();
+        }
+      });
+    }
+    
+    return await _performGetRequest(
+      endpoint,
+      queryParameters: queryParams.isNotEmpty ? queryParams : null,
+    );
   }
 
   /// 지출 보고서 가져오기
@@ -418,8 +496,20 @@ class DatabaseService {
     Map<String, dynamic>? filters,
   }) async {
     final endpoint = '/api/reporte/gastos';
-    final body = filters ?? <String, dynamic>{};
-    return await _performPostRequest(endpoint, body);
+    final queryParams = <String, String>{};
+    
+    if (filters != null) {
+      filters.forEach((key, value) {
+        if (value != null) {
+          queryParams[key] = value.toString();
+        }
+      });
+    }
+    
+    return await _performGetRequest(
+      endpoint,
+      queryParameters: queryParams.isNotEmpty ? queryParams : null,
+    );
   }
 
   /// 판매 보고서 가져오기
@@ -427,8 +517,20 @@ class DatabaseService {
     Map<String, dynamic>? filters,
   }) async {
     final endpoint = '/api/reporte/ventas';
-    final body = filters ?? <String, dynamic>{};
-    return await _performPostRequest(endpoint, body);
+    final queryParams = <String, String>{};
+    
+    if (filters != null) {
+      filters.forEach((key, value) {
+        if (value != null) {
+          queryParams[key] = value.toString();
+        }
+      });
+    }
+    
+    return await _performGetRequest(
+      endpoint,
+      queryParameters: queryParams.isNotEmpty ? queryParams : null,
+    );
   }
 
   /// 알림 보고서 가져오기
@@ -436,8 +538,20 @@ class DatabaseService {
     Map<String, dynamic>? filters,
   }) async {
     final endpoint = '/api/reporte/alertas';
-    final body = filters ?? <String, dynamic>{};
-    return await _performPostRequest(endpoint, body);
+    final queryParams = <String, String>{};
+    
+    if (filters != null) {
+      filters.forEach((key, value) {
+        if (value != null) {
+          queryParams[key] = value.toString();
+        }
+      });
+    }
+    
+    return await _performGetRequest(
+      endpoint,
+      queryParameters: queryParams.isNotEmpty ? queryParams : null,
+    );
   }
 }
 

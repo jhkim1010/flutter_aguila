@@ -31,6 +31,7 @@ class _ReportScreenState extends State<ReportScreen> {
   Map<String, dynamic>? _data;
   bool _isLoading = true;
   String? _errorMessage;
+  final TextEditingController _filteringWordController = TextEditingController();
 
   @override
   void initState() {
@@ -39,7 +40,13 @@ class _ReportScreenState extends State<ReportScreen> {
     _loadData();
   }
 
-  Future<void> _loadData() async {
+  @override
+  void dispose() {
+    _filteringWordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadData({String? filteringWord}) async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -50,7 +57,11 @@ class _ReportScreenState extends State<ReportScreen> {
       
       switch (widget.reportType) {
         case ReportType.stocks:
-          data = await _databaseService.getStocksReport();
+          final stocksFilteringWord = filteringWord ?? 
+              (_filteringWordController.text.isEmpty ? null : _filteringWordController.text);
+          data = await _databaseService.getStocksReport(
+            filteringWord: stocksFilteringWord,
+          );
           break;
         case ReportType.items:
           data = await _databaseService.getItemsReport();
@@ -218,9 +229,18 @@ class _ReportScreenState extends State<ReportScreen> {
                   ? Center(
                       child: Text(l10n.noData),
                     )
-                  : RefreshIndicator(
-                      onRefresh: _loadData,
-                      child: _buildReportContent(),
+                  : Column(
+                      children: [
+                        // 스톡 보고서일 때만 검색 필드 표시
+                        if (widget.reportType == ReportType.stocks)
+                          _buildFilteringWordField(),
+                        Expanded(
+                          child: RefreshIndicator(
+                            onRefresh: () => _loadData(),
+                            child: _buildReportContent(),
+                          ),
+                        ),
+                      ],
                     ),
     );
   }
@@ -266,24 +286,8 @@ class _ReportScreenState extends State<ReportScreen> {
       );
     }
     
-    // 'data' 키가 없고 직접 리스트인 경우
-    if (data is List) {
-      if (data.isEmpty) {
-        return const Center(child: Text('No data available'));
-      }
-      
-      if (data.first is Map) {
-        return _buildTableFromList(data);
-      }
-      
-      return ListView(
-        padding: const EdgeInsets.all(16),
-        children: data.map((item) => _buildDataCard(item)).toList(),
-      );
-    }
-    
     // 'data' 키가 없고 직접 맵인 경우
-    if (data is Map) {
+    if (data is Map<String, dynamic>) {
       // 테이블 형태로 표시 가능한지 확인
       if (_isTableData(data)) {
         return ListView(
@@ -303,6 +307,71 @@ class _ReportScreenState extends State<ReportScreen> {
     }
     
     return const Center(child: Text('Unknown data format'));
+  }
+
+  // Filtering word 입력 필드
+  Widget _buildFilteringWordField() {
+    final reportColor = _getReportColor();
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: reportColor.withOpacity(0.1),
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.grey[300]!,
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _filteringWordController,
+              decoration: InputDecoration(
+                labelText: 'Filtering Word',
+                hintText: '검색어를 입력하세요',
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _filteringWordController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          setState(() {
+                            _filteringWordController.clear();
+                          });
+                        },
+                      )
+                    : null,
+              ),
+              onChanged: (value) {
+                setState(() {});
+              },
+              onSubmitted: (value) {
+                if (value.isNotEmpty) {
+                  _loadData(filteringWord: value);
+                }
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton.icon(
+            onPressed: () {
+              final filteringWord = _filteringWordController.text.trim();
+              _loadData(filteringWord: filteringWord.isEmpty ? null : filteringWord);
+            },
+            icon: const Icon(Icons.search),
+            label: const Text('검색'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: reportColor,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildTableFromList(List<dynamic> dataList) {
@@ -325,12 +394,29 @@ class _ReportScreenState extends State<ReportScreen> {
       if (item is Map<String, dynamic>) {
         return DataRow(
           cells: firstItem.keys.map((key) {
-            return DataCell(Text(_formatValue(item[key])));
+            final value = item[key];
+            final formattedValue = _formatValue(value);
+            final isNumeric = _isNumeric(value);
+            return DataCell(
+              Text(
+                formattedValue,
+                textAlign: isNumeric ? TextAlign.right : TextAlign.left,
+              ),
+            );
           }).toList(),
         );
       }
+      final formattedValue = _formatValue(item);
+      final isNumeric = _isNumeric(item);
       return DataRow(
-        cells: [DataCell(Text(_formatValue(item)))],
+        cells: [
+          DataCell(
+            Text(
+              formattedValue,
+              textAlign: isNumeric ? TextAlign.right : TextAlign.left,
+            ),
+          ),
+        ],
       );
     }).toList();
     
@@ -380,6 +466,7 @@ class _ReportScreenState extends State<ReportScreen> {
                       flex: 3,
                       child: Text(
                         _formatValue(entry.value),
+                        textAlign: _isNumeric(entry.value) ? TextAlign.right : TextAlign.left,
                         style: const TextStyle(fontSize: 16),
                       ),
                     ),
@@ -448,10 +535,13 @@ class _ReportScreenState extends State<ReportScreen> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: (value as Map<String, dynamic>).entries.map((entry) {
+          final formattedValue = _formatValue(entry.value);
+          final isNumeric = _isNumeric(entry.value);
           return Padding(
             padding: const EdgeInsets.only(bottom: 4),
             child: Text(
-              '${entry.key}: ${_formatValue(entry.value)}',
+              '${entry.key}: $formattedValue',
+              textAlign: isNumeric ? TextAlign.right : TextAlign.left,
               style: const TextStyle(fontSize: 14),
             ),
           );
@@ -461,18 +551,24 @@ class _ReportScreenState extends State<ReportScreen> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: value.asMap().entries.map((entry) {
+          final formattedValue = _formatValue(entry.value);
+          final isNumeric = _isNumeric(entry.value);
           return Padding(
             padding: const EdgeInsets.only(bottom: 4),
             child: Text(
-              '${entry.key + 1}. ${_formatValue(entry.value)}',
+              '${entry.key + 1}. $formattedValue',
+              textAlign: isNumeric ? TextAlign.right : TextAlign.left,
               style: const TextStyle(fontSize: 14),
             ),
           );
         }).toList(),
       );
     }
+    final formattedValue = _formatValue(value);
+    final isNumeric = _isNumeric(value);
     return Text(
-      _formatValue(value),
+      formattedValue,
+      textAlign: isNumeric ? TextAlign.right : TextAlign.left,
       style: const TextStyle(fontSize: 16),
     );
   }
@@ -501,7 +597,15 @@ class _ReportScreenState extends State<ReportScreen> {
         cells: data.keys.map((key) {
           final value = data[key];
           if (value is List && index < value.length) {
-            return DataCell(Text(_formatValue(value[index])));
+            final cellValue = value[index];
+            final formattedValue = _formatValue(cellValue);
+            final isNumeric = _isNumeric(cellValue);
+            return DataCell(
+              Text(
+                formattedValue,
+                textAlign: isNumeric ? TextAlign.right : TextAlign.left,
+              ),
+            );
           }
           return const DataCell(Text(''));
         }).toList(),
@@ -525,26 +629,56 @@ class _ReportScreenState extends State<ReportScreen> {
     );
   }
 
+  // 숫자인지 확인하는 헬퍼 함수
+  bool _isNumeric(dynamic value) {
+    if (value == null) return false;
+    if (value is num) return true;
+    if (value is String) {
+      // 숫자로 변환 가능한 문자열인지 확인
+      return double.tryParse(value) != null || int.tryParse(value) != null;
+    }
+    return false;
+  }
+
   String _formatValue(dynamic value) {
     if (value == null) return 'N/A';
     if (value is num) {
-      // 숫자가 큰 경우 통화 형식으로 표시
-      if (value > 1000 && value is double) {
-        return NumberFormat.currency(
-          symbol: '\$',
-          decimalDigits: 0,
-          locale: 'es_CO',
-        ).format(value);
-      }
+      // 숫자는 천 단위 구분자만 사용 (통화 기호 없음)
       return NumberFormat('#,###').format(value);
     }
     if (value is DateTime) {
       return DateFormat('yyyy-MM-dd HH:mm').format(value);
     }
-    if (value is String && value.length > 50) {
-      return '${value.substring(0, 50)}...';
+    if (value is String) {
+      // 문자열에서 $ 기호 제거
+      String cleanedValue = value.replaceAll('\$', '').trim();
+      
+      // 숫자로 변환 가능한 문자열인지 확인
+      final numValue = num.tryParse(cleanedValue.replaceAll(',', ''));
+      if (numValue != null) {
+        // 숫자로 변환 가능하면 천 단위 구분자로 포맷팅
+        return NumberFormat('#,###').format(numValue);
+      }
+      
+      // 긴 문자열은 자르기
+      if (cleanedValue.length > 50) {
+        return '${cleanedValue.substring(0, 50)}...';
+      }
+      
+      return cleanedValue;
     }
-    return value.toString();
+    // 다른 타입은 문자열로 변환하고 $ 기호 제거
+    String strValue = value.toString();
+    return strValue.replaceAll('\$', '').trim();
+  }
+
+  // 숫자면 오른쪽 정렬, 아니면 기본 정렬로 Text 위젯 생성
+  Widget _buildTextWidget(String text, {bool isNumeric = false}) {
+    return Text(
+      text,
+      textAlign: isNumeric ? TextAlign.right : TextAlign.left,
+      style: const TextStyle(fontSize: 16),
+    );
   }
 }
 

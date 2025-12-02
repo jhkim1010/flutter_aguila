@@ -1614,7 +1614,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     }
 
     // ReportType으로 변환
-    ReportType? reportTypeEnum;
+    final ReportType reportTypeEnum;
     switch (reportType) {
       case 'stocks':
         reportTypeEnum = ReportType.stocks;
@@ -1638,17 +1638,15 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         return;
     }
 
-    if (reportTypeEnum != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ReportScreen(
-            serverUrl: widget.serverUrl,
-            reportType: reportTypeEnum,
-          ),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ReportScreen(
+          serverUrl: widget.serverUrl,
+          reportType: reportTypeEnum,
         ),
-      );
-    }
+      ),
+    );
   }
 
 }
