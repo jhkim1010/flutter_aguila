@@ -20,6 +20,7 @@ class ReportScreen extends StatefulWidget {
     super.key,
     required this.serverUrl,
     required this.reportType,
+    
   });
 
   @override
@@ -40,6 +41,7 @@ class _ReportScreenState extends State<ReportScreen> {
   String? _sortColumn;
   bool _sortAscending = true;
   Map<String, String> _columnFilters = {}; // 컬럼별 필터 값
+  String? _selectedSucursal; // 선택된 sucursal 필터 (null이면 "모두")
 
   @override
   void initState() {
@@ -68,7 +70,7 @@ class _ReportScreenState extends State<ReportScreen> {
       
       switch (widget.reportType) {
         case ReportType.stocks:
-          // filtering word는 더 이상 사용하지 않음 (컬럼 필터 사용)
+          // filteringWord는 클라이언트 측에서 처리하므로 서버로 전송하지 않음
           data = await _databaseService.getStocksReport();
           break;
         case ReportType.items:
@@ -198,17 +200,30 @@ class _ReportScreenState extends State<ReportScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Row(
-          children: [
-            Icon(reportIcon, color: Colors.white),
-            const SizedBox(width: 8),
-            Text(reportTitle),
-          ],
-        ),
+        automaticallyImplyLeading: false,
+        title: widget.reportType == ReportType.stocks
+            ? Row(
+                children: [
+                  Icon(reportIcon, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Text(reportTitle),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildFilteringWordFieldInAppBar(),
+                  ),
+                ],
+              )
+            : Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  Icon(reportIcon, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Text(reportTitle),
+                ],
+              ),
         backgroundColor: reportColor,
       ),
       body: _isLoading
@@ -306,10 +321,7 @@ class _ReportScreenState extends State<ReportScreen> {
       
       // 첫 번째 항목이 맵이고 여러 키를 가지고 있으면 테이블로 표시
       if (dataList.isNotEmpty && dataList.first is Map) {
-        return Padding(
-          padding: const EdgeInsets.all(16),
-          child: _buildTableFromList(dataList),
-        );
+        return _buildTableFromList(dataList);
       }
       
       // 카드 형태로 표시할 때도 대량 데이터 처리
@@ -322,7 +334,7 @@ class _ReportScreenState extends State<ReportScreen> {
           // 데이터 개수 표시
           if (totalCount > _itemsPerPage)
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(2),
               color: _getReportColor().withOpacity(0.1),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -342,12 +354,12 @@ class _ReportScreenState extends State<ReportScreen> {
           Expanded(
             child: ListView(
               controller: _scrollController,
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.zero,
               children: [
                 ...displayedList.map((item) => _buildDataCard(item)).toList(),
                 if (hasMore)
                   Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: const EdgeInsets.all(2.0),
                     child: ElevatedButton.icon(
                       onPressed: _loadMoreItems,
                       icon: const Icon(Icons.expand_more),
@@ -368,7 +380,7 @@ class _ReportScreenState extends State<ReportScreen> {
     // 'data' 키가 있고 맵인 경우
     if (data.containsKey('data') && data['data'] is Map) {
       return ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.zero,
         children: [
           _buildDataMap(data['data'] as Map<String, dynamic>),
         ],
@@ -380,7 +392,7 @@ class _ReportScreenState extends State<ReportScreen> {
       // 테이블 형태로 표시 가능한지 확인
       if (_isTableData(data)) {
         return ListView(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.zero,
           children: [
             _buildTable(data),
           ],
@@ -388,7 +400,7 @@ class _ReportScreenState extends State<ReportScreen> {
       }
       
       return ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.zero,
         children: [
           _buildDataMap(data),
         ],
@@ -410,11 +422,35 @@ class _ReportScreenState extends State<ReportScreen> {
     }
     
     final bcolorview = filters['bcolorview'];
-    final viewType = (bcolorview == true) ? 'Vista Resumida' : 'Vista Detallada';
+    final viewType = (bcolorview == true) ? 'Vista Resumida' : 'VistaD';
     final reportColor = _getReportColor();
     
+    // Vista Detallada일 때만 sucursal 필터 표시
+    final bool showSucursalFilter = (bcolorview == false);
+    List<String>? sucursales;
+    
+    if (showSucursalFilter && _data!.containsKey('data') && _data!['data'] is List) {
+      final dataList = _data!['data'] as List;
+      final sucursalSet = <String>{};
+      
+      for (var item in dataList) {
+        if (item is Map<String, dynamic> && item.containsKey('sucursal')) {
+          final sucursal = item['sucursal']?.toString();
+          if (sucursal != null && sucursal.isNotEmpty) {
+            sucursalSet.add(sucursal);
+          }
+        }
+      }
+      
+      sucursales = sucursalSet.toList()..sort((a, b) {
+        final aNum = int.tryParse(a) ?? 0;
+        final bNum = int.tryParse(b) ?? 0;
+        return aNum.compareTo(bNum);
+      });
+    }
+    
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
       decoration: BoxDecoration(
         color: reportColor.withOpacity(0.1),
         border: Border(
@@ -440,6 +476,45 @@ class _ReportScreenState extends State<ReportScreen> {
               color: reportColor,
             ),
           ),
+          // Sucursal이 2개 이상일 때만 콤보박스 표시
+          if (showSucursalFilter && sucursales != null && sucursales.length > 1)
+            ...[
+              const SizedBox(width: 16),
+              // ComboBox로 변경
+              Container(
+                constraints: const BoxConstraints(minWidth: 100),
+                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: DropdownButton<String?>(
+                  value: _selectedSucursal,
+                  hint: const Text('모두', style: TextStyle(fontSize: 12)),
+                  underline: const SizedBox(),
+                  isDense: true,
+                  icon: Icon(Icons.arrow_drop_down, color: reportColor, size: 20),
+                  items: [
+                    const DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text('모두', style: TextStyle(fontSize: 12)),
+                    ),
+                    ...sucursales.map((sucursal) {
+                      return DropdownMenuItem<String?>(
+                        value: sucursal,
+                        child: Text(sucursal, style: const TextStyle(fontSize: 12)),
+                      );
+                    }).toList(),
+                  ],
+                  onChanged: (String? value) {
+                    setState(() {
+                      _selectedSucursal = value;
+                    });
+                  },
+                ),
+              ),
+            ],
           if (_data!.containsKey('summary'))
             const Spacer(),
           if (_data!.containsKey('summary'))
@@ -466,10 +541,7 @@ class _ReportScreenState extends State<ReportScreen> {
     final bcolorview = filters?['bcolorview'] ?? false;
     
     // bcolorview에 따라 다른 필드 매핑 사용
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: _buildStocksTable(dataList, bcolorview == true),
-    );
+    return _buildStocksTable(dataList, bcolorview == true);
   }
 
   // Stocks 테이블 빌드 (bcolorview에 따라 다른 필드 사용)
@@ -478,15 +550,67 @@ class _ReportScreenState extends State<ReportScreen> {
       return const Center(child: Text('No data'));
     }
     
-    // 필터 적용
-    List<dynamic> filteredList = _applyFilters(dataList);
+    // filteringWord 필터 적용 (codigo와 descripcion에서 검색)
+    List<dynamic> filteredList = dataList;
+    final filteringWord = _filteringWordController.text.trim().toLowerCase();
+    if (filteringWord.isNotEmpty) {
+      filteredList = dataList.where((item) {
+        if (item is Map<String, dynamic>) {
+          final codigo = item['codigo']?.toString().toLowerCase() ?? '';
+          final descripcion = item['descripcion']?.toString().toLowerCase() ?? '';
+          return codigo.contains(filteringWord) || descripcion.contains(filteringWord);
+        }
+        return false;
+      }).toList();
+    }
+    
+    // Sucursal 필터 적용
+    if (!isResumida && _selectedSucursal != null) {
+      filteredList = filteredList.where((item) {
+        if (item is Map<String, dynamic> && item.containsKey('sucursal')) {
+          final sucursal = item['sucursal']?.toString();
+          return sucursal == _selectedSucursal;
+        }
+        return false;
+      }).toList();
+    }
     
     // 정렬 적용
-    filteredList = _applySort(filteredList);
+    List<dynamic> sortedList = List.from(filteredList);
+    if (_sortColumn != null) {
+      sortedList.sort((a, b) {
+        if (a is! Map<String, dynamic> || b is! Map<String, dynamic>) {
+          return 0;
+        }
+        
+        final aValue = a[_sortColumn];
+        final bValue = b[_sortColumn];
+        
+        // null 처리
+        if (aValue == null && bValue == null) return 0;
+        if (aValue == null) return _sortAscending ? -1 : 1;
+        if (bValue == null) return _sortAscending ? 1 : -1;
+        
+        // 숫자 비교
+        final aNum = _isNumeric(aValue) ? num.tryParse(aValue.toString().replaceAll(',', '')) : null;
+        final bNum = _isNumeric(bValue) ? num.tryParse(bValue.toString().replaceAll(',', '')) : null;
+        
+        if (aNum != null && bNum != null) {
+          final comparison = aNum.compareTo(bNum);
+          return _sortAscending ? comparison : -comparison;
+        }
+        
+        // 문자열 비교
+        final aStr = aValue.toString().toLowerCase();
+        final bStr = bValue.toString().toLowerCase();
+        final comparison = aStr.compareTo(bStr);
+        return _sortAscending ? comparison : -comparison;
+      });
+    }
     
     // 대량 데이터 처리
-    final displayedList = filteredList.take(_displayedItemsCount).toList();
-    final totalCount = filteredList.length;
+    final displayedList = sortedList.take(_displayedItemsCount).toList();
+    final totalCount = sortedList.length;
     final hasMore = _displayedItemsCount < totalCount;
     
     // 첫 번째 항목의 키를 컬럼으로 사용
@@ -497,11 +621,17 @@ class _ReportScreenState extends State<ReportScreen> {
     // 필드명을 스페인어로 매핑
     final fieldNames = _getStocksFieldNames(isResumida);
     
-    // 필터 UI 빌드
-    final filterWidgets = _buildColumnFilters(firstItem.keys.toList(), fieldNames);
+    // 칼럼 순서 재정렬: precio 칼럼들을 맨 뒤로 이동 (Vista Detallada일 때만)
+    List<String> orderedKeys = firstItem.keys.toList();
+    if (!isResumida) {
+      final precioKeys = ['pre1', 'pre2', 'pre3', 'pre4', 'pre5'];
+      final otherKeys = orderedKeys.where((key) => !precioKeys.contains(key)).toList();
+      final precioKeysInData = orderedKeys.where((key) => precioKeys.contains(key)).toList();
+      orderedKeys = [...otherKeys, ...precioKeysInData];
+    }
     
-    // 표시할 컬럼 선택 (정렬 기능 포함)
-    final columns = firstItem.keys.map((key) {
+    // 표시할 컬럼 선택 (정렬 기능 추가)
+    final columns = orderedKeys.map((key) {
       final displayName = fieldNames[key] ?? key.toString();
       final isSorted = _sortColumn == key;
       return DataColumn(
@@ -522,168 +652,81 @@ class _ReportScreenState extends State<ReportScreen> {
         ),
         onSort: (columnIndex, ascending) {
           setState(() {
-            _sortColumn = key;
-            _sortAscending = ascending;
+            if (_sortColumn == key) {
+              // 같은 칼럼을 클릭하면 정렬 방향 변경
+              _sortAscending = !_sortAscending;
+            } else {
+              // 다른 칼럼을 클릭하면 새 칼럼으로 정렬
+              _sortColumn = key;
+              _sortAscending = true;
+            }
+            // 정렬이 변경되면 처음부터 다시 표시
+            _displayedItemsCount = _itemsPerPage;
           });
         },
       );
     }).toList();
     
-    return Column(
-      children: [
-        // 필터 UI
-        if (filterWidgets.isNotEmpty)
-          Container(
-            padding: const EdgeInsets.all(8),
-            color: Colors.grey[100],
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.filter_list, size: 16, color: Colors.grey),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Filtros',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                    const Spacer(),
-                    if (_columnFilters.isNotEmpty)
-                      TextButton.icon(
-                        onPressed: () {
-                          setState(() {
-                            _columnFilters.clear();
-                          });
-                        },
-                        icon: const Icon(Icons.clear, size: 16),
-                        label: const Text('Limpiar'),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: filterWidgets,
-                ),
-              ],
-            ),
-          ),
-        // 데이터 개수 표시
-        Container(
-          padding: const EdgeInsets.all(8),
-          color: _getReportColor().withOpacity(0.1),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'Mostrando ${displayedList.length} de $totalCount items',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[700],
-                  fontWeight: FontWeight.w500,
-                ),
+    return Expanded(
+      child: Scrollbar(
+        controller: _scrollController,
+        thumbVisibility: true,
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          scrollDirection: Axis.vertical,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              columnSpacing: 8,
+              headingRowColor: MaterialStateProperty.all(
+                _getReportColor().withOpacity(0.1),
               ),
-              if (_columnFilters.isNotEmpty)
-                Text(
-                  ' (filtrados)',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-            ],
-          ),
-        ),
-        // 테이블
-        Expanded(
-          child: Card(
-            elevation: 2,
-            margin: const EdgeInsets.only(bottom: 16),
-            child: Scrollbar(
-              controller: _scrollController,
-              thumbVisibility: true,
-              child: SingleChildScrollView(
-                controller: _scrollController,
-                scrollDirection: Axis.vertical,
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: DataTable(
-                    sortColumnIndex: _sortColumn != null 
-                        ? firstItem.keys.toList().indexOf(_sortColumn!)
-                        : null,
-                    sortAscending: _sortAscending,
-                    columnSpacing: 20,
-                    headingRowColor: MaterialStateProperty.all(
-                      _getReportColor().withOpacity(0.1),
-                    ),
-                    columns: columns,
-                    rows: displayedList.map((item) {
-                      if (item is Map<String, dynamic>) {
-                        return DataRow(
-                          cells: firstItem.keys.map((key) {
-                            final value = item[key];
-                            final formattedValue = _formatValue(value);
-                            final isNumeric = _isNumeric(value);
-                            return DataCell(
-                              Align(
-                                alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
-                                child: Text(
-                                  formattedValue,
-                                  style: const TextStyle(fontSize: 14),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        );
-                      }
-                      final formattedValue = _formatValue(item);
-                      final isNumeric = _isNumeric(item);
-                      return DataRow(
-                        cells: [
-                          DataCell(
-                            Align(
-                              alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
-                              child: Text(
-                                formattedValue,
-                                style: const TextStyle(fontSize: 14),
-                              ),
+              sortColumnIndex: _sortColumn != null ? orderedKeys.indexOf(_sortColumn!) : null,
+              sortAscending: _sortAscending,
+              columns: columns,
+              rows: displayedList.map((item) {
+                  if (item is Map<String, dynamic>) {
+                    return DataRow(
+                      cells: orderedKeys.map((key) {
+                        final value = item[key];
+                        // Codigo 칼럼은 문자로 표시 (숫자 포맷팅 제외)
+                        final isCodigoColumn = key == 'codigo' || key == 'tcode';
+                        final formattedValue = isCodigoColumn 
+                            ? (value?.toString() ?? 'N/A')
+                            : _formatValue(value);
+                        final isNumeric = isCodigoColumn ? false : _isNumeric(value);
+                        return DataCell(
+                          Align(
+                            alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+                            child: Text(
+                              formattedValue,
+                              style: const TextStyle(fontSize: 14),
                             ),
                           ),
-                        ],
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ),
+                        );
+                      }).toList(),
+                    );
+                  }
+                  final formattedValue = _formatValue(item);
+                  final isNumeric = _isNumeric(item);
+                  return DataRow(
+                    cells: [
+                      DataCell(
+                        Align(
+                          alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+                          child: Text(
+                            formattedValue,
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                }).toList(),
             ),
           ),
         ),
-        // 더 보기 버튼
-        if (hasMore)
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: ElevatedButton.icon(
-              onPressed: _loadMoreItems,
-              icon: const Icon(Icons.expand_more),
-              label: Text('Cargar más (${totalCount - _displayedItemsCount} restantes)'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _getReportColor(),
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ),
-      ],
+      ),
     );
   }
 
@@ -707,7 +750,7 @@ class _ReportScreenState extends State<ReportScreen> {
             labelText: displayName,
             hintText: 'Filtrar...',
             isDense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(4),
             ),
@@ -856,67 +899,46 @@ class _ReportScreenState extends State<ReportScreen> {
     }
   }
 
-  // Filtering word 입력 필드
-  Widget _buildFilteringWordField() {
-    final reportColor = _getReportColor();
-    
+  // Filtering word 입력 필드 (AppBar용)
+  Widget _buildFilteringWordFieldInAppBar() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      height: 40,
       decoration: BoxDecoration(
-        color: reportColor.withOpacity(0.1),
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.grey[300]!,
-            width: 1,
-          ),
-        ),
+        color: Colors.white.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(20),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _filteringWordController,
-              decoration: InputDecoration(
-                labelText: 'Filtering Word',
-                hintText: '검색어를 입력하세요',
-                border: const OutlineInputBorder(),
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _filteringWordController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          setState(() {
-                            _filteringWordController.clear();
-                          });
-                        },
-                      )
-                    : null,
-              ),
-              onChanged: (value) {
-                setState(() {});
-              },
-              onSubmitted: (value) {
-                if (value.isNotEmpty) {
-                  _loadData(filteringWord: value);
-                }
-              },
-            ),
-          ),
-          const SizedBox(width: 8),
-          ElevatedButton.icon(
-            onPressed: () {
-              final filteringWord = _filteringWordController.text.trim();
-              _loadData(filteringWord: filteringWord.isEmpty ? null : filteringWord);
-            },
-            icon: const Icon(Icons.search),
-            label: const Text('검색'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: reportColor,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            ),
-          ),
-        ],
+      child: TextField(
+        controller: _filteringWordController,
+        style: const TextStyle(color: Colors.white, fontSize: 14),
+        decoration: InputDecoration(
+          hintText: 'Filtrar...',
+          hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+          prefixIcon: const Icon(Icons.search, color: Colors.white, size: 20),
+          suffixIcon: _filteringWordController.text.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear, color: Colors.white, size: 18),
+                  onPressed: () {
+                    setState(() {
+                      _filteringWordController.clear();
+                      // 클라이언트 측 필터링만 초기화
+                    });
+                  },
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                )
+              : null,
+        ),
+        onChanged: (value) {
+          setState(() {});
+        },
+        onSubmitted: (value) {
+          // 클라이언트 측에서만 필터링 (codigo, descripcion에서 검색)
+          setState(() {
+            // filteringWord는 클라이언트 측에서만 사용하므로 서버 요청 없이 UI만 업데이트
+          });
+        },
       ),
     );
   }
@@ -947,7 +969,7 @@ class _ReportScreenState extends State<ReportScreen> {
         // 데이터 개수 표시
         if (totalCount > _itemsPerPage)
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(2),
             color: _getReportColor().withOpacity(0.1),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -965,57 +987,53 @@ class _ReportScreenState extends State<ReportScreen> {
           ),
         // 테이블 (가상 스크롤 사용)
         Expanded(
-          child: Card(
-            elevation: 2,
-            margin: const EdgeInsets.only(bottom: 16),
-            child: Scrollbar(
+          child: Scrollbar(
+            controller: _scrollController,
+            thumbVisibility: true,
+            child: SingleChildScrollView(
               controller: _scrollController,
-              thumbVisibility: true,
-              child: SingleChildScrollView(
-                controller: _scrollController,
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
-                  columnSpacing: 20,
-                  headingRowColor: MaterialStateProperty.all(
-                    _getReportColor().withOpacity(0.1),
-                  ),
-                  columns: columns,
-                  rows: displayedList.map((item) {
-                    if (item is Map<String, dynamic>) {
-                      return DataRow(
-                        cells: firstItem.keys.map((key) {
-                          final value = item[key];
-                          final formattedValue = _formatValue(value);
-                          final isNumeric = _isNumeric(value);
-                          return DataCell(
-                            Align(
-                              alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
-                              child: Text(
-                                formattedValue,
-                                style: const TextStyle(fontSize: 14),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      );
-                    }
-                    final formattedValue = _formatValue(item);
-                    final isNumeric = _isNumeric(item);
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                columnSpacing: 8,
+                headingRowColor: MaterialStateProperty.all(
+                  _getReportColor().withOpacity(0.1),
+                ),
+                columns: columns,
+                rows: displayedList.map((item) {
+                  if (item is Map<String, dynamic>) {
                     return DataRow(
-                      cells: [
-                        DataCell(
+                      cells: firstItem.keys.map((key) {
+                        final value = item[key];
+                        final formattedValue = _formatValue(value);
+                        final isNumeric = _isNumeric(value);
+                        return DataCell(
                           Align(
                             alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
                             child: Text(
                               formattedValue,
-                              style: const TextStyle(fontSize: 14),
+                              style: const TextStyle(fontSize: 12),
                             ),
                           ),
-                        ),
-                      ],
+                        );
+                      }).toList(),
                     );
-                  }).toList(),
-                ),
+                  }
+                  final formattedValue = _formatValue(item);
+                  final isNumeric = _isNumeric(item);
+                  return DataRow(
+                    cells: [
+                      DataCell(
+                        Align(
+                          alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+                          child: Text(
+                            formattedValue,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                }).toList(),
               ),
             ),
           ),
@@ -1023,7 +1041,7 @@ class _ReportScreenState extends State<ReportScreen> {
         // 더 보기 버튼 또는 로딩 인디케이터
         if (hasMore)
           Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.all(2.0),
             child: ElevatedButton.icon(
               onPressed: _loadMoreItems,
               icon: const Icon(Icons.expand_more),
@@ -1040,70 +1058,18 @@ class _ReportScreenState extends State<ReportScreen> {
 
   Widget _buildDataCard(dynamic item) {
     if (item is Map<String, dynamic>) {
-      return Card(
-        margin: const EdgeInsets.only(bottom: 12),
-        elevation: 2,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: item.entries.map((entry) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        entry.key.toString(),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      flex: 3,
-                      child: Text(
-                        _formatValue(entry.value),
-                        textAlign: _isNumeric(entry.value) ? TextAlign.right : TextAlign.left,
-                        style: const TextStyle(fontSize: 16),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
+      return Container(
+        padding: EdgeInsets.zero,
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(color: Colors.grey[300]!, width: 0.5),
           ),
         ),
-      );
-    }
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        title: Text(item.toString()),
-      ),
-    );
-  }
-
-  Widget _buildDataMap(Map<String, dynamic> data) {
-    // 테이블 형태로 표시할 수 있는 데이터인지 확인
-    if (_isTableData(data)) {
-      return _buildTable(data);
-    }
-
-    // 카드 형태로 표시
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: data.entries.map((entry) {
+          children: item.entries.map((entry) {
             return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: EdgeInsets.zero,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1120,13 +1086,72 @@ class _ReportScreenState extends State<ReportScreen> {
                   ),
                   Expanded(
                     flex: 3,
-                    child: _buildValueWidget(entry.value),
+                    child: Text(
+                      _formatValue(entry.value),
+                      textAlign: _isNumeric(entry.value) ? TextAlign.right : TextAlign.left,
+                      style: const TextStyle(fontSize: 14),
+                    ),
                   ),
                 ],
               ),
             );
           }).toList(),
         ),
+      );
+    }
+    return Container(
+      padding: EdgeInsets.zero,
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: Colors.grey[300]!, width: 0.5),
+        ),
+      ),
+      child: ListTile(
+        contentPadding: EdgeInsets.zero,
+        title: Text(
+          item.toString(),
+          style: const TextStyle(fontSize: 14),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDataMap(Map<String, dynamic> data) {
+    // 테이블 형태로 표시할 수 있는 데이터인지 확인
+    if (_isTableData(data)) {
+      return _buildTable(data);
+    }
+
+    // 카드 없이 직접 표시
+    return Container(
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: data.entries.map((entry) {
+          return Padding(
+            padding: EdgeInsets.zero,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    entry.key.toString(),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: _buildValueWidget(entry.value),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
       ),
     );
   }
@@ -1139,7 +1164,7 @@ class _ReportScreenState extends State<ReportScreen> {
           final formattedValue = _formatValue(entry.value);
           final isNumeric = _isNumeric(entry.value);
           return Padding(
-            padding: const EdgeInsets.only(bottom: 4),
+            padding: EdgeInsets.zero,
             child: Text(
               '${entry.key}: $formattedValue',
               textAlign: isNumeric ? TextAlign.right : TextAlign.left,
@@ -1155,7 +1180,7 @@ class _ReportScreenState extends State<ReportScreen> {
           final formattedValue = _formatValue(entry.value);
           final isNumeric = _isNumeric(entry.value);
           return Padding(
-            padding: const EdgeInsets.only(bottom: 4),
+            padding: EdgeInsets.zero,
             child: Text(
               '${entry.key + 1}. $formattedValue',
               textAlign: isNumeric ? TextAlign.right : TextAlign.left,
@@ -1170,7 +1195,7 @@ class _ReportScreenState extends State<ReportScreen> {
     return Text(
       formattedValue,
       textAlign: isNumeric ? TextAlign.right : TextAlign.left,
-      style: const TextStyle(fontSize: 16),
+      style: const TextStyle(fontSize: 14),
     );
   }
 
@@ -1213,19 +1238,15 @@ class _ReportScreenState extends State<ReportScreen> {
       );
     });
 
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.only(bottom: 16),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          columnSpacing: 20,
-          headingRowColor: MaterialStateProperty.all(
-            _getReportColor().withOpacity(0.1),
-          ),
-          columns: columns,
-          rows: rows,
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        columnSpacing: 8,
+        headingRowColor: MaterialStateProperty.all(
+          _getReportColor().withOpacity(0.1),
         ),
+        columns: columns,
+        rows: rows,
       ),
     );
   }

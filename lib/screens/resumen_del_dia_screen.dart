@@ -448,49 +448,52 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
   Widget _buildDataCard(String title, dynamic value, IconData icon, {bool isCurrency = false}) {
     return Card(
       elevation: 2,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+      margin: EdgeInsets.zero,
+      child: SizedBox(
+        width: double.infinity,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  icon,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 24,
+                ),
               ),
-              child: Icon(
-                icon,
-                color: Theme.of(context).colorScheme.primary,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.w500,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _formatValue(value, isCurrency: isCurrency),
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: isCurrency ? Theme.of(context).colorScheme.primary : null,
+                    const SizedBox(height: 4),
+                    Text(
+                      _formatValue(value, isCurrency: isCurrency),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isCurrency ? Theme.of(context).colorScheme.primary : null,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -498,7 +501,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
 
   Widget _buildSection(String title, List<Widget> children) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -511,7 +514,14 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
             ),
           ),
         ),
-        ...children,
+        // 카드들을 세로로 배치 (화면을 꽉 채우기)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: children,
+          ),
+        ),
       ],
     );
   }
@@ -779,40 +789,68 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                           onRefresh: _loadData,
                           child: _hasMultipleSucursales()
                               ? _buildComparisonView(l10n)
-                              : ListView(
-                                  children: [
-                                    // 날짜 표시
-                                    if (_data!.containsKey('fecha'))
-                                      _buildDateHeader(_data!['fecha']),
+                              : SingleChildScrollView(
+                                  child: Container(
+                                    width: double.infinity,
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                                      children: [
+                                        // 날짜 표시
+                                        if (_data!.containsKey('fecha'))
+                                          _buildDateHeader(_data!['fecha']),
 
-                                    // 판매 통계 (vcodes)
-                                    if (_data!.containsKey('vcodes') && _data!['vcodes'] is Map)
-                                      _buildSection(
-                                        l10n.salesStatistics,
-                                        _buildVcodesSection(_data!['vcodes'] as Map<String, dynamic>),
-                                      ),
+                                        // 판매 통계 (vcodes) - 배열이면 첫 번째 항목 사용
+                                        if (_data!.containsKey('vcodes'))
+                                          _buildSection(
+                                            l10n.salesStatistics,
+                                            _buildVcodesSection(
+                                              _data!['vcodes'] is List && (_data!['vcodes'] as List).isNotEmpty
+                                                  ? (_data!['vcodes'] as List).first as Map<String, dynamic>
+                                                  : _data!['vcodes'] as Map<String, dynamic>
+                                            ),
+                                          ),
 
-                                    // 지출 통계 (gastos)
-                                    if (_data!.containsKey('gastos') && _data!['gastos'] is Map)
-                                      _buildSection(
-                                        l10n.expenseStatistics,
-                                        _buildGastosSection(_data!['gastos'] as Map<String, dynamic>),
-                                      ),
+                                        // 지출 통계 (gastos) - 배열이면 첫 번째 항목 사용
+                                        if (_data!.containsKey('gastos'))
+                                          _buildSection(
+                                            l10n.expenseStatistics,
+                                            _buildGastosSection(
+                                              _data!['gastos'] is List && (_data!['gastos'] as List).isNotEmpty
+                                                  ? (_data!['gastos'] as List).first as Map<String, dynamic>
+                                                  : _data!['gastos'] is Map
+                                                      ? _data!['gastos'] as Map<String, dynamic>
+                                                      : <String, dynamic>{}
+                                            ),
+                                          ),
 
-                                    // 할인 통계 (vdetalle)
-                                    if (_data!.containsKey('vdetalle') && _data!['vdetalle'] is Map)
-                                      _buildSection(
-                                        l10n.discountStatistics,
-                                        _buildVdetalleSection(_data!['vdetalle'] as Map<String, dynamic>),
-                                      ),
+                                        // 할인 통계 (vdetalle) - 배열이면 첫 번째 항목 사용
+                                        if (_data!.containsKey('vdetalle'))
+                                          _buildSection(
+                                            l10n.discountStatistics,
+                                            _buildVdetalleSection(
+                                              _data!['vdetalle'] is List && (_data!['vdetalle'] as List).isNotEmpty
+                                                  ? (_data!['vdetalle'] as List).first as Map<String, dynamic>
+                                                  : _data!['vdetalle'] is Map
+                                                      ? _data!['vdetalle'] as Map<String, dynamic>
+                                                      : <String, dynamic>{}
+                                            ),
+                                          ),
 
-                                    // 결제 통계 (vcodes_mpago)
-                                    if (_data!.containsKey('vcodes_mpago') && _data!['vcodes_mpago'] is Map)
-                                      _buildSection(
-                                        l10n.mercadoPagoStatistics,
-                                        _buildMpagoSection(_data!['vcodes_mpago'] as Map<String, dynamic>),
-                                      ),
-                                  ],
+                                        // 결제 통계 (vcodes_mpago) - 배열이면 첫 번째 항목 사용
+                                        if (_data!.containsKey('vcodes_mpago'))
+                                          _buildSection(
+                                            l10n.mercadoPagoStatistics,
+                                            _buildMpagoSection(
+                                              _data!['vcodes_mpago'] is List && (_data!['vcodes_mpago'] as List).isNotEmpty
+                                                  ? (_data!['vcodes_mpago'] as List).first as Map<String, dynamic>
+                                                  : _data!['vcodes_mpago'] is Map
+                                                      ? _data!['vcodes_mpago'] as Map<String, dynamic>
+                                                      : <String, dynamic>{}
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                         );
                       },
@@ -825,8 +863,8 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       onTap: _selectDate,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 7),
+        margin: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
@@ -834,31 +872,23 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
               Theme.of(context).colorScheme.primary.withOpacity(0.7),
             ],
           ),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(8),
         ),
-        child: Column(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(
               Icons.calendar_today,
               color: Colors.white,
-              size: 32,
+              size: 16,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(width: 6),
             Text(
               'Fecha: $fecha',
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 20,
+                fontSize: 14,
                 fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Tap para cambiar fecha',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 12,
-                fontStyle: FontStyle.italic,
               ),
             ),
           ],
@@ -872,7 +902,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     
     if (vcodes.containsKey('operation_count')) {
       cards.add(_buildDataCard(
-        'Total de Transacciones',
+        'Evento de Venta',
         vcodes['operation_count'],
         Icons.shopping_cart,
       ));
@@ -939,7 +969,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     
     if (gastos.containsKey('gasto_count')) {
       cards.add(_buildDataCard(
-        'Número de Gastos',
+        'Evento de Gastos',
         gastos['gasto_count'],
         Icons.receipt_long,
       ));
@@ -970,7 +1000,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     
     if (vdetalle.containsKey('total_discount_day')) {
       cards.add(_buildDataCard(
-        'Total de Descuentos',
+        'Evento de Descuento',
         vdetalle['total_discount_day'],
         Icons.discount,
         isCurrency: true,
@@ -985,7 +1015,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     
     if (mpago.containsKey('count_mpago_total')) {
       cards.add(_buildDataCard(
-        'Operaciones MPago',
+        'Evento de MPago',
         mpago['count_mpago_total'],
         Icons.payment,
       ));
@@ -1060,16 +1090,28 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     return cards;
   }
 
-  // 여러 sucursal 데이터가 있는지 확인 (배열 형태인 경우 항상 비교 테이블 표시)
+  // 여러 sucursal 데이터가 있는지 확인 (실제로 2개 이상일 때만 비교 테이블 표시)
   bool _hasMultipleSucursales() {
     if (_data == null) return false;
     
-    // vcodes가 배열인 경우 (1개 지점이어도 배열 형태로 올 수 있음)
+    // vcodes가 배열인 경우 - 실제 sucursal 개수 확인
     if (_data!.containsKey('vcodes') && _data!['vcodes'] is List) {
       final vcodesList = _data!['vcodes'] as List;
       if (vcodesList.isNotEmpty && vcodesList.first is Map) {
-        // 배열 형태이면 항상 비교 테이블로 표시 (1개 지점이어도)
-        return true;
+        // 고유한 sucursal 개수 확인
+        final sucursales = <int>{};
+        for (var item in vcodesList) {
+          if (item is Map && item.containsKey('sucursal')) {
+            final sucursal = item['sucursal'] is int 
+                ? item['sucursal'] as int 
+                : int.tryParse(item['sucursal'].toString()) ?? 0;
+            if (sucursal > 0) {
+              sucursales.add(sucursal);
+            }
+          }
+        }
+        // 2개 이상일 때만 비교 테이블 표시
+        return sucursales.length > 1;
       }
     }
     
@@ -1219,20 +1261,27 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       );
     }
 
-    return ListView(
-      children: [
-        // 날짜 표시
-        if (_data!.containsKey('fecha'))
-          _buildDateHeader(_data!['fecha']),
-        
-        // 비교 테이블 섹션
-        _buildSection(
-          l10n.branchComparison,
-          [
-            _buildComparisonTable(sucursalesData, l10n),
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      child: Container(
+        width: double.infinity,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 날짜 표시
+            if (_data!.containsKey('fecha'))
+              _buildDateHeader(_data!['fecha']),
+            
+            // 비교 테이블 섹션
+            _buildSection(
+              l10n.branchComparison,
+              [
+                _buildComparisonTable(sucursalesData, l10n),
+              ],
+            ),
           ],
         ),
-      ],
+      ),
     );
   }
 
@@ -1324,18 +1373,18 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       
       // 항목 이름 매핑 (스페인어)
       final metricNames = {
-        'vcodes_operation_count': 'Total de Transacciones',
+        'vcodes_operation_count': 'Evento de Venta',
         'vcodes_total_venta_day': 'Total de Ventas',
         'vcodes_total_efectivo_day': 'Ventas en Efectivo',
         'vcodes_total_credito_day': 'Ventas a Crédito',
         'vcodes_total_banco_day': 'Ventas Bancarias',
         'vcodes_total_favor_day': 'Ventas Favor',
         'vcodes_total_count_ropas': 'Total de Ropas',
-        'gastos_gasto_count': 'Número de Gastos',
+        'gastos_gasto_count': 'Evento de Gastos',
         'gastos_total_gasto_day': 'Total de Gastos',
         'vdetalle_count_discount_event': 'Eventos de Descuento',
-        'vdetalle_total_discount_day': 'Total de Descuentos',
-        'mpago_count_mpago_total': 'Operaciones MPago',
+        'vdetalle_total_discount_day': 'Evento de Descuento',
+        'mpago_count_mpago_total': 'Evento de MPago',
         'mpago_total_mpago_day': 'Total MPago',
         'ingresos_ingreso_events': 'Eventos de Ingreso',
         'ingresos_ingreso_total_ropas': 'Total de Ropas Ingresadas',
@@ -1416,8 +1465,8 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       elevation: 2,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Scrollbar(
-        thumbVisibility: true,
-        trackVisibility: true,
+        thumbVisibility: false,
+        trackVisibility: false,
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: DataTable(

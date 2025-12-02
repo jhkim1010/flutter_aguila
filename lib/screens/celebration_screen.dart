@@ -152,7 +152,7 @@ class _CelebrationScreenState extends State<CelebrationScreen>
                       ),
                       const SizedBox(height: 30),
                       const Text(
-                        '🎉 연결 성공! 🎉',
+                        '🎉 ¡Conexión Exitosa! 🎉',
                         style: TextStyle(
                           fontSize: 48,
                           fontWeight: FontWeight.bold,
@@ -168,7 +168,7 @@ class _CelebrationScreenState extends State<CelebrationScreen>
                       ),
                       const SizedBox(height: 20),
                       const Text(
-                        '데이터베이스 연결이 성공했습니다!',
+                        '¡La conexión a la base de datos fue exitosa!',
                         style: TextStyle(
                           fontSize: 20,
                           color: Colors.white70,
@@ -186,7 +186,7 @@ class _CelebrationScreenState extends State<CelebrationScreen>
                             onPressed: _showButton ? _navigateToResumenDelDia : null,
                             icon: const Icon(Icons.bar_chart, size: 24),
                             label: const Text(
-                              '자동으로 판매 간략 보고서 보기',
+                              'Ver Resumen de Ventas Automáticamente',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
