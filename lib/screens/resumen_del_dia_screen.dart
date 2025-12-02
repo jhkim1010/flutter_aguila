@@ -519,16 +519,20 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
   String _formatValue(dynamic value, {bool isCurrency = false}) {
     if (value == null) return 'N/A';
     if (value is num) {
-      if (isCurrency) {
-        return NumberFormat.currency(
-          symbol: '\$',
-          decimalDigits: 0,
-          locale: 'es_CO',
-        ).format(value);
-      }
+      // 통화 기호 없이 천 단위 구분자만 사용
       return NumberFormat('#,###').format(value);
     }
-    return value.toString();
+    // 문자열에서 $ 기호 제거
+    if (value is String) {
+      String cleanedValue = value.replaceAll('\$', '').trim();
+      // 숫자로 변환 가능한 문자열인지 확인
+      final numValue = num.tryParse(cleanedValue.replaceAll(',', '').replaceAll('.', ''));
+      if (numValue != null) {
+        return NumberFormat('#,###').format(numValue);
+      }
+      return cleanedValue;
+    }
+    return value.toString().replaceAll('\$', '').trim();
   }
 
   Widget _buildTable(Map<String, dynamic>? tableData) {
@@ -868,7 +872,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     
     if (vcodes.containsKey('operation_count')) {
       cards.add(_buildDataCard(
-        '총 거래 건수',
+        'Total de Transacciones',
         vcodes['operation_count'],
         Icons.shopping_cart,
       ));
@@ -876,7 +880,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     
     if (vcodes.containsKey('total_venta_day')) {
       cards.add(_buildDataCard(
-        '총 판매액',
+        'Total de Ventas',
         vcodes['total_venta_day'],
         Icons.attach_money,
         isCurrency: true,
@@ -885,7 +889,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     
     if (vcodes.containsKey('total_efectivo_day')) {
       cards.add(_buildDataCard(
-        '현금 판매',
+        'Ventas en Efectivo',
         vcodes['total_efectivo_day'],
         Icons.money,
         isCurrency: true,
@@ -894,7 +898,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     
     if (vcodes.containsKey('total_credito_day')) {
       cards.add(_buildDataCard(
-        '신용 판매',
+        'Ventas a Crédito',
         vcodes['total_credito_day'],
         Icons.credit_card,
         isCurrency: true,
@@ -903,7 +907,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     
     if (vcodes.containsKey('total_banco_day')) {
       cards.add(_buildDataCard(
-        '은행 판매',
+        'Ventas Bancarias',
         vcodes['total_banco_day'],
         Icons.account_balance,
         isCurrency: true,
@@ -912,7 +916,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     
     if (vcodes.containsKey('total_favor_day')) {
       cards.add(_buildDataCard(
-        'Favor 판매',
+        'Ventas Favor',
         vcodes['total_favor_day'],
         Icons.favorite,
         isCurrency: true,
@@ -921,7 +925,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     
     if (vcodes.containsKey('total_count_ropas')) {
       cards.add(_buildDataCard(
-        '총 의류 수',
+        'Total de Ropas',
         vcodes['total_count_ropas'],
         Icons.checkroom,
       ));
@@ -935,7 +939,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     
     if (gastos.containsKey('gasto_count')) {
       cards.add(_buildDataCard(
-        '지출 건수',
+        'Número de Gastos',
         gastos['gasto_count'],
         Icons.receipt_long,
       ));
@@ -943,7 +947,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     
     if (gastos.containsKey('total_gasto_day')) {
       cards.add(_buildDataCard(
-        '총 지출액',
+        'Total de Gastos',
         gastos['total_gasto_day'],
         Icons.payments,
         isCurrency: true,
@@ -958,7 +962,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     
     if (vdetalle.containsKey('count_discount_event')) {
       cards.add(_buildDataCard(
-        '할인 이벤트 건수',
+        'Eventos de Descuento',
         vdetalle['count_discount_event'],
         Icons.local_offer,
       ));
@@ -966,7 +970,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     
     if (vdetalle.containsKey('total_discount_day')) {
       cards.add(_buildDataCard(
-        '총 할인액',
+        'Total de Descuentos',
         vdetalle['total_discount_day'],
         Icons.discount,
         isCurrency: true,
@@ -981,7 +985,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     
     if (mpago.containsKey('count_mpago_total')) {
       cards.add(_buildDataCard(
-        '결제 건수',
+        'Operaciones MPago',
         mpago['count_mpago_total'],
         Icons.payment,
       ));
@@ -989,7 +993,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     
     if (mpago.containsKey('total_mpago_day')) {
       cards.add(_buildDataCard(
-        '총 결제액',
+        'Total MPago',
         mpago['total_mpago_day'],
         Icons.account_balance_wallet,
         isCurrency: true,
@@ -1310,29 +1314,31 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       }),
     ];
 
-    // 테이블 행 생성
-    final rows = allMetrics.map((metric) {
+    // 테이블 행 생성 (sucursal 필터링)
+    final rows = allMetrics
+        .where((metric) => !metric.contains('sucursal')) // sucursal 제외
+        .map((metric) {
       final parts = metric.split('_');
       final category = parts[0];
       final key = parts.sublist(1).join('_');
       
-      // 항목 이름 매핑
+      // 항목 이름 매핑 (스페인어)
       final metricNames = {
-        'vcodes_operation_count': '총 거래 건수',
-        'vcodes_total_venta_day': '총 판매액',
-        'vcodes_total_efectivo_day': '현금 판매',
-        'vcodes_total_credito_day': '신용 판매',
-        'vcodes_total_banco_day': '은행 판매',
-        'vcodes_total_favor_day': 'Favor 판매',
-        'vcodes_total_count_ropas': '총 의류 수',
-        'gastos_gasto_count': '지출 건수',
-        'gastos_total_gasto_day': '총 지출액',
-        'vdetalle_count_discount_event': '할인 이벤트 건수',
-        'vdetalle_total_discount_day': '총 할인액',
-        'mpago_count_mpago_total': 'MPago Operation Count',
-        'mpago_total_mpago_day': 'MPago Total',
-        'ingresos_ingreso_events': 'Ingreso Events',
-        'ingresos_ingreso_total_ropas': 'Ingreso Total Ropas',
+        'vcodes_operation_count': 'Total de Transacciones',
+        'vcodes_total_venta_day': 'Total de Ventas',
+        'vcodes_total_efectivo_day': 'Ventas en Efectivo',
+        'vcodes_total_credito_day': 'Ventas a Crédito',
+        'vcodes_total_banco_day': 'Ventas Bancarias',
+        'vcodes_total_favor_day': 'Ventas Favor',
+        'vcodes_total_count_ropas': 'Total de Ropas',
+        'gastos_gasto_count': 'Número de Gastos',
+        'gastos_total_gasto_day': 'Total de Gastos',
+        'vdetalle_count_discount_event': 'Eventos de Descuento',
+        'vdetalle_total_discount_day': 'Total de Descuentos',
+        'mpago_count_mpago_total': 'Operaciones MPago',
+        'mpago_total_mpago_day': 'Total MPago',
+        'ingresos_ingreso_events': 'Eventos de Ingreso',
+        'ingresos_ingreso_total_ropas': 'Total de Ropas Ingresadas',
       };
       
       final metricName = metricNames[metric] ?? key;
@@ -1350,7 +1356,12 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       
       return DataRow(
         cells: [
-          DataCell(Text(metricName)),
+          DataCell(
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(metricName),
+            ),
+          ),
           ...sucursalesData.map((data) {
             dynamic value;
             
@@ -1381,12 +1392,18 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
               }
             }
             
+            final formattedValue = _formatValue(value, isCurrency: isCurrency);
+            final isNumeric = value is num || (value is String && (num.tryParse(value.toString().replaceAll(',', '').replaceAll('.', '')) != null));
+            
             return DataCell(
-              Text(
-                _formatValue(value, isCurrency: isCurrency),
-                style: TextStyle(
-                  fontWeight: FontWeight.w500,
-                  color: isCurrency ? Theme.of(context).colorScheme.primary : null,
+              Align(
+                alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+                child: Text(
+                  formattedValue,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: isCurrency ? Theme.of(context).colorScheme.primary : null,
+                  ),
                 ),
               ),
             );
@@ -1650,5 +1667,6 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
   }
 
 }
+
 
 
