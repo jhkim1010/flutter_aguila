@@ -689,7 +689,12 @@ class _ReportScreenState extends State<ReportScreen> {
 
   // 컬럼 필터 UI 빌드
   List<Widget> _buildColumnFilters(List<String> columnKeys, Map<String, String> fieldNames) {
-    return columnKeys.map((key) {
+    // 제외할 필드 목록
+    final excludedFields = ['pre3', 'pre4', 'pre5', 'id_codigo1', 'ref_id_todocodigo', 'cntoffset', 'cntoffset3', 'first_date'];
+    
+    return columnKeys
+        .where((key) => !excludedFields.contains(key))
+        .map((key) {
       final displayName = fieldNames[key] ?? key.toString();
       final filterValue = _columnFilters[key] ?? '';
       
