@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:math';
+import 'dart:ui';
+import '../l10n/app_localizations.dart';
 import '../services/database_service.dart';
 import '../models/connection_info.dart';
 import '../services/connection_storage_service.dart';
@@ -13,10 +15,14 @@ import 'connection_list_screen.dart';
 
 class MainConnectionScreen extends StatefulWidget {
   final bool skipAutoConnect;
+  final Function(Locale)? onLanguageChanged;
+  final Locale? currentLocale;
   
   const MainConnectionScreen({
     super.key,
     this.skipAutoConnect = false,
+    this.onLanguageChanged,
+    this.currentLocale,
   });
 
   @override
@@ -44,6 +50,8 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
   bool _isAutoConnecting = false;
   bool _isConnected = false; // 연결 성공 여부
   String? _errorMessage;
+  List<ConnectionInfo> _savedConnections = [];
+  bool _isLoadingConnections = false;
   
   // 연결 ID 생성
   String _generateConnectionId() {
@@ -55,6 +63,93 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
   void initState() {
     super.initState();
     _checkAndAutoConnect();
+    _loadSavedConnections();
+  }
+
+  // 저장된 연결 목록 불러오기
+  Future<void> _loadSavedConnections() async {
+    setState(() {
+      _isLoadingConnections = true;
+    });
+
+    try {
+      final connections = await _connectionStorageService.getAllConnections();
+      if (mounted) {
+        setState(() {
+          _savedConnections = connections;
+          _isLoadingConnections = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingConnections = false;
+        });
+      }
+    }
+  }
+
+  // 저장된 연결로 연결 시도
+  Future<void> _connectWithSavedConnection(ConnectionInfo connection) async {
+    try {
+      // 로딩 표시
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      // serverUrl에서 host 추출
+      String host = 'localhost';
+      try {
+        final uri = Uri.parse(connection.serverUrl);
+        host = uri.host.isNotEmpty ? uri.host : 'localhost';
+      } catch (e) {
+        host = 'localhost';
+      }
+
+      final service = DatabaseService(serverUrl: connection.serverUrl);
+
+      final request = DatabaseConnectionRequest(
+        databaseName: connection.databaseName,
+        username: connection.username,
+        password: connection.password,
+        host: host,
+        port: null,
+      );
+
+      final success = await service.connectToDatabase(request);
+
+      if (success && mounted) {
+        // 연결 정보를 secure storage에 저장
+        await _storage.write(key: 'database_name', value: connection.databaseName);
+        await _storage.write(key: 'username', value: connection.username);
+        await _storage.write(key: 'password', value: connection.password);
+        await _storage.write(key: 'server_url', value: connection.serverUrl);
+        await _storage.write(key: 'connection_success', value: 'true');
+        await _storage.write(key: 'profile_name', value: connection.name);
+
+        // 축하 화면으로 이동
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CelebrationScreen(
+              serverUrl: connection.serverUrl,
+            ),
+          ),
+        );
+      } else {
+        setState(() {
+          _errorMessage = '연결에 실패했습니다.';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      final errorMessage = e.toString().replaceFirst('Exception: ', '');
+      setState(() {
+        _errorMessage = errorMessage;
+        _isLoading = false;
+      });
+    }
   }
   
   // 저장된 연결 정보 확인 후 자동 연결
@@ -112,13 +207,22 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
     required String password,
   }) async {
     try {
-      // 포트 번호는 전송하지 않음 (서버 URL에 이미 포함되어 있음)
+      // serverUrl에서 host 추출
+      String host = 'localhost';
+      try {
+        final uri = Uri.parse(serverUrl);
+        host = uri.host.isNotEmpty ? uri.host : 'localhost';
+      } catch (e) {
+        host = 'localhost';
+      }
+      
       final service = DatabaseService(serverUrl: serverUrl);
       
       final request = DatabaseConnectionRequest(
         databaseName: databaseName,
         username: username,
         password: password,
+        host: host, // host 정보 포함
         port: null, // 포트 번호는 전송하지 않음
       );
 
@@ -340,15 +444,24 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
     });
 
     try {
-      // 포트 번호는 전송하지 않음 (서버 URL에 이미 포함되어 있음)
-      final service = DatabaseService(
-        serverUrl: _serverUrlController.text.trim(),
-      );
+      final serverUrl = _serverUrlController.text.trim();
+      
+      // serverUrl에서 host 추출
+      String host = 'localhost';
+      try {
+        final uri = Uri.parse(serverUrl);
+        host = uri.host.isNotEmpty ? uri.host : 'localhost';
+      } catch (e) {
+        host = 'localhost';
+      }
+      
+      final service = DatabaseService(serverUrl: serverUrl);
 
       final request = DatabaseConnectionRequest(
         databaseName: _databaseNameController.text.trim(),
         username: _usernameController.text.trim(),
         password: _passwordController.text.trim(),
+        host: host, // host 정보 포함
         port: null, // 포트 번호는 전송하지 않음
       );
 
@@ -366,6 +479,9 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
         
         // 연결 목록에도 저장
         await _saveToConnectionList();
+        
+        // 연결 목록 갱신
+        await _loadSavedConnections();
         
         // 축하 화면으로 이동
         Navigator.pushReplacement(
@@ -394,26 +510,27 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
       
       // 상세 오류 정보를 다이얼로그로도 표시
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('연결 실패'),
+            title: Text(l10n.connectionFailedTitle),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('연결에 실패했습니다. 다음 정보를 확인하세요:'),
+                  Text(l10n.connectionFailedMessage),
                   const SizedBox(height: 16),
                   Text(
-                    '오류: $errorMessage',
+                    '${l10n.error(errorMessage)}',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.red,
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text('확인 사항:'),
+                  Text(l10n.checkItems),
                   const Text('• 서버 URL이 올바른지 확인'),
                   const Text('• 서버가 실행 중인지 확인'),
                   const Text('• 인터넷 연결 상태 확인'),
@@ -429,7 +546,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('확인'),
+                child: Text(l10n.ok),
               ),
             ],
           ),
@@ -463,7 +580,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                 ),
                 SizedBox(height: 24),
                 Text(
-                  '자동 연결 중...',
+                  l10n.connecting,
                   style: TextStyle(
                     fontSize: 18,
                     color: Colors.white,
@@ -477,9 +594,10 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
       );
     }
     
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('데이터베이스 연결'),
+        title: Text(l10n.databaseConnection),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(
@@ -490,9 +608,12 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                 MaterialPageRoute(
                   builder: (context) => const AdditionalConnectionsScreen(),
                 ),
-              );
+              ).then((_) {
+                // 연결 목록 화면에서 돌아왔을 때 목록 갱신
+                _loadSavedConnections();
+              });
             },
-            tooltip: '추가 연결 관리',
+            tooltip: l10n.additionalConnections,
           ),
         ],
       ),
@@ -519,6 +640,68 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                 ),
               ),
               const SizedBox(height: 24),
+              // 저장된 연결 목록 표시
+              if (_savedConnections.isNotEmpty) ...[
+                Row(
+                  children: [
+                    const Icon(Icons.storage, size: 20, color: Colors.grey),
+                    const SizedBox(width: 8),
+                    Text(
+                      l10n.savedConnections,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ..._savedConnections.map((connection) {
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    elevation: 2,
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        child: const Icon(Icons.storage, color: Colors.white, size: 20),
+                      ),
+                      title: Text(
+                        connection.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 4),
+                          Text(
+                            '${l10n.serverLabel}: ${connection.serverUrl}',
+                            style: const TextStyle(fontSize: 12),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            '${l10n.dbLabel}: ${connection.databaseName}',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ],
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.play_arrow, color: Colors.green),
+                        onPressed: _isLoading ? null : () => _connectWithSavedConnection(connection),
+                        tooltip: l10n.connectWithThisConnection,
+                      ),
+                      onTap: _isLoading ? null : () => _connectWithSavedConnection(connection),
+                    ),
+                  );
+                }).toList(),
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 16),
+              ],
               // 연결 성공 시 연결 전환 아이콘 표시
               if (_isConnected)
                 Center(
@@ -534,6 +717,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                         ).then((_) {
                           // 연결 목록에서 돌아왔을 때 상태 갱신
                           _loadSavedConnectionInfo();
+                          _loadSavedConnections();
                         });
                       },
                       borderRadius: BorderRadius.circular(30),
@@ -557,7 +741,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              '다른 연결로 전환',
+                              l10n.switchToAnotherConnection,
                               style: TextStyle(
                                 color: Theme.of(context).colorScheme.primary,
                                 fontWeight: FontWeight.bold,
@@ -570,23 +754,81 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                     ),
                   ),
                 ),
-              // Profile Name 입력 필드
-              TextFormField(
-                controller: _profileNameController,
-                decoration: const InputDecoration(
-                  labelText: 'Profile Name',
-                  hintText: '이 연결의 대표 이름을 입력하세요',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.person),
-                ),
-                keyboardType: TextInputType.text,
-                textInputAction: TextInputAction.next,
-                textCapitalization: TextCapitalization.none,
+              // Profile Name과 언어 선택을 한 행에 배치
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: TextFormField(
+                      controller: _profileNameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Profile Name',
+                        hintText: l10n.profileNameHint,
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.person),
+                      ),
+                      keyboardType: TextInputType.text,
+                      textInputAction: TextInputAction.next,
+                      textCapitalization: TextCapitalization.none,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: DropdownButtonFormField<String>(
+                      value: widget.currentLocale?.languageCode ?? 
+                             (Localizations.localeOf(context).languageCode == 'es' || 
+                              Localizations.localeOf(context).languageCode == 'en' ||
+                              Localizations.localeOf(context).languageCode == 'ko'
+                              ? Localizations.localeOf(context).languageCode
+                              : 'es'),
+                      decoration: const InputDecoration(
+                        labelText: l10n.language,
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.language),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+                        isDense: true,
+                      ),
+                      isExpanded: true,
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'es',
+                          child: Text(
+                            'Esp',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 14),
+                          ),
+                        ),
+                        DropdownMenuItem(
+                          value: 'en',
+                          child: Text(
+                            'Eng',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 14),
+                          ),
+                        ),
+                        DropdownMenuItem(
+                          value: 'ko',
+                          child: Text(
+                            'Kor',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 14),
+                          ),
+                        ),
+                      ],
+                      onChanged: widget.onLanguageChanged != null ? (value) {
+                        if (value != null) {
+                          widget.onLanguageChanged!(Locale(value, ''));
+                        }
+                      } : null,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 24),
               // 서버 타입 선택
               Text(
-                '서버 타입',
+                l10n.serverType,
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
@@ -623,8 +865,8 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                 TextFormField(
                   controller: _localIpController,
                   decoration: const InputDecoration(
-                    labelText: '로컬 IP 주소',
-                    hintText: '예: 192.168.1.100',
+                    labelText: l10n.localIpAddress,
+                    hintText: l10n.localIpHint,
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.computer),
                   ),
@@ -633,12 +875,12 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                   validator: (value) {
                     if (_selectedServerType == ServerType.local) {
                       if (value == null || value.isEmpty) {
-                        return '로컬 IP 주소를 입력해주세요';
+                        return l10n.localIpRequired;
                       }
                       // 간단한 IP 형식 검증
                       final ipRegex = RegExp(r'^(\d{1,3}\.){3}\d{1,3}$');
                       if (!ipRegex.hasMatch(value)) {
-                        return '유효한 IP 주소를 입력해주세요';
+                        return l10n.invalidIpAddress;
                       }
                     }
                     return null;
@@ -650,7 +892,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
               TextFormField(
                 controller: _serverUrlController,
                 decoration: const InputDecoration(
-                  labelText: '서버 URL',
+                  labelText: l10n.serverUrl,
                   hintText: 'http://localhost:3000',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.link),
@@ -662,10 +904,10 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
               TextFormField(
                 controller: _databaseNameController,
                 decoration: const InputDecoration(
-                  labelText: '데이터베이스 이름',
+                  labelText: l10n.databaseName,
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.storage),
-                  helperText: '영어와 숫자만 입력 가능합니다',
+                  helperText: l10n.alphanumericOnly,
                 ),
                 keyboardType: TextInputType.text,
                 inputFormatters: [
@@ -673,10 +915,10 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                 ],
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return '데이터베이스 이름을 입력해주세요';
+                    return l10n.databaseNameRequired;
                   }
                   if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) {
-                    return '영어와 숫자만 입력 가능합니다';
+                    return l10n.alphanumericOnly;
                   }
                   return null;
                 },
@@ -689,10 +931,10 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                     child: TextFormField(
                       controller: _usernameController,
                       decoration: const InputDecoration(
-                        labelText: '사용자 이름',
+                        labelText: l10n.username,
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.person),
-                        helperText: '영어와 숫자만 입력 가능합니다',
+                        helperText: l10n.alphanumericOnly,
                       ),
                       keyboardType: TextInputType.text,
                       inputFormatters: [
@@ -700,10 +942,10 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                       ],
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return '사용자 이름을 입력해주세요';
+                          return l10n.usernameRequired;
                         }
                         if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) {
-                          return '영어와 숫자만 입력 가능합니다';
+                          return l10n.alphanumericOnly;
                         }
                         return null;
                       },
@@ -714,14 +956,14 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                     child: TextFormField(
                       controller: _passwordController,
                       decoration: const InputDecoration(
-                        labelText: '암호',
+                        labelText: l10n.password,
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.lock),
                       ),
                       obscureText: true,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return '암호를 입력해주세요';
+                          return l10n.passwordRequired;
                         }
                         return null;
                       },
@@ -756,9 +998,9 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                         width: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text(
-                        '연결하기',
-                        style: TextStyle(fontSize: 16),
+                    : Text(
+                        l10n.connect,
+                        style: const TextStyle(fontSize: 16),
                       ),
               ),
               const SizedBox(height: 12),
@@ -773,7 +1015,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                   // );
                 },
                 icon: const Icon(Icons.add),
-                label: const Text('연결 추가하기'),
+                label: Text(l10n.addConnection),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(

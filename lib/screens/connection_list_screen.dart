@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/connection_info.dart';
 import '../services/connection_storage_service.dart';
+import '../l10n/app_localizations.dart';
 import 'connection_screen.dart';
 import 'celebration_screen.dart';
 import '../services/database_service.dart';
@@ -37,20 +38,65 @@ class _ConnectionListScreenState extends State<ConnectionListScreen> {
     });
   }
 
+  Future<void> _showLongPressOptions(ConnectionInfo connection) async {
+    final l10n = AppLocalizations.of(context)!;
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(connection.name),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit, color: Colors.blue),
+              title: const Text('Modifica'),
+              onTap: () => Navigator.pop(context, 'edit'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete, color: Colors.red),
+              title: Text(l10n.delete),
+              onTap: () => Navigator.pop(context, 'delete'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(l10n.cancel),
+          ),
+        ],
+      ),
+    );
+
+    if (result == 'edit') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ConnectionScreen(
+            connection: connection,
+          ),
+        ),
+      ).then((_) => _loadConnections());
+    } else if (result == 'delete') {
+      _deleteConnection(connection);
+    }
+  }
+
   Future<void> _deleteConnection(ConnectionInfo connection) async {
+    final l10n = AppLocalizations.of(context)!;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('연결 삭제'),
-        content: Text('${connection.name} 연결을 삭제하시겠습니까?'),
+        title: Text(l10n.deleteConnection),
+        content: Text(l10n.deleteConnectionConfirm(connection.name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('취소'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('삭제', style: TextStyle(color: Colors.red)),
+            child: Text(l10n.delete, style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -62,7 +108,7 @@ class _ConnectionListScreenState extends State<ConnectionListScreen> {
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('연결이 삭제되었습니다.')),
+          SnackBar(content: Text(l10n.connectionDeleted)),
         );
       }
     }
@@ -70,12 +116,22 @@ class _ConnectionListScreenState extends State<ConnectionListScreen> {
 
   Future<void> _connectToDatabase(ConnectionInfo connection) async {
     try {
+      // serverUrl에서 host 추출
+      String host = 'localhost';
+      try {
+        final uri = Uri.parse(connection.serverUrl);
+        host = uri.host.isNotEmpty ? uri.host : 'localhost';
+      } catch (e) {
+        host = 'localhost';
+      }
+      
       final service = DatabaseService(serverUrl: connection.serverUrl);
       
       final request = DatabaseConnectionRequest(
         databaseName: connection.databaseName,
         username: connection.username,
         password: connection.password,
+        host: host, // host 정보 포함
         port: null, // 포트 번호는 전송하지 않음 (서버 URL에 이미 포함되어 있음)
       );
 
@@ -92,9 +148,10 @@ class _ConnectionListScreenState extends State<ConnectionListScreen> {
         );
       } else {
         if (mounted) {
+          final l10n = AppLocalizations.of(context)!;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('연결에 실패했습니다.'),
+            SnackBar(
+              content: Text(l10n.connectionFailed),
               backgroundColor: Colors.red,
             ),
           );
@@ -102,9 +159,10 @@ class _ConnectionListScreenState extends State<ConnectionListScreen> {
       }
     } catch (e) {
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('오류: ${e.toString()}'),
+            content: Text(l10n.error(e.toString())),
             backgroundColor: Colors.red,
           ),
         );
@@ -114,9 +172,10 @@ class _ConnectionListScreenState extends State<ConnectionListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('데이터베이스 연결 목록'),
+        title: Text(l10n.databaseConnectionList),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
       body: _isLoading
@@ -133,7 +192,7 @@ class _ConnectionListScreenState extends State<ConnectionListScreen> {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        '저장된 연결이 없습니다',
+                        l10n.noSavedConnections,
                         style: TextStyle(
                           fontSize: 18,
                           color: Colors.grey[600],
@@ -141,7 +200,7 @@ class _ConnectionListScreenState extends State<ConnectionListScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '아래 버튼을 눌러 새 연결을 추가하세요',
+                        l10n.addNewConnection,
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey[500],
@@ -174,19 +233,19 @@ class _ConnectionListScreenState extends State<ConnectionListScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const SizedBox(height: 4),
-                            Text('서버: ${connection.serverUrl}'),
-                            Text('DB: ${connection.databaseName}'),
-                            Text('포트: ${connection.port ?? "N/A"}'),
+                            Text(l10n.server(connection.serverUrl)),
+                            Text(l10n.db(connection.databaseName)),
+                            Text(l10n.port(connection.port?.toString() ?? "N/A")),
                           ],
                         ),
                         trailing: PopupMenuButton(
                           itemBuilder: (context) => [
                             PopupMenuItem(
-                              child: const Row(
+                              child: Row(
                                 children: [
-                                  Icon(Icons.edit, size: 20),
-                                  SizedBox(width: 8),
-                                  Text('수정'),
+                                  const Icon(Icons.edit, size: 20),
+                                  const SizedBox(width: 8),
+                                  Text(l10n.edit),
                                 ],
                               ),
                               onTap: () {
@@ -206,11 +265,11 @@ class _ConnectionListScreenState extends State<ConnectionListScreen> {
                               },
                             ),
                             PopupMenuItem(
-                              child: const Row(
+                              child: Row(
                                 children: [
-                                  Icon(Icons.delete, size: 20, color: Colors.red),
-                                  SizedBox(width: 8),
-                                  Text('삭제', style: TextStyle(color: Colors.red)),
+                                  const Icon(Icons.delete, size: 20, color: Colors.red),
+                                  const SizedBox(width: 8),
+                                  Text(l10n.delete, style: const TextStyle(color: Colors.red)),
                                 ],
                               ),
                               onTap: () {
@@ -223,6 +282,7 @@ class _ConnectionListScreenState extends State<ConnectionListScreen> {
                           ],
                         ),
                         onTap: () => _connectToDatabase(connection),
+                        onLongPress: () => _showLongPressOptions(connection),
                       ),
                     );
                   },
@@ -237,7 +297,7 @@ class _ConnectionListScreenState extends State<ConnectionListScreen> {
           ).then((_) => _loadConnections());
         },
         icon: const Icon(Icons.add),
-        label: const Text('연결 추가하기'),
+        label: Text(l10n.addConnection),
       ),
     );
   }

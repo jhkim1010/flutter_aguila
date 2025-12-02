@@ -4,6 +4,7 @@ import 'dart:math';
 import '../models/connection_info.dart';
 import '../services/connection_storage_service.dart';
 import '../services/database_service.dart';
+import '../l10n/app_localizations.dart';
 import 'celebration_screen.dart';
 
 enum ServerType {
@@ -155,15 +156,24 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     });
 
     try {
-      // 포트 번호는 전송하지 않음 (서버 URL에 이미 포함되어 있음)
-      final service = DatabaseService(
-        serverUrl: _serverUrlController.text.trim(),
-      );
+      final serverUrl = _serverUrlController.text.trim();
+      
+      // serverUrl에서 host 추출
+      String host = 'localhost';
+      try {
+        final uri = Uri.parse(serverUrl);
+        host = uri.host.isNotEmpty ? uri.host : 'localhost';
+      } catch (e) {
+        host = 'localhost';
+      }
+      
+      final service = DatabaseService(serverUrl: serverUrl);
 
       final request = DatabaseConnectionRequest(
         databaseName: _databaseNameController.text.trim(),
         username: _usernameController.text.trim(),
         password: _passwordController.text.trim(),
+        host: host, // host 정보 포함
         port: null, // 포트 번호는 전송하지 않음
       );
 
@@ -202,6 +212,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       return;
     }
 
+    final l10n = AppLocalizations.of(context)!;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -217,7 +228,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_isEditing ? '연결이 수정되었습니다.' : '연결이 저장되었습니다.'),
+            content: Text(_isEditing ? l10n.connectionEdited : l10n.connectionSaved),
             backgroundColor: Colors.green,
           ),
         );
@@ -226,7 +237,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       }
     } catch (e) {
       setState(() {
-        _errorMessage = '저장에 실패했습니다: ${e.toString()}';
+        _errorMessage = '${l10n.saveFailed}: ${e.toString()}';
         _isLoading = false;
       });
     }
@@ -234,9 +245,10 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing ? '연결 수정' : '새 연결 추가'),
+        title: Text(_isEditing ? l10n.editConnection : l10n.newConnection),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
       body: SingleChildScrollView(
@@ -264,17 +276,17 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
               const SizedBox(height: 24),
               TextFormField(
                 controller: _connectionNameController,
-                decoration: const InputDecoration(
-                  labelText: '연결 이름',
-                  hintText: '예: 프로덕션 DB, 개발 DB',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.label),
+                decoration: InputDecoration(
+                  labelText: l10n.connectionName,
+                  hintText: l10n.connectionNameHint,
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.label),
                 ),
                 keyboardType: TextInputType.text,
                 textInputAction: TextInputAction.next,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return '연결 이름을 입력해주세요';
+                    return l10n.connectionNameRequired;
                   }
                   return null;
                 },
@@ -282,7 +294,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
               const SizedBox(height: 24),
               // 서버 타입 선택
               Text(
-                '서버 타입',
+                l10n.serverType,
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
@@ -294,7 +306,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                 children: [
                   Expanded(
                     child: RadioListTile<ServerType>(
-                      title: const Text('Hostinger Principal'),
+                      title: Text(l10n.hostingerPrincipal),
                       value: ServerType.hostinger,
                       groupValue: _selectedServerType,
                       onChanged: _onServerTypeChanged,
@@ -303,7 +315,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   ),
                   Expanded(
                     child: RadioListTile<ServerType>(
-                      title: const Text('Local IP'),
+                      title: Text(l10n.localIp),
                       value: ServerType.local,
                       groupValue: _selectedServerType,
                       onChanged: _onServerTypeChanged,
@@ -317,18 +329,18 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
               if (_selectedServerType == ServerType.local)
                 TextFormField(
                   controller: _localIpController,
-                  decoration: const InputDecoration(
-                    labelText: '로컬 IP 주소',
-                    hintText: '예: 192.168.1.100',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.computer),
+                  decoration: InputDecoration(
+                    labelText: l10n.localIpAddress,
+                    hintText: l10n.localIpHint,
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.computer),
                   ),
                   keyboardType: TextInputType.number,
                   onChanged: _onLocalIpChanged,
                   validator: (value) {
                     if (_selectedServerType == ServerType.local) {
                       if (value == null || value.isEmpty) {
-                        return '로컬 IP 주소를 입력해주세요';
+                        return l10n.localIpRequired;
                       }
                     }
                     return null;
@@ -339,11 +351,11 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
               // 서버 URL (읽기 전용으로 표시)
               TextFormField(
                 controller: _serverUrlController,
-                decoration: const InputDecoration(
-                  labelText: '서버 URL',
+                decoration: InputDecoration(
+                  labelText: l10n.serverUrl,
                   hintText: 'http://localhost:3000',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.link),
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.link),
                 ),
                 readOnly: true,
                 enabled: false,
@@ -351,11 +363,11 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _databaseNameController,
-                decoration: const InputDecoration(
-                  labelText: '데이터베이스 이름',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.storage),
-                  helperText: '영어와 숫자만 입력 가능합니다',
+                decoration: InputDecoration(
+                  labelText: l10n.databaseName,
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.storage),
+                  helperText: l10n.alphanumericOnly,
                 ),
                 keyboardType: TextInputType.text,
                 inputFormatters: [
@@ -363,10 +375,10 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                 ],
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return '데이터베이스 이름을 입력해주세요';
+                    return l10n.databaseNameRequired;
                   }
                   if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) {
-                    return '영어와 숫자만 입력 가능합니다';
+                    return l10n.alphanumericOnly;
                   }
                   return null;
                 },
@@ -374,11 +386,11 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _usernameController,
-                decoration: const InputDecoration(
-                  labelText: '사용자 이름',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.person),
-                  helperText: '영어와 숫자만 입력 가능합니다',
+                decoration: InputDecoration(
+                  labelText: l10n.username,
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.person),
+                  helperText: l10n.alphanumericOnly,
                 ),
                 keyboardType: TextInputType.text,
                 inputFormatters: [
@@ -386,10 +398,10 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                 ],
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return '사용자 이름을 입력해주세요';
+                    return l10n.usernameRequired;
                   }
                   if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) {
-                    return '영어와 숫자만 입력 가능합니다';
+                    return l10n.alphanumericOnly;
                   }
                   return null;
                 },
@@ -397,15 +409,15 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _passwordController,
-                decoration: const InputDecoration(
-                  labelText: '암호',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.lock),
+                decoration: InputDecoration(
+                  labelText: l10n.password,
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.lock),
                 ),
                 obscureText: true,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return '암호를 입력해주세요';
+                    return l10n.passwordRequired;
                   }
                   return null;
                 },
@@ -438,7 +450,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : Text(
-                        _isEditing ? '수정하고 연결하기' : '저장하고 연결하기',
+                        _isEditing ? l10n.editAndConnect : l10n.saveAndConnect,
                         style: const TextStyle(fontSize: 16),
                       ),
               ),
@@ -452,7 +464,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   ),
                 ),
                 child: Text(
-                  _isEditing ? '수정만 하기' : '저장만 하기',
+                  _isEditing ? l10n.editOnly : l10n.saveOnly,
                   style: const TextStyle(fontSize: 16),
                 ),
               ),

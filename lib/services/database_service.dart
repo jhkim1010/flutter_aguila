@@ -6,12 +6,14 @@ class DatabaseConnectionRequest {
   final String databaseName;
   final String username;
   final String password;
+  final String? host;
   final int? port;
 
   DatabaseConnectionRequest({
     required this.databaseName,
     required this.username,
     required this.password,
+    this.host,
     this.port,
   });
 
@@ -21,6 +23,11 @@ class DatabaseConnectionRequest {
       'username': username,
       'password': password,
     };
+    
+    // host가 있으면 포함
+    if (host != null) {
+      json['host'] = host!;
+    }
     
     // 포트 번호가 있을 때만 포함
     if (port != null) {
@@ -43,6 +50,51 @@ class DatabaseService {
   );
 
   DatabaseService({required this.serverUrl});
+
+  /// 기존 데이터베이스 연결 끊기 (선택적 - 서버에 disconnect API가 있는 경우)
+  Future<void> disconnectDatabase() async {
+    try {
+      // 저장된 기존 연결 정보 가져오기
+      final headers = await _getDatabaseHeaders();
+      
+      // 기존 연결 정보가 없으면 끊을 연결이 없음
+      final databaseName = headers['x-db-name'] ?? '';
+      if (databaseName.isEmpty) {
+        print('ℹ️ 끊을 기존 연결이 없습니다.');
+        return;
+      }
+
+      print('=== 기존 연결 끊기 시도 ===');
+      print('URL: $serverUrl/api/disconnect');
+      print('Headers: $headers');
+
+      // 서버에 disconnect API가 있다면 호출 (없어도 오류 무시)
+      try {
+        final response = await http.post(
+          Uri.parse('$serverUrl/api/disconnect'),
+          headers: headers,
+        ).timeout(
+          const Duration(seconds: 5),
+          onTimeout: () {
+            print('⚠️ 연결 끊기 타임아웃 (무시하고 계속 진행)');
+            return http.Response('', 200); // 타임아웃 시 성공으로 처리
+          },
+        );
+
+        if (response.statusCode == 200) {
+          print('✅ 기존 연결이 성공적으로 끊어졌습니다.');
+        } else {
+          print('⚠️ 연결 끊기 응답: HTTP ${response.statusCode} (무시하고 계속 진행)');
+        }
+      } catch (e) {
+        // disconnect API가 없거나 오류가 발생해도 무시하고 계속 진행
+        print('⚠️ 연결 끊기 실패 (무시하고 계속 진행): $e');
+      }
+    } catch (e) {
+      // 오류가 발생해도 무시하고 계속 진행
+      print('⚠️ 연결 끊기 중 오류 발생 (무시하고 계속 진행): $e');
+    }
+  }
 
   /// 공통 GET 요청 메서드 (오류 처리 포함)
   Future<Map<String, dynamic>> _performGetRequest(String endpoint) async {
@@ -132,23 +184,9 @@ class DatabaseService {
       final databaseName = await _storage.read(key: 'database_name') ?? '';
       final username = await _storage.read(key: 'username') ?? '';
       final password = await _storage.read(key: 'password') ?? '';
-      // 포트는 항상 5432로 고정
-      const port = '5432';
-      
-      // serverUrl에서 host 추출 (예: http://localhost:3030 -> localhost)
-      String host = 'localhost';
-      try {
-        final uri = Uri.parse(serverUrl);
-        host = uri.host.isNotEmpty ? uri.host : 'localhost';
-      } catch (e) {
-        // URL 파싱 실패 시 기본값 사용
-        host = 'localhost';
-      }
 
       return {
         'Content-Type': 'application/json',
-        'x-db-host': host,
-        'x-db-port': port,
         'x-db-name': databaseName,
         'x-db-user': username,
         'x-db-password': password,
@@ -158,8 +196,6 @@ class DatabaseService {
       // 저장된 정보가 없거나 오류 발생 시 기본 헤더 반환
       return {
         'Content-Type': 'application/json',
-        'x-db-host': 'localhost',
-        'x-db-port': '5432',
         'x-db-name': '',
         'x-db-user': '',
         'x-db-password': '',
@@ -168,7 +204,26 @@ class DatabaseService {
     }
   }
 
-  Future<bool> connectToDatabase(DatabaseConnectionRequest request) async {
+  Future<bool> connectToDatabase(DatabaseConnectionRequest request, {bool disconnectExisting = true}) async {
+    // 새로운 연결 전에 기존 연결 끊기
+    if (disconnectExisting) {
+      // 기존 연결 정보 확인
+      final existingHeaders = await _getDatabaseHeaders();
+      final existingDbName = existingHeaders['x-db-name'] ?? '';
+      final existingDbUser = existingHeaders['x-db-user'] ?? '';
+      
+      // 기존 연결이 있고, 새로운 연결과 다른 경우에만 끊기
+      if (existingDbName.isNotEmpty && 
+          (existingDbName != request.databaseName || existingDbUser != request.username)) {
+        print('🔄 기존 연결($existingDbName/$existingDbUser)과 다른 연결로 전환합니다.');
+        await disconnectDatabase();
+      } else if (existingDbName.isNotEmpty && 
+                 existingDbName == request.databaseName && 
+                 existingDbUser == request.username) {
+        print('ℹ️ 동일한 연결이므로 기존 연결을 끊지 않습니다.');
+      }
+    }
+
     final url = '$serverUrl/api/health';
     final requestBody = jsonEncode(request.toJson());
     
@@ -221,9 +276,168 @@ class DatabaseService {
     }
   }
 
+  /// 공통 POST 요청 메서드 (오류 처리 포함)
+  Future<Map<String, dynamic>> _performPostRequest(
+    String endpoint,
+    Map<String, dynamic> body,
+  ) async {
+    try {
+      // 데이터베이스 연결 정보를 헤더로 가져오기
+      final headers = await _getDatabaseHeaders();
+      
+      print('=== POST $endpoint 요청 ===');
+      print('URL: $serverUrl$endpoint');
+      print('Headers: $headers');
+      print('Body: ${json.encode(body)}');
+      
+      final response = await http.post(
+        Uri.parse('$serverUrl$endpoint'),
+        headers: headers,
+        body: json.encode(body),
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print('❌ 요청 타임아웃 (10초 초과)');
+          throw Exception('요청 타임아웃: 서버 응답이 10초를 초과했습니다. 서버가 실행 중인지 확인하세요.');
+        },
+      );
+
+      print('=== 응답 정보 ===');
+      print('Status Code: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        try {
+          final decoded = json.decode(response.body);
+          if (decoded is Map) {
+            return decoded as Map<String, dynamic>;
+          } else if (decoded is List) {
+            return {'data': decoded};
+          } else {
+            return {'result': decoded};
+          }
+        } catch (e) {
+          print('❌ JSON 파싱 오류: $e');
+          throw Exception('JSON 파싱 오류: 서버 응답을 파싱할 수 없습니다. 응답: ${response.body}');
+        }
+      } else {
+        // HTTP 오류 상태 코드 처리
+        String errorMessage = 'HTTP ${response.statusCode} 오류';
+        try {
+          final errorBody = json.decode(response.body);
+          if (errorBody is Map && errorBody.containsKey('message')) {
+            errorMessage = errorBody['message'].toString();
+          } else if (errorBody is Map && errorBody.containsKey('error')) {
+            errorMessage = errorBody['error'].toString();
+          } else if (response.body.isNotEmpty) {
+            errorMessage = response.body;
+          }
+        } catch (e) {
+          // JSON 파싱 실패 시 원본 응답 사용
+          if (response.body.isNotEmpty) {
+            errorMessage = response.body;
+          }
+        }
+        
+        print('❌ HTTP 오류: $errorMessage');
+        throw Exception('서버 오류 (${response.statusCode}): $errorMessage');
+      }
+    } catch (e) {
+      print('❌ POST $endpoint 오류: $e');
+      
+      // 이미 Exception이면 그대로 전달, 아니면 새로운 Exception 생성
+      if (e is Exception) {
+        rethrow;
+      } else {
+        // 네트워크 오류 등 다른 오류 처리
+        String errorMessage = e.toString();
+        if (errorMessage.contains('SocketException') || 
+            errorMessage.contains('Failed host lookup')) {
+          throw Exception('네트워크 오류: 서버에 연결할 수 없습니다. 서버 URL과 인터넷 연결을 확인하세요.');
+        } else if (errorMessage.contains('timeout')) {
+          throw Exception('요청 타임아웃: 서버가 응답하지 않습니다. 서버가 실행 중인지 확인하세요.');
+        } else {
+          throw Exception('요청 실패: $errorMessage');
+        }
+      }
+    }
+  }
+
   /// resumen_del_dia 데이터 가져오기
-  Future<Map<String, dynamic>> getResumenDelDia() async {
-    return await _performGetRequest('/api/resumen_del_dia');
+  Future<Map<String, dynamic>> getResumenDelDia({
+    DateTime? date,
+    String? sucursal,
+  }) async {
+    final endpoint = '/api/resumen_del_dia';
+    
+    // 바디에 date와 sucursal 포함
+    final body = <String, dynamic>{};
+    
+    if (date != null) {
+      // 날짜를 YYYY-MM-DD 형식으로 변환
+      final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      body['date'] = dateStr;
+    }
+    
+    if (sucursal != null && sucursal.isNotEmpty) {
+      body['sucursal'] = sucursal;
+    }
+    
+    return await _performPostRequest(endpoint, body);
+  }
+
+  /// 재고 보고서 가져오기
+  Future<Map<String, dynamic>> getStocksReport({
+    Map<String, dynamic>? filters,
+  }) async {
+    final endpoint = '/api/reporte/stocks';
+    final body = filters ?? <String, dynamic>{};
+    return await _performPostRequest(endpoint, body);
+  }
+
+  /// 아이템 보고서 가져오기
+  Future<Map<String, dynamic>> getItemsReport({
+    Map<String, dynamic>? filters,
+  }) async {
+    final endpoint = '/api/reporte/items';
+    final body = filters ?? <String, dynamic>{};
+    return await _performPostRequest(endpoint, body);
+  }
+
+  /// 고객 보고서 가져오기
+  Future<Map<String, dynamic>> getClientesReport({
+    Map<String, dynamic>? filters,
+  }) async {
+    final endpoint = '/api/reporte/clientes';
+    final body = filters ?? <String, dynamic>{};
+    return await _performPostRequest(endpoint, body);
+  }
+
+  /// 지출 보고서 가져오기
+  Future<Map<String, dynamic>> getGastosReport({
+    Map<String, dynamic>? filters,
+  }) async {
+    final endpoint = '/api/reporte/gastos';
+    final body = filters ?? <String, dynamic>{};
+    return await _performPostRequest(endpoint, body);
+  }
+
+  /// 판매 보고서 가져오기
+  Future<Map<String, dynamic>> getVentasReport({
+    Map<String, dynamic>? filters,
+  }) async {
+    final endpoint = '/api/reporte/ventas';
+    final body = filters ?? <String, dynamic>{};
+    return await _performPostRequest(endpoint, body);
+  }
+
+  /// 알림 보고서 가져오기
+  Future<Map<String, dynamic>> getAlertasReport({
+    Map<String, dynamic>? filters,
+  }) async {
+    final endpoint = '/api/reporte/alertas';
+    final body = filters ?? <String, dynamic>{};
+    return await _performPostRequest(endpoint, body);
   }
 }
 

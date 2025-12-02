@@ -42,3 +42,29 @@ android {
 flutter {
     source = "../.."
 }
+
+// APK 빌드 후 자동으로 Dropbox 폴더로 복사 (Be_Cool.apk로 이름 변경)
+tasks.register("copyApkToDropbox") {
+    doLast {
+        // Flutter는 app-release.apk로 빌드하므로 원본 파일명 사용
+        val apkFile = file("${project.buildDir}/outputs/flutter-apk/app-release.apk")
+        val dropboxDir = file("/Users/marcoskim/Dropbox/ACE_3_uversion")
+        
+        if (apkFile.exists()) {
+            dropboxDir.mkdirs()
+            // Be_Cool.apk로 이름 변경하여 복사
+            val targetFile = file("${dropboxDir}/Be_Cool.apk")
+            apkFile.copyTo(targetFile, overwrite = true)
+            println("✅ APK 파일이 Dropbox로 복사되었습니다: ${targetFile.absolutePath}")
+        } else {
+            println("⚠️ APK 파일을 찾을 수 없습니다: ${apkFile.absolutePath}")
+        }
+    }
+}
+
+// 모든 빌드 타입의 assemble 작업 후 복사
+afterEvaluate {
+    tasks.matching { it.name.startsWith("assemble") && it.name.endsWith("Release") }.configureEach {
+        finalizedBy("copyApkToDropbox")
+    }
+}

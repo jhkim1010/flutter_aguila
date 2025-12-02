@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- 기본 설정: HTTP와 HTTPS 모두 허용 (로컬 IP 연결을 위해 필요) -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <!-- 시스템 인증서와 사용자 인증서 모두 신뢰 -->
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+    
+    <!-- HTTPS 연결을 위한 추가 설정 -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">sync.coolsistema.com</domain>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </domain-config>
+</network-security-config>
+
