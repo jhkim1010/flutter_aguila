@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 import 'dart:math';
@@ -8,11 +9,14 @@ import '../l10n/app_localizations.dart';
 import '../services/database_service.dart';
 import '../models/connection_info.dart';
 import '../services/connection_storage_service.dart';
+import '../utils/platform_utils.dart';
 import 'celebration_screen.dart';
 import 'connection_screen.dart';
 import 'additional_connections_screen.dart';
 import 'resumen_del_dia_screen.dart';
 import 'connection_list_screen.dart';
+import 'report_screen.dart';
+import '../widgets/report_utils.dart';
 
 class MainConnectionScreen extends StatefulWidget {
   final bool skipAutoConnect;
@@ -55,6 +59,13 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
   bool _isLoadingConnections = false;
   final LocalAuthentication _localAuth = LocalAuthentication();
   
+  // 연결 성공 후 보고서 관련 상태
+  String? _currentServerUrl; // 현재 연결된 서버 URL
+  String? _currentDatabaseName; // 현재 연결된 데이터베이스 이름
+  String _currentReport = 'resumen'; // 현재 선택된 보고서
+  ReportType? _selectedReportType; // 선택된 보고서 타입
+  DatabaseService? _databaseService; // 데이터베이스 서비스
+  
   // 연결 ID 생성
   String _generateConnectionId() {
     return DateTime.now().millisecondsSinceEpoch.toString() + 
@@ -66,12 +77,40 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
     super.initState();
     _checkAndAutoConnect();
     _loadSavedConnections();
+    _checkConnectionStatus();
     // 백그라운드에서 생체 인식 수행
     _authenticateInBackground();
   }
 
+  // 연결 상태 확인
+  Future<void> _checkConnectionStatus() async {
+    try {
+      final connectionSuccess = await _storage.read(key: 'connection_success');
+      final serverUrl = await _storage.read(key: 'server_url');
+      final databaseName = await _storage.read(key: 'database_name');
+      
+      if (connectionSuccess == 'true' && serverUrl != null && databaseName != null) {
+        // 저장된 연결 정보가 있으면 데이터베이스 서비스 초기화
+        setState(() {
+          _isConnected = true;
+          _currentServerUrl = serverUrl;
+          _currentDatabaseName = databaseName;
+          _databaseService = DatabaseService(serverUrl: serverUrl);
+        });
+      }
+    } catch (e) {
+      print('❌ 연결 상태 확인 오류: $e');
+    }
+  }
+
   // 백그라운드에서 생체 인식 수행
   Future<void> _authenticateInBackground() async {
+    // Windows 플랫폼에서는 생체 인식 생략
+    if (defaultTargetPlatform == TargetPlatform.windows) {
+      print('🪟 Windows 플랫폼: 생체 인식 생략');
+      return;
+    }
+    
     try {
       final bool isSupported = await _localAuth.isDeviceSupported();
       final bool canCheckBiometrics = await _localAuth.canCheckBiometrics;
@@ -160,15 +199,16 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
         await _storage.write(key: 'connection_success', value: 'true');
         await _storage.write(key: 'profile_name', value: connection.name);
 
-        // 축하 화면으로 이동
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => CelebrationScreen(
-              serverUrl: connection.serverUrl,
-            ),
-          ),
-        );
+        // 같은 화면 유지하고 상태 업데이트
+        setState(() {
+          _isLoading = false;
+          _isConnected = true;
+          _currentServerUrl = connection.serverUrl;
+          _currentDatabaseName = connection.databaseName;
+          _databaseService = service;
+          _errorMessage = null;
+        });
+        await _loadSavedConnections();
       } else {
         setState(() {
           _errorMessage = '연결에 실패했습니다.';
@@ -250,15 +290,15 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
       final success = await service.connectToDatabase(request);
 
       if (success && mounted) {
-        // 자동 연결 성공 시 resumen_del_dia로 바로 이동
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ResumenDelDiaScreen(
-              serverUrl: serverUrl,
-            ),
-          ),
-        );
+        // 자동 연결 성공 시 같은 화면 유지하고 상태 업데이트
+        setState(() {
+          _isAutoConnecting = false;
+          _isConnected = true;
+          _currentServerUrl = serverUrl;
+          _currentDatabaseName = databaseName;
+          _databaseService = service;
+        });
+        await _loadSavedConnections();
       } else {
         // 자동 연결 실패 시 연결 화면 표시
         setState(() {
@@ -310,20 +350,36 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
       final localIp = await _storage.read(key: 'local_ip') ?? '';
       final connectionSuccess = await _storage.read(key: 'connection_success');
       
+      final serverUrl = serverType == 'local' && localIp.isNotEmpty
+          ? 'http://$localIp:3030'
+          : 'https://sync.coolsistema.com';
+      
       setState(() {
         _profileNameController.text = profileName;
         if (serverType == 'local') {
           _selectedServerType = ServerType.local;
           _localIpController.text = localIp;
-          _serverUrlController.text = localIp.isNotEmpty ? 'http://$localIp:3030' : '';
+          _serverUrlController.text = serverUrl;
         } else {
           _selectedServerType = ServerType.hostinger;
-          _serverUrlController.text = 'https://sync.coolsistema.com';
+          _serverUrlController.text = serverUrl;
         }
         _databaseNameController.text = databaseName;
         _usernameController.text = username;
         _passwordController.text = password;
-        _isConnected = connectionSuccess == 'true';
+        
+        // 연결 상태 업데이트
+        if (connectionSuccess == 'true' && databaseName.isNotEmpty) {
+          _isConnected = true;
+          _currentServerUrl = serverUrl;
+          _currentDatabaseName = databaseName;
+          _databaseService = DatabaseService(serverUrl: serverUrl);
+        } else {
+          _isConnected = false;
+          _currentServerUrl = null;
+          _currentDatabaseName = null;
+          _databaseService = null;
+        }
       });
     } catch (e) {
       // 저장된 정보가 없거나 오류가 발생한 경우 기본값 사용
@@ -483,7 +539,10 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
       final success = await service.connectToDatabase(request);
 
       if (success && mounted) {
-        print('✅ 연결 성공 - 정보 저장 및 축하 화면 이동');
+        print('✅ 연결 성공 - 정보 저장 및 상태 업데이트');
+        final serverUrl = _serverUrlController.text.trim();
+        final databaseName = _databaseNameController.text.trim();
+        
         // 연결 성공 시 정보 저장
         await _saveConnectionInfo();
         
@@ -493,15 +552,15 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
         // 연결 목록 갱신
         await _loadSavedConnections();
         
-        // 축하 화면으로 이동
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => CelebrationScreen(
-              serverUrl: _serverUrlController.text.trim(),
-            ),
-          ),
-        );
+        // 같은 화면 유지하고 상태 업데이트
+        setState(() {
+          _isLoading = false;
+          _isConnected = true;
+          _currentServerUrl = serverUrl;
+          _currentDatabaseName = databaseName;
+          _databaseService = service;
+          _errorMessage = null;
+        });
       } else {
         setState(() {
           _errorMessage = '연결에 실패했습니다. (상태 코드 확인 필요)';
@@ -565,9 +624,733 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
     }
   }
 
+  // 큰 화면인지 확인 (macOS, Windows, iPad)
+  bool _isLargeScreen(BuildContext context) {
+    final platformType = PlatformUtils.getPlatformType(context);
+    final size = MediaQuery.of(context).size;
+    
+    // 데스크톱 또는 iPad이고 화면이 충분히 큰 경우
+    if (platformType == PlatformType.desktop || PlatformUtils.isIPad(context)) {
+      return size.width >= 800 && size.height >= 600;
+    }
+    
+    return false;
+  }
+
+  // 왼쪽 패널 빌드 (화면의 1/4 너비)
+  Widget _buildLeftPanel(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final leftPanelWidth = screenWidth * 0.25; // 화면의 1/4
+    
+    return Container(
+      width: leftPanelWidth,
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        border: Border(
+          right: BorderSide(color: Colors.grey[300]!, width: 1),
+        ),
+      ),
+      child: Column(
+        children: [
+          // 상단 1/4: 연결 리스트 (항상 표시)
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.25,
+            child: _buildConnectionListSection(context),
+          ),
+          // 구분선
+          Container(
+            height: 1,
+            color: Colors.grey[300],
+          ),
+          // 하단 3/4: 연결 전에는 연결 폼, 연결 후에는 보고서 메뉴
+          Expanded(
+            child: _isConnected
+                ? _buildReportMenuSection(context)
+                : _buildConnectionFormSection(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 연결 리스트 섹션 빌드 (상단 1/4)
+  Widget _buildConnectionListSection(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    
+    return Column(
+      children: [
+        // 헤더
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.storage, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  l10n.databaseConnection,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.list, color: Colors.white, size: 18),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AdditionalConnectionsScreen(),
+                    ),
+                  ).then((_) {
+                    _loadSavedConnections();
+                  });
+                },
+                tooltip: l10n.additionalConnections,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
+          ),
+        ),
+        // 연결 목록
+        Expanded(
+          child: _savedConnections.isEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      l10n.noSavedConnections,
+                      style: TextStyle(color: Colors.grey[600], fontSize: 11),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(8),
+                  itemCount: _savedConnections.length,
+                  itemBuilder: (context, index) {
+                    final connection = _savedConnections[index];
+                    final isCurrentConnection = connection.databaseName == _currentDatabaseName;
+                    
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      child: Card(
+                        color: isCurrentConnection 
+                            ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                            : null,
+                        child: ListTile(
+                          dense: true,
+                          leading: CircleAvatar(
+                            radius: 12,
+                            backgroundColor: isCurrentConnection
+                                ? Theme.of(context).colorScheme.primary
+                                : Colors.grey,
+                            child: const Icon(Icons.storage, color: Colors.white, size: 14),
+                          ),
+                          title: Text(
+                            connection.name,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11,
+                              color: isCurrentConnection
+                                  ? Theme.of(context).colorScheme.primary
+                                  : null,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            connection.databaseName,
+                            style: const TextStyle(fontSize: 9),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: isCurrentConnection
+                              ? const Icon(Icons.check_circle, color: Colors.green, size: 16)
+                              : null,
+                          onTap: () {
+                            if (!isCurrentConnection) {
+                              _connectWithSavedConnection(connection);
+                            }
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  // 연결 폼 섹션 빌드 (하단 3/4, 연결 전)
+  Widget _buildConnectionFormSection(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    
+    return Container(
+      width: 300,
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        border: Border(
+          right: BorderSide(color: Colors.grey[300]!, width: 1),
+        ),
+      ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // 회사 로고 (작게)
+              Center(
+                child: Image.asset(
+                  'assets/logo.jpg',
+                  height: 120,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    return const SizedBox(
+                      height: 120,
+                      child: Icon(Icons.image, size: 80, color: Colors.grey),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Profile Name과 언어 선택
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: TextFormField(
+                      controller: _profileNameController,
+                      decoration: InputDecoration(
+                        labelText: 'Profile Name',
+                        hintText: l10n.profileNameHint,
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.person, size: 18),
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      ),
+                      style: const TextStyle(fontSize: 13),
+                      keyboardType: TextInputType.text,
+                      textInputAction: TextInputAction.next,
+                      textCapitalization: TextCapitalization.none,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 2,
+                    child: DropdownButtonFormField<String>(
+                      value: widget.currentLocale?.languageCode ?? 
+                             (Localizations.localeOf(context).languageCode == 'es' || 
+                              Localizations.localeOf(context).languageCode == 'en' ||
+                              Localizations.localeOf(context).languageCode == 'ko'
+                              ? Localizations.localeOf(context).languageCode
+                              : 'es'),
+                      decoration: InputDecoration(
+                        labelText: l10n.language,
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.language, size: 18),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                        isDense: true,
+                      ),
+                      style: const TextStyle(fontSize: 13),
+                      isExpanded: true,
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'es',
+                          child: Text('Esp', style: TextStyle(fontSize: 12)),
+                        ),
+                        DropdownMenuItem(
+                          value: 'en',
+                          child: Text('Eng', style: TextStyle(fontSize: 12)),
+                        ),
+                        DropdownMenuItem(
+                          value: 'ko',
+                          child: Text('Kor', style: TextStyle(fontSize: 12)),
+                        ),
+                      ],
+                      onChanged: widget.onLanguageChanged != null ? (value) {
+                        if (value != null) {
+                          widget.onLanguageChanged!(Locale(value, ''));
+                        }
+                      } : null,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // 서버 타입 선택
+              Text(
+                l10n.serverType,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey[700],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: RadioListTile<ServerType>(
+                      title: const Text('Hostinger', style: TextStyle(fontSize: 12)),
+                      value: ServerType.hostinger,
+                      groupValue: _selectedServerType,
+                      onChanged: _onServerTypeChanged,
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                    ),
+                  ),
+                  Expanded(
+                    child: RadioListTile<ServerType>(
+                      title: const Text('Local IP', style: TextStyle(fontSize: 12)),
+                      value: ServerType.local,
+                      groupValue: _selectedServerType,
+                      onChanged: _onServerTypeChanged,
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // 로컬 IP 입력 필드
+              if (_selectedServerType == ServerType.local)
+                TextFormField(
+                  controller: _localIpController,
+                  decoration: InputDecoration(
+                    labelText: l10n.localIpAddress,
+                    hintText: l10n.localIpHint,
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.computer, size: 18),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  ),
+                  style: const TextStyle(fontSize: 13),
+                  keyboardType: TextInputType.number,
+                  onChanged: _onLocalIpChanged,
+                  validator: (value) {
+                    if (_selectedServerType == ServerType.local) {
+                      if (value == null || value.isEmpty) {
+                        return l10n.localIpRequired;
+                      }
+                      final ipRegex = RegExp(r'^(\d{1,3}\.){3}\d{1,3}$');
+                      if (!ipRegex.hasMatch(value)) {
+                        return l10n.invalidIpAddress;
+                      }
+                    }
+                    return null;
+                  },
+                ),
+              if (_selectedServerType == ServerType.local)
+                const SizedBox(height: 12),
+              // 서버 URL
+              TextFormField(
+                controller: _serverUrlController,
+                decoration: InputDecoration(
+                  labelText: l10n.serverUrl,
+                  hintText: 'http://localhost:3000',
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.link, size: 18),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+                style: const TextStyle(fontSize: 13),
+                readOnly: true,
+                enabled: false,
+              ),
+              const SizedBox(height: 12),
+              // 데이터베이스 이름
+              TextFormField(
+                controller: _databaseNameController,
+                decoration: InputDecoration(
+                  labelText: l10n.databaseName,
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.storage, size: 18),
+                  helperText: l10n.alphanumericOnly,
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+                style: const TextStyle(fontSize: 13),
+                keyboardType: TextInputType.text,
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9_]')),
+                ],
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return l10n.databaseNameRequired;
+                  }
+                  if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) {
+                    return l10n.alphanumericOnly;
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              // 사용자 이름과 암호
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _usernameController,
+                      decoration: InputDecoration(
+                        labelText: l10n.username,
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.person, size: 18),
+                        helperText: l10n.alphanumericOnly,
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      ),
+                      style: const TextStyle(fontSize: 13),
+                      keyboardType: TextInputType.text,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9_]')),
+                      ],
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return l10n.usernameRequired;
+                        }
+                        if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) {
+                          return l10n.alphanumericOnly;
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _passwordController,
+                      decoration: InputDecoration(
+                        labelText: l10n.password,
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.lock, size: 18),
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      ),
+                      style: const TextStyle(fontSize: 13),
+                      obscureText: true,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return l10n.passwordRequired;
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (_errorMessage != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(
+                    _errorMessage!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                      fontSize: 12,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ElevatedButton(
+                onPressed: _isLoading ? null : _connectToDatabase,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(
+                        l10n.connect,
+                        style: const TextStyle(fontSize: 14),
+                      ),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  // 연결 추가 화면으로 이동
+                  final newConnection = await Navigator.push<ConnectionInfo>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ConnectionScreen(),
+                    ),
+                  );
+                  if (newConnection != null && mounted) {
+                    await _loadSavedConnections();
+                    // 연결 목록 갱신 후 자동으로 연결 시도하지 않음
+                  }
+                },
+                icon: const Icon(Icons.add, size: 16),
+                label: Text(l10n.addConnection, style: const TextStyle(fontSize: 13)),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // 보고서 메뉴 섹션 빌드 (하단 3/4, 연결 후)
+  Widget _buildReportMenuSection(BuildContext context) {
+    return Column(
+      children: [
+        // 헤더
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.secondary,
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.assessment, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Reportes',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // 보고서 목록
+        Expanded(
+          child: ListView(
+            children: [
+              _buildReportMenuItem(
+                context,
+                'resumen',
+                'Resumen del Día',
+                Icons.today,
+                Colors.blue,
+              ),
+              const Divider(height: 1),
+              _buildReportMenuItem(
+                context,
+                'stocks',
+                'Stocks',
+                Icons.warehouse,
+                Colors.orange,
+              ),
+              _buildReportMenuItem(
+                context,
+                'codigos',
+                'Codigos',
+                Icons.qr_code,
+                Colors.teal,
+              ),
+              _buildReportMenuItem(
+                context,
+                'todocodigos',
+                'Todo Codigos',
+                Icons.qr_code_scanner,
+                Colors.cyan,
+              ),
+              _buildReportMenuItem(
+                context,
+                'items',
+                'Items',
+                Icons.inventory_2,
+                Colors.green,
+              ),
+              // 연결 끊기 버튼
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: OutlinedButton.icon(
+                  onPressed: _disconnectDatabase,
+                  icon: const Icon(Icons.logout, color: Colors.orange, size: 16),
+                  label: const Text('연결 끊기', style: TextStyle(color: Colors.orange, fontSize: 12)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.orange),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 보고서 메뉴 아이템 빌드
+  Widget _buildReportMenuItem(
+    BuildContext context,
+    String reportType,
+    String title,
+    IconData icon,
+    Color color,
+  ) {
+    final isSelected = _currentReport == reportType;
+    
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _currentReport = reportType;
+          if (reportType == 'resumen') {
+            _selectedReportType = null;
+          } else {
+            switch (reportType) {
+              case 'stocks':
+                _selectedReportType = ReportType.stocks;
+                break;
+              case 'codigos':
+                _selectedReportType = ReportType.codigos;
+                break;
+              case 'todocodigos':
+                _selectedReportType = ReportType.todocodigos;
+                break;
+              case 'items':
+                _selectedReportType = ReportType.items;
+                break;
+              default:
+                _selectedReportType = null;
+            }
+          }
+        });
+      },
+      child: Container(
+        color: isSelected ? color.withOpacity(0.1) : null,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? color : Colors.grey[600],
+              size: 18,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected ? color : Colors.grey[800],
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            if (isSelected)
+              Icon(
+                Icons.check_circle,
+                color: color,
+                size: 16,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 데이터베이스 연결 끊기
+  Future<void> _disconnectDatabase() async {
+    if (_databaseService != null) {
+      try {
+        await _databaseService!.disconnectDatabase();
+      } catch (e) {
+        print('❌ 연결 끊기 오류: $e');
+      }
+    }
+    
+    setState(() {
+      _isConnected = false;
+      _currentServerUrl = null;
+      _currentDatabaseName = null;
+      _databaseService = null;
+      _selectedReportType = null;
+      _currentReport = 'resumen';
+    });
+  }
+
+  // 오른쪽 패널 빌드 (보고서 결과 또는 안내)
+  Widget _buildRightPanel(BuildContext context) {
+    if (!_isConnected) {
+      // 연결 전: 안내 메시지
+      return Container(
+        color: Colors.white,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.storage_outlined,
+                size: 80,
+                color: Colors.grey[300],
+              ),
+              const SizedBox(height: 24),
+              Text(
+                '데이터베이스에 연결하세요',
+                style: TextStyle(
+                  fontSize: 20,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '왼쪽 패널에서 연결 정보를 입력하고\n연결 버튼을 클릭하세요',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[500],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    
+    // 연결 후: 보고서 결과 표시
+    if (_selectedReportType != null && _currentServerUrl != null) {
+      return ReportScreen(
+        serverUrl: _currentServerUrl!,
+        reportType: _selectedReportType!,
+      );
+    }
+    
+    // 기본: Resumen del Día 표시
+    if (_currentServerUrl != null) {
+      return ResumenDelDiaScreen(
+        serverUrl: _currentServerUrl!,
+      );
+    }
+    
+    return Container(
+      color: Colors.white,
+      child: const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final isLargeScreen = _isLargeScreen(context);
     
     // 자동 연결 중일 때 로딩 화면 표시
     if (_isAutoConnecting) {
@@ -605,6 +1388,28 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
         ),
       );
     }
+    
+    // 큰 화면인 경우 분할 레이아웃
+    if (isLargeScreen) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(l10n.databaseConnection),
+          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        ),
+        body: Row(
+          children: [
+            // 왼쪽: 연결 리스트 + 연결 폼/보고서 메뉴 (화면의 1/4)
+            _buildLeftPanel(context),
+            // 오른쪽: 보고서 결과 또는 안내
+            Expanded(
+              child: _buildRightPanel(context),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    // 핸드폰: 기존 방식 유지
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.databaseConnection),
@@ -619,7 +1424,6 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                   builder: (context) => const AdditionalConnectionsScreen(),
                 ),
               ).then((_) {
-                // 연결 목록 화면에서 돌아왔을 때 목록 갱신
                 _loadSavedConnections();
               });
             },
@@ -1015,14 +1819,18 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
               ),
               const SizedBox(height: 12),
               OutlinedButton.icon(
-                onPressed: () {
-                  // 연결 추가하기 버튼을 눌러도 현재 화면 유지
-                  // Navigator.push(
-                  //   context,
-                  //   MaterialPageRoute(
-                  //     builder: (context) => const ConnectionScreen(),
-                  //   ),
-                  // );
+                onPressed: () async {
+                  // 연결 추가 화면으로 이동
+                  final newConnection = await Navigator.push<ConnectionInfo>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ConnectionScreen(),
+                    ),
+                  );
+                  if (newConnection != null && mounted) {
+                    await _loadSavedConnections();
+                    // 연결 목록 갱신 후 자동으로 연결 시도하지 않음
+                  }
                 },
                 icon: const Icon(Icons.add),
                 label: Text(l10n.addConnection),

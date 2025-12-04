@@ -180,36 +180,42 @@ class DatabaseService {
   /// 저장된 데이터베이스 연결 정보를 읽어와서 헤더로 변환
   Future<Map<String, String>> _getDatabaseHeaders() async {
     try {
+      print('🔍 _getDatabaseHeaders 호출: secure storage에서 데이터 읽기 시도');
+      
       final databaseName = await _storage.read(key: 'database_name') ?? '';
       final username = await _storage.read(key: 'username') ?? '';
       final password = await _storage.read(key: 'password') ?? '';
 
+      print('🔍 읽은 데이터:');
+      print('   database_name: ${databaseName.isEmpty ? "(비어있음)" : databaseName}');
+      print('   username: ${username.isEmpty ? "(비어있음)" : username}');
+      print('   password: ${password.isEmpty ? "(비어있음)" : "***"}');
+
       // 헤더가 비어있으면 경고 출력
       if (databaseName.isEmpty || username.isEmpty || password.isEmpty) {
         print('⚠️ 저장된 데이터베이스 연결 정보가 없거나 불완전합니다.');
-        print('   database_name: ${databaseName.isEmpty ? "(비어있음)" : databaseName}');
-        print('   username: ${username.isEmpty ? "(비어있음)" : username}');
-        print('   password: ${password.isEmpty ? "(비어있음)" : "***"}');
         print('   → 데이터베이스에 다시 연결해주세요.');
+        throw Exception('Invalid or missing database headers: database_name, username, 또는 password가 저장되지 않았습니다. 데이터베이스에 다시 연결해주세요.');
       }
 
-      return {
+      final headers = {
         'Content-Type': 'application/json',
         'x-db-name': databaseName,
         'x-db-user': username,
         'x-db-password': password,
         'x-db-ssl': 'false',
       };
+      
+      print('✅ 헤더 생성 완료:');
+      print('   x-db-name: $databaseName');
+      print('   x-db-user: $username');
+      print('   x-db-password: ***');
+      
+      return headers;
     } catch (e) {
       print('❌ 데이터베이스 헤더 읽기 오류: $e');
-      // 저장된 정보가 없거나 오류 발생 시 기본 헤더 반환
-      return {
-        'Content-Type': 'application/json',
-        'x-db-name': '',
-        'x-db-user': '',
-        'x-db-password': '',
-        'x-db-ssl': 'false',
-      };
+      // 저장된 정보가 없거나 오류 발생 시 예외를 다시 던짐
+      throw Exception('Invalid or missing database headers: ${e.toString()}');
     }
   }
 
@@ -269,12 +275,27 @@ class DatabaseService {
         print('✅ 연결 성공');
         // 연결 성공 시 데이터베이스 정보를 저장
         try {
+          print('💾 데이터베이스 정보 저장 시도:');
+          print('   database_name: ${request.databaseName}');
+          print('   username: ${request.username}');
+          print('   password: ***');
+          
           await _storage.write(key: 'database_name', value: request.databaseName);
           await _storage.write(key: 'username', value: request.username);
           await _storage.write(key: 'password', value: request.password);
-          print('✅ 데이터베이스 정보 저장 완료');
+          
+          // 저장 확인
+          final savedDbName = await _storage.read(key: 'database_name');
+          final savedUsername = await _storage.read(key: 'username');
+          final savedPassword = await _storage.read(key: 'password');
+          
+          print('✅ 데이터베이스 정보 저장 완료:');
+          print('   저장된 database_name: ${savedDbName ?? "(없음)"}');
+          print('   저장된 username: ${savedUsername ?? "(없음)"}');
+          print('   저장된 password: ${savedPassword != null && savedPassword.isNotEmpty ? "***" : "(없음)"}');
         } catch (e) {
           print('⚠️ 데이터베이스 정보 저장 실패: $e');
+          print('   오류 상세: ${e.toString()}');
           // 저장 실패해도 연결은 성공한 것으로 처리
         }
         return true;
@@ -406,8 +427,22 @@ class DatabaseService {
       body['sucursal'] = sucursal;
     }
     
+    // 디버깅: API 호출 정보 출력
+    print('📊 getResumenDelDia 호출:');
+    print('  - 서버 URL: $serverUrl');
+    print('  - 엔드포인트: $endpoint');
+    print('  - 날짜: ${body['date'] ?? '없음'}');
+    print('  - Sucursal: ${body['sucursal'] ?? '없음'}');
+    print('  - 요청 바디: $body');
+    
     // resumen_del_dia는 데이터가 많을 수 있으므로 더 긴 타임아웃 사용
-    return await _performPostRequest(endpoint, body, timeoutSeconds: 30);
+    final result = await _performPostRequest(endpoint, body, timeoutSeconds: 30);
+    
+    print('📊 getResumenDelDia 응답:');
+    print('  - 응답 키: ${result.keys.toList()}');
+    print('  - 응답 데이터 크기: ${result.length}');
+    
+    return result;
   }
 
   /// 재고 보고서 가져오기 (페이지네이션 지원)

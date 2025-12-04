@@ -41,6 +41,9 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
   String? _selectedSucursal;
   String? _databaseName;
   String _currentReport = 'resumen'; // 현재 선택된 보고서
+  ReportType? _selectedReportType; // 큰 화면에서 오른쪽에 표시할 보고서 타입
+  List<ConnectionInfo> _savedConnections = []; // 저장된 연결 목록
+  bool _showAllConnections = false; // 연결 목록 전체 표시 여부
 
   @override
   void initState() {
@@ -51,8 +54,23 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     _selectedDate = now;
     // 데이터베이스 이름 로드
     _loadDatabaseName();
+    // 연결 목록 로드
+    _loadSavedConnections();
     // 초기 로드 시 현재 날짜를 명시적으로 전달
     _loadData(date: now);
+  }
+
+  Future<void> _loadSavedConnections() async {
+    try {
+      final connections = await _connectionStorageService.getAllConnections();
+      if (mounted) {
+        setState(() {
+          _savedConnections = connections;
+        });
+      }
+    } catch (e) {
+      print('❌ 연결 목록 로드 실패: $e');
+    }
   }
 
   Future<void> _loadDatabaseName() async {
@@ -371,11 +389,22 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       // 날짜가 없으면 현재 날짜 사용 (명확하게 보장)
       final dateToUse = date ?? _selectedDate ?? DateTime.now();
       
+      // 디버깅: 로드 정보 출력
+      print('📊 ResumenDelDiaScreen._loadData 호출:');
+      print('  - 서버 URL: ${widget.serverUrl}');
+      print('  - 사용 날짜: $dateToUse');
+      print('  - Sucursal: ${sucursal ?? _selectedSucursal ?? '없음'}');
+      
       // 날짜와 sucursal을 API 호출에 포함
       final data = await _databaseService.getResumenDelDia(
         date: dateToUse,
         sucursal: sucursal ?? _selectedSucursal,
       );
+      
+      print('📊 ResumenDelDiaScreen._loadData 완료:');
+      print('  - 받은 데이터 키: ${data.keys.toList()}');
+      print('  - 데이터 크기: ${data.length}');
+      
       setState(() {
         _data = data;
         _isLoading = false;
@@ -608,9 +637,719 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     ];
   }
 
+  // 큰 화면인지 확인 (macOS, Windows, iPad)
+  bool _isLargeScreen(BuildContext context) {
+    final platformType = PlatformUtils.getPlatformType(context);
+    final size = MediaQuery.of(context).size;
+    
+    // 데스크톱 또는 iPad이고 화면이 충분히 큰 경우
+    if (platformType == PlatformType.desktop || PlatformUtils.isIPad(context)) {
+      return size.width >= 800 && size.height >= 600;
+    }
+    
+    return false;
+  }
+
+  // 왼쪽 패널 빌드 (300px: 상단 1/4 연결 관리, 하단 3/4 보고서 종류)
+  Widget _buildLeftPanel(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    
+    return Container(
+      width: 300,
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        border: Border(
+          right: BorderSide(color: Colors.grey[300]!, width: 1),
+        ),
+      ),
+      child: Column(
+        children: [
+          // 상단 1/4: 연결 관리
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.25,
+            child: Column(
+              children: [
+                // 헤더
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.storage, color: Colors.white, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          l10n.databaseConnection,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // 연결 정보 표시 영역
+                Expanded(
+                  child: Column(
+                    children: [
+                      // 현재 연결 정보 (항상 표시)
+                      if (_databaseName != null)
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Card(
+                            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                            child: Padding(
+                              padding: const EdgeInsets.all(10.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 12,
+                                        backgroundColor: Theme.of(context).colorScheme.primary,
+                                        child: const Icon(Icons.check_circle, color: Colors.white, size: 16),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              _savedConnections.firstWhere(
+                                                (c) => c.databaseName == _databaseName,
+                                                orElse: () => ConnectionInfo(
+                                                  id: '',
+                                                  name: _databaseName ?? '연결됨',
+                                                  serverUrl: widget.serverUrl,
+                                                  databaseName: _databaseName ?? '',
+                                                  username: '',
+                                                ),
+                                              ).name,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 12,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            Text(
+                                              _databaseName ?? '',
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                color: Colors.grey[600],
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      // 연결 목록 토글 버튼 및 목록
+                      Expanded(
+                        child: ListView(
+                          shrinkWrap: true,
+                          children: [
+                            // 다른 연결 보기/숨기기 버튼
+                            if (_savedConnections.length > 1)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                child: TextButton.icon(
+                                  onPressed: () {
+                                    setState(() {
+                                      _showAllConnections = !_showAllConnections;
+                                    });
+                                  },
+                                  icon: Icon(
+                                    _showAllConnections ? Icons.expand_less : Icons.expand_more,
+                                    size: 16,
+                                  ),
+                                  label: Text(
+                                    _showAllConnections ? '연결 목록 숨기기' : '다른 연결 보기 (${_savedConnections.length - 1})',
+                                    style: const TextStyle(fontSize: 11),
+                                  ),
+                                ),
+                              ),
+                            // 연결 목록 (토글 시에만 표시)
+                            if (_showAllConnections)
+                              ..._savedConnections.where((connection) => connection.databaseName != _databaseName).map((connection) {
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  child: Card(
+                                    child: ListTile(
+                                      dense: true,
+                                      leading: CircleAvatar(
+                                        radius: 12,
+                                        backgroundColor: Colors.grey,
+                                        child: const Icon(Icons.storage, color: Colors.white, size: 14),
+                                      ),
+                                      title: Text(
+                                        connection.name,
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      subtitle: Text(
+                                        connection.databaseName,
+                                        style: const TextStyle(fontSize: 9),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      trailing: const Icon(Icons.arrow_forward_ios, size: 12),
+                                      onTap: () {
+                                        _switchConnection(connection);
+                                      },
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            // 새 연결 추가 버튼
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                              child: OutlinedButton.icon(
+                                onPressed: () async {
+                                  final newConnection = await Navigator.push<ConnectionInfo>(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const ConnectionScreen(),
+                                    ),
+                                  );
+                                  if (newConnection != null && mounted) {
+                                    await _loadSavedConnections();
+                                    await _loadDatabaseName();
+                                    _loadData();
+                                  }
+                                },
+                                icon: const Icon(Icons.add, size: 14),
+                                label: const Text('새 연결 추가', style: TextStyle(fontSize: 11)),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                ),
+                              ),
+                            ),
+                            // 연결 끊기 버튼
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                              child: OutlinedButton.icon(
+                                onPressed: _disconnectAndGoToInitialScreen,
+                                icon: const Icon(Icons.logout, color: Colors.orange, size: 14),
+                                label: const Text('연결 끊기', style: TextStyle(color: Colors.orange, fontSize: 11)),
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(color: Colors.orange),
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // 구분선
+          Container(
+            height: 1,
+            color: Colors.grey[300],
+          ),
+          // 하단 3/4: 보고서 종류
+          Expanded(
+            child: Column(
+              children: [
+                // 보고서 헤더
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.secondary,
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.assessment, color: Colors.white, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Reportes',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // 보고서 목록
+                Expanded(
+                  child: ListView(
+                    children: _buildReportMenuItemsForPanel(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 왼쪽 패널용 보고서 메뉴 아이템 빌드
+  List<Widget> _buildReportMenuItemsForPanel(BuildContext context) {
+    final items = <Widget>[];
+    
+    // Resumen del Día
+    items.add(_buildReportMenuItem(
+      context,
+      'resumen',
+      'Resumen del Día',
+      Icons.today,
+      Colors.blue,
+    ));
+    
+    items.add(const Divider(height: 1));
+    
+    // Stocks
+    items.add(_buildReportMenuItem(
+      context,
+      'stocks',
+      'Stocks',
+      Icons.warehouse,
+      Colors.orange,
+    ));
+    
+    // Codigos
+    items.add(_buildReportMenuItem(
+      context,
+      'codigos',
+      'Codigos',
+      Icons.qr_code,
+      Colors.teal,
+    ));
+    
+    // Todo Codigos
+    items.add(_buildReportMenuItem(
+      context,
+      'todocodigos',
+      'Todo Codigos',
+      Icons.qr_code_scanner,
+      Colors.cyan,
+    ));
+    
+    // Items
+    items.add(_buildReportMenuItem(
+      context,
+      'items',
+      'Items',
+      Icons.inventory_2,
+      Colors.green,
+    ));
+    
+    return items;
+  }
+
+  // 보고서 메뉴 아이템 빌드
+  Widget _buildReportMenuItem(
+    BuildContext context,
+    String reportType,
+    String title,
+    IconData icon,
+    Color color,
+  ) {
+    final isSelected = _currentReport == reportType;
+    
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _currentReport = reportType;
+          if (reportType == 'resumen') {
+            _selectedReportType = null;
+          } else {
+            // ReportType으로 변환
+            switch (reportType) {
+              case 'stocks':
+                _selectedReportType = ReportType.stocks;
+                break;
+              case 'codigos':
+                _selectedReportType = ReportType.codigos;
+                break;
+              case 'todocodigos':
+                _selectedReportType = ReportType.todocodigos;
+                break;
+              case 'items':
+                _selectedReportType = ReportType.items;
+                break;
+              case 'clientes':
+                _selectedReportType = ReportType.clientes;
+                break;
+              case 'gastos':
+                _selectedReportType = ReportType.gastos;
+                break;
+              case 'ventas':
+                _selectedReportType = ReportType.ventas;
+                break;
+              case 'alertas':
+                _selectedReportType = ReportType.alertas;
+                break;
+              default:
+                _selectedReportType = null;
+            }
+          }
+        });
+      },
+      child: Container(
+        color: isSelected ? color.withOpacity(0.1) : null,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? color : Colors.grey[600],
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected ? color : Colors.grey[800],
+                  fontSize: 13,
+                ),
+              ),
+            ),
+            if (isSelected)
+              Icon(
+                Icons.check_circle,
+                color: color,
+                size: 18,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 보고서 내용 빌드 (오른쪽 영역)
+  Widget _buildReportContent(BuildContext context) {
+    if (_selectedReportType != null) {
+      // 보고서 화면 표시
+      return ReportScreen(
+        serverUrl: widget.serverUrl,
+        reportType: _selectedReportType!,
+      );
+    }
+    
+    // 기본 resumen del dia 내용 표시
+    return _buildResumenContent(context);
+  }
+
+  // Resumen del Dia 내용 빌드
+  Widget _buildResumenContent(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    
+    if (_isLoading) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(l10n.loadingData),
+          ],
+        ),
+      );
+    }
+    
+    if (_errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: Colors.red[300],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              l10n.errorOccurred,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _loadData,
+              icon: const Icon(Icons.refresh),
+              label: Text(l10n.retry),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    if (_data == null || _data!.isEmpty) {
+      return Center(
+        child: Text(l10n.noData),
+      );
+    }
+    
+    final platformType = PlatformUtils.getPlatformType(context);
+    final maxWidth = PlatformUtils.getMaxWidth(
+      context,
+      mobileMaxWidth: double.infinity,
+      tabletMaxWidth: 1200,
+      desktopMaxWidth: 1600,
+    );
+    final padding = PlatformUtils.getPadding(
+      context,
+      mobilePadding: const EdgeInsets.all(16),
+      tabletPadding: const EdgeInsets.all(24),
+      desktopPadding: const EdgeInsets.all(32),
+    );
+    
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxWidth),
+          child: _hasMultipleSucursales()
+              ? Padding(
+                  padding: padding,
+                  child: _buildComparisonView(l10n),
+                )
+              : SingleChildScrollView(
+                  child: Container(
+                    width: double.infinity,
+                    padding: padding,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // 날짜 표시
+                        if (_data!.containsKey('fecha'))
+                          _buildDateHeader(_data!['fecha']),
+
+                        // 판매 통계 (vcodes)
+                        if (_data!.containsKey('vcodes'))
+                          _buildSection(
+                            l10n.salesStatistics,
+                            _buildVcodesSection(
+                              _data!['vcodes'] is List && (_data!['vcodes'] as List).isNotEmpty
+                                  ? ((_data!['vcodes'] as List).first is Map<String, dynamic>
+                                      ? (_data!['vcodes'] as List).first as Map<String, dynamic>
+                                      : <String, dynamic>{})
+                                  : (_data!['vcodes'] is Map<String, dynamic>
+                                      ? _data!['vcodes'] as Map<String, dynamic>
+                                      : <String, dynamic>{})
+                            ),
+                            onTap: () {
+                              if (_isLargeScreen(context)) {
+                                setState(() {
+                                  _selectedReportType = ReportType.ventas;
+                                  _currentReport = 'ventas';
+                                });
+                              } else {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ReportScreen(
+                                      serverUrl: widget.serverUrl,
+                                      reportType: ReportType.ventas,
+                                      initialDate: _selectedDate,
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+
+                        // 지출 통계 (gastos)
+                        if (_data!.containsKey('gastos'))
+                          _buildSection(
+                            l10n.expenseStatistics,
+                            _buildGastosSection(
+                              _data!['gastos'] is List && (_data!['gastos'] as List).isNotEmpty
+                                  ? ((_data!['gastos'] as List).first is Map<String, dynamic>
+                                      ? (_data!['gastos'] as List).first as Map<String, dynamic>
+                                      : <String, dynamic>{})
+                                  : (_data!['gastos'] is Map<String, dynamic>
+                                      ? _data!['gastos'] as Map<String, dynamic>
+                                      : <String, dynamic>{})
+                            ),
+                          ),
+
+                        // 할인 통계 (vdetalle)
+                        if (_data!.containsKey('vdetalle'))
+                          _buildSection(
+                            l10n.discountStatistics,
+                            _buildVdetalleSection(
+                              _data!['vdetalle'] is List && (_data!['vdetalle'] as List).isNotEmpty
+                                  ? ((_data!['vdetalle'] as List).first is Map<String, dynamic>
+                                      ? (_data!['vdetalle'] as List).first as Map<String, dynamic>
+                                      : <String, dynamic>{})
+                                  : (_data!['vdetalle'] is Map<String, dynamic>
+                                      ? _data!['vdetalle'] as Map<String, dynamic>
+                                      : <String, dynamic>{})
+                            ),
+                          ),
+
+                        // 결제 통계 (vcodes_mpago)
+                        if (_data!.containsKey('vcodes_mpago'))
+                          _buildSection(
+                            l10n.mercadoPagoStatistics,
+                            _buildMpagoSection(
+                              _data!['vcodes_mpago'] is List && (_data!['vcodes_mpago'] as List).isNotEmpty
+                                  ? ((_data!['vcodes_mpago'] as List).first is Map<String, dynamic>
+                                      ? (_data!['vcodes_mpago'] as List).first as Map<String, dynamic>
+                                      : <String, dynamic>{})
+                                  : (_data!['vcodes_mpago'] is Map<String, dynamic>
+                                      ? _data!['vcodes_mpago'] as Map<String, dynamic>
+                                      : <String, dynamic>{})
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final isLargeScreen = _isLargeScreen(context);
+    
+    // 큰 화면인 경우 분할 레이아웃
+    if (isLargeScreen) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Row(
+            children: [
+              if (_databaseName != null && _databaseName!.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.storage, color: Colors.white, size: 14),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          _databaseName!,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              if (_databaseName != null && _databaseName!.isNotEmpty)
+                const SizedBox(width: 12),
+              Expanded(
+                child: Text(_getCurrentReportTitle()),
+              ),
+            ],
+          ),
+          actions: [
+            // 보고서 선택 드롭다운 메뉴
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.assessment),
+              tooltip: 'Reportes',
+              onSelected: (value) {
+                setState(() {
+                  _currentReport = value;
+                  if (value == 'resumen') {
+                    _selectedReportType = null;
+                  } else {
+                    // ReportType으로 변환
+                    switch (value) {
+                      case 'stocks':
+                        _selectedReportType = ReportType.stocks;
+                        break;
+                      case 'codigos':
+                        _selectedReportType = ReportType.codigos;
+                        break;
+                      case 'todocodigos':
+                        _selectedReportType = ReportType.todocodigos;
+                        break;
+                      case 'items':
+                        _selectedReportType = ReportType.items;
+                        break;
+                      case 'clientes':
+                        _selectedReportType = ReportType.clientes;
+                        break;
+                      case 'gastos':
+                        _selectedReportType = ReportType.gastos;
+                        break;
+                      case 'ventas':
+                        _selectedReportType = ReportType.ventas;
+                        break;
+                      case 'alertas':
+                        _selectedReportType = ReportType.alertas;
+                        break;
+                      default:
+                        _selectedReportType = null;
+                    }
+                  }
+                });
+              },
+              itemBuilder: (BuildContext context) => _buildReportMenuItems(),
+            ),
+          ],
+          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        ),
+        body: Row(
+          children: [
+            // 왼쪽: 연결 관리 + 보고서 종류 패널 (300px 고정)
+            _buildLeftPanel(context),
+            // 오른쪽: 항상 결과 표시
+            Expanded(
+              child: _buildReportContent(context),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    // 핸드폰: 기존 방식 유지
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -1794,6 +2533,11 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
   void _navigateToReport(String reportType) {
     // 현재 보고서는 아무것도 하지 않음
     if (reportType == 'resumen') {
+      if (_isLargeScreen(context)) {
+        setState(() {
+          _selectedReportType = null;
+        });
+      }
       return;
     }
 
@@ -1828,23 +2572,30 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         return;
     }
 
-    // 보고서 화면으로 이동하고, 돌아올 때 _currentReport를 'resumen'으로 설정
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ReportScreen(
-          serverUrl: widget.serverUrl,
-          reportType: reportTypeEnum,
+    // 큰 화면인 경우 오른쪽 패널에 보고서 표시
+    if (_isLargeScreen(context)) {
+      setState(() {
+        _selectedReportType = reportTypeEnum;
+      });
+    } else {
+      // 핸드폰: 기존 방식 (Navigator.push)
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ReportScreen(
+            serverUrl: widget.serverUrl,
+            reportType: reportTypeEnum,
+          ),
         ),
-      ),
-    ).then((_) {
-      // 뒤로 돌아왔을 때 _currentReport를 'resumen'으로 설정
-      if (mounted) {
-        setState(() {
-          _currentReport = 'resumen';
-        });
-      }
-    });
+      ).then((_) {
+        // 뒤로 돌아왔을 때 _currentReport를 'resumen'으로 설정
+        if (mounted) {
+          setState(() {
+            _currentReport = 'resumen';
+          });
+        }
+      });
+    }
   }
 
 }
