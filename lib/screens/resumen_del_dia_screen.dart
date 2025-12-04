@@ -488,18 +488,33 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     );
   }
 
-  Widget _buildSection(String title, List<Widget> children) {
+  Widget _buildSection(String title, List<Widget> children, {VoidCallback? onTap}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Text(
-            title,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[800],
+        GestureDetector(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                ),
+                if (onTap != null)
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    size: 16,
+                    color: Colors.grey[600],
+                  ),
+              ],
             ),
           ),
         ),
@@ -801,6 +816,19 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                                                       ? _data!['vcodes'] as Map<String, dynamic>
                                                       : <String, dynamic>{})
                                             ),
+                                            onTap: () {
+                                              // 해당 날짜의 venta lista를 요청하는 화면으로 이동
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) => ReportScreen(
+                                                    serverUrl: widget.serverUrl,
+                                                    reportType: ReportType.ventas,
+                                                    initialDate: _selectedDate,
+                                                  ),
+                                                ),
+                                              );
+                                            },
                                           ),
 
                                         // 지출 통계 (gastos) - 배열이면 첫 번째 항목 사용
@@ -1689,6 +1717,29 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
           ],
         ),
       ),
+      PopupMenuItem<String>(
+        value: 'codigos',
+        child: Row(
+          children: [
+            Icon(
+              Icons.qr_code,
+              color: _currentReport == 'codigos' ? Colors.teal : Colors.grey,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Codigos',
+              style: TextStyle(
+                fontWeight: _currentReport == 'codigos' ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+            if (_currentReport == 'codigos') ...[
+              const Spacer(),
+              const Icon(Icons.check, color: Colors.teal, size: 18),
+            ],
+          ],
+        ),
+      ),
     ];
   }
 
@@ -1719,6 +1770,9 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         break;
       case 'alertas':
         reportTypeEnum = ReportType.alertas;
+        break;
+      case 'codigos':
+        reportTypeEnum = ReportType.codigos;
         break;
       default:
         return;

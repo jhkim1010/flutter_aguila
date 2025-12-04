@@ -200,8 +200,8 @@ class DatabaseService {
     }
   }
 
-  Future<bool> connectToDatabase(DatabaseConnectionRequest request, {bool disconnectExisting = true}) async {
-    // 새로운 연결 전에 기존 연결 끊기
+  Future<bool> connectToDatabase(DatabaseConnectionRequest request, {bool disconnectExisting = false}) async {
+    // 새로운 연결 전에 기존 연결 끊기 (기본값을 false로 변경하여 disconnect 요청을 기본적으로 보내지 않음)
     if (disconnectExisting) {
       // 기존 연결 정보 확인
       final existingHeaders = await _getDatabaseHeaders();
@@ -218,6 +218,8 @@ class DatabaseService {
                  existingDbUser == request.username) {
         print('ℹ️ 동일한 연결이므로 기존 연결을 끊지 않습니다.');
       }
+    } else {
+      print('ℹ️ disconnect 요청을 보내지 않습니다. (disconnectExisting=false)');
     }
 
     final url = '$serverUrl/api/health';
@@ -536,6 +538,127 @@ class DatabaseService {
       endpoint,
       queryParameters: queryParams.isNotEmpty ? queryParams : null,
     );
+  }
+
+  /// Codigos 리스트 가져오기
+  Future<Map<String, dynamic>> getCodigos({
+    Map<String, dynamic>? filters,
+  }) async {
+    final endpoint = '/api/codigos';
+    final queryParams = <String, String>{};
+    
+    if (filters != null) {
+      filters.forEach((key, value) {
+        if (value != null) {
+          queryParams[key] = value.toString();
+        }
+      });
+    }
+    
+    return await _performGetRequest(
+      endpoint,
+      queryParameters: queryParams.isNotEmpty ? queryParams : null,
+    );
+  }
+
+  /// Codigo 업데이트하기
+  Future<Map<String, dynamic>> updateCodigo(
+    String codigo,
+    Map<String, dynamic> updatedData,
+  ) async {
+    final endpoint = '/api/codigos/$codigo';
+    
+    return await _performPutRequest(endpoint, updatedData);
+  }
+
+  /// 공통 PUT 요청 메서드 (오류 처리 포함)
+  Future<Map<String, dynamic>> _performPutRequest(
+    String endpoint,
+    Map<String, dynamic> body,
+  ) async {
+    try {
+      // 데이터베이스 연결 정보를 헤더로 가져오기
+      final headers = await _getDatabaseHeaders();
+      
+      print('=== PUT $endpoint 요청 ===');
+      print('URL: $serverUrl$endpoint');
+      print('Headers: $headers');
+      print('Body: ${json.encode(body)}');
+      
+      final response = await http.put(
+        Uri.parse('$serverUrl$endpoint'),
+        headers: headers,
+        body: json.encode(body),
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print('❌ 요청 타임아웃 (10초 초과)');
+          throw Exception('요청 타임아웃: 서버 응답이 10초를 초과했습니다. 서버가 실행 중인지 확인하세요.');
+        },
+      );
+
+      print('=== 응답 정보 ===');
+      print('Status Code: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        try {
+          if (response.body.isEmpty) {
+            return {'success': true};
+          }
+          final decoded = json.decode(response.body);
+          if (decoded is Map) {
+            return decoded as Map<String, dynamic>;
+          } else if (decoded is List) {
+            return {'data': decoded};
+          } else {
+            return {'result': decoded};
+          }
+        } catch (e) {
+          print('❌ JSON 파싱 오류: $e');
+          throw Exception('JSON 파싱 오류: 서버 응답을 파싱할 수 없습니다. 응답: ${response.body}');
+        }
+      } else {
+        // HTTP 오류 상태 코드 처리
+        String errorMessage = 'HTTP ${response.statusCode} 오류';
+        try {
+          final errorBody = json.decode(response.body);
+          if (errorBody is Map && errorBody.containsKey('message')) {
+            errorMessage = errorBody['message'].toString();
+          } else if (errorBody is Map && errorBody.containsKey('error')) {
+            errorMessage = errorBody['error'].toString();
+          } else if (response.body.isNotEmpty) {
+            errorMessage = response.body;
+          }
+        } catch (e) {
+          // JSON 파싱 실패 시 원본 응답 사용
+          if (response.body.isNotEmpty) {
+            errorMessage = response.body;
+          }
+        }
+        
+        print('❌ HTTP 오류: $errorMessage');
+        throw Exception('서버 오류 (${response.statusCode}): $errorMessage');
+      }
+    } catch (e) {
+      print('❌ PUT $endpoint 오류: $e');
+      
+      // 이미 Exception이면 그대로 전달, 아니면 새로운 Exception 생성
+      if (e is Exception) {
+        rethrow;
+      } else {
+        // 네트워크 오류 등 다른 오류 처리
+        String errorMessage = e.toString();
+        if (errorMessage.contains('SocketException') || 
+            errorMessage.contains('Failed host lookup')) {
+          throw Exception('네트워크 오류: 서버에 연결할 수 없습니다. 서버 URL과 인터넷 연결을 확인하세요.');
+        } else if (errorMessage.contains('timeout')) {
+          throw Exception('요청 타임아웃: 서버가 응답하지 않습니다. 서버가 실행 중인지 확인하세요.');
+        } else {
+          throw Exception('요청 실패: $errorMessage');
+        }
+      }
+    }
   }
 }
 

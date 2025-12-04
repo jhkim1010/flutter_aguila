@@ -8,6 +8,7 @@ enum ReportType {
   gastos,
   ventas,
   alertas,
+  codigos,
 }
 
 class ReportUtils {
@@ -25,6 +26,8 @@ class ReportUtils {
         return 'Ventas';
       case ReportType.alertas:
         return 'Alertas';
+      case ReportType.codigos:
+        return 'Codigos';
     }
   }
 
@@ -42,6 +45,8 @@ class ReportUtils {
         return Icons.shopping_cart;
       case ReportType.alertas:
         return Icons.notifications;
+      case ReportType.codigos:
+        return Icons.qr_code;
     }
   }
 
@@ -59,6 +64,8 @@ class ReportUtils {
         return Colors.blue;
       case ReportType.alertas:
         return Colors.amber;
+      case ReportType.codigos:
+        return Colors.teal;
     }
   }
 
