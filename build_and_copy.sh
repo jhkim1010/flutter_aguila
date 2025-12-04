@@ -90,13 +90,24 @@ build_windows() {
     echo "🪟 Windows 실행파일 빌드 중..."
     flutter build windows --release
     
-    if [ -d "build/windows/runner/Release" ]; then
+    # 빌드된 실행파일 경로 확인 (BINARY_NAME이 Be_Cool로 변경되었으므로 Be_Cool.exe로 빌드됨)
+    if [ -f "build/windows/runner/Release/Be_Cool.exe" ]; then
         # Windows 실행파일과 필요한 DLL 파일들을 zip으로 압축
         cd build/windows/runner/Release
         zip -r "${APP_NAME}-windows.zip" .
         cd - > /dev/null
         cp "build/windows/runner/Release/${APP_NAME}-windows.zip" "$OUTPUT_DIR/"
         echo "✅ Windows 실행파일 복사 완료: $OUTPUT_DIR/${APP_NAME}-windows.zip"
+        echo "   실행파일 이름: Be_Cool.exe"
+    elif [ -f "build/windows/runner/Release/flutter_app.exe" ]; then
+        # 이전 빌드가 남아있는 경우 이름 변경 후 압축
+        cd build/windows/runner/Release
+        mv "flutter_app.exe" "Be_Cool.exe" 2>/dev/null || true
+        zip -r "${APP_NAME}-windows.zip" .
+        cd - > /dev/null
+        cp "build/windows/runner/Release/${APP_NAME}-windows.zip" "$OUTPUT_DIR/"
+        echo "✅ Windows 실행파일 복사 완료: $OUTPUT_DIR/${APP_NAME}-windows.zip"
+        echo "   실행파일 이름: Be_Cool.exe"
     else
         echo "❌ Windows 빌드 실패"
     fi
