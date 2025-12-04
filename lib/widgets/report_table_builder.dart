@@ -21,7 +21,42 @@ class ReportTableBuilder {
     final reportColor = ReportUtils.getReportColor(reportType);
 
     final firstItem = displayedList.first as Map<String, dynamic>;
-    final keys = firstItem.keys.toList();
+    
+    // Ventas report의 경우 특정 컬럼만 특정 순서로 표시
+    List<String> keys;
+    if (reportType == ReportType.ventas) {
+      // 지정된 순서의 컬럼 목록
+      final orderedColumns = [
+        'vcode',
+        'tpago',
+        'tefectivo',
+        'tcredito',
+        'tbanco',
+        'treservado',
+        'tfavor',
+        'cntropas',
+        'hora',
+        'vendedor',
+        'clientenombre',
+      ];
+      
+      // 모든 행에서 공통으로 존재하는 컬럼만 필터링
+      final commonKeys = <String>{};
+      for (var item in displayedList) {
+        if (item is Map<String, dynamic>) {
+          if (commonKeys.isEmpty) {
+            commonKeys.addAll(orderedColumns.where((key) => item.containsKey(key)));
+          } else {
+            commonKeys.removeWhere((key) => !item.containsKey(key));
+          }
+        }
+      }
+      
+      // orderedColumns 순서 유지하면서 commonKeys에 있는 것만
+      keys = orderedColumns.where((key) => commonKeys.contains(key)).toList();
+    } else {
+      keys = firstItem.keys.toList();
+    }
     final columns = keys.asMap().entries.map((entry) {
       final index = entry.key;
       final key = entry.value;
@@ -79,82 +114,28 @@ class ReportTableBuilder {
                     columns: columns,
                     rows: displayedList.map((item) {
                       if (item is Map<String, dynamic>) {
-                        return DataRow(
-                          cells: firstItem.keys.map((key) {
-                            final value = item[key];
+                        // keys의 각 키에 대해 셀 생성 (키가 없어도 셀은 생성)
+                        final cells = keys.map((key) {
+                          final value = item[key];
+                          String formattedValue;
+                          
+                          // vcode는 오른쪽 5글자만 표시
+                          if (key == 'vcode' && value != null) {
+                            final vcodeStr = value.toString();
+                            formattedValue = vcodeStr.length > 5 
+                                ? vcodeStr.substring(vcodeStr.length - 5)
+                                : vcodeStr;
+                          } else {
                             // codigo 관련 칼럼은 문자로 처리 (숫자 포맷팅 제외)
                             final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1';
-                            final formattedValue = isCodigoColumn 
+                            formattedValue = isCodigoColumn 
                                 ? (value?.toString() ?? 'N/A')
                                 : ReportUtils.formatValue(value);
-                            final isNumeric = isCodigoColumn ? false : ReportUtils.isNumeric(value);
-                            return DataCell(
-                              Align(
-                                alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
-                                child: Text(
-                                  formattedValue,
-                                  style: const TextStyle(fontSize: 14),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        );
-                      }
-                      final formattedValue = ReportUtils.formatValue(item);
-                      final isNumeric = ReportUtils.isNumeric(item);
-                      return DataRow(
-                        cells: [
-                          DataCell(
-                            Align(
-                              alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
-                              child: Text(
-                                formattedValue,
-                                style: const TextStyle(fontSize: 14),
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          // 고정된 합계 행 (현재 화면에 보이는 항목들의 합계)
-          _buildFixedTotalRow(firstItem.keys.toList(), displayedList, reportColor),
-        ],
-      );
-    }
-
-    // 다른 보고서는 기존 방식 유지
-    return Column(
-      children: [
-        Expanded(
-          child: Scrollbar(
-            controller: scrollController,
-            thumbVisibility: true,
-            child: SingleChildScrollView(
-              controller: scrollController,
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columnSpacing: 8,
-                headingRowColor: MaterialStateProperty.all(
-                  reportColor.withOpacity(0.1),
-                ),
-                columns: columns,
-                rows: [
-                  ...displayedList.map((item) {
-                    if (item is Map<String, dynamic>) {
-                      return DataRow(
-                        cells: firstItem.keys.map((key) {
-                          final value = item[key];
-                          // codigo 관련 칼럼은 문자로 처리 (숫자 포맷팅 제외)
-                          final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1';
-                          final formattedValue = isCodigoColumn 
-                              ? (value?.toString() ?? 'N/A')
-                              : ReportUtils.formatValue(value);
-                          final isNumeric = isCodigoColumn ? false : ReportUtils.isNumeric(value);
+                          }
+                          
+                          final isNumeric = (key != 'vcode' && key != 'codigo' && key != 'codigo1' && key != 'tcode' && key != 'id_codigo1') 
+                              ? ReportUtils.isNumeric(value) 
+                              : false;
                           return DataCell(
                             Align(
                               alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
@@ -164,14 +145,86 @@ class ReportTableBuilder {
                               ),
                             ),
                           );
-                        }).toList(),
+                        }).toList();
+                        
+                        // 셀 개수가 keys.length와 일치하는지 확인
+                        assert(cells.length == keys.length, 
+                          'Row cells count (${cells.length}) must match keys count (${keys.length})');
+                        
+                        return DataRow(cells: cells);
+                      }
+                      // Map이 아닌 경우에도 keys.length만큼 셀 생성
+                      final formattedValue = ReportUtils.formatValue(item);
+                      final isNumeric = ReportUtils.isNumeric(item);
+                      return DataRow(
+                        cells: List.generate(keys.length, (index) {
+                          return DataCell(
+                            Align(
+                              alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+                              child: Text(
+                                index == 0 ? formattedValue : '',
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            ),
+                          );
+                        }),
                       );
-                    }
-                    final formattedValue = ReportUtils.formatValue(item);
-                    final isNumeric = ReportUtils.isNumeric(item);
-                    return DataRow(
-                      cells: [
-                        DataCell(
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // 고정된 합계 행 (현재 화면에 보이는 항목들의 합계)
+          _buildFixedTotalRow(keys, displayedList, reportColor),
+        ],
+      );
+    }
+
+    // 다른 보고서는 기존 방식 유지 (ventas 포함)
+    return Column(
+      children: [
+        Expanded(
+          child: Scrollbar(
+            controller: scrollController,
+            thumbVisibility: true,
+            child: SingleChildScrollView(
+              controller: scrollController,
+              scrollDirection: Axis.vertical,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: DataTable(
+                  columnSpacing: 8,
+                  headingRowColor: MaterialStateProperty.all(
+                    reportColor.withOpacity(0.1),
+                  ),
+                  columns: columns,
+                  rows: [
+                  ...displayedList.map((item) {
+                    if (item is Map<String, dynamic>) {
+                      // keys의 각 키에 대해 셀 생성 (키가 없어도 셀은 생성)
+                      final cells = keys.map((key) {
+                        final value = item[key];
+                        String formattedValue;
+                        
+                        // vcode는 오른쪽 5글자만 표시
+                        if (key == 'vcode' && value != null) {
+                          final vcodeStr = value.toString();
+                          formattedValue = vcodeStr.length > 5 
+                              ? vcodeStr.substring(vcodeStr.length - 5)
+                              : vcodeStr;
+                        } else {
+                          // codigo 관련 칼럼은 문자로 처리 (숫자 포맷팅 제외)
+                          final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1';
+                          formattedValue = isCodigoColumn 
+                              ? (value?.toString() ?? 'N/A')
+                              : ReportUtils.formatValue(value);
+                        }
+                        
+                        final isNumeric = (key != 'vcode' && key != 'codigo' && key != 'codigo1' && key != 'tcode' && key != 'id_codigo1') 
+                            ? ReportUtils.isNumeric(value) 
+                            : false;
+                        return DataCell(
                           Align(
                             alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
                             child: Text(
@@ -179,13 +232,36 @@ class ReportTableBuilder {
                               style: const TextStyle(fontSize: 14),
                             ),
                           ),
-                        ),
-                      ],
+                        );
+                      }).toList();
+                      
+                      // 셀 개수가 keys.length와 일치하는지 확인
+                      assert(cells.length == keys.length, 
+                        'Row cells count (${cells.length}) must match keys count (${keys.length})');
+                      
+                      return DataRow(cells: cells);
+                    }
+                    // Map이 아닌 경우에도 keys.length만큼 셀 생성
+                    final formattedValue = ReportUtils.formatValue(item);
+                    final isNumeric = ReportUtils.isNumeric(item);
+                    return DataRow(
+                      cells: List.generate(keys.length, (index) {
+                        return DataCell(
+                          Align(
+                            alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+                            child: Text(
+                              index == 0 ? formattedValue : '',
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ),
+                        );
+                      }),
                     );
                   }),
                   // 합계 행 추가
-                  _buildTotalRow(firstItem.keys.toList(), dataList, reportColor),
-                ],
+                  _buildTotalRow(keys, dataList, reportColor),
+                  ],
+                ),
               ),
             ),
           ),
