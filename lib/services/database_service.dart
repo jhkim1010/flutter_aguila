@@ -31,6 +31,9 @@ class DatabaseService {
     iOptions: IOSOptions(
       accessibility: KeychainAccessibility.first_unlock_this_device,
     ),
+    mOptions: MacOsOptions(
+      accessibility: KeychainAccessibility.first_unlock_this_device,
+    ),
   );
 
   DatabaseService({required this.serverUrl});
@@ -181,6 +184,15 @@ class DatabaseService {
       final username = await _storage.read(key: 'username') ?? '';
       final password = await _storage.read(key: 'password') ?? '';
 
+      // 헤더가 비어있으면 경고 출력
+      if (databaseName.isEmpty || username.isEmpty || password.isEmpty) {
+        print('⚠️ 저장된 데이터베이스 연결 정보가 없거나 불완전합니다.');
+        print('   database_name: ${databaseName.isEmpty ? "(비어있음)" : databaseName}');
+        print('   username: ${username.isEmpty ? "(비어있음)" : username}');
+        print('   password: ${password.isEmpty ? "(비어있음)" : "***"}');
+        print('   → 데이터베이스에 다시 연결해주세요.');
+      }
+
       return {
         'Content-Type': 'application/json',
         'x-db-name': databaseName,
@@ -189,6 +201,7 @@ class DatabaseService {
         'x-db-ssl': 'false',
       };
     } catch (e) {
+      print('❌ 데이터베이스 헤더 읽기 오류: $e');
       // 저장된 정보가 없거나 오류 발생 시 기본 헤더 반환
       return {
         'Content-Type': 'application/json',
@@ -254,6 +267,16 @@ class DatabaseService {
 
       if (response.statusCode == 200) {
         print('✅ 연결 성공');
+        // 연결 성공 시 데이터베이스 정보를 저장
+        try {
+          await _storage.write(key: 'database_name', value: request.databaseName);
+          await _storage.write(key: 'username', value: request.username);
+          await _storage.write(key: 'password', value: request.password);
+          print('✅ 데이터베이스 정보 저장 완료');
+        } catch (e) {
+          print('⚠️ 데이터베이스 정보 저장 실패: $e');
+          // 저장 실패해도 연결은 성공한 것으로 처리
+        }
         return true;
       } else {
         print('❌ 연결 실패: HTTP ${response.statusCode}');
@@ -621,19 +644,25 @@ class DatabaseService {
       }
       
       // 페이지네이션 정보 확인
+      // pagination.id_codigo가 있으면 다음 페이지가 있다고 판단
       if (response.containsKey('pagination') && response['pagination'] is Map) {
         final pagination = response['pagination'] as Map<String, dynamic>;
-        hasMore = pagination['hasMore'] == true;
-        nextMaxUtime = pagination['nextMaxUtime']?.toString();
-        
-        print('📊 페이지네이션 정보:');
-        print('   - count: ${pagination['count']}');
-        print('   - total: ${pagination['total']}');
-        print('   - hasMore: $hasMore');
-        print('   - nextMaxUtime: $nextMaxUtime');
+        // pagination.id_codigo가 있으면 다음 페이지가 있음
+        if (pagination.containsKey('id_codigo') && pagination['id_codigo'] != null) {
+          nextMaxUtime = pagination['id_codigo']?.toString();
+          hasMore = true;
+          print('📊 페이지네이션 정보:');
+          print('   - id_codigo: $nextMaxUtime');
+          print('   - hasMore: $hasMore');
+        } else {
+          nextMaxUtime = null;
+          hasMore = false;
+          print('ℹ️ 마지막 페이지입니다.');
+        }
       } else {
         // 페이지네이션 정보가 없으면 더 이상 요청하지 않음
         hasMore = false;
+        nextMaxUtime = null;
         print('⚠️ 페이지네이션 정보가 없습니다. 로드 완료로 간주합니다.');
       }
     }
@@ -650,11 +679,27 @@ class DatabaseService {
   }
 
   /// Codigo 업데이트하기
-  Future<Map<String, dynamic>> updateCodigo(
-    String codigo,
-    Map<String, dynamic> updatedData,
-  ) async {
-    final endpoint = '/api/codigos/$codigo';
+  /// id_codigo가 있으면 우선 사용, 없으면 codigo 사용
+  Future<Map<String, dynamic>> updateCodigo({
+    String? idCodigo,
+    String? codigo,
+    required Map<String, dynamic> updatedData,
+  }) async {
+    // id_codigo를 우선적으로 사용 (편집 시 매우 중요)
+    final identifier = idCodigo ?? codigo;
+    if (identifier == null || identifier.isEmpty) {
+      throw Exception('id_codigo 또는 codigo가 필요합니다.');
+    }
+    
+    // id_codigo가 있으면 그것을 사용, 없으면 codigo 사용
+    final endpoint = idCodigo != null 
+        ? '/api/codigos/id/$idCodigo'
+        : '/api/codigos/$codigo';
+    
+    print('=== Codigo 업데이트 ===');
+    print('id_codigo: $idCodigo');
+    print('codigo: $codigo');
+    print('endpoint: $endpoint');
     
     return await _performPutRequest(endpoint, updatedData);
   }
@@ -668,10 +713,33 @@ class DatabaseService {
       // 데이터베이스 연결 정보를 헤더로 가져오기
       final headers = await _getDatabaseHeaders();
       
-      print('=== PUT $endpoint 요청 ===');
-      print('URL: $serverUrl$endpoint');
-      print('Headers: $headers');
-      print('Body: ${json.encode(body)}');
+      print('');
+      print('═══════════════════════════════════════════════════════════');
+      print('🌐 HTTP PUT 요청 상세 정보');
+      print('═══════════════════════════════════════════════════════════');
+      print('📍 요청 URL:');
+      print('   $serverUrl$endpoint');
+      print('');
+      print('📋 요청 헤더:');
+      headers.forEach((key, value) {
+        // 비밀번호는 마스킹 처리
+        if (key.toLowerCase().contains('password') || key.toLowerCase().contains('auth')) {
+          print('   $key: ${value.toString().substring(0, value.toString().length > 10 ? 10 : value.toString().length)}...');
+        } else {
+          print('   $key: $value');
+        }
+      });
+      print('');
+      print('📦 요청 Body (JSON):');
+      try {
+        final jsonBody = json.encode(body);
+        print('   $jsonBody');
+      } catch (e) {
+        print('   ⚠️ JSON 변환 실패: $e');
+        print('   $body');
+      }
+      print('═══════════════════════════════════════════════════════════');
+      print('');
       
       final response = await http.put(
         Uri.parse('$serverUrl$endpoint'),

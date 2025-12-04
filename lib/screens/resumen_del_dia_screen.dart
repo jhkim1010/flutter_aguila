@@ -5,6 +5,7 @@ import '../l10n/app_localizations.dart';
 import '../services/database_service.dart';
 import '../services/connection_storage_service.dart';
 import '../models/connection_info.dart';
+import '../utils/platform_utils.dart';
 import 'main_connection_screen.dart';
 import 'celebration_screen.dart';
 import 'connection_screen.dart';
@@ -789,14 +790,35 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                   : Builder(
                       builder: (context) {
                         final l10n = AppLocalizations.of(context)!;
+                        final platformType = PlatformUtils.getPlatformType(context);
+                        final maxWidth = PlatformUtils.getMaxWidth(
+                          context,
+                          mobileMaxWidth: double.infinity,
+                          tabletMaxWidth: 1200,
+                          desktopMaxWidth: 1600,
+                        );
+                        final padding = PlatformUtils.getPadding(
+                          context,
+                          mobilePadding: const EdgeInsets.all(16),
+                          tabletPadding: const EdgeInsets.all(24),
+                          desktopPadding: const EdgeInsets.all(32),
+                        );
+                        
                         return RefreshIndicator(
                           onRefresh: _loadData,
-                          child: _hasMultipleSucursales()
-                              ? _buildComparisonView(l10n)
-                              : SingleChildScrollView(
-                                  child: Container(
-                                    width: double.infinity,
-                                    child: Column(
+                          child: Center(
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(maxWidth: maxWidth),
+                              child: _hasMultipleSucursales()
+                                  ? Padding(
+                                      padding: padding,
+                                      child: _buildComparisonView(l10n),
+                                    )
+                                  : SingleChildScrollView(
+                                      child: Container(
+                                        width: double.infinity,
+                                        padding: padding,
+                                        child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.stretch,
                                       children: [
                                         // 날짜 표시
@@ -879,6 +901,8 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                                     ),
                                   ),
                                 ),
+                            ),
+                          ),
                         );
                       },
                     ),
@@ -1611,6 +1635,52 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         ),
       ),
       PopupMenuItem<String>(
+        value: 'codigos',
+        child: Row(
+          children: [
+            Icon(
+              Icons.qr_code,
+              color: _currentReport == 'codigos' ? Colors.teal : Colors.grey,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Codigos',
+              style: TextStyle(
+                fontWeight: _currentReport == 'codigos' ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+            if (_currentReport == 'codigos') ...[
+              const Spacer(),
+              const Icon(Icons.check, color: Colors.teal, size: 18),
+            ],
+          ],
+        ),
+      ),
+      PopupMenuItem<String>(
+        value: 'todocodigos',
+        child: Row(
+          children: [
+            Icon(
+              Icons.qr_code_scanner,
+              color: _currentReport == 'todocodigos' ? Colors.cyan : Colors.grey,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Todo Codigos',
+              style: TextStyle(
+                fontWeight: _currentReport == 'todocodigos' ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+            if (_currentReport == 'todocodigos') ...[
+              const Spacer(),
+              const Icon(Icons.check, color: Colors.cyan, size: 18),
+            ],
+          ],
+        ),
+      ),
+      PopupMenuItem<String>(
         value: 'items',
         child: Row(
           children: [
@@ -1717,29 +1787,6 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
           ],
         ),
       ),
-      PopupMenuItem<String>(
-        value: 'codigos',
-        child: Row(
-          children: [
-            Icon(
-              Icons.qr_code,
-              color: _currentReport == 'codigos' ? Colors.teal : Colors.grey,
-              size: 20,
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'Codigos',
-              style: TextStyle(
-                fontWeight: _currentReport == 'codigos' ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-            if (_currentReport == 'codigos') ...[
-              const Spacer(),
-              const Icon(Icons.check, color: Colors.teal, size: 18),
-            ],
-          ],
-        ),
-      ),
     ];
   }
 
@@ -1773,6 +1820,9 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         break;
       case 'codigos':
         reportTypeEnum = ReportType.codigos;
+        break;
+      case 'todocodigos':
+        reportTypeEnum = ReportType.todocodigos;
         break;
       default:
         return;
