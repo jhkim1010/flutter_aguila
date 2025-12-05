@@ -634,7 +634,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     );
   }
 
-  Widget _buildSection(String title, List<Widget> children, {VoidCallback? onTap}) {
+  Widget _buildSection(String title, List<Widget> children, {VoidCallback? onTap, bool useGrid = true}) {
     final isLarge = _isLargeScreen(context);
     
     return Column(
@@ -667,9 +667,10 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
           ),
         ),
         // 대형 화면: 그리드 형태로 표시 (한 줄에 3-4개), 작은 화면: 세로로 배치
+        // 단, useGrid가 false이면 항상 세로 배치 (stock resumen 등)
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: isLarge
+          child: (isLarge && useGrid)
               ? LayoutBuilder(
                   builder: (context, constraints) {
                     // 화면 크기에 따라 열 개수 결정 (최소 3개, 최대 4개)
@@ -681,7 +682,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                       physics: const NeverScrollableScrollPhysics(),
                       mainAxisSpacing: 12,
                       crossAxisSpacing: 12,
-                      childAspectRatio: 1.5,
+                      childAspectRatio: 3.5,
                       children: children,
                     );
                   },
@@ -1670,6 +1671,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                           ),
 
                         // Stock Resumen (stock_resumen 또는 stocks 키 확인)
+                        // useGrid: false로 설정하여 자체 GridView 사용 (중복 방지)
                         if (_data!.containsKey('stock_resumen') || _data!.containsKey('stocks'))
                           _buildSection(
                             'Stock Resumen',
@@ -1678,6 +1680,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                                 ? {'stocks': _data!['stocks']}
                                 : _data!['stock_resumen']
                             ),
+                            useGrid: false,
                             onTap: () {
                               if (_isLargeScreen(context)) {
                                 setState(() {
@@ -2097,6 +2100,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                                           ),
 
                                         // Stock Resumen (stock_resumen 또는 stocks 키 확인)
+                                        // useGrid: false로 설정하여 자체 GridView 사용 (중복 방지)
                                         if (_data!.containsKey('stock_resumen') || _data!.containsKey('stocks'))
                                           _buildSection(
                                             'Stock Resumen',
@@ -2105,6 +2109,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                                                 ? {'stocks': _data!['stocks']}
                                                 : _data!['stock_resumen']
                                             ),
+                                            useGrid: false,
                                             onTap: () {
                                               Navigator.push(
                                                 context,
