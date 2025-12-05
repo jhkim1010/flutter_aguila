@@ -11,9 +11,27 @@ class StocksBuilder {
     required bool isLoadingMore,
     required Color reportColor,
   }) {
-    final dataList = data['data'] as List;
+    // 새로운 응답 형식 지원: data 배열이 최상위에 있음
+    final dataList = data['data'] as List? ?? [];
+    
+    // 디버깅 로그
+    print('🔍 StocksBuilder.buildContent:');
+    print('   - data 키 존재: ${data.containsKey('data')}');
+    print('   - dataList 길이: ${dataList.length}');
+    if (dataList.isNotEmpty && dataList.first is Map) {
+      print('   - 첫 번째 항목 키: ${(dataList.first as Map).keys.toList()}');
+    }
+    
     if (dataList.isEmpty) {
-      return const Center(child: Text('No data available'));
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32.0),
+          child: Text(
+            'No data available',
+            style: TextStyle(fontSize: 16, color: Colors.grey),
+          ),
+        ),
+      );
     }
     
     final filteredDataList = dataList;
@@ -51,18 +69,11 @@ class StocksBuilder {
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: SizedBox(
-              width: MediaQuery.of(context).size.width * 2,
+              width: MediaQuery.of(context).size.width * 3, // 더 많은 컬럼을 위해 너비 증가
               child: Column(
                 children: [
-                  // 칼럼 헤더
-                  buildHeader(
-                    reportType: ReportType.stocks,
-                    sortColumn: null, // 외부에서 관리
-                    sortAscending: true,
-                    onSort: (column, ascending) {}, // 외부에서 처리
-                    reportColor: reportColor,
-                  ),
-                  // 데이터 리스트
+                  // 헤더는 외부에서 관리되므로 여기서는 제거
+                  // 데이터 리스트만 표시
                   Expanded(
                     child: ListView.builder(
                       controller: scrollController,
@@ -87,61 +98,256 @@ class StocksBuilder {
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
+                              // Codigo
                               SizedBox(
-                                width: 150,
+                                width: 120,
                                 child: Text(
                                   stock['codigo']?.toString() ?? 
                                   stock['tcode']?.toString() ?? 
                                   'N/A',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 14,
+                                    fontSize: 12,
                                     color: Colors.black87,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 8),
+                              // Descripción
                               SizedBox(
-                                width: 300,
+                                width: 250,
                                 child: Text(
                                   stock['descripcion']?.toString() ?? 
                                   stock['tdesc']?.toString() ?? 
                                   'N/A',
                                   style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 11,
                                     color: Colors.grey[600],
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              if (stock['stockreal'] != null || stock['stockreal3'] != null)
-                                SizedBox(
-                                  width: 100,
-                                  child: Text(
-                                    stock['stockreal']?.toString() ?? 
-                                    stock['stockreal3']?.toString() ?? 
-                                    'N/A',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey[700],
-                                    ),
+                              const SizedBox(width: 8),
+                              // Totaling
+                              SizedBox(
+                                width: 90,
+                                child: Text(
+                                  stock['totaling']?.toString() ?? 'N/A',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey[700],
+                                  ),
+                                  textAlign: TextAlign.right,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Total Venta
+                              SizedBox(
+                                width: 100,
+                                child: Text(
+                                  stock['totalventa']?.toString() ?? 'N/A',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey[700],
+                                  ),
+                                  textAlign: TextAlign.right,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Today Ingreso
+                              SizedBox(
+                                width: 110,
+                                child: Text(
+                                  stock['todayingreso']?.toString() ?? 'N/A',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey[700],
+                                  ),
+                                  textAlign: TextAlign.right,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Today Venta
+                              SizedBox(
+                                width: 100,
+                                child: Text(
+                                  stock['todayventa']?.toString() ?? 'N/A',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey[700],
+                                  ),
+                                  textAlign: TextAlign.right,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Total Reservado
+                              SizedBox(
+                                width: 120,
+                                child: Text(
+                                  stock['totalreservado']?.toString() ?? 'N/A',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey[700],
+                                  ),
+                                  textAlign: TextAlign.right,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Cnt Offset
+                              SizedBox(
+                                width: 100,
+                                child: Text(
+                                  stock['cntoffset']?.toString() ?? 'N/A',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey[700],
+                                  ),
+                                  textAlign: TextAlign.right,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Stock Real
+                              SizedBox(
+                                width: 100,
+                                child: Text(
+                                  stock['stockreal']?.toString() ?? 
+                                  stock['stockreal3']?.toString() ?? 
+                                  'N/A',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey[700],
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.right,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Porcentaje
+                              SizedBox(
+                                width: 100,
+                                child: Text(
+                                  stock['porcentaje']?.toString() ?? 'N/A',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey[700],
+                                  ),
+                                  textAlign: TextAlign.right,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // First Date
+                              SizedBox(
+                                width: 100,
+                                child: Text(
+                                  stock['first_date']?.toString() ?? 'N/A',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey[700],
                                   ),
                                 ),
-                              if (stock['pre1'] != null)
-                                SizedBox(
-                                  width: 100,
-                                  child: Text(
-                                    stock['pre1']?.toString() ?? 'N/A',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey[700],
-                                    ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Last Date
+                              SizedBox(
+                                width: 100,
+                                child: Text(
+                                  stock['last_date']?.toString() ?? 'N/A',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey[700],
                                   ),
                                 ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Precio 1-5
+                              SizedBox(
+                                width: 90,
+                                child: Text(
+                                  stock['pre1']?.toString() ?? 'N/A',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey[700],
+                                  ),
+                                  textAlign: TextAlign.right,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              SizedBox(
+                                width: 90,
+                                child: Text(
+                                  stock['pre2']?.toString() ?? 'N/A',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey[700],
+                                  ),
+                                  textAlign: TextAlign.right,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              SizedBox(
+                                width: 90,
+                                child: Text(
+                                  stock['pre3']?.toString() ?? 'N/A',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey[700],
+                                  ),
+                                  textAlign: TextAlign.right,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              SizedBox(
+                                width: 90,
+                                child: Text(
+                                  stock['pre4']?.toString() ?? 'N/A',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey[700],
+                                  ),
+                                  textAlign: TextAlign.right,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              SizedBox(
+                                width: 90,
+                                child: Text(
+                                  stock['pre5']?.toString() ?? 'N/A',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey[700],
+                                  ),
+                                  textAlign: TextAlign.right,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Sucursal
+                              SizedBox(
+                                width: 90,
+                                child: Text(
+                                  stock['sucursal']?.toString() ?? 'N/A',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey[700],
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // ID Codigo1
+                              SizedBox(
+                                width: 100,
+                                child: Text(
+                                  stock['id_codigo1']?.toString() ?? 'N/A',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey[700],
+                                  ),
+                                  textAlign: TextAlign.right,
+                                ),
+                              ),
                             ],
                           ),
                         );
@@ -182,13 +388,43 @@ class StocksBuilder {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            _buildSortableHeader('codigo', 'Codigo', 150, sortColumn, sortAscending, onSort, reportColor),
-            const SizedBox(width: 12),
-            _buildSortableHeader('descripcion', 'Descripción', 300, sortColumn, sortAscending, onSort, reportColor),
-            const SizedBox(width: 12),
-            _buildSortableHeader('stockreal', 'Stock', 100, sortColumn, sortAscending, onSort, reportColor),
-            const SizedBox(width: 12),
-            _buildSortableHeader('pre1', 'Precio 1', 100, sortColumn, sortAscending, onSort, reportColor),
+            _buildSortableHeader('codigo', 'Codigo', 120, sortColumn, sortAscending, onSort, reportColor),
+            const SizedBox(width: 8),
+            _buildSortableHeader('descripcion', 'Descripción', 250, sortColumn, sortAscending, onSort, reportColor),
+            const SizedBox(width: 8),
+            _buildSortableHeader('totaling', 'Totaling', 90, sortColumn, sortAscending, onSort, reportColor),
+            const SizedBox(width: 8),
+            _buildSortableHeader('totalventa', 'Total Venta', 100, sortColumn, sortAscending, onSort, reportColor),
+            const SizedBox(width: 8),
+            _buildSortableHeader('todayingreso', 'Today Ingreso', 110, sortColumn, sortAscending, onSort, reportColor),
+            const SizedBox(width: 8),
+            _buildSortableHeader('todayventa', 'Today Venta', 100, sortColumn, sortAscending, onSort, reportColor),
+            const SizedBox(width: 8),
+            _buildSortableHeader('totalreservado', 'Total Reservado', 120, sortColumn, sortAscending, onSort, reportColor),
+            const SizedBox(width: 8),
+            _buildSortableHeader('cntoffset', 'Cnt Offset', 100, sortColumn, sortAscending, onSort, reportColor),
+            const SizedBox(width: 8),
+            _buildSortableHeader('stockreal', 'Stock Real', 100, sortColumn, sortAscending, onSort, reportColor),
+            const SizedBox(width: 8),
+            _buildSortableHeader('porcentaje', 'Porcentaje', 100, sortColumn, sortAscending, onSort, reportColor),
+            const SizedBox(width: 8),
+            _buildSortableHeader('first_date', 'First Date', 100, sortColumn, sortAscending, onSort, reportColor),
+            const SizedBox(width: 8),
+            _buildSortableHeader('last_date', 'Last Date', 100, sortColumn, sortAscending, onSort, reportColor),
+            const SizedBox(width: 8),
+            _buildSortableHeader('pre1', 'Precio 1', 90, sortColumn, sortAscending, onSort, reportColor),
+            const SizedBox(width: 8),
+            _buildSortableHeader('pre2', 'Precio 2', 90, sortColumn, sortAscending, onSort, reportColor),
+            const SizedBox(width: 8),
+            _buildSortableHeader('pre3', 'Precio 3', 90, sortColumn, sortAscending, onSort, reportColor),
+            const SizedBox(width: 8),
+            _buildSortableHeader('pre4', 'Precio 4', 90, sortColumn, sortAscending, onSort, reportColor),
+            const SizedBox(width: 8),
+            _buildSortableHeader('pre5', 'Precio 5', 90, sortColumn, sortAscending, onSort, reportColor),
+            const SizedBox(width: 8),
+            _buildSortableHeader('sucursal', 'Sucursal', 90, sortColumn, sortAscending, onSort, reportColor),
+            const SizedBox(width: 8),
+            _buildSortableHeader('id_codigo1', 'ID Codigo1', 100, sortColumn, sortAscending, onSort, reportColor),
           ],
         ),
       ),
@@ -246,16 +482,26 @@ class StocksBuilder {
     required Function(String?) onSucursalChanged,
     required Color reportColor,
   }) {
-    if (data == null || !data.containsKey('filters')) {
+    if (data == null) {
       return const SizedBox.shrink();
     }
     
-    final filters = data['filters'] as Map<String, dynamic>?;
-    if (filters == null || !filters.containsKey('bcolorview')) {
-      return const SizedBox.shrink();
+    // 새로운 응답 형식: filters 객체가 최상위에 있음
+    // 기존 형식 지원: data['filters'] 또는 최상위 bcolorview
+    Map<String, dynamic>? filters;
+    if (data.containsKey('filters') && data['filters'] is Map) {
+      filters = data['filters'] as Map<String, dynamic>;
     }
     
-    final bcolorview = filters['bcolorview'];
+    // bcolorview 확인 (filters 객체 안 또는 최상위)
+    dynamic bcolorview;
+    if (filters != null && filters.containsKey('bcolorview')) {
+      bcolorview = filters['bcolorview'];
+    } else if (data.containsKey('bcolorview')) {
+      bcolorview = data['bcolorview'];
+    } else {
+      return const SizedBox.shrink();
+    }
     final viewType = (bcolorview == true) ? 'Vista Resumida' : 'VistaD';
     
     // Vista Detallada일 때만 sucursal 필터 표시
@@ -343,11 +589,20 @@ class StocksBuilder {
                 ),
               ),
             ],
-          if (data.containsKey('summary'))
+          // summary 정보 표시 (새로운 응답 형식: summary 객체 또는 최상위 total_items)
+          if (data.containsKey('summary') || data.containsKey('total_items'))
             const Spacer(),
-          if (data.containsKey('summary'))
+          if (data.containsKey('summary') && data['summary'] is Map)
             Text(
-              'Total: ${data['summary']['total_items'] ?? 0}',
+              'Total: ${(data['summary'] as Map)['total_items'] ?? 0}',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
+            )
+          else if (data.containsKey('total_items'))
+            Text(
+              'Total: ${data['total_items'] ?? 0}',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.grey[600],

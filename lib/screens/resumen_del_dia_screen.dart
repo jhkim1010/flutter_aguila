@@ -500,7 +500,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         sucursal: sucursal ?? _selectedSucursal,
       );
       
-      // Stock resumen도 함께 가져오기
+      // Stock resumen도 함께 가져오기 (stocks GET 요청에서 resumen_del_dia 포함)
       try {
         print('📊 Stock resumen 요청 시작...');
         final stockResumen = await _databaseService.getStocksReport(
@@ -513,8 +513,21 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         
         // Stock resumen 데이터를 resumen del dia 데이터에 추가
         if (stockResumen != null && stockResumen.isNotEmpty) {
-          data['stock_resumen'] = stockResumen;
-          print('✅ Stock resumen 데이터 추가 완료');
+          // 새로운 응답 형식: resumen_del_dia 배열이 stocks 응답에 포함됨
+          if (stockResumen.containsKey('resumen_del_dia') && stockResumen['resumen_del_dia'] is List) {
+            final resumenDelDia = stockResumen['resumen_del_dia'] as List;
+            // 기존 코드와 호환성을 위해 stocks 키로 변환
+            data['stocks'] = resumenDelDia;
+            data['stock_resumen'] = {'stocks': resumenDelDia};
+            print('✅ Stock resumen 데이터 추가 완료 (resumen_del_dia에서 추출: ${resumenDelDia.length}개 항목)');
+          } else {
+            // 기존 형식 지원 (하위 호환성)
+            data['stock_resumen'] = stockResumen;
+            if (stockResumen.containsKey('stocks') && stockResumen['stocks'] is List) {
+              data['stocks'] = stockResumen['stocks'];
+            }
+            print('✅ Stock resumen 데이터 추가 완료 (기존 형식)');
+          }
         }
       } catch (e) {
         print('⚠️ Stock resumen 가져오기 실패 (무시하고 계속 진행): $e');

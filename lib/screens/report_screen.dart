@@ -206,11 +206,29 @@ class _ReportScreenState extends State<ReportScreen> {
             sortColumn: _stocksSortColumn,
             sortAscending: _stocksSortAscending,
           );
+          
+          // 디버깅: 응답 데이터 구조 확인
+          print('📊 Stocks 응답 데이터 구조:');
+          print('   - data 키 존재: ${data.containsKey('data')}');
+          if (data.containsKey('data')) {
+            final dataList = data['data'];
+            print('   - data 타입: ${dataList.runtimeType}');
+            if (dataList is List) {
+              print('   - data 배열 길이: ${dataList.length}');
+            }
+          }
+          print('   - filters 키 존재: ${data.containsKey('filters')}');
+          print('   - summary 키 존재: ${data.containsKey('summary')}');
+          print('   - pagination 키 존재: ${data.containsKey('pagination')}');
+          
           // 페이지네이션 정보 저장
           if (data.containsKey('pagination') && data['pagination'] is Map) {
             final pagination = data['pagination'] as Map<String, dynamic>;
             _stocksHasMore = pagination['hasMore'] == true;
             _stocksNextMaxUtime = pagination['nextMaxUtime']?.toString();
+            print('   - 페이지네이션: hasMore=$_stocksHasMore, nextMaxUtime=$_stocksNextMaxUtime');
+          } else {
+            print('   ⚠️ 페이지네이션 정보 없음');
           }
           break;
         case ReportType.items:

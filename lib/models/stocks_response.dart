@@ -1,3 +1,64 @@
+/// Stock Resumen 아이템 모델 (일일 요약 데이터)
+class StockResumenItem {
+  final int? itemCount;
+  final double? tVentas;
+  final double? tIngresos;
+  final double? tOffset;
+  final double? hVentas;
+  final double? hIngresos;
+  final double? finalStock;
+  final int? sucursal;
+
+  StockResumenItem({
+    this.itemCount,
+    this.tVentas,
+    this.tIngresos,
+    this.tOffset,
+    this.hVentas,
+    this.hIngresos,
+    this.finalStock,
+    this.sucursal,
+  });
+
+  factory StockResumenItem.fromMap(Map<String, dynamic> map) {
+    return StockResumenItem(
+      itemCount: map['item_count'] as int?,
+      tVentas: _parseDouble(map['tVentas']),
+      tIngresos: _parseDouble(map['tIngresos']),
+      tOffset: _parseDouble(map['tOffset']),
+      hVentas: _parseDouble(map['hVentas']),
+      hIngresos: _parseDouble(map['hIngresos']),
+      finalStock: _parseDouble(map['finalStock']),
+      sucursal: map['sucursal'] is int 
+          ? map['sucursal'] as int
+          : (map['sucursal'] is String ? int.tryParse(map['sucursal']) : null),
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      if (itemCount != null) 'item_count': itemCount,
+      if (tVentas != null) 'tVentas': tVentas,
+      if (tIngresos != null) 'tIngresos': tIngresos,
+      if (tOffset != null) 'tOffset': tOffset,
+      if (hVentas != null) 'hVentas': hVentas,
+      if (hIngresos != null) 'hIngresos': hIngresos,
+      if (finalStock != null) 'finalStock': finalStock,
+      if (sucursal != null) 'sucursal': sucursal,
+    };
+  }
+
+  static double? _parseDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) {
+      return double.tryParse(value);
+    }
+    return null;
+  }
+}
+
 /// Stocks 페이지네이션 정보 모델
 class StocksPagination {
   final int count;
@@ -217,6 +278,7 @@ class StocksResponse {
   final String? sourceTable;
   final List<StockItem> data;
   final StocksPagination pagination;
+  final List<StockResumenItem> resumenDelDia;
 
   StocksResponse({
     this.filters,
@@ -231,6 +293,7 @@ class StocksResponse {
     this.sourceTable,
     required this.data,
     required this.pagination,
+    this.resumenDelDia = const [],
   });
 
   factory StocksResponse.fromMap(Map<String, dynamic> map) {
@@ -244,19 +307,43 @@ class StocksResponse {
     final paginationMap = map['pagination'] as Map<String, dynamic>? ?? {};
     final pagination = StocksPagination.fromMap(paginationMap);
 
+    // filters 객체에서 정보 추출
+    final filtersMap = map['filters'] as Map<String, dynamic>?;
+    final sucursalValue = filtersMap?['sucursal'];
+    final sucursalStr = sucursalValue == 'all' 
+        ? 'all' 
+        : (sucursalValue?.toString() ?? map['sucursal']?.toString());
+    final bcolorviewValue = filtersMap?['bcolorview'] ?? map['bcolorview'] ?? false;
+    final valor1Value = filtersMap?['valor1']?.toString() ?? map['valor1']?.toString();
+    final filteringWordValue = filtersMap?['filtering_word']?.toString() ?? map['filtering_word']?.toString();
+    final sortColumnValue = filtersMap?['sort_column']?.toString() ?? map['sort_column']?.toString();
+    final sortAscendingValue = filtersMap?['sort_ascending'] as bool? ?? map['sort_ascending'] as bool?;
+
+    // summary 객체에서 정보 추출
+    final summaryMap = map['summary'] as Map<String, dynamic>?;
+    final totalItemsValue = summaryMap?['total_items'] as int? ?? map['total_items'] as int? ?? 0;
+    final sourceTableValue = summaryMap?['source_table']?.toString() ?? map['source_table']?.toString();
+
+    // resumen_del_dia 배열 파싱
+    final resumenDelDiaList = map['resumen_del_dia'] as List<dynamic>? ?? [];
+    final resumenDelDiaItems = resumenDelDiaList
+        .map((item) => StockResumenItem.fromMap(item as Map<String, dynamic>))
+        .toList();
+
     return StocksResponse(
-      filters: map['filters'] as Map<String, dynamic>?,
-      sucursal: map['sucursal']?.toString(),
-      bcolorview: map['bcolorview'] as bool? ?? false,
-      valor1: map['valor1']?.toString(),
-      filteringWord: map['filtering_word']?.toString(),
-      sortColumn: map['sort_column']?.toString(),
-      sortAscending: map['sort_ascending'] as bool?,
-      summary: map['summary'] as Map<String, dynamic>?,
-      totalItems: map['total_items'] as int? ?? 0,
-      sourceTable: map['source_table']?.toString(),
+      filters: filtersMap ?? map['filters'] as Map<String, dynamic>?,
+      sucursal: sucursalStr,
+      bcolorview: bcolorviewValue is bool ? bcolorviewValue : (bcolorviewValue == true || bcolorviewValue == 'true'),
+      valor1: valor1Value,
+      filteringWord: filteringWordValue,
+      sortColumn: sortColumnValue,
+      sortAscending: sortAscendingValue,
+      summary: summaryMap ?? map['summary'] as Map<String, dynamic>?,
+      totalItems: totalItemsValue,
+      sourceTable: sourceTableValue,
       data: stockItems,
       pagination: pagination,
+      resumenDelDia: resumenDelDiaItems,
     );
   }
 
@@ -274,6 +361,7 @@ class StocksResponse {
       if (sourceTable != null) 'source_table': sourceTable,
       'data': data.map((item) => item.toMap()).toList(),
       'pagination': pagination.toMap(),
+      if (resumenDelDia.isNotEmpty) 'resumen_del_dia': resumenDelDia.map((item) => item.toMap()).toList(),
     };
   }
 }
