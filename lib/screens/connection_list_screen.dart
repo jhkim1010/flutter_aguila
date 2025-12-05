@@ -30,7 +30,9 @@ class _ConnectionListScreenState extends State<ConnectionListScreen> {
       _isLoading = true;
     });
 
+    print('🔄 연결 리스트 로드 시작...');
     final connections = await _storageService.getAllConnections();
+    print('✅ 연결 리스트 로드 완료: ${connections.length}개 연결');
     
     setState(() {
       _connections = connections;
@@ -69,16 +71,20 @@ class _ConnectionListScreenState extends State<ConnectionListScreen> {
     );
 
     if (result == 'edit') {
-      Navigator.push(
+      Navigator.push<ConnectionInfo>(
         context,
         MaterialPageRoute(
           builder: (context) => ConnectionScreen(
             connection: connection,
           ),
         ),
-      ).then((_) {
+      ).then((savedConnection) {
         if (mounted) {
+          print('🔄 연결 편집 화면에서 돌아옴, 리스트 갱신 중...');
           _loadConnections();
+          if (savedConnection != null) {
+            print('✅ 연결 수정됨: ${savedConnection.name}');
+          }
         }
       });
     } else if (result == 'delete') {
@@ -245,18 +251,22 @@ class _ConnectionListScreenState extends State<ConnectionListScreen> {
                                 Future.delayed(
                                   const Duration(milliseconds: 100),
                                   () {
-                                    Navigator.push(
+                                    Navigator.push<ConnectionInfo>(
                                       context,
                                       MaterialPageRoute(
                                         builder: (context) => ConnectionScreen(
                                           connection: connection,
                                         ),
                                       ),
-                                    ).then((_) {
-        if (mounted) {
-          _loadConnections();
-        }
-      });
+                                    ).then((savedConnection) {
+                                      if (mounted) {
+                                        print('🔄 연결 편집 화면에서 돌아옴, 리스트 갱신 중...');
+                                        _loadConnections();
+                                        if (savedConnection != null) {
+                                          print('✅ 연결 수정됨: ${savedConnection.name}');
+                                        }
+                                      }
+                                    });
                                   },
                                 );
                               },
@@ -286,16 +296,20 @@ class _ConnectionListScreenState extends State<ConnectionListScreen> {
                 ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          Navigator.push(
+          Navigator.push<ConnectionInfo>(
             context,
             MaterialPageRoute(
               builder: (context) => const ConnectionScreen(),
             ),
-          ).then((_) {
-        if (mounted) {
-          _loadConnections();
-        }
-      });
+          ).then((savedConnection) {
+            if (mounted) {
+              print('🔄 연결 추가 화면에서 돌아옴, 리스트 갱신 중...');
+              _loadConnections();
+              if (savedConnection != null) {
+                print('✅ 새 연결 추가됨: ${savedConnection.name}');
+              }
+            }
+          });
         },
         icon: const Icon(Icons.add),
         label: Text(l10n.addConnection),

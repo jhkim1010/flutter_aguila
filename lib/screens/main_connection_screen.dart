@@ -184,14 +184,18 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
     });
 
     try {
+      print('🔄 저장된 연결 리스트 로드 시작...');
       final connections = await _connectionStorageService.getAllConnections();
+      print('✅ 저장된 연결 리스트 로드 완료: ${connections.length}개 연결');
       if (mounted) {
         setState(() {
           _savedConnections = connections;
           _isLoadingConnections = false;
         });
+        print('🔄 UI 업데이트 완료: ${_savedConnections.length}개 연결 표시');
       }
     } catch (e) {
+      print('❌ 연결 리스트 로드 실패: $e');
       if (mounted) {
         setState(() {
           _isLoadingConnections = false;
@@ -1159,17 +1163,27 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
               OutlinedButton.icon(
                 onPressed: () async {
                   // 연결 추가 화면으로 이동
-                  await Navigator.push(
+                  final result = await Navigator.push<ConnectionInfo>(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const ConnectionScreen(),
                     ),
-                  ).then((_) {
-                    // 연결 화면에서 돌아왔을 때 리스트 갱신
-                    if (mounted) {
-                      _loadSavedConnections();
+                  );
+                  // 연결 화면에서 돌아왔을 때 리스트 갱신
+                  if (mounted) {
+                    print('🔄 연결 추가 화면에서 돌아옴, 리스트 갱신 중...');
+                    print('   결과: ${result != null ? result.name : "null"}');
+                    // 약간의 지연 후 리스트 갱신 (저장이 완전히 완료되도록)
+                    await Future.delayed(const Duration(milliseconds: 100));
+                    await _loadSavedConnections();
+                    if (result != null) {
+                      print('✅ 새 연결 추가됨: ${result.name}');
                     }
-                  });
+                    // UI 강제 업데이트
+                    if (mounted) {
+                      setState(() {});
+                    }
+                  }
                 },
                 icon: const Icon(Icons.add, size: 16),
                 label: Text(l10n.addConnection, style: const TextStyle(fontSize: 13)),
@@ -1897,17 +1911,27 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
               OutlinedButton.icon(
                 onPressed: () async {
                   // 연결 추가 화면으로 이동
-                  await Navigator.push(
+                  final result = await Navigator.push<ConnectionInfo>(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const ConnectionScreen(),
                     ),
-                  ).then((_) {
-                    // 연결 화면에서 돌아왔을 때 리스트 갱신
-                    if (mounted) {
-                      _loadSavedConnections();
+                  );
+                  // 연결 화면에서 돌아왔을 때 리스트 갱신
+                  if (mounted) {
+                    print('🔄 연결 추가 화면에서 돌아옴, 리스트 갱신 중...');
+                    print('   결과: ${result != null ? result.name : "null"}');
+                    // 약간의 지연 후 리스트 갱신 (저장이 완전히 완료되도록)
+                    await Future.delayed(const Duration(milliseconds: 100));
+                    await _loadSavedConnections();
+                    if (result != null) {
+                      print('✅ 새 연결 추가됨: ${result.name}');
                     }
-                  });
+                    // UI 강제 업데이트
+                    if (mounted) {
+                      setState(() {});
+                    }
+                  }
                 },
                 icon: const Icon(Icons.add),
                 label: Text(l10n.addConnection),

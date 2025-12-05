@@ -29,12 +29,17 @@ class _AdditionalConnectionsScreenState extends State<AdditionalConnectionsScree
       _isLoading = true;
     });
 
+    print('🔄 AdditionalConnectionsScreen: 연결 리스트 로드 시작...');
     final connections = await _storageService.getAllConnections();
+    print('✅ AdditionalConnectionsScreen: ${connections.length}개 연결 로드 완료');
     
-    setState(() {
-      _connections = connections;
-      _isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _connections = connections;
+        _isLoading = false;
+      });
+      print('🔄 AdditionalConnectionsScreen: UI 업데이트 완료 (${_connections.length}개 연결 표시)');
+    }
   }
 
   Future<void> _showLongPressOptions(ConnectionInfo connection) async {
@@ -68,14 +73,25 @@ class _AdditionalConnectionsScreenState extends State<AdditionalConnectionsScree
     );
 
     if (result == 'edit') {
-      Navigator.push(
+      Navigator.push<ConnectionInfo>(
         context,
         MaterialPageRoute(
           builder: (context) => ConnectionScreen(
             connection: connection,
           ),
         ),
-      ).then((_) => _loadConnections());
+      ).then((savedConnection) {
+        if (mounted) {
+          print('🔄 AdditionalConnectionsScreen: 연결 편집 화면에서 돌아옴');
+          // 약간의 지연 후 리스트 갱신
+          Future.delayed(const Duration(milliseconds: 100), () {
+            if (mounted) {
+              _loadConnections();
+              setState(() {}); // UI 강제 업데이트
+            }
+          });
+        }
+      });
     } else if (result == 'delete') {
       _deleteConnection(connection);
     }
@@ -242,14 +258,24 @@ class _AdditionalConnectionsScreenState extends State<AdditionalConnectionsScree
                                 Future.delayed(
                                   const Duration(milliseconds: 100),
                                   () {
-                                    Navigator.push(
+                                    Navigator.push<ConnectionInfo>(
                                       context,
                                       MaterialPageRoute(
                                         builder: (context) => ConnectionScreen(
                                           connection: connection,
                                         ),
                                       ),
-                                    ).then((_) => _loadConnections());
+                                    ).then((savedConnection) {
+                                      if (mounted) {
+                                        print('🔄 AdditionalConnectionsScreen: 연결 편집 화면에서 돌아옴');
+                                        Future.delayed(const Duration(milliseconds: 100), () {
+                                          if (mounted) {
+                                            _loadConnections();
+                                            setState(() {}); // UI 강제 업데이트
+                                          }
+                                        });
+                                      }
+                                    });
                                   },
                                 );
                               },

@@ -120,7 +120,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
   }
   
   // 연결 정보 저장하기
-  Future<void> _saveConnectionInfo() async {
+  Future<ConnectionInfo?> _saveConnectionInfo() async {
     try {
       // 포트 번호 추출 (서버 URL에서)
       int port = 3030; // 기본값
@@ -139,9 +139,38 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         port: port,
       );
       
-      await _storageService.saveConnection(connection);
+      print('💾 연결 정보 저장 시도: ${connection.name} (ID: ${connection.id})');
+      final saved = await _storageService.saveConnection(connection);
+      
+      if (!saved) {
+        throw Exception('연결 정보 저장에 실패했습니다.');
+      }
+      
+      // 저장 확인: 바로 다시 읽어서 확인
+      print('🔍 저장 확인: 저장된 연결 정보 읽기 중...');
+      final savedConnections = await _storageService.getAllConnections();
+      final foundConnection = savedConnections.firstWhere(
+        (c) => c.id == connection.id,
+        orElse: () => ConnectionInfo(
+          id: '',
+          name: '',
+          serverUrl: '',
+          databaseName: '',
+          username: '',
+          password: '',
+          port: 0,
+        ),
+      );
+      
+      if (foundConnection.id != connection.id) {
+        throw Exception('저장된 연결 정보를 확인할 수 없습니다.');
+      }
+      
+      print('✅ 연결 정보 저장 및 확인 완료: ${foundConnection.name}');
+      return foundConnection;
     } catch (e) {
-      // 저장 실패 시 무시
+      print('❌ 연결 정보 저장 실패: $e');
+      rethrow;
     }
   }
 
@@ -208,9 +237,9 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     });
 
     try {
-      await _saveConnectionInfo();
+      final savedConnection = await _saveConnectionInfo();
       
-      if (mounted) {
+      if (mounted && savedConnection != null) {
         setState(() {
           _isLoading = false;
         });
@@ -222,13 +251,15 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
           ),
         );
         
-        Navigator.pop(context);
+        // 저장된 연결 정보를 반환하여 리스트 갱신 트리거
+        Navigator.pop(context, savedConnection);
       }
     } catch (e) {
       setState(() {
         _errorMessage = '${l10n.saveFailed}: ${e.toString()}';
         _isLoading = false;
       });
+      print('❌ 연결 저장 중 오류: $e');
     }
   }
 
