@@ -47,6 +47,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
   final _databaseNameController = TextEditingController();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _managerPasswordController = TextEditingController();
   final _portController = TextEditingController();
   final _serverUrlController = TextEditingController();
   final _localIpController = TextEditingController();
@@ -448,6 +449,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
     _databaseNameController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
+    _managerPasswordController.dispose();
     _portController.dispose();
     _serverUrlController.dispose();
     _localIpController.dispose();
@@ -478,6 +480,8 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
           ? 'http://$localIp:3030'
           : 'https://sync.coolsistema.com';
       
+      final managerPassword = await SecureStorageHelper.readSecure('manager_password') ?? '';
+      
       setState(() {
         _profileNameController.text = profileName;
         if (serverType == 'local') {
@@ -491,6 +495,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
         _databaseNameController.text = databaseName;
         _usernameController.text = username;
         _passwordController.text = password;
+        _managerPasswordController.text = managerPassword;
         
         // 연결 상태 업데이트
         if (connectionSuccess == 'true' && databaseName.isNotEmpty) {
@@ -562,8 +567,18 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
       // 비밀번호 저장: macOS는 SharedPreferences, 다른 플랫폼은 SecureStorage
       if (defaultTargetPlatform == TargetPlatform.macOS) {
         await SecureStorageHelper.save('password', _passwordController.text.trim());
+        if (_managerPasswordController.text.trim().isNotEmpty) {
+          await SecureStorageHelper.save('manager_password', _managerPasswordController.text.trim());
+        } else {
+          await SecureStorageHelper.delete('manager_password');
+        }
       } else {
         await SecureStorageHelper.saveSecure('password', _passwordController.text.trim());
+        if (_managerPasswordController.text.trim().isNotEmpty) {
+          await SecureStorageHelper.saveSecure('manager_password', _managerPasswordController.text.trim());
+        } else {
+          await SecureStorageHelper.deleteSecure('manager_password');
+        }
       }
       if (_selectedServerType == ServerType.local) {
         await SecureStorageHelper.save('local_ip', _localIpController.text.trim());
@@ -622,6 +637,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
         }
       }
       
+      final managerPassword = _managerPasswordController.text.trim();
       final connection = ConnectionInfo(
         id: _generateConnectionId(),
         name: connectionName,
@@ -629,6 +645,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
         databaseName: databaseName,
         username: username,
         password: _passwordController.text.trim(),
+        managerPassword: managerPassword.isNotEmpty ? managerPassword : null,
         port: port,
       );
       
@@ -1287,6 +1304,20 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _managerPasswordController,
+                decoration: InputDecoration(
+                  labelText: 'Manager Password (Optional)',
+                  hintText: 'Leave empty to hide currency amounts',
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.admin_panel_settings, size: 18),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+                style: const TextStyle(fontSize: 13),
+                obscureText: true,
               ),
               const SizedBox(height: 16),
               if (_errorMessage != null)
@@ -1983,6 +2014,17 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _managerPasswordController,
+                decoration: InputDecoration(
+                  labelText: 'Manager Password (Optional)',
+                  hintText: 'Leave empty to hide currency amounts',
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.admin_panel_settings),
+                ),
+                obscureText: true,
               ),
               const SizedBox(height: 24),
               if (_errorMessage != null)

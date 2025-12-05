@@ -85,8 +85,9 @@ class ReportUtils {
     return false;
   }
 
-  static String formatValue(dynamic value) {
+  static String formatValue(dynamic value, {String? fieldName, bool isCurrency = false}) {
     if (value == null) return 'N/A';
+    
     if (value is num) {
       return NumberFormat('#,###').format(value);
     }

@@ -5,6 +5,7 @@ class ConnectionInfo {
   final String databaseName;
   final String username;
   final String password;
+  final String? managerPassword; // Manager password (optional)
   final int port;
 
   ConnectionInfo({
@@ -14,6 +15,7 @@ class ConnectionInfo {
     required this.databaseName,
     required this.username,
     required this.password,
+    this.managerPassword,
     required this.port,
   });
 
@@ -25,6 +27,7 @@ class ConnectionInfo {
       'databaseName': databaseName,
       'username': username,
       'password': password,
+      'managerPassword': managerPassword,
       'port': port,
     };
   }
@@ -37,6 +40,7 @@ class ConnectionInfo {
       databaseName: json['databaseName'] as String,
       username: json['username'] as String,
       password: json['password'] as String,
+      managerPassword: json['managerPassword'] as String?,
       port: json['port'] as int,
     );
   }
@@ -48,6 +52,7 @@ class ConnectionInfo {
     String? databaseName,
     String? username,
     String? password,
+    String? managerPassword,
     int? port,
   }) {
     return ConnectionInfo(
@@ -57,6 +62,7 @@ class ConnectionInfo {
       databaseName: databaseName ?? this.databaseName,
       username: username ?? this.username,
       password: password ?? this.password,
+      managerPassword: managerPassword ?? this.managerPassword,
       port: port ?? this.port,
     );
   }

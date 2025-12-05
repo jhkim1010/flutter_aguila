@@ -8,6 +8,7 @@ class StocksBuilder {
     required Map<String, dynamic> data,
     required BuildContext context,
     required ScrollController scrollController,
+    required ScrollController horizontalScrollController, // 수평 스크롤 컨트롤러 추가
     required bool isLoadingMore,
     required Color reportColor,
   }) {
@@ -67,6 +68,7 @@ class StocksBuilder {
           ),
         Expanded(
           child: SingleChildScrollView(
+            controller: horizontalScrollController, // 수평 스크롤 컨트롤러 사용
             scrollDirection: Axis.horizontal,
             child: SizedBox(
               width: MediaQuery.of(context).size.width * 3, // 더 많은 컬럼을 위해 너비 증가
@@ -85,7 +87,7 @@ class StocksBuilder {
                         final stock = filteredDataList[index] as Map<String, dynamic>;
                         
                         return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
                           decoration: BoxDecoration(
                             color: Colors.transparent,
                             border: Border(
@@ -370,6 +372,7 @@ class StocksBuilder {
     required bool sortAscending,
     required Function(String, bool) onSort,
     required Color reportColor,
+    ScrollController? horizontalScrollController, // 수평 스크롤 컨트롤러 추가
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -383,7 +386,9 @@ class StocksBuilder {
         ),
       ),
       child: SingleChildScrollView(
+        controller: horizontalScrollController, // 수평 스크롤 컨트롤러 사용
         scrollDirection: Axis.horizontal,
+        physics: const NeverScrollableScrollPhysics(), // 헤더는 직접 스크롤하지 않음 (데이터 스크롤에 따라 동기화)
         child: Row(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -447,7 +452,7 @@ class StocksBuilder {
         if (isSorted) {
           onSort(columnKey, !sortAscending);
         } else {
-          onSort(columnKey, true);
+          onSort(columnKey, false); // 첫 클릭 시 내림차순
         }
       },
       child: SizedBox(

@@ -27,6 +27,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
   final _databaseNameController = TextEditingController();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _managerPasswordController = TextEditingController();
   final _portController = TextEditingController();
   final _serverUrlController = TextEditingController();
   final _localIpController = TextEditingController();
@@ -50,6 +51,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       _databaseNameController.text = widget.connection!.databaseName;
       _usernameController.text = widget.connection!.username;
       _passwordController.text = widget.connection!.password;
+      _managerPasswordController.text = widget.connection!.managerPassword ?? '';
       
       // 서버 URL에서 서버 타입 판단
       if (_serverUrlController.text.contains('sync.coolsistema.com')) {
@@ -81,6 +83,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     _databaseNameController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
+    _managerPasswordController.dispose();
     _portController.dispose();
     _serverUrlController.dispose();
     _localIpController.dispose();
@@ -129,6 +132,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         port = uri.port;
       }
       
+      final managerPassword = _managerPasswordController.text.trim();
       final connection = ConnectionInfo(
         id: _connectionId!,
         name: _connectionNameController.text.trim(),
@@ -136,6 +140,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         databaseName: _databaseNameController.text.trim(),
         username: _usernameController.text.trim(),
         password: _passwordController.text.trim(),
+        managerPassword: managerPassword.isNotEmpty ? managerPassword : null,
         port: port,
       );
       
@@ -441,6 +446,17 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   }
                   return null;
                 },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _managerPasswordController,
+                decoration: InputDecoration(
+                  labelText: 'Manager Password (Optional)',
+                  hintText: 'Leave empty to hide currency amounts',
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.admin_panel_settings),
+                ),
+                obscureText: true,
               ),
               const SizedBox(height: 24),
               if (_errorMessage != null)

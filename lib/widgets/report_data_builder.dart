@@ -18,7 +18,7 @@ class ReportDataBuilder {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: item.entries.map((entry) {
             return Padding(
-              padding: EdgeInsets.zero,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -56,7 +56,8 @@ class ReportDataBuilder {
         ),
       ),
       child: ListTile(
-        contentPadding: EdgeInsets.zero,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+        dense: true,
         title: Text(
           item.toString(),
           style: const TextStyle(fontSize: 14),

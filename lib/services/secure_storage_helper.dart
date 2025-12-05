@@ -115,13 +115,23 @@ class SecureStorageHelper {
   /// 데이터 삭제
   static Future<bool> delete(String key) async {
     try {
-      // secure storage에서 삭제 시도
-      await _secureStorage.delete(key: key);
-      // shared preferences에서도 삭제 시도
+      // shared preferences에서 삭제 시도
       final prefs = await _prefs;
       return await prefs.remove(key);
     } catch (e) {
       print('❌ 데이터 삭제 실패: $e');
+      return false;
+    }
+  }
+  
+  /// Secure storage 데이터 삭제
+  static Future<bool> deleteSecure(String key) async {
+    try {
+      // secure storage에서 삭제 시도
+      await _secureStorage.delete(key: key);
+      return true;
+    } catch (e) {
+      print('❌ Secure storage 삭제 실패: $e');
       return false;
     }
   }

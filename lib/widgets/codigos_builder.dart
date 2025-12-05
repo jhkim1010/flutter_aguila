@@ -96,7 +96,7 @@ class CodigosBuilder {
                                 return InkWell(
                                   onTap: () => onCodigoSelected(codigo),
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
                                     decoration: BoxDecoration(
                                       color: isSelected ? Colors.teal.withOpacity(0.1) : Colors.transparent,
                                       border: Border(
@@ -107,6 +107,7 @@ class CodigosBuilder {
                                       ),
                                     ),
                                     child: Row(
+                                      mainAxisSize: MainAxisSize.min,
                                       crossAxisAlignment: CrossAxisAlignment.center,
                                       children: columnKeys.map((key) {
                                         final value = codigo[key];
@@ -182,6 +183,7 @@ class CodigosBuilder {
         ),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: columnKeys.map((key) {
           final width = columnWidths[key] ?? 100.0;
@@ -222,7 +224,7 @@ class CodigosBuilder {
         if (isSorted) {
           onSort(columnKey, !sortAscending);
         } else {
-          onSort(columnKey, true);
+          onSort(columnKey, false); // 첫 클릭 시 내림차순
         }
       },
       child: SizedBox(

@@ -19,12 +19,20 @@ class ReportScreen extends StatefulWidget {
   final String serverUrl;
   final ReportType reportType;
   final DateTime? initialDate; // ventas report용 초기 날짜
+  final String? initialFilteringWord; // 초기 필터링 단어
+  final String? initialSortColumn; // 초기 정렬 컬럼
+  final bool? initialSortAscending; // 초기 정렬 방향
+  final Function(String?, String?, bool?)? onStateChanged; // 상태 변경 콜백 (filteringWord, sortColumn, sortAscending)
 
   const ReportScreen({
     super.key,
     required this.serverUrl,
     required this.reportType,
     this.initialDate,
+    this.initialFilteringWord,
+    this.initialSortColumn,
+    this.initialSortAscending,
+    this.onStateChanged,
   });
 
   @override
@@ -38,6 +46,7 @@ class _ReportScreenState extends State<ReportScreen> {
   String? _errorMessage;
   final TextEditingController _filteringWordController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final ScrollController _horizontalScrollController = ScrollController(); // 수평 스크롤 컨트롤러
   int _displayedItemsCount = 100; // 처음 표시할 항목 수
   static const int _itemsPerPage = 100; // 한 번에 추가로 표시할 항목 수
   
@@ -78,6 +87,26 @@ class _ReportScreenState extends State<ReportScreen> {
     _scrollController.addListener(_onScroll);
     // filteringWord 변경 감지 리스너 추가
     _filteringWordController.addListener(_onFilteringWordChanged);
+    
+    // 초기 필터링 단어 설정
+    if (widget.initialFilteringWord != null && widget.initialFilteringWord!.isNotEmpty) {
+      _filteringWordController.text = widget.initialFilteringWord!;
+    }
+    
+    // 초기 정렬 정보 설정
+    if (widget.initialSortColumn != null) {
+      if (widget.reportType == ReportType.stocks) {
+        _stocksSortColumn = widget.initialSortColumn;
+        _stocksSortAscending = widget.initialSortAscending ?? true;
+      } else if (widget.reportType == ReportType.codigos || widget.reportType == ReportType.todocodigos) {
+        _codigosSortColumn = widget.initialSortColumn;
+        _codigosSortAscending = widget.initialSortAscending ?? true;
+      } else {
+        _sortColumn = widget.initialSortColumn;
+        _sortAscending = widget.initialSortAscending ?? true;
+      }
+    }
+    
     // Items 보고서의 경우 기본 날짜 설정 (오늘 날짜)
     if (widget.reportType == ReportType.items) {
       final now = DateTime.now();
@@ -95,6 +124,10 @@ class _ReportScreenState extends State<ReportScreen> {
         print('📅 Ventas 보고서 날짜 설정 (오늘): ${DateFormat('yyyy-MM-dd').format(_ventasDate!)}');
       }
     }
+    // 초기 상태 저장
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _notifyStateChanged();
+    });
     _loadData();
   }
 
@@ -152,6 +185,8 @@ class _ReportScreenState extends State<ReportScreen> {
       if (mounted && currentWord == _filteringWordController.text.trim() && 
           currentWord != _lastFilteringWord) {
         _lastFilteringWord = currentWord;
+        // 상태 변경 콜백 호출
+        _notifyStateChanged();
         // codigos, todocodigos 또는 stocks 보고서인 경우에만 데이터 재로드
         if (widget.reportType == ReportType.codigos || 
             widget.reportType == ReportType.todocodigos || 
@@ -160,6 +195,31 @@ class _ReportScreenState extends State<ReportScreen> {
         }
       }
     });
+  }
+  
+  // 상태 변경 콜백 호출
+  void _notifyStateChanged() {
+    if (widget.onStateChanged != null) {
+      String? sortColumn;
+      bool? sortAscending;
+      
+      if (widget.reportType == ReportType.stocks) {
+        sortColumn = _stocksSortColumn;
+        sortAscending = _stocksSortAscending;
+      } else if (widget.reportType == ReportType.codigos || widget.reportType == ReportType.todocodigos) {
+        sortColumn = _codigosSortColumn;
+        sortAscending = _codigosSortAscending;
+      } else {
+        sortColumn = _sortColumn;
+        sortAscending = _sortAscending;
+      }
+      
+      widget.onStateChanged!(
+        _filteringWordController.text.trim().isEmpty ? null : _filteringWordController.text.trim(),
+        sortColumn,
+        sortAscending,
+      );
+    }
   }
   
   // 필터 및 정렬 기준으로 데이터 재로드
@@ -180,6 +240,7 @@ class _ReportScreenState extends State<ReportScreen> {
   void dispose() {
     _filteringWordController.dispose();
     _scrollController.dispose();
+    _horizontalScrollController.dispose(); // 수평 스크롤 컨트롤러 정리
     // Codigos 편집 컨트롤러들 정리
     for (var controller in _codigoEditControllers.values) {
       controller.dispose();
@@ -1005,6 +1066,7 @@ class _ReportScreenState extends State<ReportScreen> {
             widget.reportType,
             sortColumn: _sortColumn,
             sortAscending: _sortAscending,
+            horizontalScrollController: _horizontalScrollController,
             onSort: (columnIndex, ascending) {
               setState(() {
                 // 키 목록을 정렬된 데이터에서 가져오기 (report_table_builder와 동일한 순서 보장)
@@ -1017,9 +1079,9 @@ class _ReportScreenState extends State<ReportScreen> {
                     // 같은 칼럼을 클릭하면 정렬 방향 변경
                     _sortAscending = !_sortAscending;
                   } else {
-                    // 다른 칼럼을 클릭하면 새 칼럼으로 정렬
+                    // 다른 칼럼을 클릭하면 새 칼럼으로 정렬 (첫 클릭 시 내림차순)
                     _sortColumn = key;
-                    _sortAscending = true;
+                    _sortAscending = false;
                   }
                   // 정렬이 변경되면 처음부터 다시 표시
                   _displayedItemsCount = _itemsPerPage;
@@ -1035,6 +1097,7 @@ class _ReportScreenState extends State<ReportScreen> {
           _itemsPerPage,
           _scrollController,
           widget.reportType,
+          horizontalScrollController: _horizontalScrollController,
         );
       }
       
@@ -1243,20 +1306,35 @@ class _ReportScreenState extends State<ReportScreen> {
                 _stocksSortAscending = ascending;
               } else {
                 _stocksSortColumn = column;
-                _stocksSortAscending = ascending;
+                _stocksSortAscending = false; // 첫 클릭 시 내림차순
               }
             });
+            _notifyStateChanged();
             _reloadDataWithFilters();
           },
           reportColor: _getReportColor(),
+          horizontalScrollController: _horizontalScrollController, // 수평 스크롤 컨트롤러 전달
         ),
         Expanded(
-          child: StocksBuilder.buildContent(
-            data: data,
-            context: context,
-            scrollController: _scrollController,
-            isLoadingMore: _isLoadingMoreStocks,
-            reportColor: _getReportColor(),
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (notification) {
+              // 데이터 부분의 수평 스크롤 이벤트를 헤더에 전달
+              if (notification is ScrollUpdateNotification && 
+                  notification.depth == 0 && 
+                  notification.metrics.axis == Axis.horizontal &&
+                  _horizontalScrollController.hasClients) {
+                _horizontalScrollController.jumpTo(notification.metrics.pixels);
+              }
+              return false;
+            },
+            child: StocksBuilder.buildContent(
+              data: data,
+              context: context,
+              scrollController: _scrollController,
+              horizontalScrollController: _horizontalScrollController, // 수평 스크롤 컨트롤러 전달
+              isLoadingMore: _isLoadingMoreStocks,
+              reportColor: _getReportColor(),
+            ),
           ),
         ),
       ],
@@ -1520,9 +1598,9 @@ class _ReportScreenState extends State<ReportScreen> {
               // 같은 칼럼을 클릭하면 정렬 방향 변경
               _sortAscending = !_sortAscending;
             } else {
-              // 다른 칼럼을 클릭하면 새 칼럼으로 정렬
+              // 다른 칼럼을 클릭하면 새 칼럼으로 정렬 (첫 클릭 시 내림차순)
               _sortColumn = key;
-              _sortAscending = true;
+              _sortAscending = false; // 첫 클릭 시 내림차순
             }
             // 정렬이 변경되면 처음부터 다시 표시
             _displayedItemsCount = _itemsPerPage;
@@ -1542,6 +1620,8 @@ class _ReportScreenState extends State<ReportScreen> {
             scrollDirection: Axis.horizontal,
             child: DataTable(
               columnSpacing: 8,
+              dataRowMinHeight: 5,
+              dataRowMaxHeight: 5,
               headingRowColor: MaterialStateProperty.all(
                 _getReportColor().withOpacity(0.1),
               ),
@@ -1966,6 +2046,8 @@ class _ReportScreenState extends State<ReportScreen> {
               scrollDirection: Axis.horizontal,
               child: DataTable(
                 columnSpacing: 8,
+                dataRowMinHeight: 5,
+                dataRowMaxHeight: 5,
                 headingRowColor: MaterialStateProperty.all(
                   _getReportColor().withOpacity(0.1),
                 ),
@@ -2146,7 +2228,8 @@ class _ReportScreenState extends State<ReportScreen> {
         ),
       ),
       child: ListTile(
-        contentPadding: EdgeInsets.zero,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+        dense: true,
         title: Text(
           item.toString(),
           style: const TextStyle(fontSize: 14),
@@ -2221,7 +2304,13 @@ class _ReportScreenState extends State<ReportScreen> {
 
     // 첫 번째 항목에서 모든 칼럼 키 추출
     final firstItem = dataList[0] as Map<String, dynamic>;
-    final columnKeys = firstItem.keys.toList();
+    final columnKeys = widget.reportType == ReportType.todocodigos
+        ? ['id_todocodigo', 'tcodigo', 'tdesc', 'tpre1', 'tpre2', 'tpre3', 'tpre4', 'tpre5', 'utime', 'borrado', 'ip', 'mac']
+            .where((key) => firstItem.containsKey(key))
+            .toList()
+        : firstItem.keys
+            .where((key) => key != 'id_woocommerce' && key != 'id_woocommerce_producto')
+            .toList();
     
     // 칼럼별 너비 설정
     final columnWidths = <String, double>{
@@ -2234,11 +2323,21 @@ class _ReportScreenState extends State<ReportScreen> {
       'pre5': 100,
       'preorg': 100,
       'tcodigo': 120,
+      'tdesc': 300,
+      'tpre1': 100,
+      'tpre2': 100,
+      'tpre3': 100,
+      'tpre4': 100,
+      'tpre5': 100,
+      'utime': 150,
       'borrado': 80,
+      'ip': 120,
+      'mac': 150,
       'b_sincronizar_x_web': 120,
       'id_woocommerce': 120,
       'id_woocommerce_producto': 150,
       'id_codigo': 100,
+      'id_todocodigo': 120,
     };
     
     // 칼럼별 표시 이름 설정
@@ -2252,11 +2351,21 @@ class _ReportScreenState extends State<ReportScreen> {
       'pre5': 'Precio 5',
       'preorg': 'Precio Org',
       'tcodigo': 'T Codigo',
+      'tdesc': 'T Desc',
+      'tpre1': 'T Precio 1',
+      'tpre2': 'T Precio 2',
+      'tpre3': 'T Precio 3',
+      'tpre4': 'T Precio 4',
+      'tpre5': 'T Precio 5',
+      'utime': 'Utime',
       'borrado': 'Borrado',
+      'ip': 'IP',
+      'mac': 'MAC',
       'b_sincronizar_x_web': 'Sincronizar Web',
       'id_woocommerce': 'ID WooCommerce',
       'id_woocommerce_producto': 'ID WooCommerce Producto',
       'id_codigo': 'ID Codigo',
+      'id_todocodigo': 'ID Todo Codigo',
     };
     
     // 기본 너비가 없는 칼럼은 100으로 설정
@@ -2280,9 +2389,10 @@ class _ReportScreenState extends State<ReportScreen> {
             _codigosSortAscending = ascending;
           } else {
             _codigosSortColumn = column;
-            _codigosSortAscending = ascending;
+            _codigosSortAscending = false; // 첫 클릭 시 내림차순
           }
         });
+        _notifyStateChanged();
         _reloadDataWithFilters();
       },
       reportColor: _getReportColor(),
@@ -2400,21 +2510,22 @@ class _ReportScreenState extends State<ReportScreen> {
               // 같은 칼럼을 클릭하면 정렬 방향 변경
               _codigosSortAscending = !_codigosSortAscending;
             } else {
-              // 다른 칼럼을 클릭하면 새 칼럼으로 정렬 (기본 오름차순)
+              // 다른 칼럼을 클릭하면 새 칼럼으로 정렬 (첫 클릭 시 내림차순)
               _codigosSortColumn = columnKey;
-              _codigosSortAscending = true;
+              _codigosSortAscending = false;
             }
           } else if (widget.reportType == ReportType.stocks) {
             if (_stocksSortColumn == columnKey) {
               // 같은 칼럼을 클릭하면 정렬 방향 변경
               _stocksSortAscending = !_stocksSortAscending;
             } else {
-              // 다른 칼럼을 클릭하면 새 칼럼으로 정렬 (기본 오름차순)
+              // 다른 칼럼을 클릭하면 새 칼럼으로 정렬 (첫 클릭 시 내림차순)
               _stocksSortColumn = columnKey;
-              _stocksSortAscending = true;
+              _stocksSortAscending = false;
             }
           }
         });
+        _notifyStateChanged();
         // 데이터 재로드
         _reloadDataWithFilters();
       },

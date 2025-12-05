@@ -15,10 +15,18 @@ import 'report_screen.dart';
 
 class ResumenDelDiaScreen extends StatefulWidget {
   final String serverUrl;
+  final ReportType? initialReportType; // 초기 보고서 타입
+  final String? initialFilteringWord; // 초기 필터링 단어
+  final String? initialSortColumn; // 초기 정렬 컬럼
+  final bool? initialSortAscending; // 초기 정렬 방향
 
   const ResumenDelDiaScreen({
     super.key,
     required this.serverUrl,
+    this.initialReportType,
+    this.initialFilteringWord,
+    this.initialSortColumn,
+    this.initialSortAscending,
   });
 
   @override
@@ -44,6 +52,10 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
   String? _databaseName;
   String _currentReport = 'resumen'; // 현재 선택된 보고서
   ReportType? _selectedReportType; // 큰 화면에서 오른쪽에 표시할 보고서 타입
+  // 현재 보고서의 필터링 단어와 정렬 정보 (연결 변경 시 유지용)
+  String? _currentFilteringWord;
+  String? _currentSortColumn;
+  bool? _currentSortAscending;
   List<ConnectionInfo> _savedConnections = []; // 저장된 연결 목록
   bool _showAllConnections = false; // 연결 목록 전체 표시 여부
   bool _isAddingNewConnection = false; // 새 연결 추가 모드 여부
@@ -64,6 +76,38 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     // 현재 날짜를 명확하게 설정
     final now = DateTime.now();
     _selectedDate = now;
+    // 초기 보고서 타입 설정 (연결 변경 시 유지)
+    if (widget.initialReportType != null) {
+      _selectedReportType = widget.initialReportType;
+      // _currentReport도 설정
+      final reportType = widget.initialReportType!; // null 체크 후 non-null로 변환
+      switch (reportType) {
+        case ReportType.stocks:
+          _currentReport = 'stocks';
+          break;
+        case ReportType.codigos:
+          _currentReport = 'codigos';
+          break;
+        case ReportType.todocodigos:
+          _currentReport = 'todocodigos';
+          break;
+        case ReportType.items:
+          _currentReport = 'items';
+          break;
+        case ReportType.clientes:
+          _currentReport = 'clientes';
+          break;
+        case ReportType.gastos:
+          _currentReport = 'gastos';
+          break;
+        case ReportType.ventas:
+          _currentReport = 'ventas';
+          break;
+        case ReportType.alertas:
+          _currentReport = 'alertas';
+          break;
+      }
+    }
     // 데이터베이스 이름 로드
     _loadDatabaseName();
     // 연결 목록 로드
@@ -441,12 +485,16 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
           await SecureStorageHelper.saveSecure('password', connection.password);
         }
 
-        // ResumenDelDiaScreen으로 직접 이동 (CelebrationScreen 건너뛰기)
+        // 현재 보고서 정보를 유지하면서 ResumenDelDiaScreen으로 이동
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
             builder: (context) => ResumenDelDiaScreen(
               serverUrl: connection.serverUrl,
+              initialReportType: _selectedReportType,
+              initialFilteringWord: _currentFilteringWord,
+              initialSortColumn: _currentSortColumn,
+              initialSortAscending: _currentSortAscending,
             ),
           ),
         );
@@ -602,6 +650,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
                 padding: const EdgeInsets.all(12),
@@ -615,10 +664,9 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                   size: 24,
                 ),
               ),
-              const SizedBox(width: 16),
               Expanded(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
                       title,
@@ -627,15 +675,17 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                         color: Colors.grey[600],
                         fontWeight: FontWeight.w500,
                       ),
+                      textAlign: TextAlign.right,
                     ),
                     const SizedBox(height: 4),
                     Text(
                       _formatValue(value, isCurrency: isCurrency),
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: 24,
                         fontWeight: FontWeight.bold,
                         color: isCurrency ? Theme.of(context).colorScheme.primary : null,
                       ),
+                      textAlign: TextAlign.right,
                     ),
                   ],
                 ),
@@ -711,6 +761,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
 
   String _formatValue(dynamic value, {bool isCurrency = false}) {
     if (value == null) return 'N/A';
+    
     if (value is num) {
       // 통화 기호 없이 천 단위 구분자만 사용
       return NumberFormat('#,###').format(value);
@@ -770,7 +821,10 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
             final value = tableData[key] is List
                 ? (tableData[key] as List)[rows.indexOf(row)]
                 : tableData[key];
-            return DataCell(Text(_formatValue(value)));
+            return DataCell(Text(
+              _formatValue(value),
+              style: const TextStyle(fontSize: 24),
+            ));
           }).toList(),
         );
       }).toList();
@@ -780,7 +834,10 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     return [
       DataRow(
         cells: tableData.values.map((value) {
-          return DataCell(Text(_formatValue(value)));
+          return DataCell(Text(
+            _formatValue(value),
+            style: const TextStyle(fontSize: 24),
+          ));
         }).toList(),
       ),
     ];
@@ -1501,6 +1558,17 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         key: ValueKey('report_${_selectedReportType.toString()}'),
         serverUrl: widget.serverUrl,
         reportType: _selectedReportType!,
+        initialFilteringWord: widget.initialFilteringWord,
+        initialSortColumn: widget.initialSortColumn,
+        initialSortAscending: widget.initialSortAscending,
+        onStateChanged: (filteringWord, sortColumn, sortAscending) {
+          // 보고서 상태 변경 시 저장 (연결 변경 시 유지용)
+          setState(() {
+            _currentFilteringWord = filteringWord;
+            _currentSortColumn = sortColumn;
+            _currentSortAscending = sortAscending;
+          });
+        },
       );
     }
     
@@ -2406,7 +2474,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                             physics: const NeverScrollableScrollPhysics(),
                             mainAxisSpacing: 12,
                             crossAxisSpacing: 12,
-                            childAspectRatio: 2.5,
+                            childAspectRatio: 3.5,
                             children: [
                               _buildStockDataItem('Item Count', itemCount.toString(), Icons.inventory_2),
                               _buildStockDataItem('Total Ventas', _formatValue(tVentas, isCurrency: true), Icons.shopping_cart),
@@ -2490,29 +2558,32 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         border: Border.all(color: Colors.grey[200]!),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
         mainAxisSize: MainAxisSize.min,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              Icon(icon, size: 16, color: Colors.grey[600]),
-              const SizedBox(width: 4),
               Text(
                 label,
                 style: TextStyle(
                   fontSize: 11,
                   color: Colors.grey[600],
                 ),
+                textAlign: TextAlign.right,
               ),
+              const SizedBox(width: 4),
+              Icon(icon, size: 16, color: Colors.grey[600]),
             ],
           ),
           const SizedBox(height: 4),
           Text(
             value,
             style: const TextStyle(
-              fontSize: 14,
+              fontSize: 24,
               fontWeight: FontWeight.bold,
             ),
+            textAlign: TextAlign.right,
           ),
         ],
       ),
@@ -2969,6 +3040,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                 child: Text(
                   formattedValue,
                   style: TextStyle(
+                    fontSize: 24,
                     fontWeight: FontWeight.w500,
                     color: isCurrency ? Theme.of(context).colorScheme.primary : null,
                   ),
