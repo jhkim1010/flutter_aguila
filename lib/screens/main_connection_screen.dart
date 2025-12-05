@@ -85,6 +85,17 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
     _authenticateInBackground();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 화면이 다시 표시될 때마다 연결 리스트 갱신
+    final route = ModalRoute.of(context);
+    if (route != null && route.isCurrent) {
+      print('🔄 MainConnectionScreen: 화면이 활성화됨, 연결 리스트 갱신');
+      _loadSavedConnections();
+    }
+  }
+
   // 연결 상태 확인
   Future<void> _checkConnectionStatus() async {
     try {
@@ -243,7 +254,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${l10n.deleteFailed}: ${e.toString()}'),
+              content: Text('삭제 실패: ${e.toString()}'),
               backgroundColor: Colors.red,
             ),
           );
