@@ -1625,7 +1625,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                             },
                           ),
 
-                        // 지출 통계 (gastos)
+                        // 지출 통계 (gastos) - 대형 화면에서 그리드 형태로 표시
                         if (_data!.containsKey('gastos'))
                           _buildSection(
                             l10n.expenseStatistics,
@@ -1638,9 +1638,10 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                                       ? _data!['gastos'] as Map<String, dynamic>
                                       : <String, dynamic>{})
                             ),
+                            // useGrid: true (기본값) - 대형 화면에서 그리드 형태로 표시
                           ),
 
-                        // 할인 통계 (vdetalle)
+                        // 할인 통계 (vdetalle) - 대형 화면에서 그리드 형태로 표시
                         if (_data!.containsKey('vdetalle'))
                           _buildSection(
                             l10n.discountStatistics,
@@ -1653,9 +1654,10 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                                       ? _data!['vdetalle'] as Map<String, dynamic>
                                       : <String, dynamic>{})
                             ),
+                            // useGrid: true (기본값) - 대형 화면에서 그리드 형태로 표시
                           ),
 
-                        // 결제 통계 (vcodes_mpago)
+                        // 결제 통계 (vcodes_mpago) - 대형 화면에서 그리드 형태로 표시
                         if (_data!.containsKey('vcodes_mpago'))
                           _buildSection(
                             l10n.mercadoPagoStatistics,
@@ -1668,6 +1670,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                                       ? _data!['vcodes_mpago'] as Map<String, dynamic>
                                       : <String, dynamic>{})
                             ),
+                            // useGrid: true (기본값) - 대형 화면에서 그리드 형태로 표시
                           ),
 
                         // Stock Resumen (stock_resumen 또는 stocks 키 확인)
@@ -2054,7 +2057,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                                             },
                                           ),
 
-                                        // 지출 통계 (gastos) - 배열이면 첫 번째 항목 사용
+                                        // 지출 통계 (gastos) - 대형 화면에서 그리드 형태로 표시
                                         if (_data!.containsKey('gastos'))
                                           _buildSection(
                                             l10n.expenseStatistics,
@@ -2067,9 +2070,10 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                                                       ? _data!['gastos'] as Map<String, dynamic>
                                                       : <String, dynamic>{})
                                             ),
+                                            // useGrid: true (기본값) - 대형 화면에서 그리드 형태로 표시
                                           ),
 
-                                        // 할인 통계 (vdetalle) - 배열이면 첫 번째 항목 사용
+                                        // 할인 통계 (vdetalle) - 대형 화면에서 그리드 형태로 표시
                                         if (_data!.containsKey('vdetalle'))
                                           _buildSection(
                                             l10n.discountStatistics,
@@ -2082,9 +2086,10 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                                                       ? _data!['vdetalle'] as Map<String, dynamic>
                                                       : <String, dynamic>{})
                                             ),
+                                            // useGrid: true (기본값) - 대형 화면에서 그리드 형태로 표시
                                           ),
 
-                                        // 결제 통계 (vcodes_mpago) - 배열이면 첫 번째 항목 사용
+                                        // 결제 통계 (vcodes_mpago) - 대형 화면에서 그리드 형태로 표시
                                         if (_data!.containsKey('vcodes_mpago'))
                                           _buildSection(
                                             l10n.mercadoPagoStatistics,
@@ -2097,6 +2102,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                                                       ? _data!['vcodes_mpago'] as Map<String, dynamic>
                                                       : <String, dynamic>{})
                                             ),
+                                            // useGrid: true (기본값) - 대형 화면에서 그리드 형태로 표시
                                           ),
 
                                         // Stock Resumen (stock_resumen 또는 stocks 키 확인)
