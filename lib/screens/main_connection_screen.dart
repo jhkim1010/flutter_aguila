@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
+import 'dart:io' show exit;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
+import '../services/secure_storage_helper.dart';
 import 'dart:math';
 import 'dart:ui';
 import '../l10n/app_localizations.dart';
@@ -58,6 +60,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
   List<ConnectionInfo> _savedConnections = [];
   bool _isLoadingConnections = false;
   final LocalAuthentication _localAuth = LocalAuthentication();
+  bool _isBiometricAuthenticated = false; // 생체 인식 성공 여부
   
   // 연결 성공 후 보고서 관련 상태
   String? _currentServerUrl; // 현재 연결된 서버 URL
@@ -85,9 +88,9 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
   // 연결 상태 확인
   Future<void> _checkConnectionStatus() async {
     try {
-      final connectionSuccess = await _storage.read(key: 'connection_success');
-      final serverUrl = await _storage.read(key: 'server_url');
-      final databaseName = await _storage.read(key: 'database_name');
+      final connectionSuccess = await SecureStorageHelper.read('connection_success');
+      final serverUrl = await SecureStorageHelper.read('server_url');
+      final databaseName = await SecureStorageHelper.read('database_name');
       
       if (connectionSuccess == 'true' && serverUrl != null && databaseName != null) {
         // 저장된 연결 정보가 있으면 데이터베이스 서비스 초기화
@@ -129,22 +132,48 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
               ),
             );
             
-            if (!didAuthenticate && mounted) {
-              // 인증 실패 시에도 화면은 계속 표시
-              print('🔐 생체 인식 실패 또는 취소됨');
+            if (!didAuthenticate) {
+              // 인증 실패 또는 취소 시 즉시 앱 종료
+              print('🔐 생체 인식 실패 또는 취소됨 - 앱 종료');
+              // 지연 없이 즉시 종료
+              Future.microtask(() => _exitApp());
+              return;
+            }
+            
+            // 인증 성공
+            if (mounted) {
+              setState(() {
+                _isBiometricAuthenticated = true;
+              });
+              print('✅ 생체 인식 성공');
             }
           } on PlatformException catch (e) {
-            print('❌ 생체 인식 오류: ${e.message}');
-            // 오류 발생 시에도 화면은 계속 표시
+            // 취소된 경우 (UserCancel) 또는 실패한 경우 앱 종료
+            print('🔐 생체 인식 예외 발생 - 앱 종료: ${e.code} - ${e.message}');
+            // 지연 없이 즉시 종료
+            Future.microtask(() => _exitApp());
           } catch (e) {
-            print('❌ 생체 인식 알 수 없는 오류: $e');
-            // 오류 발생 시에도 화면은 계속 표시
+            print('❌ 생체 인식 알 수 없는 오류: $e - 앱 종료');
+            // 알 수 없는 오류도 앱 종료
+            Future.microtask(() => _exitApp());
           }
         }
       }
     } catch (e) {
       print('❌ 생체 인식 확인 오류: $e');
       // 생체 인식이 지원되지 않거나 오류가 발생해도 화면은 계속 표시
+    }
+  }
+
+  // 앱 종료 헬퍼 메서드
+  void _exitApp() {
+    print('🚪 앱 종료 중...');
+    if (defaultTargetPlatform == TargetPlatform.android || 
+        defaultTargetPlatform == TargetPlatform.iOS) {
+      SystemNavigator.pop();
+    } else {
+      // macOS/Windows/Linux - 즉시 종료
+      exit(0);
     }
   }
 
@@ -191,24 +220,31 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
       final success = await service.connectToDatabase(request);
 
       if (success && mounted) {
-        // 연결 정보를 secure storage에 저장
-        await _storage.write(key: 'database_name', value: connection.databaseName);
-        await _storage.write(key: 'username', value: connection.username);
-        await _storage.write(key: 'password', value: connection.password);
-        await _storage.write(key: 'server_url', value: connection.serverUrl);
-        await _storage.write(key: 'connection_success', value: 'true');
-        await _storage.write(key: 'profile_name', value: connection.name);
+        // 연결 정보를 하이브리드 저장소에 저장
+        await SecureStorageHelper.save('database_name', connection.databaseName);
+        await SecureStorageHelper.save('username', connection.username);
+        // macOS: SharedPreferences, 다른 플랫폼: SecureStorage
+        if (defaultTargetPlatform == TargetPlatform.macOS) {
+          await SecureStorageHelper.save('password', connection.password);
+        } else {
+          await SecureStorageHelper.saveSecure('password', connection.password);
+        }
+        await SecureStorageHelper.save('server_url', connection.serverUrl);
+        await SecureStorageHelper.save('connection_success', 'true');
+        await SecureStorageHelper.save('profile_name', connection.name);
 
-        // 같은 화면 유지하고 상태 업데이트
-        setState(() {
-          _isLoading = false;
-          _isConnected = true;
-          _currentServerUrl = connection.serverUrl;
-          _currentDatabaseName = connection.databaseName;
-          _databaseService = service;
-          _errorMessage = null;
-        });
-        await _loadSavedConnections();
+        // 연결 성공 시 ResumenDelDiaScreen으로 완전히 이동
+        print('✅ 저장된 연결로 연결 성공 - ResumenDelDiaScreen으로 이동');
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ResumenDelDiaScreen(
+                serverUrl: connection.serverUrl,
+              ),
+            ),
+          );
+        }
       } else {
         setState(() {
           _errorMessage = '연결에 실패했습니다.';
@@ -233,11 +269,14 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
     }
     
     try {
-      final serverUrl = await _storage.read(key: 'server_url');
-      final databaseName = await _storage.read(key: 'database_name');
-      final username = await _storage.read(key: 'username');
-      final password = await _storage.read(key: 'password');
-      final connectionSuccess = await _storage.read(key: 'connection_success');
+      final serverUrl = await SecureStorageHelper.read('server_url');
+      final databaseName = await SecureStorageHelper.read('database_name');
+      final username = await SecureStorageHelper.read('username');
+      // macOS: SharedPreferences, 다른 플랫폼: SecureStorage
+      final password = defaultTargetPlatform == TargetPlatform.macOS
+          ? await SecureStorageHelper.read('password')
+          : await SecureStorageHelper.readSecure('password');
+      final connectionSuccess = await SecureStorageHelper.read('connection_success');
       
       // 저장된 연결 정보가 있고, 이전에 연결 성공한 경우 자동 연결
       if (serverUrl != null && 
@@ -290,15 +329,18 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
       final success = await service.connectToDatabase(request);
 
       if (success && mounted) {
-        // 자동 연결 성공 시 같은 화면 유지하고 상태 업데이트
-        setState(() {
-          _isAutoConnecting = false;
-          _isConnected = true;
-          _currentServerUrl = serverUrl;
-          _currentDatabaseName = databaseName;
-          _databaseService = service;
-        });
-        await _loadSavedConnections();
+        print('✅ 자동 연결 성공 - ResumenDelDiaScreen으로 이동');
+        // 자동 연결 성공 시 ResumenDelDiaScreen으로 완전히 이동
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ResumenDelDiaScreen(
+                serverUrl: serverUrl,
+              ),
+            ),
+          );
+        }
       } else {
         // 자동 연결 실패 시 연결 화면 표시
         setState(() {
@@ -342,13 +384,13 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
   // 저장된 기본 연결 정보 불러오기
   Future<void> _loadSavedConnectionInfo() async {
     try {
-      final profileName = await _storage.read(key: 'profile_name') ?? '';
-      final serverType = await _storage.read(key: 'server_type');
-      final databaseName = await _storage.read(key: 'database_name') ?? '';
-      final username = await _storage.read(key: 'username') ?? '';
-      final password = await _storage.read(key: 'password') ?? '';
-      final localIp = await _storage.read(key: 'local_ip') ?? '';
-      final connectionSuccess = await _storage.read(key: 'connection_success');
+      final profileName = await SecureStorageHelper.read('profile_name') ?? '';
+      final serverType = await SecureStorageHelper.read('server_type');
+      final databaseName = await SecureStorageHelper.read('database_name') ?? '';
+      final username = await SecureStorageHelper.read('username') ?? '';
+      final password = await SecureStorageHelper.readSecure('password') ?? '';
+      final localIp = await SecureStorageHelper.read('local_ip') ?? '';
+      final connectionSuccess = await SecureStorageHelper.read('connection_success');
       
       final serverUrl = serverType == 'local' && localIp.isNotEmpty
           ? 'http://$localIp:3030'
@@ -426,23 +468,29 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
   // 기본 연결 정보 저장하기 (보안 저장소 사용)
   Future<void> _saveConnectionInfo() async {
     try {
-      await _storage.write(key: 'profile_name', value: _profileNameController.text.trim());
-      await _storage.write(
-        key: 'server_type', 
-        value: _selectedServerType == ServerType.hostinger ? 'hostinger' : 'local',
+      // 하이브리드 저장 방식 사용
+      await SecureStorageHelper.save('profile_name', _profileNameController.text.trim());
+      await SecureStorageHelper.save(
+        'server_type',
+        _selectedServerType == ServerType.hostinger ? 'hostinger' : 'local',
       );
-      await _storage.write(key: 'server_url', value: _serverUrlController.text.trim());
-      await _storage.write(key: 'database_name', value: _databaseNameController.text.trim());
-      await _storage.write(key: 'username', value: _usernameController.text.trim());
-      await _storage.write(key: 'password', value: _passwordController.text.trim());
-      if (_selectedServerType == ServerType.local) {
-        await _storage.write(key: 'local_ip', value: _localIpController.text.trim());
-        await _storage.write(key: 'port', value: '3030'); // Local은 항상 3030 포트 사용
+      await SecureStorageHelper.save('server_url', _serverUrlController.text.trim());
+      await SecureStorageHelper.save('database_name', _databaseNameController.text.trim());
+      await SecureStorageHelper.save('username', _usernameController.text.trim());
+      // 비밀번호 저장: macOS는 SharedPreferences, 다른 플랫폼은 SecureStorage
+      if (defaultTargetPlatform == TargetPlatform.macOS) {
+        await SecureStorageHelper.save('password', _passwordController.text.trim());
       } else {
-        await _storage.write(key: 'port', value: '');
+        await SecureStorageHelper.saveSecure('password', _passwordController.text.trim());
+      }
+      if (_selectedServerType == ServerType.local) {
+        await SecureStorageHelper.save('local_ip', _localIpController.text.trim());
+        await SecureStorageHelper.save('port', '3030'); // Local은 항상 3030 포트 사용
+      } else {
+        await SecureStorageHelper.save('port', '');
       }
       // 연결 성공 플래그 저장
-      await _storage.write(key: 'connection_success', value: 'true');
+      await SecureStorageHelper.save('connection_success', 'true');
       setState(() {
         _isConnected = true;
       });
@@ -552,15 +600,38 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
         // 연결 목록 갱신
         await _loadSavedConnections();
         
-        // 같은 화면 유지하고 상태 업데이트
-        setState(() {
-          _isLoading = false;
-          _isConnected = true;
-          _currentServerUrl = serverUrl;
-          _currentDatabaseName = databaseName;
-          _databaseService = service;
-          _errorMessage = null;
-        });
+        // macOS에서 저장 확인 (개발 환경: 모든 데이터를 SharedPreferences에 저장)
+        if (defaultTargetPlatform == TargetPlatform.macOS) {
+          print('🍎 macOS: 저장 확인 중...');
+          final savedDbName = await SecureStorageHelper.read('database_name');
+          final savedUsername = await SecureStorageHelper.read('username');
+          final savedPassword = await SecureStorageHelper.read('password');  // macOS: SharedPreferences 사용
+          
+          print('🍎 macOS 최종 저장 확인:');
+          print('   database_name: ${savedDbName ?? "(없음)"}');
+          print('   username: ${savedUsername ?? "(없음)"}');
+          print('   password: ${savedPassword != null && savedPassword.isNotEmpty ? "*** (길이: ${savedPassword.length})" : "(없음)"}');
+          
+          // 저장 확인 실패해도 연결은 성공했으므로 계속 진행
+          if (savedDbName == null || savedDbName.isEmpty || 
+              savedUsername == null || savedUsername.isEmpty ||
+              savedPassword == null || savedPassword.isEmpty) {
+            print('⚠️ macOS 저장 확인 실패했지만 연결은 성공했으므로 계속 진행합니다.');
+          }
+        }
+        
+        // 연결 성공 시 ResumenDelDiaScreen으로 완전히 이동
+        print('✅ 연결 성공 - ResumenDelDiaScreen으로 이동');
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ResumenDelDiaScreen(
+                serverUrl: serverUrl,
+              ),
+            ),
+          );
+        }
       } else {
         setState(() {
           _errorMessage = '연결에 실패했습니다. (상태 코드 확인 필요)';
@@ -571,8 +642,12 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
     } catch (e) {
       print('❌ 연결 오류 발생: $e');
       final errorMessage = e.toString().replaceFirst('Exception: ', '');
+      // 저장 실패 메시지 구분
+      final isSaveError = errorMessage.contains('저장') || errorMessage.contains('save');
       setState(() {
-        _errorMessage = errorMessage;
+        _errorMessage = isSaveError 
+            ? '연결은 성공했지만 정보 저장에 실패했습니다. 다시 시도해주세요.\n$errorMessage'
+            : errorMessage;
         _isLoading = false;
         _isConnected = false;
       });

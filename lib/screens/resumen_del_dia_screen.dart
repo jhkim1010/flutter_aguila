@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:intl/intl.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../l10n/app_localizations.dart';
 import '../services/database_service.dart';
 import '../services/connection_storage_service.dart';
+import '../services/secure_storage_helper.dart';
 import '../models/connection_info.dart';
 import '../utils/platform_utils.dart';
-import 'main_connection_screen.dart';
+import 'main_connection_screen.dart' show ServerType, MainConnectionScreen;
 import 'celebration_screen.dart';
-import 'connection_screen.dart';
+import 'connection_screen.dart' hide ServerType;
 import 'report_screen.dart';
 
 class ResumenDelDiaScreen extends StatefulWidget {
@@ -44,6 +46,16 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
   ReportType? _selectedReportType; // 큰 화면에서 오른쪽에 표시할 보고서 타입
   List<ConnectionInfo> _savedConnections = []; // 저장된 연결 목록
   bool _showAllConnections = false; // 연결 목록 전체 표시 여부
+  bool _isAddingNewConnection = false; // 새 연결 추가 모드 여부
+  
+  // 새 연결 입력 필드 컨트롤러 (MainConnectionScreen과 동일한 구조)
+  final _newProfileNameController = TextEditingController();
+  final _newServerUrlController = TextEditingController();
+  final _newDatabaseNameController = TextEditingController();
+  final _newUsernameController = TextEditingController();
+  final _newPasswordController = TextEditingController();
+  final _newLocalIpController = TextEditingController();
+  ServerType _newSelectedServerType = ServerType.hostinger; // 서버 타입
 
   @override
   void initState() {
@@ -56,8 +68,20 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     _loadDatabaseName();
     // 연결 목록 로드
     _loadSavedConnections();
-    // 초기 로드 시 현재 날짜를 명시적으로 전달
-    _loadData(date: now);
+    // 새 연결 입력 필드 기본값 설정
+    _newServerUrlController.text = 'https://sync.coolsistema.com';
+    _newSelectedServerType = ServerType.hostinger;
+    // macOS에서 secure storage 읽기를 위한 지연 후 데이터 로드
+    if (defaultTargetPlatform == TargetPlatform.macOS) {
+      Future.delayed(const Duration(milliseconds: 800), () {
+        if (mounted) {
+          _loadData(date: now);
+        }
+      });
+    } else {
+      // 초기 로드 시 현재 날짜를 명시적으로 전달
+      _loadData(date: now);
+    }
   }
 
   Future<void> _loadSavedConnections() async {
@@ -75,7 +99,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
 
   Future<void> _loadDatabaseName() async {
     try {
-      final databaseName = await _storage.read(key: 'database_name') ?? '';
+      final databaseName = await SecureStorageHelper.read('database_name') ?? '';
       if (mounted) {
         setState(() {
           _databaseName = databaseName;
@@ -273,14 +297,14 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       // 기존 연결 끊기
       await _databaseService.disconnectDatabase();
 
-      // 저장된 연결 정보 삭제
-      await _storage.delete(key: 'database_name');
-      await _storage.delete(key: 'username');
-      await _storage.delete(key: 'password');
-      await _storage.delete(key: 'connection_success');
-      await _storage.delete(key: 'profile_name');
-      await _storage.delete(key: 'server_type');
-      await _storage.delete(key: 'local_ip');
+      // 저장된 연결 정보 삭제 (하이브리드 방식)
+      await SecureStorageHelper.delete('database_name');
+      await SecureStorageHelper.delete('username');
+      await SecureStorageHelper.delete('password');
+      await SecureStorageHelper.delete('connection_success');
+      await SecureStorageHelper.delete('profile_name');
+      await SecureStorageHelper.delete('server_type');
+      await SecureStorageHelper.delete('local_ip');
 
       if (mounted) {
         Navigator.pop(context); // 로딩 다이얼로그 닫기
@@ -342,16 +366,21 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       }
 
       if (success && mounted) {
-        // 연결 정보를 secure storage에 저장
-        await _storage.write(key: 'database_name', value: connection.databaseName);
-        await _storage.write(key: 'username', value: connection.username);
-        await _storage.write(key: 'password', value: connection.password);
+        // 연결 정보를 하이브리드 저장소에 저장
+        await SecureStorageHelper.save('database_name', connection.databaseName);
+        await SecureStorageHelper.save('username', connection.username);
+        // macOS: SharedPreferences, 다른 플랫폼: SecureStorage
+        if (defaultTargetPlatform == TargetPlatform.macOS) {
+          await SecureStorageHelper.save('password', connection.password);
+        } else {
+          await SecureStorageHelper.saveSecure('password', connection.password);
+        }
 
-        // 축하 화면으로 이동 (자동으로 resumen del dia로 이동)
+        // ResumenDelDiaScreen으로 직접 이동 (CelebrationScreen 건너뛰기)
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => CelebrationScreen(
+            builder: (context) => ResumenDelDiaScreen(
               serverUrl: connection.serverUrl,
             ),
           ),
@@ -386,11 +415,16 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     });
 
     try {
+      // macOS에서 secure storage 읽기를 위한 약간의 지연 추가
+      if (defaultTargetPlatform == TargetPlatform.macOS) {
+        print('🍎 macOS: secure storage 읽기 전 대기 중...');
+        await Future.delayed(const Duration(milliseconds: 300));
+      }
+      
       // 날짜가 없으면 현재 날짜 사용 (명확하게 보장)
       final dateToUse = date ?? _selectedDate ?? DateTime.now();
       
       // 디버깅: 로드 정보 출력
-      print('📊 ResumenDelDiaScreen._loadData 호출:');
       print('  - 서버 URL: ${widget.serverUrl}');
       print('  - 사용 날짜: $dateToUse');
       print('  - Sucursal: ${sucursal ?? _selectedSucursal ?? '없음'}');
@@ -401,9 +435,6 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         sucursal: sucursal ?? _selectedSucursal,
       );
       
-      print('📊 ResumenDelDiaScreen._loadData 완료:');
-      print('  - 받은 데이터 키: ${data.keys.toList()}');
-      print('  - 데이터 크기: ${data.length}');
       
       setState(() {
         _data = data;
@@ -650,10 +681,8 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     return false;
   }
 
-  // 왼쪽 패널 빌드 (300px: 상단 1/4 연결 관리, 하단 3/4 보고서 종류)
+  // 왼쪽 패널 빌드 (300px: 상단 보고서 목록, 하단 연결 관리)
   Widget _buildLeftPanel(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    
     return Container(
       width: 300,
       decoration: BoxDecoration(
@@ -664,209 +693,9 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       ),
       child: Column(
         children: [
-          // 상단 1/4: 연결 관리
-          SizedBox(
-            height: MediaQuery.of(context).size.height * 0.25,
-            child: Column(
-              children: [
-                // 헤더
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.storage, color: Colors.white, size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          l10n.databaseConnection,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // 연결 정보 표시 영역
-                Expanded(
-                  child: Column(
-                    children: [
-                      // 현재 연결 정보 (항상 표시)
-                      if (_databaseName != null)
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Card(
-                            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                            child: Padding(
-                              padding: const EdgeInsets.all(10.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      CircleAvatar(
-                                        radius: 12,
-                                        backgroundColor: Theme.of(context).colorScheme.primary,
-                                        child: const Icon(Icons.check_circle, color: Colors.white, size: 16),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              _savedConnections.firstWhere(
-                                                (c) => c.databaseName == _databaseName,
-                                                orElse: () => ConnectionInfo(
-                                                  id: '',
-                                                  name: _databaseName ?? '연결됨',
-                                                  serverUrl: widget.serverUrl,
-                                                  databaseName: _databaseName ?? '',
-                                                  username: '',
-                                                ),
-                                              ).name,
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 12,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            Text(
-                                              _databaseName ?? '',
-                                              style: TextStyle(
-                                                fontSize: 10,
-                                                color: Colors.grey[600],
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      // 연결 목록 토글 버튼 및 목록
-                      Expanded(
-                        child: ListView(
-                          shrinkWrap: true,
-                          children: [
-                            // 다른 연결 보기/숨기기 버튼
-                            if (_savedConnections.length > 1)
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                                child: TextButton.icon(
-                                  onPressed: () {
-                                    setState(() {
-                                      _showAllConnections = !_showAllConnections;
-                                    });
-                                  },
-                                  icon: Icon(
-                                    _showAllConnections ? Icons.expand_less : Icons.expand_more,
-                                    size: 16,
-                                  ),
-                                  label: Text(
-                                    _showAllConnections ? '연결 목록 숨기기' : '다른 연결 보기 (${_savedConnections.length - 1})',
-                                    style: const TextStyle(fontSize: 11),
-                                  ),
-                                ),
-                              ),
-                            // 연결 목록 (토글 시에만 표시)
-                            if (_showAllConnections)
-                              ..._savedConnections.where((connection) => connection.databaseName != _databaseName).map((connection) {
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                  child: Card(
-                                    child: ListTile(
-                                      dense: true,
-                                      leading: CircleAvatar(
-                                        radius: 12,
-                                        backgroundColor: Colors.grey,
-                                        child: const Icon(Icons.storage, color: Colors.white, size: 14),
-                                      ),
-                                      title: Text(
-                                        connection.name,
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      subtitle: Text(
-                                        connection.databaseName,
-                                        style: const TextStyle(fontSize: 9),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      trailing: const Icon(Icons.arrow_forward_ios, size: 12),
-                                      onTap: () {
-                                        _switchConnection(connection);
-                                      },
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                            // 새 연결 추가 버튼
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                              child: OutlinedButton.icon(
-                                onPressed: () async {
-                                  final newConnection = await Navigator.push<ConnectionInfo>(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const ConnectionScreen(),
-                                    ),
-                                  );
-                                  if (newConnection != null && mounted) {
-                                    await _loadSavedConnections();
-                                    await _loadDatabaseName();
-                                    _loadData();
-                                  }
-                                },
-                                icon: const Icon(Icons.add, size: 14),
-                                label: const Text('새 연결 추가', style: TextStyle(fontSize: 11)),
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                ),
-                              ),
-                            ),
-                            // 연결 끊기 버튼
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                              child: OutlinedButton.icon(
-                                onPressed: _disconnectAndGoToInitialScreen,
-                                icon: const Icon(Icons.logout, color: Colors.orange, size: 14),
-                                label: const Text('연결 끊기', style: TextStyle(color: Colors.orange, fontSize: 11)),
-                                style: OutlinedButton.styleFrom(
-                                  side: const BorderSide(color: Colors.orange),
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // 구분선
-          Container(
-            height: 1,
-            color: Colors.grey[300],
-          ),
-          // 하단 3/4: 보고서 종류
+          // 상단: 보고서 목록 (확장 시 작아짐)
           Expanded(
+            flex: _isAddingNewConnection ? 3 : 7,
             child: Column(
               children: [
                 // 보고서 헤더
@@ -899,6 +728,526 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                   ),
                 ),
               ],
+            ),
+          ),
+          // 구분선
+          Container(
+            height: 1,
+            color: Colors.grey[300],
+          ),
+          // 하단: 연결 관리 (확장 시 더 커짐)
+          Expanded(
+            flex: _isAddingNewConnection ? 7 : 3,
+            child: _buildConnectionManagementPanel(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 연결 관리 패널 빌드
+  Widget _buildConnectionManagementPanel(BuildContext context) {
+    return Column(
+      children: [
+        // 연결 관리 헤더
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.storage, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '연결 관리',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // 연결 관리 내용
+        Expanded(
+          child: _isAddingNewConnection
+              ? _buildNewConnectionForm(context)
+              : Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
+                    children: [
+                      // 현재 연결 정보
+                      if (_databaseName != null)
+                        Card(
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 12,
+                                  backgroundColor: Theme.of(context).colorScheme.primary,
+                                  child: const Icon(Icons.check_circle, color: Colors.white, size: 16),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _savedConnections.firstWhere(
+                                          (c) => c.databaseName == _databaseName,
+                                          orElse: () => ConnectionInfo(
+                                            id: '',
+                                            name: _databaseName ?? '연결됨',
+                                            serverUrl: widget.serverUrl,
+                                            databaseName: _databaseName ?? '',
+                                            username: '',
+                                            password: '',
+                                            port: 0,
+                                          ),
+                                        ).name,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 11,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      Text(
+                                        _databaseName ?? '',
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          color: Colors.grey[600],
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      const SizedBox(height: 8),
+                      // 새 연결 추가 버튼
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _isAddingNewConnection = true;
+                            });
+                          },
+                          icon: const Icon(Icons.add, size: 14),
+                          label: const Text('새 연결 추가', style: TextStyle(fontSize: 11)),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          ),
+                        ),
+                      ),
+                const SizedBox(height: 4),
+                // 연결 전환 버튼 (저장된 연결이 2개 이상일 때만 표시)
+                if (_savedConnections.length > 1)
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final result = await showDialog<ConnectionInfo>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('연결 전환'),
+                            content: SizedBox(
+                              width: double.maxFinite,
+                              child: ListView.builder(
+                                shrinkWrap: true,
+                                itemCount: _savedConnections.length,
+                                itemBuilder: (context, index) {
+                                  final connection = _savedConnections[index];
+                                  final isCurrent = connection.databaseName == _databaseName;
+                                  return ListTile(
+                                    leading: CircleAvatar(
+                                      radius: 16,
+                                      backgroundColor: isCurrent
+                                          ? Theme.of(context).colorScheme.primary
+                                          : Colors.grey,
+                                      child: Icon(
+                                        isCurrent ? Icons.check_circle : Icons.storage,
+                                        color: Colors.white,
+                                        size: 18,
+                                      ),
+                                    ),
+                                    title: Text(
+                                      connection.name,
+                                      style: TextStyle(
+                                        fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                                      ),
+                                    ),
+                                    subtitle: Text(
+                                      '${connection.databaseName} @ ${connection.serverUrl}',
+                                      style: const TextStyle(fontSize: 11),
+                                    ),
+                                    enabled: !isCurrent,
+                                    onTap: () {
+                                      Navigator.pop(context, connection);
+                                    },
+                                  );
+                                },
+                              ),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('취소'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (result != null && mounted) {
+                          await _switchConnection(result);
+                        }
+                      },
+                      icon: const Icon(Icons.swap_horiz, size: 14),
+                      label: Text(
+                        '연결 전환 (${_savedConnections.length - 1})',
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 4),
+                // 연결 끊기 버튼
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _disconnectAndGoToInitialScreen,
+                    icon: const Icon(Icons.logout, color: Colors.orange, size: 14),
+                    label: const Text('연결 끊기', style: TextStyle(color: Colors.orange, fontSize: 11)),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.orange),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 새 연결 입력 폼 빌드 (MainConnectionScreen과 동일한 구조)
+  Widget _buildNewConnectionForm(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    
+    // 서버 URL 자동 생성
+    void _updateServerUrl() {
+      if (_newSelectedServerType == ServerType.hostinger) {
+        _newServerUrlController.text = 'https://sync.coolsistema.com';
+      } else if (_newLocalIpController.text.isNotEmpty) {
+        _newServerUrlController.text = 'http://${_newLocalIpController.text}:3030';
+      } else {
+        _newServerUrlController.text = '';
+      }
+    }
+    
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 헤더 (취소 버튼 포함)
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.close, size: 18),
+                onPressed: () {
+                  setState(() {
+                    _isAddingNewConnection = false;
+                    _newProfileNameController.clear();
+                    _newServerUrlController.clear();
+                    _newDatabaseNameController.clear();
+                    _newUsernameController.clear();
+                    _newPasswordController.clear();
+                    _newLocalIpController.clear();
+                    _newSelectedServerType = ServerType.hostinger;
+                  });
+                },
+                tooltip: '취소',
+              ),
+              const Expanded(
+                child: Text(
+                  '새 연결 추가',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // 프로필 이름
+          TextField(
+            controller: _newProfileNameController,
+            decoration: InputDecoration(
+              labelText: l10n.profileName,
+              hintText: l10n.profileNameHint,
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              border: const OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.person_outline, size: 18),
+            ),
+            style: const TextStyle(fontSize: 11),
+          ),
+          const SizedBox(height: 12),
+          // 서버 타입 선택
+          Text(
+            l10n.serverType,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Expanded(
+                child: RadioListTile<ServerType>(
+                  title: const Text('Hostinger', style: TextStyle(fontSize: 11)),
+                  value: ServerType.hostinger,
+                  groupValue: _newSelectedServerType,
+                  onChanged: (value) {
+                    setState(() {
+                      _newSelectedServerType = value!;
+                      _updateServerUrl();
+                    });
+                  },
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                ),
+              ),
+              Expanded(
+                child: RadioListTile<ServerType>(
+                  title: const Text('Local IP', style: TextStyle(fontSize: 11)),
+                  value: ServerType.local,
+                  groupValue: _newSelectedServerType,
+                  onChanged: (value) {
+                    setState(() {
+                      _newSelectedServerType = value!;
+                      _updateServerUrl();
+                    });
+                  },
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // 로컬 IP 입력 필드 (Local 선택 시)
+          if (_newSelectedServerType == ServerType.local)
+            TextField(
+              controller: _newLocalIpController,
+              decoration: InputDecoration(
+                labelText: l10n.localIpAddress,
+                hintText: l10n.localIpHint,
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.computer, size: 18),
+              ),
+              style: const TextStyle(fontSize: 11),
+              keyboardType: TextInputType.number,
+              onChanged: (value) {
+                _updateServerUrl();
+              },
+            ),
+          if (_newSelectedServerType == ServerType.local)
+            const SizedBox(height: 8),
+          // 서버 URL (자동 생성, 읽기 전용)
+          TextField(
+            controller: _newServerUrlController,
+            decoration: InputDecoration(
+              labelText: l10n.serverUrl,
+              hintText: 'http://localhost:3000',
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              border: const OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.link, size: 18),
+            ),
+            style: const TextStyle(fontSize: 11),
+            readOnly: true,
+            enabled: false,
+          ),
+          const SizedBox(height: 8),
+          // 데이터베이스 이름
+          TextField(
+            controller: _newDatabaseNameController,
+            decoration: InputDecoration(
+              labelText: l10n.databaseName,
+              helperText: l10n.alphanumericOnly,
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              border: const OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.storage, size: 18),
+            ),
+            style: const TextStyle(fontSize: 11),
+            keyboardType: TextInputType.text,
+          ),
+          const SizedBox(height: 8),
+          // 사용자 이름과 비밀번호 (한 줄에)
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _newUsernameController,
+                  decoration: InputDecoration(
+                    labelText: l10n.username,
+                    helperText: l10n.alphanumericOnly,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.person, size: 18),
+                  ),
+                  style: const TextStyle(fontSize: 11),
+                  keyboardType: TextInputType.text,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _newPasswordController,
+                  decoration: InputDecoration(
+                    labelText: l10n.password,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.lock, size: 18),
+                  ),
+                  style: const TextStyle(fontSize: 11),
+                  obscureText: true,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // 저장 버튼
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () async {
+                final profileName = _newProfileNameController.text.trim();
+                final serverUrl = _newServerUrlController.text.trim();
+                final databaseName = _newDatabaseNameController.text.trim();
+                final username = _newUsernameController.text.trim();
+                final password = _newPasswordController.text.trim();
+                
+                if (profileName.isEmpty || serverUrl.isEmpty || databaseName.isEmpty || 
+                    username.isEmpty || password.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('모든 필드를 입력해주세요.'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+                
+                // 포트 번호 추출
+                int port = 3030;
+                final uri = Uri.tryParse(serverUrl);
+                if (uri != null && uri.hasPort) {
+                  port = uri.port;
+                } else if (serverUrl.startsWith('https://')) {
+                  port = 443;
+                }
+                
+                // 연결 이름이 비어있으면 프로필 이름 사용
+                String connectionName = profileName.isEmpty ? databaseName : profileName;
+                
+                final connection = ConnectionInfo(
+                  id: DateTime.now().millisecondsSinceEpoch.toString(),
+                  name: connectionName,
+                  serverUrl: serverUrl,
+                  databaseName: databaseName,
+                  username: username,
+                  password: password,
+                  port: port,
+                );
+                
+                try {
+                  await _connectionStorageService.saveConnection(connection);
+                  await _loadSavedConnections();
+                  
+                  setState(() {
+                    _isAddingNewConnection = false;
+                    _newProfileNameController.clear();
+                    _newServerUrlController.clear();
+                    _newDatabaseNameController.clear();
+                    _newUsernameController.clear();
+                    _newPasswordController.clear();
+                    _newLocalIpController.clear();
+                    _newSelectedServerType = ServerType.hostinger;
+                  });
+                  
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('연결이 저장되었습니다.'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('저장 실패: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+              icon: const Icon(Icons.save, size: 14),
+              label: const Text('저장', style: TextStyle(fontSize: 11)),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // 취소 버튼
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                setState(() {
+                  _isAddingNewConnection = false;
+                  _newProfileNameController.clear();
+                  _newServerUrlController.clear();
+                  _newDatabaseNameController.clear();
+                  _newUsernameController.clear();
+                  _newPasswordController.clear();
+                  _newLocalIpController.clear();
+                  _newSelectedServerType = ServerType.hostinger;
+                });
+              },
+              icon: const Icon(Icons.cancel, size: 14),
+              label: const Text('취소', style: TextStyle(fontSize: 11)),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              ),
             ),
           ),
         ],
@@ -2598,6 +2947,16 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     }
   }
 
+  @override
+  void dispose() {
+    _newProfileNameController.dispose();
+    _newServerUrlController.dispose();
+    _newDatabaseNameController.dispose();
+    _newUsernameController.dispose();
+    _newPasswordController.dispose();
+    _newLocalIpController.dispose();
+    super.dispose();
+  }
 }
 
 
