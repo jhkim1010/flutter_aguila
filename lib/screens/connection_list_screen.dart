@@ -18,26 +18,57 @@ class _ConnectionListScreenState extends State<ConnectionListScreen> {
   final ConnectionStorageService _storageService = ConnectionStorageService();
   List<ConnectionInfo> _connections = [];
   bool _isLoading = true;
+  bool _isLoadingConnections = false; // 중복 호출 방지
 
   @override
   void initState() {
     super.initState();
+    print('🚀 ConnectionListScreen: initState 호출');
     _loadConnections();
   }
 
   Future<void> _loadConnections() async {
+    // 중복 호출 방지
+    if (_isLoadingConnections) {
+      print('⚠️ ConnectionListScreen: 이미 로딩 중이므로 스킵');
+      return;
+    }
+
+    _isLoadingConnections = true;
     setState(() {
       _isLoading = true;
     });
 
-    print('🔄 연결 리스트 로드 시작...');
-    final connections = await _storageService.getAllConnections();
-    print('✅ 연결 리스트 로드 완료: ${connections.length}개 연결');
-    
-    setState(() {
-      _connections = connections;
-      _isLoading = false;
-    });
+    try {
+      print('🔄 ConnectionListScreen: 연결 리스트 로드 시작...');
+      final connections = await _storageService.getAllConnections();
+      print('✅ ConnectionListScreen: ${connections.length}개 연결 로드 완료');
+      
+      for (var conn in connections) {
+        print('   - ${conn.name} (ID: ${conn.id}, DB: ${conn.databaseName})');
+      }
+      
+      if (mounted) {
+        setState(() {
+          _connections = connections;
+          _isLoading = false;
+        });
+        print('🔄 ConnectionListScreen: UI 업데이트 완료 (${_connections.length}개 연결 표시)');
+        print('   현재 _connections 리스트:');
+        for (var conn in _connections) {
+          print('     - ${conn.name}');
+        }
+      }
+    } catch (e) {
+      print('❌ ConnectionListScreen: 연결 리스트 로드 실패: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } finally {
+      _isLoadingConnections = false;
+    }
   }
 
   Future<void> _showLongPressOptions(ConnectionInfo connection) async {

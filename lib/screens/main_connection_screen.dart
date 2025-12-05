@@ -205,6 +205,53 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
   }
 
   // 저장된 연결로 연결 시도
+  // 연결 삭제하기
+  Future<void> _deleteConnection(ConnectionInfo connection) async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.deleteConnection),
+        content: Text(l10n.deleteConnectionConfirm(connection.name)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(l10n.delete, style: const TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        print('🗑️ 연결 삭제 시작: ${connection.name} (ID: ${connection.id})');
+        await _connectionStorageService.deleteConnection(connection.id);
+        await _loadSavedConnections();
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l10n.connectionDeleted)),
+          );
+        }
+        print('✅ 연결 삭제 완료: ${connection.name}');
+      } catch (e) {
+        print('❌ 연결 삭제 실패: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${l10n.deleteFailed}: ${e.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   Future<void> _connectWithSavedConnection(ConnectionInfo connection) async {
     try {
       // 로딩 표시
@@ -779,6 +826,28 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                 ),
               ),
               IconButton(
+                icon: const Icon(Icons.add, color: Colors.white, size: 18),
+                onPressed: () async {
+                  final result = await Navigator.push<ConnectionInfo>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ConnectionScreen(),
+                    ),
+                  );
+                  if (mounted) {
+                    print('🔄 연결 추가 화면에서 돌아옴, 리스트 갱신 중...');
+                    await Future.delayed(const Duration(milliseconds: 100));
+                    await _loadSavedConnections();
+                    if (mounted) {
+                      setState(() {});
+                    }
+                  }
+                },
+                tooltip: l10n.addConnection,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+              IconButton(
                 icon: const Icon(Icons.list, color: Colors.white, size: 18),
                 onPressed: () {
                   Navigator.push(
@@ -803,10 +872,23 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
               ? Center(
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
-                    child: Text(
-                      l10n.noSavedConnections,
-                      style: TextStyle(color: Colors.grey[600], fontSize: 11),
-                      textAlign: TextAlign.center,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.storage_outlined, size: 48, color: Colors.grey[400]),
+                        const SizedBox(height: 8),
+                        Text(
+                          l10n.noSavedConnections,
+                          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          l10n.addNewConnection,
+                          style: TextStyle(color: Colors.grey[500], fontSize: 10),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
                   ),
                 )
@@ -818,42 +900,72 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                     final isCurrentConnection = connection.databaseName == _currentDatabaseName;
                     
                     return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
                       child: Card(
+                        elevation: isCurrentConnection ? 3 : 1,
                         color: isCurrentConnection 
-                            ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
-                            : null,
+                            ? Theme.of(context).colorScheme.primary.withOpacity(0.15)
+                            : Colors.white,
                         child: ListTile(
-                          dense: true,
+                          dense: false,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                           leading: CircleAvatar(
-                            radius: 12,
+                            radius: 16,
                             backgroundColor: isCurrentConnection
                                 ? Theme.of(context).colorScheme.primary
-                                : Colors.grey,
-                            child: const Icon(Icons.storage, color: Colors.white, size: 14),
+                                : Colors.grey[400],
+                            child: Icon(
+                              isCurrentConnection ? Icons.check_circle : Icons.storage, 
+                              color: Colors.white, 
+                              size: 18
+                            ),
                           ),
                           title: Text(
                             connection.name,
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 11,
+                              fontSize: 13,
                               color: isCurrentConnection
                                   ? Theme.of(context).colorScheme.primary
-                                  : null,
+                                  : Colors.black87,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          subtitle: Text(
-                            connection.databaseName,
-                            style: const TextStyle(fontSize: 9),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          subtitle: Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              connection.databaseName,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[600],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                          trailing: isCurrentConnection
-                              ? const Icon(Icons.check_circle, color: Colors.green, size: 16)
-                              : null,
+                          trailing: PopupMenuButton<String>(
+                            icon: const Icon(Icons.more_vert, size: 18),
+                            onSelected: (value) {
+                              if (value == 'delete') {
+                                _deleteConnection(connection);
+                              }
+                            },
+                            itemBuilder: (context) => [
+                              PopupMenuItem(
+                                value: 'delete',
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.delete, size: 18, color: Colors.red),
+                                    const SizedBox(width: 8),
+                                    Text(l10n.delete, style: const TextStyle(color: Colors.red)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                           onTap: () {
+                            // 현재 연결이 아니면 바로 연결
                             if (!isCurrentConnection) {
                               _connectWithSavedConnection(connection);
                             }
@@ -1606,58 +1718,6 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                 const Divider(),
                 const SizedBox(height: 16),
               ],
-              // 연결 성공 시 연결 전환 아이콘 표시
-              if (_isConnected)
-                Center(
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    child: InkWell(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const ConnectionListScreen(),
-                          ),
-                        ).then((_) {
-                          // 연결 목록에서 돌아왔을 때 상태 갱신
-                          _loadSavedConnectionInfo();
-                          _loadSavedConnections();
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(30),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(30),
-                          border: Border.all(
-                            color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.swap_horiz,
-                              color: Theme.of(context).colorScheme.primary,
-                              size: 24,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              l10n.switchToAnotherConnection,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.primary,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
               // Profile Name과 언어 선택을 한 행에 배치
               Row(
                 children: [
