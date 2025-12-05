@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatf
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'secure_storage_helper.dart';
+import '../models/stocks_response.dart';
+import '../models/todocodigos_response.dart';
 
 class DatabaseConnectionRequest {
   final String databaseName;
@@ -122,6 +124,30 @@ class DatabaseService {
 
       print('=== 응답 정보 ===');
       print('Status Code: ${response.statusCode}');
+      
+      // 응답 바디 출력 (GET 요청이므로 응답 바디만 있음)
+      if (response.body.isNotEmpty) {
+        try {
+          final decoded = json.decode(response.body);
+          print('📦 Response Body:');
+          // JSON을 보기 좋게 포맷팅하여 출력 (너무 길면 일부만 출력)
+          final jsonString = json.encode(decoded);
+          if (jsonString.length > 2000) {
+            print('${jsonString.substring(0, 2000)}... (truncated, total length: ${jsonString.length})');
+          } else {
+            print(jsonString);
+          }
+        } catch (e) {
+          print('📦 Response Body (raw):');
+          if (response.body.length > 2000) {
+            print('${response.body.substring(0, 2000)}... (truncated, total length: ${response.body.length})');
+          } else {
+            print(response.body);
+          }
+        }
+      } else {
+        print('📦 Response Body: (empty)');
+      }
 
       if (response.statusCode == 200) {
         try {
@@ -642,6 +668,32 @@ class DatabaseService {
   }
 
   /// 재고 보고서 가져오기 (페이지네이션 지원)
+  /// 
+  /// 응답 구조:
+  /// - filters: 적용된 필터 정보
+  /// - sucursal: 지점 번호 또는 'all'
+  /// - bcolorview: valor1이 '1'인지 여부
+  /// - valor1: Parametros에서 조회한 valor1 값
+  /// - filtering_word: 검색어
+  /// - sort_column: 정렬 컬럼
+  /// - sort_ascending: 오름차순 여부
+  /// - summary: 요약 정보
+  /// - total_items: 반환된 데이터 개수
+  /// - source_table: 사용된 소스 테이블 이름
+  /// - data: 재고 데이터 배열 (최대 100개)
+  ///   - bcolorview = false: codigo, descripcion, first_date, last_date, pre1~pre5, 
+  ///     totaling, totalventa, todayingreso, todayventa, totalreservado, cntoffset, 
+  ///     stockreal, porcentaje, sucursal, id_codigo1
+  ///   - bcolorview = true: tcode, tdesc, first_date, last_date, pre1~pre5, 
+  ///     totaling3, totalventa3, todaying3, todayvnt3, totalreservado3, cntoffset3, 
+  ///     stockreal3, porcentaje, sucursal, ref_id_todocodigo
+  /// - pagination: 페이지네이션 정보 (count, total, hasMore, nextMaxUtime)
+  /// 
+  /// 사용 예시:
+  /// ```dart
+  /// final response = await databaseService.getStocksReport();
+  /// final stocksResponse = StocksResponse.fromMap(response);
+  /// ```
   Future<Map<String, dynamic>> getStocksReport({
     String? filteringWord,
     Map<String, dynamic>? filters,
@@ -703,6 +755,27 @@ class DatabaseService {
     print('\n');
     
     return await _performGetRequest(endpoint, queryParameters: queryParams.isNotEmpty ? queryParams : null);
+  }
+
+  /// 재고 보고서 가져오기 (StocksResponse 모델 반환)
+  /// 
+  /// getStocksReport()의 타입 안전 버전입니다.
+  /// 응답을 StocksResponse 모델로 자동 파싱하여 반환합니다.
+  Future<StocksResponse> getStocksReportTyped({
+    String? filteringWord,
+    Map<String, dynamic>? filters,
+    String? maxUtime,
+    String? sortColumn,
+    bool? sortAscending,
+  }) async {
+    final response = await getStocksReport(
+      filteringWord: filteringWord,
+      filters: filters,
+      maxUtime: maxUtime,
+      sortColumn: sortColumn,
+      sortAscending: sortAscending,
+    );
+    return StocksResponse.fromMap(response);
   }
 
   /// 아이템 보고서 가져오기
@@ -903,6 +976,102 @@ class DatabaseService {
         'loadedPages': pageCount,
       },
     };
+  }
+
+  /// Todocodigos 리스트 가져오기 (페이지네이션 지원)
+  /// 
+  /// 응답 구조:
+  /// - filters: 적용된 필터 정보
+  /// - filtering_word: 검색어 (tcodigo 또는 tdesc에서 검색)
+  /// - sort_column: 정렬 컬럼 (기본값: tcodigo)
+  /// - sort_ascending: 오름차순 여부 (기본값: true)
+  /// - data: Todocodigos 데이터 배열 (최대 100개)
+  ///   각 항목: id_todocodigo, tcodigo, tdesc, tpre1~tpre5, torgpre, ttelacodigo, 
+  ///   ttelakg, tinfo1~tinfo3, utime, borrado, fotonombre, pubip, ip, mac, bmobile,
+  ///   ref_id_temporada, ref_id_tipo, ref_id_origen, ref_id_empresa, memo,
+  ///   estatus_precios, tprecio_dolar, utime_modificado, id_todocodigo_centralizado,
+  ///   b_mostrar_vcontrol, d_oferta_mode, id_serial, str_prefijo
+  /// - pagination: 페이지네이션 정보 (count, total, hasMore, id_todocodigo)
+  /// 
+  /// 사용 예시:
+  /// ```dart
+  /// final response = await databaseService.getTodocodigos();
+  /// final todocodigosResponse = TodocodigosResponse.fromMap(response);
+  /// ```
+  Future<Map<String, dynamic>> getTodocodigos({
+    String? idTodocodigo,
+    String? filteringWord,
+    String? sortColumn,
+    bool? sortAscending,
+  }) async {
+    final endpoint = '/api/todocodigos';
+    final queryParams = <String, String>{};
+    
+    // id_todocodigo 파라미터 추가 (다음 페이지 요청용)
+    if (idTodocodigo != null && idTodocodigo.isNotEmpty) {
+      queryParams['id_todocodigo'] = idTodocodigo;
+    }
+    
+    // filteringWord 파라미터 추가
+    if (filteringWord != null && filteringWord.isNotEmpty) {
+      queryParams['filtering_word'] = filteringWord;
+      print('✅ filteringWord 추가됨: "$filteringWord"');
+    }
+    
+    // 정렬 파라미터 추가
+    if (sortColumn != null && sortColumn.isNotEmpty) {
+      queryParams['sort_column'] = sortColumn;
+      queryParams['sort_ascending'] = (sortAscending ?? true) ? 'true' : 'false';
+    }
+    
+    // Todocodigos 요청 헤더와 쿼리 파라미터 출력
+    final headers = await _getDatabaseHeaders();
+    print('\n');
+    print('═══════════════════════════════════════════════════════════');
+    print('═══════════════════════════════════════════════════════════');
+    final uri = Uri.parse('$serverUrl$endpoint').replace(
+      queryParameters: queryParams.isNotEmpty ? queryParams : null,
+    );
+    print('🌐 Todocodigos 요청 URL: $uri');
+    print('');
+    print('📋 Headers:');
+    headers.forEach((key, value) {
+      final displayValue = key == 'x-db-password' ? '***' : value;
+      print('   $key: $displayValue');
+    });
+    if (queryParams.isNotEmpty) {
+      print('');
+      print('🔍 Query Parameters:');
+      queryParams.forEach((key, value) {
+        print('   $key: $value');
+      });
+    }
+    print('═══════════════════════════════════════════════════════════');
+    print('\n');
+    
+    return await _performGetRequest(
+      endpoint,
+      queryParameters: queryParams.isNotEmpty ? queryParams : null,
+    );
+  }
+
+  /// Todocodigos 리스트 가져오기 (TodocodigosResponse 모델 반환)
+  /// 
+  /// getTodocodigos()의 타입 안전 버전입니다.
+  /// 응답을 TodocodigosResponse 모델로 자동 파싱하여 반환합니다.
+  Future<TodocodigosResponse> getTodocodigosTyped({
+    String? idTodocodigo,
+    String? filteringWord,
+    String? sortColumn,
+    bool? sortAscending,
+  }) async {
+    final response = await getTodocodigos(
+      idTodocodigo: idTodocodigo,
+      filteringWord: filteringWord,
+      sortColumn: sortColumn,
+      sortAscending: sortAscending,
+    );
+    return TodocodigosResponse.fromMap(response);
   }
 
   /// Codigo 업데이트하기

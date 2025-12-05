@@ -90,6 +90,51 @@ class _ReportScreenState extends State<ReportScreen> {
     }
     _loadData();
   }
+
+  @override
+  void didUpdateWidget(ReportScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // reportType이 변경되었을 때 데이터 다시 로드
+    if (oldWidget.reportType != widget.reportType) {
+      print('🔄 ReportType 변경 감지: ${oldWidget.reportType} → ${widget.reportType}');
+      // 상태 초기화
+      _data = null;
+      _errorMessage = null;
+      _isLoading = true;
+      _filteringWordController.clear();
+      _selectedSucursal = null;
+      
+      // 보고서 타입별 상태 초기화
+      if (widget.reportType == ReportType.codigos || widget.reportType == ReportType.todocodigos) {
+        _codigosNextIdCodigo = null;
+        _codigosHasMore = false;
+        _codigosSortColumn = 'codigo';
+        _codigosSortAscending = true;
+      } else if (widget.reportType == ReportType.stocks) {
+        _stocksNextMaxUtime = null;
+        _stocksHasMore = false;
+        _stocksSortColumn = 'codigo';
+        _stocksSortAscending = true;
+      }
+      
+      // Items 보고서의 경우 기본 날짜 설정 (오늘 날짜)
+      if (widget.reportType == ReportType.items) {
+        final now = DateTime.now();
+        _itemsStartDate = now;
+        _itemsEndDate = now;
+      }
+      
+      // Ventas 보고서의 경우 초기 날짜 설정
+      if (widget.reportType == ReportType.ventas && widget.initialDate != null) {
+        _ventasDate = widget.initialDate;
+      } else if (widget.reportType == ReportType.ventas && oldWidget.reportType != ReportType.ventas) {
+        _ventasDate = null;
+      }
+      
+      // 데이터 다시 로드
+      _loadData();
+    }
+  }
   
   // filteringWord 변경 감지 핸들러
   String _lastFilteringWord = '';
@@ -237,9 +282,30 @@ class _ReportScreenState extends State<ReportScreen> {
           }
           break;
         case ReportType.todocodigos:
-          // Todo Codigos - 모든 codigos를 가져옴
+          // Todo Codigos - todocodigos 엔드포인트 사용
           print('🔍 Todo Codigos 요청');
-          data = await _databaseService.getAllCodigos();
+          final currentFilteringWord = filteringWord ?? _filteringWordController.text.trim();
+          data = await _databaseService.getTodocodigos(
+            filteringWord: currentFilteringWord.isNotEmpty ? currentFilteringWord : null,
+            sortColumn: _codigosSortColumn,
+            sortAscending: _codigosSortAscending,
+          );
+          // 페이지네이션 정보 저장
+          if (data.containsKey('pagination') && data['pagination'] is Map) {
+            final pagination = data['pagination'] as Map<String, dynamic>;
+            if (pagination.containsKey('id_todocodigo') && pagination['id_todocodigo'] != null) {
+              _codigosNextIdCodigo = pagination['id_todocodigo']?.toString();
+              _codigosHasMore = true;
+              print('📄 다음 페이지 id_todocodigo: $_codigosNextIdCodigo');
+            } else {
+              _codigosNextIdCodigo = null;
+              _codigosHasMore = false;
+              print('ℹ️ 마지막 페이지입니다.');
+            }
+          } else {
+            _codigosNextIdCodigo = null;
+            _codigosHasMore = false;
+          }
           break;
       }
 
@@ -282,14 +348,26 @@ class _ReportScreenState extends State<ReportScreen> {
     });
     
     try {
-      print('📄 다음 Codigos 페이지 로드 중... (id_codigo=$_codigosNextIdCodigo)');
       final filteringWord = _filteringWordController.text.trim();
-      final response = await _databaseService.getCodigos(
-        idCodigo: _codigosNextIdCodigo,
-        filteringWord: filteringWord.isNotEmpty ? filteringWord : null,
-        sortColumn: _codigosSortColumn,
-        sortAscending: _codigosSortAscending,
-      );
+      Map<String, dynamic> response;
+      
+      if (widget.reportType == ReportType.todocodigos) {
+        print('📄 다음 Todocodigos 페이지 로드 중... (id_todocodigo=$_codigosNextIdCodigo)');
+        response = await _databaseService.getTodocodigos(
+          idTodocodigo: _codigosNextIdCodigo,
+          filteringWord: filteringWord.isNotEmpty ? filteringWord : null,
+          sortColumn: _codigosSortColumn,
+          sortAscending: _codigosSortAscending,
+        );
+      } else {
+        print('📄 다음 Codigos 페이지 로드 중... (id_codigo=$_codigosNextIdCodigo)');
+        response = await _databaseService.getCodigos(
+          idCodigo: _codigosNextIdCodigo,
+          filteringWord: filteringWord.isNotEmpty ? filteringWord : null,
+          sortColumn: _codigosSortColumn,
+          sortAscending: _codigosSortAscending,
+        );
+      }
       
       // 새 데이터 추가
       if (response.containsKey('data') && response['data'] is List) {
@@ -307,18 +385,31 @@ class _ReportScreenState extends State<ReportScreen> {
       }
       
       // 페이지네이션 정보 업데이트
-      // pagination.id_codigo가 있으면 다음 페이지가 있다고 판단
       if (response.containsKey('pagination') && response['pagination'] is Map) {
         final pagination = response['pagination'] as Map<String, dynamic>;
-        // pagination.id_codigo가 있으면 다음 페이지가 있음
-        if (pagination.containsKey('id_codigo') && pagination['id_codigo'] != null) {
-          _codigosNextIdCodigo = pagination['id_codigo']?.toString();
-          _codigosHasMore = true;
-          print('📄 다음 페이지 id_codigo: $_codigosNextIdCodigo');
+        
+        if (widget.reportType == ReportType.todocodigos) {
+          // Todocodigos: pagination.id_todocodigo 사용
+          if (pagination.containsKey('id_todocodigo') && pagination['id_todocodigo'] != null) {
+            _codigosNextIdCodigo = pagination['id_todocodigo']?.toString();
+            _codigosHasMore = true;
+            print('📄 다음 페이지 id_todocodigo: $_codigosNextIdCodigo');
+          } else {
+            _codigosNextIdCodigo = null;
+            _codigosHasMore = false;
+            print('ℹ️ 모든 Todocodigos 페이지 로드 완료');
+          }
         } else {
-          _codigosNextIdCodigo = null;
-          _codigosHasMore = false;
-          print('ℹ️ 모든 Codigos 페이지 로드 완료');
+          // Codigos: pagination.id_codigo 사용
+          if (pagination.containsKey('id_codigo') && pagination['id_codigo'] != null) {
+            _codigosNextIdCodigo = pagination['id_codigo']?.toString();
+            _codigosHasMore = true;
+            print('📄 다음 페이지 id_codigo: $_codigosNextIdCodigo');
+          } else {
+            _codigosNextIdCodigo = null;
+            _codigosHasMore = false;
+            print('ℹ️ 모든 Codigos 페이지 로드 완료');
+          }
         }
       } else {
         _codigosNextIdCodigo = null;
@@ -586,25 +677,50 @@ class _ReportScreenState extends State<ReportScreen> {
                           ),
                         ],
                       )
-                    : Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.arrow_back, color: Colors.white),
-                            onPressed: () => Navigator.pop(context),
+                    : widget.reportType == ReportType.stocks
+                        ? LayoutBuilder(
+                            builder: (context, constraints) {
+                              final isLargeScreen = constraints.maxWidth > 800;
+                              return Row(
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                                    onPressed: () => Navigator.pop(context),
+                                  ),
+                                  Icon(reportIcon, color: Colors.white),
+                                  const SizedBox(width: 8),
+                                  Text(reportTitle),
+                                  if (isLargeScreen && _data != null) ...[
+                                    const SizedBox(width: 16),
+                                    _buildStocksViewTypeInAppBar(),
+                                  ],
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: _buildFilteringWordFieldInAppBar(),
+                                  ),
+                                ],
+                              );
+                            },
+                          )
+                        : Row(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                                onPressed: () => Navigator.pop(context),
+                              ),
+                              Icon(reportIcon, color: Colors.white),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(reportTitle),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                          Icon(reportIcon, color: Colors.white),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(reportTitle),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
         backgroundColor: reportColor,
       ),
       body: _isLoading
@@ -958,17 +1074,127 @@ class _ReportScreenState extends State<ReportScreen> {
     return const Center(child: Text('Unknown data format'));
   }
 
-  // Stocks 보고서의 vista 타입 표시
+  // Stocks 보고서의 vista 타입 표시 (Body용)
   Widget _buildStocksViewType() {
-    return StocksBuilder.buildViewType(
-      data: _data,
-      selectedSucursal: _selectedSucursal,
-      onSucursalChanged: (value) {
-        setState(() {
-          _selectedSucursal = value;
-        });
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isLargeScreen = constraints.maxWidth > 800;
+        // 대형 화면에서는 AppBar에 표시되므로 여기서는 숨김
+        if (isLargeScreen) {
+          return const SizedBox.shrink();
+        }
+        return StocksBuilder.buildViewType(
+          data: _data,
+          selectedSucursal: _selectedSucursal,
+          onSucursalChanged: (value) {
+            setState(() {
+              _selectedSucursal = value;
+            });
+          },
+          reportColor: _getReportColor(),
+        );
       },
-      reportColor: _getReportColor(),
+    );
+  }
+
+  // Stocks 보고서의 vista 타입 표시 (AppBar용 - 컴팩트 버전)
+  Widget _buildStocksViewTypeInAppBar() {
+    if (_data == null || !_data!.containsKey('filters')) {
+      return const SizedBox.shrink();
+    }
+    
+    final filters = _data!['filters'] as Map<String, dynamic>?;
+    if (filters == null || !filters.containsKey('bcolorview')) {
+      return const SizedBox.shrink();
+    }
+    
+    final bcolorview = filters['bcolorview'];
+    final viewType = (bcolorview == true) ? 'Vista Resumida' : 'VistaD';
+    
+    // Vista Detallada일 때만 sucursal 필터 표시
+    final bool showSucursalFilter = (bcolorview == false);
+    List<String>? sucursales;
+    
+    if (showSucursalFilter && _data!.containsKey('data') && _data!['data'] is List) {
+      final dataList = _data!['data'] as List;
+      final sucursalSet = <String>{};
+      
+      for (var item in dataList) {
+        if (item is Map<String, dynamic> && item.containsKey('sucursal')) {
+          final sucursal = item['sucursal']?.toString();
+          if (sucursal != null && sucursal.isNotEmpty) {
+            sucursalSet.add(sucursal);
+          }
+        }
+      }
+      
+      sucursales = sucursalSet.toList()..sort((a, b) {
+        final aNum = int.tryParse(a) ?? 0;
+        final bNum = int.tryParse(b) ?? 0;
+        return aNum.compareTo(bNum);
+      });
+    }
+    
+    final reportColor = _getReportColor();
+    
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          bcolorview == true ? Icons.view_compact : Icons.view_list,
+          color: Colors.white,
+          size: 18,
+        ),
+        const SizedBox(width: 6),
+        Text(
+          viewType,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        // Sucursal이 2개 이상일 때만 콤보박스 표시
+        if (showSucursalFilter && sucursales != null && sucursales.length > 1)
+          ...[
+            const SizedBox(width: 12),
+            Container(
+              constraints: const BoxConstraints(minWidth: 80, maxWidth: 120),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.white.withOpacity(0.3)),
+              ),
+              child: DropdownButton<String?>(
+                value: _selectedSucursal,
+                hint: const Text('모두', style: TextStyle(fontSize: 12, color: Colors.white)),
+                underline: const SizedBox(),
+                isDense: true,
+                dropdownColor: reportColor,
+                icon: const Icon(Icons.arrow_drop_down, color: Colors.white, size: 18),
+                style: const TextStyle(fontSize: 12, color: Colors.white),
+                items: [
+                  const DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('모두', style: TextStyle(fontSize: 12, color: Colors.white)),
+                  ),
+                  ...sucursales.map((sucursal) {
+                    return DropdownMenuItem<String?>(
+                      value: sucursal,
+                      child: Text(sucursal, style: const TextStyle(fontSize: 12, color: Colors.white)),
+                    );
+                  }).toList(),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    _selectedSucursal = value;
+                  });
+                },
+              ),
+            ),
+          ],
+      ],
     );
   }
 
@@ -2108,17 +2334,21 @@ class _ReportScreenState extends State<ReportScreen> {
           ),
         ),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          _buildSortableHeader('codigo', 'Codigo', 150),
-          const SizedBox(width: 12),
-          _buildSortableHeader('descripcion', 'Descripción', 300),
-          const SizedBox(width: 12),
-          _buildSortableHeader('stockreal', 'Stock', 100),
-          const SizedBox(width: 12),
-          _buildSortableHeader('pre1', 'Precio 1', 100),
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            _buildSortableHeader('codigo', 'Codigo', 150),
+            const SizedBox(width: 12),
+            _buildSortableHeader('descripcion', 'Descripción', 300),
+            const SizedBox(width: 12),
+            _buildSortableHeader('stockreal', 'Stock', 100),
+            const SizedBox(width: 12),
+            _buildSortableHeader('pre1', 'Precio 1', 100),
+          ],
+        ),
       ),
     );
   }

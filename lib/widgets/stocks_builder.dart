@@ -176,17 +176,21 @@ class StocksBuilder {
           ),
         ),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          _buildSortableHeader('codigo', 'Codigo', 150, sortColumn, sortAscending, onSort, reportColor),
-          const SizedBox(width: 12),
-          _buildSortableHeader('descripcion', 'Descripción', 300, sortColumn, sortAscending, onSort, reportColor),
-          const SizedBox(width: 12),
-          _buildSortableHeader('stockreal', 'Stock', 100, sortColumn, sortAscending, onSort, reportColor),
-          const SizedBox(width: 12),
-          _buildSortableHeader('pre1', 'Precio 1', 100, sortColumn, sortAscending, onSort, reportColor),
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            _buildSortableHeader('codigo', 'Codigo', 150, sortColumn, sortAscending, onSort, reportColor),
+            const SizedBox(width: 12),
+            _buildSortableHeader('descripcion', 'Descripción', 300, sortColumn, sortAscending, onSort, reportColor),
+            const SizedBox(width: 12),
+            _buildSortableHeader('stockreal', 'Stock', 100, sortColumn, sortAscending, onSort, reportColor),
+            const SizedBox(width: 12),
+            _buildSortableHeader('pre1', 'Precio 1', 100, sortColumn, sortAscending, onSort, reportColor),
+          ],
+        ),
       ),
     );
   }

@@ -76,7 +76,11 @@ class _ConnectionListScreenState extends State<ConnectionListScreen> {
             connection: connection,
           ),
         ),
-      ).then((_) => _loadConnections());
+      ).then((_) {
+        if (mounted) {
+          _loadConnections();
+        }
+      });
     } else if (result == 'delete') {
       _deleteConnection(connection);
     }
@@ -248,7 +252,11 @@ class _ConnectionListScreenState extends State<ConnectionListScreen> {
                                           connection: connection,
                                         ),
                                       ),
-                                    ).then((_) => _loadConnections());
+                                    ).then((_) {
+        if (mounted) {
+          _loadConnections();
+        }
+      });
                                   },
                                 );
                               },
@@ -283,7 +291,11 @@ class _ConnectionListScreenState extends State<ConnectionListScreen> {
             MaterialPageRoute(
               builder: (context) => const ConnectionScreen(),
             ),
-          ).then((_) => _loadConnections());
+          ).then((_) {
+        if (mounted) {
+          _loadConnections();
+        }
+      });
         },
         icon: const Icon(Icons.add),
         label: Text(l10n.addConnection),

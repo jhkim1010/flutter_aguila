@@ -1159,16 +1159,17 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
               OutlinedButton.icon(
                 onPressed: () async {
                   // 연결 추가 화면으로 이동
-                  final newConnection = await Navigator.push<ConnectionInfo>(
+                  await Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const ConnectionScreen(),
                     ),
-                  );
-                  if (newConnection != null && mounted) {
-                    await _loadSavedConnections();
-                    // 연결 목록 갱신 후 자동으로 연결 시도하지 않음
-                  }
+                  ).then((_) {
+                    // 연결 화면에서 돌아왔을 때 리스트 갱신
+                    if (mounted) {
+                      _loadSavedConnections();
+                    }
+                  });
                 },
                 icon: const Icon(Icons.add, size: 16),
                 label: Text(l10n.addConnection, style: const TextStyle(fontSize: 13)),
@@ -1896,16 +1897,17 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
               OutlinedButton.icon(
                 onPressed: () async {
                   // 연결 추가 화면으로 이동
-                  final newConnection = await Navigator.push<ConnectionInfo>(
+                  await Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const ConnectionScreen(),
                     ),
-                  );
-                  if (newConnection != null && mounted) {
-                    await _loadSavedConnections();
-                    // 연결 목록 갱신 후 자동으로 연결 시도하지 않음
-                  }
+                  ).then((_) {
+                    // 연결 화면에서 돌아왔을 때 리스트 갱신
+                    if (mounted) {
+                      _loadSavedConnections();
+                    }
+                  });
                 },
                 icon: const Icon(Icons.add),
                 label: Text(l10n.addConnection),

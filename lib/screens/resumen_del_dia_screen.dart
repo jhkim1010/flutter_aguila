@@ -1395,7 +1395,9 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
   Widget _buildReportContent(BuildContext context) {
     if (_selectedReportType != null) {
       // 보고서 화면 표시
+      // key를 reportType에 따라 설정하여 reportType 변경 시 새로운 위젯 인스턴스 생성
       return ReportScreen(
+        key: ValueKey('report_${_selectedReportType.toString()}'),
         serverUrl: widget.serverUrl,
         reportType: _selectedReportType!,
       );
