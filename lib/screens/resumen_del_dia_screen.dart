@@ -1650,11 +1650,15 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                             ),
                           ),
 
-                        // Stock Resumen
-                        if (_data!.containsKey('stock_resumen'))
+                        // Stock Resumen (stock_resumen 또는 stocks 키 확인)
+                        if (_data!.containsKey('stock_resumen') || _data!.containsKey('stocks'))
                           _buildSection(
                             'Stock Resumen',
-                            _buildStockResumenSection(_data!['stock_resumen']),
+                            _buildStockResumenSection(
+                              _data!.containsKey('stocks') 
+                                ? {'stocks': _data!['stocks']}
+                                : _data!['stock_resumen']
+                            ),
                             onTap: () {
                               if (_isLargeScreen(context)) {
                                 setState(() {
@@ -2073,11 +2077,15 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                                             ),
                                           ),
 
-                                        // Stock Resumen
-                                        if (_data!.containsKey('stock_resumen'))
+                                        // Stock Resumen (stock_resumen 또는 stocks 키 확인)
+                                        if (_data!.containsKey('stock_resumen') || _data!.containsKey('stocks'))
                                           _buildSection(
                                             'Stock Resumen',
-                                            _buildStockResumenSection(_data!['stock_resumen']),
+                                            _buildStockResumenSection(
+                                              _data!.containsKey('stocks') 
+                                                ? {'stocks': _data!['stocks']}
+                                                : _data!['stock_resumen']
+                                            ),
                                             onTap: () {
                                               Navigator.push(
                                                 context,
@@ -2277,7 +2285,108 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
   List<Widget> _buildStockResumenSection(Map<String, dynamic> stockResumen) {
     final cards = <Widget>[];
     
-    // Stock resumen 데이터 구조에 따라 표시
+    // Stocks 배열이 있는 경우 (resumen del dia 응답의 stocks 배열)
+    if (stockResumen.containsKey('stocks') && stockResumen['stocks'] is List) {
+      final stocksList = stockResumen['stocks'] as List;
+      
+      if (stocksList.isNotEmpty) {
+        // 각 sucursal별로 카드 생성
+        for (var stock in stocksList) {
+          if (stock is Map<String, dynamic>) {
+            final sucursalValue = stock['sucursal'];
+            final sucursal = sucursalValue?.toString() ?? 'N/A';
+            
+            // sucursal이 1 미만이거나 N/A인 경우 제외
+            if (sucursal == 'N/A') {
+              continue;
+            }
+            
+            // 숫자로 변환하여 1 미만인지 확인
+            final sucursalNum = sucursalValue is num 
+                ? sucursalValue 
+                : (sucursalValue is String ? int.tryParse(sucursalValue) : null);
+            
+            if (sucursalNum == null || sucursalNum < 1) {
+              continue;
+            }
+            
+            final itemCount = stock['item_count'] ?? 0;
+            final tVentas = stock['tVentas'] ?? 0.0;
+            final tIngresos = stock['tIngresos'] ?? 0.0;
+            final tOffset = stock['tOffset'] ?? 0.0;
+            final hVentas = stock['hVentas'] ?? 0.0;
+            final hIngresos = stock['hIngresos'] ?? 0.0;
+            final finalStock = stock['finalStock'] ?? 0.0;
+            
+            cards.add(
+              Card(
+                elevation: 2,
+                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Sucursal 헤더
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.store,
+                            color: Theme.of(context).colorScheme.primary,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Sucursal $sucursal',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      // 데이터 그리드 (수평으로 적당히 나눠서 표시)
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          // 화면 크기에 따라 열 개수 결정 (최소 2개, 최대 4개)
+                          final crossAxisCount = constraints.maxWidth > 800 
+                              ? 4 
+                              : constraints.maxWidth > 600 
+                                  ? 3 
+                                  : 2;
+                          
+                          return GridView.count(
+                            crossAxisCount: crossAxisCount,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            mainAxisSpacing: 12,
+                            crossAxisSpacing: 12,
+                            childAspectRatio: 2.5,
+                            children: [
+                              _buildStockDataItem('Item Count', itemCount.toString(), Icons.inventory_2),
+                              _buildStockDataItem('Total Ventas', _formatValue(tVentas, isCurrency: true), Icons.shopping_cart),
+                              _buildStockDataItem('Total Ingresos', _formatValue(tIngresos, isCurrency: true), Icons.trending_up),
+                              _buildStockDataItem('Total Offset', _formatValue(tOffset, isCurrency: true), Icons.swap_horiz),
+                              _buildStockDataItem('Hoy Ventas', _formatValue(hVentas, isCurrency: true), Icons.today),
+                              _buildStockDataItem('Hoy Ingresos', _formatValue(hIngresos, isCurrency: true), Icons.arrow_upward),
+                              _buildStockDataItem('Final Stock', _formatValue(finalStock), Icons.warehouse),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }
+        }
+      }
+    }
+    
+    // Stock resumen 데이터 구조에 따라 표시 (기존 로직)
     if (stockResumen.containsKey('summary')) {
       final summary = stockResumen['summary'];
       if (summary is Map<String, dynamic>) {
@@ -2327,6 +2436,44 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     }
     
     return cards;
+  }
+
+  Widget _buildStockDataItem(String label, String value, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: Colors.grey[600]),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   List<Widget> _buildMpagoSection(Map<String, dynamic> mpago) {
