@@ -86,14 +86,79 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
 
   Future<void> _loadSavedConnections() async {
     try {
+      print('🔄 ResumenDelDiaScreen: 연결 목록 로드 시작...');
       final connections = await _connectionStorageService.getAllConnections();
+      print('✅ ResumenDelDiaScreen: ${connections.length}개 연결 로드 완료');
+      
+      for (var conn in connections) {
+        print('   - ${conn.name} (ID: ${conn.id}, DB: ${conn.databaseName})');
+      }
+      
       if (mounted) {
         setState(() {
           _savedConnections = connections;
         });
+        print('🔄 ResumenDelDiaScreen: UI 업데이트 완료 (${_savedConnections.length}개 연결 표시)');
       }
     } catch (e) {
       print('❌ 연결 목록 로드 실패: $e');
+    }
+  }
+
+  // 연결 목록에서 연결 삭제
+  Future<void> _deleteConnectionFromList(ConnectionInfo connection) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('연결 삭제'),
+        content: Text('${connection.name} 연결을 삭제하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('삭제', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        print('🗑️ 연결 삭제 시작: ${connection.name} (ID: ${connection.id})');
+        await _connectionStorageService.deleteConnection(connection.id);
+        await _loadSavedConnections();
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('연결이 삭제되었습니다')),
+          );
+        }
+        print('✅ 연결 삭제 완료: ${connection.name}');
+      } catch (e) {
+        print('❌ 연결 삭제 실패: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('삭제 실패: ${e.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 화면이 다시 표시될 때마다 연결 리스트 갱신
+    final route = ModalRoute.of(context);
+    if (route != null && route.isCurrent) {
+      print('🔄 ResumenDelDiaScreen: didChangeDependencies 호출, 연결 리스트 갱신');
+      _loadSavedConnections();
     }
   }
 
@@ -435,6 +500,26 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         sucursal: sucursal ?? _selectedSucursal,
       );
       
+      // Stock resumen도 함께 가져오기
+      try {
+        print('📊 Stock resumen 요청 시작...');
+        final stockResumen = await _databaseService.getStocksReport(
+          filters: {
+            'date': dateToUse.toString().substring(0, 10), // YYYY-MM-DD 형식
+            if (sucursal != null && sucursal.isNotEmpty) 'sucursal': sucursal,
+            if (_selectedSucursal != null && _selectedSucursal!.isNotEmpty) 'sucursal': _selectedSucursal,
+          },
+        );
+        
+        // Stock resumen 데이터를 resumen del dia 데이터에 추가
+        if (stockResumen != null && stockResumen.isNotEmpty) {
+          data['stock_resumen'] = stockResumen;
+          print('✅ Stock resumen 데이터 추가 완료');
+        }
+      } catch (e) {
+        print('⚠️ Stock resumen 가져오기 실패 (무시하고 계속 진행): $e');
+        // Stock resumen 가져오기 실패해도 resumen del dia는 계속 표시
+      }
       
       setState(() {
         _data = data;
@@ -695,7 +780,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         children: [
           // 상단: 보고서 목록 (확장 시 작아짐)
           Expanded(
-            flex: _isAddingNewConnection ? 3 : 7,
+            flex: _isAddingNewConnection ? 3 : 5,
             child: Column(
               children: [
                 // 보고서 헤더
@@ -737,7 +822,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
           ),
           // 하단: 연결 관리 (확장 시 더 커짐)
           Expanded(
-            flex: _isAddingNewConnection ? 7 : 3,
+            flex: _isAddingNewConnection ? 7 : 5,
             child: _buildConnectionManagementPanel(context),
           ),
         ],
@@ -776,64 +861,118 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         Expanded(
           child: _isAddingNewConnection
               ? _buildNewConnectionForm(context)
-              : Padding(
+              : SingleChildScrollView(
                   padding: const EdgeInsets.all(8.0),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 현재 연결 정보
-                      if (_databaseName != null)
-                        Card(
-                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                      // 저장된 연결 목록
+                      if (_savedConnections.isEmpty)
+                        Center(
                           child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Row(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                CircleAvatar(
-                                  radius: 12,
-                                  backgroundColor: Theme.of(context).colorScheme.primary,
-                                  child: const Icon(Icons.check_circle, color: Colors.white, size: 16),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        _savedConnections.firstWhere(
-                                          (c) => c.databaseName == _databaseName,
-                                          orElse: () => ConnectionInfo(
-                                            id: '',
-                                            name: _databaseName ?? '연결됨',
-                                            serverUrl: widget.serverUrl,
-                                            databaseName: _databaseName ?? '',
-                                            username: '',
-                                            password: '',
-                                            port: 0,
-                                          ),
-                                        ).name,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 11,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      Text(
-                                        _databaseName ?? '',
-                                        style: TextStyle(
-                                          fontSize: 9,
-                                          color: Colors.grey[600],
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ),
+                                Icon(Icons.storage_outlined, size: 32, color: Colors.grey[400]),
+                                const SizedBox(height: 8),
+                                Text(
+                                  '저장된 연결이 없습니다',
+                                  style: TextStyle(color: Colors.grey[600], fontSize: 11),
+                                  textAlign: TextAlign.center,
                                 ),
                               ],
                             ),
                           ),
-                        ),
+                        )
+                      else
+                        ..._savedConnections.map((connection) {
+                          final isCurrentConnection = connection.databaseName == _databaseName;
+                          
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Card(
+                              elevation: isCurrentConnection ? 2 : 1,
+                              color: isCurrentConnection 
+                                  ? Theme.of(context).colorScheme.primary.withOpacity(0.15)
+                                  : Colors.white,
+                              child: ListTile(
+                                dense: true,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                leading: CircleAvatar(
+                                  radius: 12,
+                                  backgroundColor: isCurrentConnection
+                                      ? Theme.of(context).colorScheme.primary
+                                      : Colors.grey[400],
+                                  child: Icon(
+                                    isCurrentConnection ? Icons.check_circle : Icons.storage,
+                                    color: Colors.white,
+                                    size: 14,
+                                  ),
+                                ),
+                                title: Text(
+                                  connection.name,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 10,
+                                    color: isCurrentConnection
+                                        ? Theme.of(context).colorScheme.primary
+                                        : Colors.black87,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                subtitle: Text(
+                                  connection.databaseName,
+                                  style: TextStyle(
+                                    fontSize: 8,
+                                    color: Colors.grey[600],
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                trailing: PopupMenuButton<String>(
+                                  icon: const Icon(Icons.more_vert, size: 16),
+                                  onSelected: (value) {
+                                    if (value == 'connect' && !isCurrentConnection) {
+                                      _switchConnection(connection);
+                                    } else if (value == 'delete') {
+                                      _deleteConnectionFromList(connection);
+                                    }
+                                  },
+                                  itemBuilder: (context) => [
+                                    if (!isCurrentConnection)
+                                      PopupMenuItem(
+                                        value: 'connect',
+                                        child: Row(
+                                          children: [
+                                            const Icon(Icons.play_arrow, size: 16, color: Colors.green),
+                                            const SizedBox(width: 8),
+                                            const Text('연결', style: TextStyle(fontSize: 11)),
+                                          ],
+                                        ),
+                                      ),
+                                    PopupMenuItem(
+                                      value: 'delete',
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.delete, size: 16, color: Colors.red),
+                                          const SizedBox(width: 8),
+                                          const Text('삭제', style: TextStyle(fontSize: 11, color: Colors.red)),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                onTap: () {
+                                  if (!isCurrentConnection) {
+                                    _switchConnection(connection);
+                                  }
+                                },
+                              ),
+                            ),
+                          );
+                        }).toList(),
                       const SizedBox(height: 8),
                       // 새 연결 추가 버튼
                       SizedBox(
@@ -851,94 +990,23 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                           ),
                         ),
                       ),
-                const SizedBox(height: 4),
-                // 연결 전환 버튼 (저장된 연결이 2개 이상일 때만 표시)
-                if (_savedConnections.length > 1)
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        final result = await showDialog<ConnectionInfo>(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: const Text('연결 전환'),
-                            content: SizedBox(
-                              width: double.maxFinite,
-                              child: ListView.builder(
-                                shrinkWrap: true,
-                                itemCount: _savedConnections.length,
-                                itemBuilder: (context, index) {
-                                  final connection = _savedConnections[index];
-                                  final isCurrent = connection.databaseName == _databaseName;
-                                  return ListTile(
-                                    leading: CircleAvatar(
-                                      radius: 16,
-                                      backgroundColor: isCurrent
-                                          ? Theme.of(context).colorScheme.primary
-                                          : Colors.grey,
-                                      child: Icon(
-                                        isCurrent ? Icons.check_circle : Icons.storage,
-                                        color: Colors.white,
-                                        size: 18,
-                                      ),
-                                    ),
-                                    title: Text(
-                                      connection.name,
-                                      style: TextStyle(
-                                        fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                                      ),
-                                    ),
-                                    subtitle: Text(
-                                      '${connection.databaseName} @ ${connection.serverUrl}',
-                                      style: const TextStyle(fontSize: 11),
-                                    ),
-                                    enabled: !isCurrent,
-                                    onTap: () {
-                                      Navigator.pop(context, connection);
-                                    },
-                                  );
-                                },
-                              ),
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('취소'),
-                              ),
-                            ],
+                      const SizedBox(height: 4),
+                      // 연결 끊기 버튼
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: _disconnectAndGoToInitialScreen,
+                          icon: const Icon(Icons.logout, color: Colors.orange, size: 14),
+                          label: const Text('연결 끊기', style: TextStyle(color: Colors.orange, fontSize: 11)),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.orange),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                           ),
-                        );
-                        if (result != null && mounted) {
-                          await _switchConnection(result);
-                        }
-                      },
-                      icon: const Icon(Icons.swap_horiz, size: 14),
-                      label: Text(
-                        '연결 전환 (${_savedConnections.length - 1})',
-                        style: const TextStyle(fontSize: 11),
+                        ),
                       ),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 4),
-                // 연결 끊기 버튼
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: _disconnectAndGoToInitialScreen,
-                    icon: const Icon(Icons.logout, color: Colors.orange, size: 14),
-                    label: const Text('연결 끊기', style: TextStyle(color: Colors.orange, fontSize: 11)),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Colors.orange),
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                    ),
+                    ],
                   ),
                 ),
-              ],
-            ),
-          ),
         ),
       ],
     );
@@ -1581,6 +1649,32 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                                       : <String, dynamic>{})
                             ),
                           ),
+
+                        // Stock Resumen
+                        if (_data!.containsKey('stock_resumen'))
+                          _buildSection(
+                            'Stock Resumen',
+                            _buildStockResumenSection(_data!['stock_resumen']),
+                            onTap: () {
+                              if (_isLargeScreen(context)) {
+                                setState(() {
+                                  _selectedReportType = ReportType.stocks;
+                                  _currentReport = 'stocks';
+                                });
+                              } else {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ReportScreen(
+                                      serverUrl: widget.serverUrl,
+                                      reportType: ReportType.stocks,
+                                      initialDate: _selectedDate,
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                          ),
                       ],
                     ),
                   ),
@@ -1719,15 +1813,6 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                       onTap: () {
                         Navigator.pop(context);
                         _disconnectAndGoToInitialScreen();
-                      },
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.storage, color: Colors.blue),
-                      title: Text(l10n.databaseConnection),
-                      subtitle: const Text('다른 데이터베이스로 연결 전환'),
-                      onTap: () {
-                        Navigator.pop(context);
-                        _showConnectionListDialog();
                       },
                     ),
                   ],
@@ -1987,6 +2072,25 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                                                       : <String, dynamic>{})
                                             ),
                                           ),
+
+                                        // Stock Resumen
+                                        if (_data!.containsKey('stock_resumen'))
+                                          _buildSection(
+                                            'Stock Resumen',
+                                            _buildStockResumenSection(_data!['stock_resumen']),
+                                            onTap: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) => ReportScreen(
+                                                    serverUrl: widget.serverUrl,
+                                                    reportType: ReportType.stocks,
+                                                    initialDate: _selectedDate,
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          ),
                                       ],
                                     ),
                                   ),
@@ -2167,6 +2271,61 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       ));
     }
 
+    return cards;
+  }
+
+  List<Widget> _buildStockResumenSection(Map<String, dynamic> stockResumen) {
+    final cards = <Widget>[];
+    
+    // Stock resumen 데이터 구조에 따라 표시
+    if (stockResumen.containsKey('summary')) {
+      final summary = stockResumen['summary'];
+      if (summary is Map<String, dynamic>) {
+        // 총 아이템 수
+        if (summary.containsKey('total_items')) {
+          cards.add(_buildDataCard(
+            'Total Items',
+            summary['total_items'].toString(),
+            Icons.inventory_2,
+          ));
+        }
+        
+        // 총 재고량
+        if (summary.containsKey('total_stock')) {
+          cards.add(_buildDataCard(
+            'Total Stock',
+            _formatValue(summary['total_stock']),
+            Icons.warehouse,
+          ));
+        }
+        
+        // 총 판매량
+        if (summary.containsKey('total_venta')) {
+          cards.add(_buildDataCard(
+            'Total Venta',
+            _formatValue(summary['total_venta']),
+            Icons.shopping_cart,
+          ));
+        }
+      }
+    }
+    
+    // 데이터가 없으면 기본 메시지 표시
+    if (cards.isEmpty) {
+      cards.add(
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text(
+              'Stock resumen 데이터가 없습니다.',
+              style: TextStyle(color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
+    
     return cards;
   }
 

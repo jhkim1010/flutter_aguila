@@ -91,7 +91,8 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
     // 화면이 다시 표시될 때마다 연결 리스트 갱신
     final route = ModalRoute.of(context);
     if (route != null && route.isCurrent) {
-      print('🔄 MainConnectionScreen: 화면이 활성화됨, 연결 리스트 갱신');
+      print('🔄 MainConnectionScreen: didChangeDependencies 호출, 화면이 활성화됨');
+      print('   현재 _savedConnections.length = ${_savedConnections.length}');
       _loadSavedConnections();
     }
   }
@@ -190,6 +191,13 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
 
   // 저장된 연결 목록 불러오기
   Future<void> _loadSavedConnections() async {
+    // 중복 호출 방지
+    if (_isLoadingConnections) {
+      print('⚠️ 이미 연결 리스트 로딩 중이므로 스킵');
+      return;
+    }
+
+    _isLoadingConnections = true;
     setState(() {
       _isLoadingConnections = true;
     });
@@ -198,12 +206,22 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
       print('🔄 저장된 연결 리스트 로드 시작...');
       final connections = await _connectionStorageService.getAllConnections();
       print('✅ 저장된 연결 리스트 로드 완료: ${connections.length}개 연결');
+      
+      // 각 연결 정보 출력
+      for (var conn in connections) {
+        print('   - ${conn.name} (ID: ${conn.id}, DB: ${conn.databaseName})');
+      }
+      
       if (mounted) {
         setState(() {
           _savedConnections = connections;
           _isLoadingConnections = false;
         });
         print('🔄 UI 업데이트 완료: ${_savedConnections.length}개 연결 표시');
+        print('   현재 _savedConnections 리스트:');
+        for (var conn in _savedConnections) {
+          print('     - ${conn.name}');
+        }
       }
     } catch (e) {
       print('❌ 연결 리스트 로드 실패: $e');
@@ -212,6 +230,8 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
           _isLoadingConnections = false;
         });
       }
+    } finally {
+      _isLoadingConnections = false;
     }
   }
 
@@ -814,6 +834,10 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
   Widget _buildConnectionListSection(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     
+    // 디버깅: 리스트 빌드 시 연결 수 확인
+    print('🔨 _buildConnectionListSection: _savedConnections.length = ${_savedConnections.length}');
+    print('   _currentDatabaseName = $_currentDatabaseName');
+    
     return Column(
       children: [
         // 헤더
@@ -860,15 +884,22 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
               ),
               IconButton(
                 icon: const Icon(Icons.list, color: Colors.white, size: 18),
-                onPressed: () {
-                  Navigator.push(
+                onPressed: () async {
+                  await Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const AdditionalConnectionsScreen(),
                     ),
-                  ).then((_) {
-                    _loadSavedConnections();
-                  });
+                  );
+                  // 돌아왔을 때 리스트 강제 갱신
+                  if (mounted) {
+                    print('🔄 AdditionalConnectionsScreen에서 돌아옴, 리스트 강제 갱신');
+                    await Future.delayed(const Duration(milliseconds: 100));
+                    await _loadSavedConnections();
+                    if (mounted) {
+                      setState(() {});
+                    }
+                  }
                 },
                 tooltip: l10n.additionalConnections,
                 padding: EdgeInsets.zero,
@@ -910,32 +941,39 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                     final connection = _savedConnections[index];
                     final isCurrentConnection = connection.databaseName == _currentDatabaseName;
                     
+                    // 디버깅: 각 항목 빌드 시 정보 출력
+                    if (index == 0) {
+                      print('🔨 ListView.builder: itemCount = ${_savedConnections.length}');
+                      print('   첫 번째 항목: ${connection.name} (DB: ${connection.databaseName})');
+                      print('   isCurrentConnection: $isCurrentConnection');
+                    }
+                    
                     return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                       child: Card(
                         elevation: isCurrentConnection ? 3 : 1,
                         color: isCurrentConnection 
                             ? Theme.of(context).colorScheme.primary.withOpacity(0.15)
                             : Colors.white,
                         child: ListTile(
-                          dense: false,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          dense: true,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                           leading: CircleAvatar(
-                            radius: 16,
+                            radius: 14,
                             backgroundColor: isCurrentConnection
                                 ? Theme.of(context).colorScheme.primary
                                 : Colors.grey[400],
                             child: Icon(
                               isCurrentConnection ? Icons.check_circle : Icons.storage, 
                               color: Colors.white, 
-                              size: 18
+                              size: 16
                             ),
                           ),
                           title: Text(
                             connection.name,
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 13,
+                              fontSize: 12,
                               color: isCurrentConnection
                                   ? Theme.of(context).colorScheme.primary
                                   : Colors.black87,
@@ -944,11 +982,11 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           subtitle: Padding(
-                            padding: const EdgeInsets.only(top: 4),
+                            padding: const EdgeInsets.only(top: 2),
                             child: Text(
                               connection.databaseName,
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 10,
                                 color: Colors.grey[600],
                               ),
                               maxLines: 1,
@@ -956,7 +994,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                             ),
                           ),
                           trailing: PopupMenuButton<String>(
-                            icon: const Icon(Icons.more_vert, size: 18),
+                            icon: const Icon(Icons.more_vert, size: 16),
                             onSelected: (value) {
                               if (value == 'delete') {
                                 _deleteConnection(connection);
@@ -967,9 +1005,9 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                                 value: 'delete',
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.delete, size: 18, color: Colors.red),
+                                    const Icon(Icons.delete, size: 16, color: Colors.red),
                                     const SizedBox(width: 8),
-                                    Text(l10n.delete, style: const TextStyle(color: Colors.red)),
+                                    Text(l10n.delete, style: const TextStyle(color: Colors.red, fontSize: 12)),
                                   ],
                                 ),
                               ),

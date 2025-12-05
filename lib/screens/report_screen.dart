@@ -85,8 +85,15 @@ class _ReportScreenState extends State<ReportScreen> {
       _itemsEndDate = now;
     }
     // Ventas 보고서의 경우 초기 날짜 설정
-    if (widget.reportType == ReportType.ventas && widget.initialDate != null) {
-      _ventasDate = widget.initialDate;
+    if (widget.reportType == ReportType.ventas) {
+      if (widget.initialDate != null) {
+        _ventasDate = widget.initialDate;
+        print('📅 Ventas 보고서 초기 날짜 설정: ${DateFormat('yyyy-MM-dd').format(_ventasDate!)}');
+      } else {
+        // initialDate가 없으면 오늘 날짜로 설정
+        _ventasDate = DateTime.now();
+        print('📅 Ventas 보고서 날짜 설정 (오늘): ${DateFormat('yyyy-MM-dd').format(_ventasDate!)}');
+      }
     }
     _loadData();
   }
@@ -226,12 +233,12 @@ class _ReportScreenState extends State<ReportScreen> {
           break;
         case ReportType.ventas:
           // 날짜 필터가 있으면 날짜 범위로 전달 (해당 날짜의 시작부터 끝까지)
-          final filters = _ventasDate != null
-              ? <String, dynamic>{
-                  'fecha_inicio': DateFormat('yyyy-MM-dd').format(_ventasDate!),
-                  'fecha_fin': DateFormat('yyyy-MM-dd').format(_ventasDate!),
-                }
-              : null;
+          final ventasDateToUse = _ventasDate ?? widget.initialDate ?? DateTime.now();
+          final filters = <String, dynamic>{
+            'fecha_inicio': DateFormat('yyyy-MM-dd').format(ventasDateToUse),
+            'fecha_fin': DateFormat('yyyy-MM-dd').format(ventasDateToUse),
+          };
+          print('📅 Ventas 보고서 요청 - 날짜 필터: ${filters['fecha_inicio']} ~ ${filters['fecha_fin']}');
           data = await _databaseService.getVentasReport(filters: filters);
           break;
         case ReportType.alertas:
@@ -860,14 +867,18 @@ class _ReportScreenState extends State<ReportScreen> {
           }
         }
         // Ventas 보고서의 경우 날짜 필터 적용 (클라이언트 측)
-        if (widget.reportType == ReportType.ventas && _ventasDate != null) {
-          final targetDateStr = DateFormat('yyyy-MM-dd').format(_ventasDate!);
+        if (widget.reportType == ReportType.ventas) {
+          final ventasDateToUse = _ventasDate ?? widget.initialDate ?? DateTime.now();
+          final targetDateStr = DateFormat('yyyy-MM-dd').format(ventasDateToUse);
+          print('📅 Ventas 보고서 클라이언트 필터 적용 - 대상 날짜: $targetDateStr');
+          final beforeCount = filteredDataList.length;
           filteredDataList = filteredDataList.where((item) {
             if (item is Map<String, dynamic>) {
               // 여러 가능한 날짜 필드명 확인
               final fecha = item['fecha']?.toString() ?? 
                           item['fecha_venta']?.toString() ?? 
-                          item['fechaVenta']?.toString() ?? '';
+                          item['fechaVenta']?.toString() ??
+                          item['date']?.toString() ?? '';
               
               if (fecha.isNotEmpty) {
                 try {
@@ -883,6 +894,8 @@ class _ReportScreenState extends State<ReportScreen> {
             }
             return false;
           }).toList();
+          final afterCount = filteredDataList.length;
+          print('📅 필터 적용 결과: $beforeCount개 → $afterCount개 (날짜: $targetDateStr)');
         }
         // Ventas 보고서의 경우 filteringWord 필터 적용
         if (widget.reportType == ReportType.ventas) {
