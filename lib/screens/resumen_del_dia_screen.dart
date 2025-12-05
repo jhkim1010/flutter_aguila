@@ -635,6 +635,8 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
   }
 
   Widget _buildSection(String title, List<Widget> children, {VoidCallback? onTap}) {
+    final isLarge = _isLargeScreen(context);
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -664,13 +666,30 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
             ),
           ),
         ),
-        // 카드들을 세로로 배치 (화면을 꽉 채우기)
+        // 대형 화면: 그리드 형태로 표시 (한 줄에 3-4개), 작은 화면: 세로로 배치
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: children,
-          ),
+          child: isLarge
+              ? LayoutBuilder(
+                  builder: (context, constraints) {
+                    // 화면 크기에 따라 열 개수 결정 (최소 3개, 최대 4개)
+                    final crossAxisCount = constraints.maxWidth > 1000 ? 4 : 3;
+                    
+                    return GridView.count(
+                      crossAxisCount: crossAxisCount,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                      childAspectRatio: 1.5,
+                      children: children,
+                    );
+                  },
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: children,
+                ),
         ),
       ],
     );
