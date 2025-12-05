@@ -1058,6 +1058,7 @@ class _ReportScreenState extends State<ReportScreen> {
             });
           }
           
+          print('📊 Items 보고서 - sortedDataList.length: ${sortedDataList.length}, _displayedItemsCount: $_displayedItemsCount');
           return ReportTableBuilder.buildTableFromList(
             sortedDataList,
             _displayedItemsCount,
