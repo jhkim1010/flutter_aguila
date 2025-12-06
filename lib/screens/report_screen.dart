@@ -1059,36 +1059,71 @@ class _ReportScreenState extends State<ReportScreen> {
           }
           
           print('📊 Items 보고서 - sortedDataList.length: ${sortedDataList.length}, _displayedItemsCount: $_displayedItemsCount');
-          return ReportTableBuilder.buildTableFromList(
-            sortedDataList,
-            _displayedItemsCount,
-            _itemsPerPage,
-            _scrollController,
-            widget.reportType,
-            sortColumn: _sortColumn,
-            sortAscending: _sortAscending,
-            horizontalScrollController: _horizontalScrollController,
-            onSort: (columnIndex, ascending) {
-              setState(() {
-                // 키 목록을 정렬된 데이터에서 가져오기 (report_table_builder와 동일한 순서 보장)
-                final keys = sortedDataList.isNotEmpty 
-                    ? (sortedDataList.first as Map<String, dynamic>).keys.toList()
-                    : <String>[];
-                if (columnIndex >= 0 && columnIndex < keys.length) {
-                  final key = keys[columnIndex];
-                  if (_sortColumn == key) {
-                    // 같은 칼럼을 클릭하면 정렬 방향 변경
-                    _sortAscending = !_sortAscending;
-                  } else {
-                    // 다른 칼럼을 클릭하면 새 칼럼으로 정렬 (첫 클릭 시 내림차순)
-                    _sortColumn = key;
-                    _sortAscending = false;
-                  }
-                  // 정렬이 변경되면 처음부터 다시 표시
-                  _displayedItemsCount = _itemsPerPage;
-                }
-              });
-            },
+          // Items 보고서는 왼쪽과 오른쪽으로 절반씩 나눔
+          return Row(
+            children: [
+              // 왼쪽 부분: Items 보고서 내용 (내용에 맞게 크기 조정)
+              Flexible(
+                flex: 1,
+                fit: FlexFit.loose,
+                child: ReportTableBuilder.buildTableFromList(
+                  sortedDataList,
+                  _displayedItemsCount,
+                  _itemsPerPage,
+                  _scrollController,
+                  widget.reportType,
+                  sortColumn: _sortColumn,
+                  sortAscending: _sortAscending,
+                  horizontalScrollController: _horizontalScrollController,
+                  onSort: (columnIndex, ascending) {
+                    setState(() {
+                      // 키 목록을 정렬된 데이터에서 가져오기 (report_table_builder와 동일한 순서 보장)
+                      // Items 보고서: start_date, end_date, sucursal 제외
+                      final allKeys = sortedDataList.isNotEmpty 
+                          ? (sortedDataList.first as Map<String, dynamic>).keys.toList()
+                          : <String>[];
+                      final keys = widget.reportType == ReportType.items
+                          ? allKeys.where((key) => key != 'start_date' && key != 'end_date' && key != 'sucursal').toList()
+                          : allKeys;
+                      if (columnIndex >= 0 && columnIndex < keys.length) {
+                        final key = keys[columnIndex];
+                        if (_sortColumn == key) {
+                          // 같은 칼럼을 클릭하면 정렬 방향 변경
+                          _sortAscending = !_sortAscending;
+                        } else {
+                          // 다른 칼럼을 클릭하면 새 칼럼으로 정렬 (첫 클릭 시 내림차순)
+                          _sortColumn = key;
+                          _sortAscending = false;
+                        }
+                        // 정렬이 변경되면 처음부터 다시 표시
+                        _displayedItemsCount = _itemsPerPage;
+                      }
+                    });
+                  },
+                ),
+              ),
+              // 구분선
+              Container(
+                width: 1,
+                color: Colors.grey[300],
+              ),
+              // 오른쪽 절반: 비어있음 (나중에 사용 가능)
+              Expanded(
+                flex: 1,
+                child: Container(
+                  color: Colors.grey[50],
+                  child: const Center(
+                    child: Text(
+                      'Right Panel',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           );
         }
         

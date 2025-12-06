@@ -30,6 +30,7 @@ class ReportTableBuilder {
     final firstItem = displayedList.first as Map<String, dynamic>;
     
     // Ventas report의 경우 특정 컬럼만 특정 순서로 표시
+    // Items report의 경우 start_date, end_date, sucursal 제외
     List<String> keys;
     if (reportType == ReportType.ventas) {
       // 지정된 순서의 컬럼 목록
@@ -61,9 +62,25 @@ class ReportTableBuilder {
       
       // orderedColumns 순서 유지하면서 commonKeys에 있는 것만
       keys = orderedColumns.where((key) => commonKeys.contains(key)).toList();
+    } else if (reportType == ReportType.items) {
+      // Items 보고서: start_date, end_date, sucursal 제외
+      keys = firstItem.keys
+          .where((key) => key != 'start_date' && key != 'end_date' && key != 'sucursal')
+          .toList();
     } else {
       keys = firstItem.keys.toList();
     }
+    // 컬럼별 기본 너비 설정 (헤더와 일치하도록)
+    final columnWidths = <String, double>{
+      'codigo1': 120,
+      'desc1': 250,
+      'tprendas': 100,
+      'timporte': 120,
+      'start_date': 120,
+      'end_date': 120,
+      'sucursal': 100,
+    };
+    
     final columns = keys.asMap().entries.map((entry) {
       final index = entry.key;
       final key = entry.value;
@@ -138,8 +155,8 @@ class ReportTableBuilder {
                   scrollDirection: Axis.horizontal,
                   child: DataTable(
                     columnSpacing: 8,
-                            dataRowMinHeight: 5,
-                            dataRowMaxHeight: 5,
+                            dataRowMinHeight: 48, // items 보고서는 행 높이를 48로 설정
+                            dataRowMaxHeight: 48,
                             headingRowHeight: 0, // 헤더 높이를 0으로 설정하여 숨김
                     headingRowColor: MaterialStateProperty.all(
                               Colors.transparent, // 헤더 배경을 투명하게
@@ -151,6 +168,14 @@ class ReportTableBuilder {
                     columns: columns,
                     rows: displayedList.map((item) {
                       if (item is Map<String, dynamic>) {
+                        // 컬럼별 고정 너비 설정 (헤더와 일치)
+                        final columnWidths = <String, double>{
+                          'codigo1': 150,
+                          'desc1': 300,
+                          'tprendas': 120,
+                          'timporte': 150,
+                        };
+                        
                         // keys의 각 키에 대해 셀 생성 (키가 없어도 셀은 생성)
                         final cells = keys.map((key) {
                           final value = item[key];
@@ -179,6 +204,7 @@ class ReportTableBuilder {
                               child: Text(
                                 formattedValue,
                                 style: const TextStyle(fontSize: 14),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           );
@@ -555,6 +581,7 @@ class ReportTableBuilder {
     Function(int columnIndex, bool ascending)? onSort,
   ) {
     // DataTable의 헤더와 동일한 스타일로 헤더 행 생성
+    // DataTable의 columnSpacing(8)을 고려하여 각 컬럼에 동일한 간격 적용
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -574,6 +601,15 @@ class ReportTableBuilder {
           final key = keys[index];
           final isSorted = sortColumn == key;
           
+          // 컬럼별 고정 너비 설정 (DataTable과 일치)
+          final columnWidths = <String, double>{
+            'codigo1': 150,
+            'desc1': 300,
+            'tprendas': 120,
+            'timporte': 150,
+          };
+          final columnWidth = columnWidths[key] ?? 150.0;
+          
           // label에서 텍스트 추출
           String labelText = '';
           if (column.label is Row) {
@@ -590,35 +626,45 @@ class ReportTableBuilder {
             labelText = key.toString();
           }
           
-          return InkWell(
-            onTap: column.onSort != null
-                ? () {
-                    if (isSorted) {
-                      column.onSort!(index, !sortAscending);
-                    } else {
-                      column.onSort!(index, false); // 첫 클릭 시 내림차순
+          // 고정 너비로 설정하여 DataTable과 정확히 일치 (columnSpacing 8px 고려)
+          return SizedBox(
+            width: columnWidth + (index < columns.length - 1 ? 8 : 0), // 마지막 컬럼 제외하고 8px 간격 추가
+            child: InkWell(
+              onTap: column.onSort != null
+                  ? () {
+                      if (isSorted) {
+                        column.onSort!(index, !sortAscending);
+                      } else {
+                        column.onSort!(index, false); // 첫 클릭 시 내림차순
+                      }
                     }
-                  }
-                : null,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    labelText,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                  : null,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        labelText,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                  if (isSorted && column.onSort != null)
-                    Icon(
-                      sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                      size: 16,
-                      color: reportColor,
-                    ),
-                ],
+                    if (isSorted && column.onSort != null)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4),
+                        child: Icon(
+                          sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                          size: 16,
+                          color: reportColor,
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           );
