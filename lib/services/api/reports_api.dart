@@ -38,10 +38,15 @@ class ReportsApi {
 
   /// 아이템 보고서 가져오기
   Future<Map<String, dynamic>> getItemsReport({
+    String? filteringWord,
     Map<String, dynamic>? filters,
   }) async {
     final endpoint = '/api/reporte/items';
     final queryParams = <String, String>{};
+    
+    if (filteringWord != null && filteringWord.isNotEmpty) {
+      queryParams['filtering_word'] = filteringWord;
+    }
     
     if (filters != null) {
       filters.forEach((key, value) {
@@ -126,6 +131,32 @@ class ReportsApi {
   }) async {
     final endpoint = '/api/reporte/alertas';
     final queryParams = <String, String>{};
+    
+    if (filters != null) {
+      filters.forEach((key, value) {
+        if (value != null) {
+          queryParams[key] = value.toString();
+        }
+      });
+    }
+    
+    return await _httpHandler.performGetRequest(
+      endpoint,
+      queryParameters: queryParams.isNotEmpty ? queryParams : null,
+    );
+  }
+
+  /// 수입 보고서 가져오기
+  Future<Map<String, dynamic>> getIngresosReport({
+    String? filteringWord,
+    Map<String, dynamic>? filters,
+  }) async {
+    final endpoint = '/api/reporte/ingresos';
+    final queryParams = <String, String>{};
+    
+    if (filteringWord != null && filteringWord.isNotEmpty) {
+      queryParams['filtering_word'] = filteringWord;
+    }
     
     if (filters != null) {
       filters.forEach((key, value) {

@@ -10,6 +10,7 @@ enum ReportType {
   alertas,
   codigos,
   todocodigos,
+  ingresos,
 }
 
 class ReportUtils {
@@ -31,6 +32,8 @@ class ReportUtils {
         return 'Codigos';
       case ReportType.todocodigos:
         return 'Todo Codigos';
+      case ReportType.ingresos:
+        return 'Ingresos';
     }
   }
 
@@ -52,6 +55,8 @@ class ReportUtils {
         return Icons.qr_code;
       case ReportType.todocodigos:
         return Icons.qr_code_scanner;
+      case ReportType.ingresos:
+        return Icons.trending_up;
     }
   }
 
@@ -73,6 +78,8 @@ class ReportUtils {
         return Colors.teal;
       case ReportType.todocodigos:
         return Colors.cyan;
+      case ReportType.ingresos:
+        return Colors.indigo;
     }
   }
 

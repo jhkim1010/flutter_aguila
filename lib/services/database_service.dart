@@ -142,8 +142,12 @@ class DatabaseService {
 
   /// 아이템 보고서 가져오기
   Future<Map<String, dynamic>> getItemsReport({
+    String? filteringWord,
     Map<String, dynamic>? filters,
-  }) => _reportsApi.getItemsReport(filters: filters);
+  }) => _reportsApi.getItemsReport(
+    filteringWord: filteringWord,
+    filters: filters,
+  );
 
   /// 고객 보고서 가져오기
   Future<Map<String, dynamic>> getClientesReport({
@@ -164,4 +168,13 @@ class DatabaseService {
   Future<Map<String, dynamic>> getAlertasReport({
     Map<String, dynamic>? filters,
   }) => _reportsApi.getAlertasReport(filters: filters);
+
+  /// 수입 보고서 가져오기
+  Future<Map<String, dynamic>> getIngresosReport({
+    String? filteringWord,
+    Map<String, dynamic>? filters,
+  }) => _reportsApi.getIngresosReport(
+    filteringWord: filteringWord,
+    filters: filters,
+  );
 }

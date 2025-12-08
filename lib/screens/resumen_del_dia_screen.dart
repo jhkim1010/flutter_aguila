@@ -108,6 +108,9 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         case ReportType.items:
           _currentReport = 'items';
           break;
+        case ReportType.ingresos:
+          _currentReport = 'ingresos';
+          break;
         case ReportType.clientes:
           _currentReport = 'clientes';
           break;
@@ -1480,6 +1483,15 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       Colors.green,
     ));
     
+    // Ingresos
+    items.add(_buildReportMenuItem(
+      context,
+      'ingresos',
+      'Ingresos',
+      Icons.trending_up,
+      Colors.indigo,
+    ));
+    
     return items;
   }
 
@@ -1513,6 +1525,9 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                 break;
               case 'items':
                 _selectedReportType = ReportType.items;
+                break;
+              case 'ingresos':
+                _selectedReportType = ReportType.ingresos;
                 break;
               case 'clientes':
                 _selectedReportType = ReportType.clientes;
@@ -1892,6 +1907,9 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                         break;
                       case 'items':
                         _selectedReportType = ReportType.items;
+                        break;
+                      case 'ingresos':
+                        _selectedReportType = ReportType.ingresos;
                         break;
                       case 'clientes':
                         _selectedReportType = ReportType.clientes;
@@ -3237,6 +3255,29 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
             if (_currentReport == 'items') ...[
               const Spacer(),
               const Icon(Icons.check, color: Colors.green, size: 18),
+            ],
+          ],
+        ),
+      ),
+      PopupMenuItem<String>(
+        value: 'ingresos',
+        child: Row(
+          children: [
+            Icon(
+              Icons.trending_up,
+              color: _currentReport == 'ingresos' ? Colors.indigo : Colors.grey,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Ingresos',
+              style: TextStyle(
+                fontWeight: _currentReport == 'ingresos' ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+            if (_currentReport == 'ingresos') ...[
+              const Spacer(),
+              const Icon(Icons.check, color: Colors.indigo, size: 18),
             ],
           ],
         ),

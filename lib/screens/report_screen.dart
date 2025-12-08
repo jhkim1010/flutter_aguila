@@ -113,12 +113,12 @@ class _ReportScreenState extends State<ReportScreen> {
       }
     }
     
-    // Items 보고서의 경우 기본 날짜 설정 (오늘 날짜 또는 초기값)
-    if (widget.reportType == ReportType.items) {
+    // Items 및 Ingresos 보고서의 경우 기본 날짜 설정 (오늘 날짜 또는 초기값)
+    if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos) {
       if (widget.initialItemsStartDate != null && widget.initialItemsEndDate != null) {
         _itemsStartDate = widget.initialItemsStartDate;
         _itemsEndDate = widget.initialItemsEndDate;
-        print('📅 Items 보고서 초기 날짜 범위 설정: ${DateFormat('yyyy-MM-dd').format(_itemsStartDate!)} ~ ${DateFormat('yyyy-MM-dd').format(_itemsEndDate!)}');
+        print('📅 ${widget.reportType == ReportType.items ? "Items" : "Ingresos"} 보고서 초기 날짜 범위 설정: ${DateFormat('yyyy-MM-dd').format(_itemsStartDate!)} ~ ${DateFormat('yyyy-MM-dd').format(_itemsEndDate!)}');
       } else {
         final now = DateTime.now();
         _itemsStartDate = now;
@@ -169,8 +169,8 @@ class _ReportScreenState extends State<ReportScreen> {
         _stocksSortAscending = true;
       }
       
-      // Items 보고서의 경우 기본 날짜 설정 (오늘 날짜 또는 초기값)
-      if (widget.reportType == ReportType.items) {
+      // Items 및 Ingresos 보고서의 경우 기본 날짜 설정 (오늘 날짜 또는 초기값)
+      if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos) {
         if (widget.initialItemsStartDate != null && widget.initialItemsEndDate != null) {
           _itemsStartDate = widget.initialItemsStartDate;
           _itemsEndDate = widget.initialItemsEndDate;
@@ -314,12 +314,16 @@ class _ReportScreenState extends State<ReportScreen> {
           final now = DateTime.now();
           final startDate = _itemsStartDate ?? now;
           final endDate = _itemsEndDate ?? now;
+          final currentFilteringWord = filteringWord ?? _filteringWordController.text.trim();
           
           final filters = <String, dynamic>{
             'fecha_inicio': DateFormat('yyyy-MM-dd').format(startDate),
             'fecha_fin': DateFormat('yyyy-MM-dd').format(endDate),
           };
-          data = await _databaseService.getItemsReport(filters: filters);
+          data = await _databaseService.getItemsReport(
+            filteringWord: currentFilteringWord.isNotEmpty ? currentFilteringWord : null,
+            filters: filters,
+          );
           break;
         case ReportType.clientes:
           data = await _databaseService.getClientesReport();
@@ -339,6 +343,22 @@ class _ReportScreenState extends State<ReportScreen> {
           break;
         case ReportType.alertas:
           data = await _databaseService.getAlertasReport();
+          break;
+        case ReportType.ingresos:
+          // ingresos 보고서는 날짜 범위 필터 사용 (기본값: 오늘부터 오늘까지)
+          final now = DateTime.now();
+          final startDate = _itemsStartDate ?? now;
+          final endDate = _itemsEndDate ?? now;
+          final currentFilteringWord = filteringWord ?? _filteringWordController.text.trim();
+          
+          final filters = <String, dynamic>{
+            'fecha_inicio': DateFormat('yyyy-MM-dd').format(startDate),
+            'fecha_fin': DateFormat('yyyy-MM-dd').format(endDate),
+          };
+          data = await _databaseService.getIngresosReport(
+            filteringWord: currentFilteringWord.isNotEmpty ? currentFilteringWord : null,
+            filters: filters,
+          );
           break;
         case ReportType.codigos:
           // 첫 페이지만 먼저 받아서 표시
@@ -750,7 +770,7 @@ class _ReportScreenState extends State<ReportScreen> {
                   ),
                 ],
               )
-            : widget.reportType == ReportType.items
+            : (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos)
                 ? Row(
                     children: [
                       Icon(reportIcon, color: Colors.white),
@@ -903,8 +923,8 @@ class _ReportScreenState extends State<ReportScreen> {
                             constraints: BoxConstraints(maxWidth: maxWidth),
                             child: Column(
                               children: [
-                                // Items 보고서의 날짜 범위 선택 UI 및 필터링
-                                if (widget.reportType == ReportType.items)
+                                // Items 및 Ingresos 보고서의 날짜 범위 선택 UI 및 필터링
+                                if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos)
                                   _buildItemsFilterSection(),
                                 // 스톡 보고서의 vista 타입 표시
                                 if (widget.reportType == ReportType.stocks && _data != null)
@@ -955,9 +975,9 @@ class _ReportScreenState extends State<ReportScreen> {
       
       // 첫 번째 항목이 맵이고 여러 키를 가지고 있으면 테이블로 표시
       if (dataList.isNotEmpty && dataList.first is Map) {
-        // Items 보고서의 경우 filteringWord 필터 적용
+        // Items 및 Ingresos 보고서의 경우 filteringWord 필터 적용
         List<dynamic> filteredDataList = dataList;
-        if (widget.reportType == ReportType.items) {
+        if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos) {
           final filteringWord = _filteringWordController.text.trim().toLowerCase();
           if (filteringWord.isNotEmpty) {
             filteredDataList = dataList.where((item) {
@@ -1048,9 +1068,9 @@ class _ReportScreenState extends State<ReportScreen> {
             }).toList();
           }
         }
-        if (widget.reportType == ReportType.items) {
-          
-          // Items 보고서의 경우 정렬 적용
+        if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos) {
+
+          // Items 및 Ingresos 보고서의 경우 정렬 적용
           List<dynamic> sortedDataList = List.from(filteredDataList);
           if (_sortColumn != null) {
             sortedDataList.sort((a, b) {
@@ -1107,7 +1127,7 @@ class _ReportScreenState extends State<ReportScreen> {
                       final allKeys = sortedDataList.isNotEmpty 
                           ? (sortedDataList.first as Map<String, dynamic>).keys.toList()
                           : <String>[];
-                      final keys = widget.reportType == ReportType.items
+                      final keys = (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos)
                           ? allKeys.where((key) => key != 'start_date' && key != 'end_date' && key != 'sucursal').toList()
                           : allKeys;
                       if (columnIndex >= 0 && columnIndex < keys.length) {
