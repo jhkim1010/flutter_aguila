@@ -2434,7 +2434,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                 elevation: 2,
                 margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.all(18.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -2457,16 +2457,18 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 14),
                       // 데이터 그리드 (수평으로 적당히 나눠서 표시)
                       LayoutBuilder(
                         builder: (context, constraints) {
-                          // 화면 크기에 따라 열 개수 결정 (최소 2개, 최대 4개)
+                          // 화면 크기에 따라 열 개수 결정 (작은 화면: 1개, 중간: 2개, 큰 화면: 3-4개)
                           final crossAxisCount = constraints.maxWidth > 800 
                               ? 4 
                               : constraints.maxWidth > 600 
                                   ? 3 
-                                  : 2;
+                                  : constraints.maxWidth > 400
+                                      ? 2
+                                      : 1; // 핸드폰처럼 좁은 경우 1개 (전체 폭 차지)
                           
                           return GridView.count(
                             crossAxisCount: crossAxisCount,
@@ -2474,7 +2476,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                             physics: const NeverScrollableScrollPhysics(),
                             mainAxisSpacing: 12,
                             crossAxisSpacing: 12,
-                            childAspectRatio: 3.5,
+                            childAspectRatio: crossAxisCount == 1 ? 3.5 : 3.0, // 높이를 키우기 위해 값 감소
                             children: [
                               _buildStockDataItem('Item Count', itemCount.toString(), Icons.inventory_2),
                               _buildStockDataItem('Total Ventas', _formatValue(tVentas, isCurrency: true), Icons.shopping_cart),
@@ -2551,7 +2553,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
 
   Widget _buildStockDataItem(String label, String value, IconData icon) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.grey[50],
         borderRadius: BorderRadius.circular(8),
@@ -2576,7 +2578,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
               Icon(icon, size: 16, color: Colors.grey[600]),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
             value,
             style: const TextStyle(

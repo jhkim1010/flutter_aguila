@@ -8,20 +8,14 @@ class StocksBuilder {
     required Map<String, dynamic> data,
     required BuildContext context,
     required ScrollController scrollController,
-    required ScrollController horizontalScrollController, // 수평 스크롤 컨트롤러 추가
     required bool isLoadingMore,
     required Color reportColor,
+    required Widget headerWidget, // 헤더 위젯 추가
   }) {
     // 새로운 응답 형식 지원: data 배열이 최상위에 있음
     final dataList = data['data'] as List? ?? [];
     
-    // 디버깅 로그
-    print('🔍 StocksBuilder.buildContent:');
-    print('   - data 키 존재: ${data.containsKey('data')}');
-    print('   - dataList 길이: ${dataList.length}');
-    if (dataList.isNotEmpty && dataList.first is Map) {
-      print('   - 첫 번째 항목 키: ${(dataList.first as Map).keys.toList()}');
-    }
+    print('📊 Stocks 데이터: ${dataList.length}개 항목');
     
     if (dataList.isEmpty) {
       return const Center(
@@ -36,6 +30,11 @@ class StocksBuilder {
     }
     
     final filteredDataList = dataList;
+    
+    // 전체 너비 계산 (헤더와 동일한 너비)
+    final totalWidth = MediaQuery.of(context).size.width * 3;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final needsHorizontalScroll = totalWidth > screenWidth;
 
     return Column(
       children: [
@@ -67,298 +66,347 @@ class StocksBuilder {
             ),
           ),
         Expanded(
-          child: SingleChildScrollView(
-            controller: horizontalScrollController, // 수평 스크롤 컨트롤러 사용
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(
-              width: MediaQuery.of(context).size.width * 3, // 더 많은 컬럼을 위해 너비 증가
-              child: Column(
-                children: [
-                  // 헤더는 외부에서 관리되므로 여기서는 제거
-                  // 데이터 리스트만 표시
-                  Expanded(
-                    child: ListView.builder(
-                      controller: scrollController,
-                      scrollDirection: Axis.vertical,
-                      shrinkWrap: false,
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      itemCount: filteredDataList.length,
-                      itemBuilder: (context, index) {
-                        final stock = filteredDataList[index] as Map<String, dynamic>;
-                        
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: Colors.transparent,
-                            border: Border(
-                              bottom: BorderSide(
-                                color: Colors.grey[300]!,
-                                width: 1,
-                              ),
-                            ),
+          child: needsHorizontalScroll
+              ? SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: totalWidth,
+                    child: Column(
+                      children: [
+                        // 칼럼 헤더 (수평 스크롤과 함께 이동)
+                        SizedBox(
+                          width: totalWidth,
+                          child: headerWidget,
+                        ),
+                        // 데이터 리스트
+                        Expanded(
+                          child: ListView.builder(
+                            controller: scrollController,
+                            scrollDirection: Axis.vertical,
+                            shrinkWrap: false,
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            cacheExtent: 500, // 캐시 범위 증가로 스크롤 성능 개선
+                            itemCount: filteredDataList.length,
+                            itemBuilder: (context, index) {
+                              final stock = filteredDataList[index] as Map<String, dynamic>;
+                              
+                              return Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: Colors.transparent,
+                                  border: Border(
+                                    bottom: BorderSide(
+                                      color: Colors.grey[300]!,
+                                      width: 1,
+                                    ),
+                                  ),
+                                ),
+                                child: _buildStockRow(stock, reportColor),
+                              );
+                            },
                           ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              // Codigo
-                              SizedBox(
-                                width: 120,
-                                child: Text(
-                                  stock['codigo']?.toString() ?? 
-                                  stock['tcode']?.toString() ?? 
-                                  'N/A',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                    color: Colors.black87,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              // Descripción
-                              SizedBox(
-                                width: 250,
-                                child: Text(
-                                  stock['descripcion']?.toString() ?? 
-                                  stock['tdesc']?.toString() ?? 
-                                  'N/A',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey[600],
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              // Totaling
-                              SizedBox(
-                                width: 90,
-                                child: Text(
-                                  stock['totaling']?.toString() ?? 'N/A',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey[700],
-                                  ),
-                                  textAlign: TextAlign.right,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              // Total Venta
-                              SizedBox(
-                                width: 100,
-                                child: Text(
-                                  stock['totalventa']?.toString() ?? 'N/A',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey[700],
-                                  ),
-                                  textAlign: TextAlign.right,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              // Today Ingreso
-                              SizedBox(
-                                width: 110,
-                                child: Text(
-                                  stock['todayingreso']?.toString() ?? 'N/A',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey[700],
-                                  ),
-                                  textAlign: TextAlign.right,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              // Today Venta
-                              SizedBox(
-                                width: 100,
-                                child: Text(
-                                  stock['todayventa']?.toString() ?? 'N/A',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey[700],
-                                  ),
-                                  textAlign: TextAlign.right,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              // Total Reservado
-                              SizedBox(
-                                width: 120,
-                                child: Text(
-                                  stock['totalreservado']?.toString() ?? 'N/A',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey[700],
-                                  ),
-                                  textAlign: TextAlign.right,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              // Cnt Offset
-                              SizedBox(
-                                width: 100,
-                                child: Text(
-                                  stock['cntoffset']?.toString() ?? 'N/A',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey[700],
-                                  ),
-                                  textAlign: TextAlign.right,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              // Stock Real
-                              SizedBox(
-                                width: 100,
-                                child: Text(
-                                  stock['stockreal']?.toString() ?? 
-                                  stock['stockreal3']?.toString() ?? 
-                                  'N/A',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey[700],
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  textAlign: TextAlign.right,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              // Porcentaje
-                              SizedBox(
-                                width: 100,
-                                child: Text(
-                                  stock['porcentaje']?.toString() ?? 'N/A',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey[700],
-                                  ),
-                                  textAlign: TextAlign.right,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              // First Date
-                              SizedBox(
-                                width: 100,
-                                child: Text(
-                                  stock['first_date']?.toString() ?? 'N/A',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey[700],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              // Last Date
-                              SizedBox(
-                                width: 100,
-                                child: Text(
-                                  stock['last_date']?.toString() ?? 'N/A',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey[700],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              // Precio 1-5
-                              SizedBox(
-                                width: 90,
-                                child: Text(
-                                  stock['pre1']?.toString() ?? 'N/A',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey[700],
-                                  ),
-                                  textAlign: TextAlign.right,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              SizedBox(
-                                width: 90,
-                                child: Text(
-                                  stock['pre2']?.toString() ?? 'N/A',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey[700],
-                                  ),
-                                  textAlign: TextAlign.right,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              SizedBox(
-                                width: 90,
-                                child: Text(
-                                  stock['pre3']?.toString() ?? 'N/A',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey[700],
-                                  ),
-                                  textAlign: TextAlign.right,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              SizedBox(
-                                width: 90,
-                                child: Text(
-                                  stock['pre4']?.toString() ?? 'N/A',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey[700],
-                                  ),
-                                  textAlign: TextAlign.right,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              SizedBox(
-                                width: 90,
-                                child: Text(
-                                  stock['pre5']?.toString() ?? 'N/A',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey[700],
-                                  ),
-                                  textAlign: TextAlign.right,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              // Sucursal
-                              SizedBox(
-                                width: 90,
-                                child: Text(
-                                  stock['sucursal']?.toString() ?? 'N/A',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey[700],
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              // ID Codigo1
-                              SizedBox(
-                                width: 100,
-                                child: Text(
-                                  stock['id_codigo1']?.toString() ?? 'N/A',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey[700],
-                                  ),
-                                  textAlign: TextAlign.right,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                )
+              : SizedBox(
+                  width: screenWidth,
+                  child: Column(
+                    children: [
+                      // 칼럼 헤더
+                      SizedBox(
+                        width: screenWidth,
+                        child: headerWidget,
+                      ),
+                      // 데이터 리스트
+                      Expanded(
+                        child: ListView.builder(
+                          controller: scrollController,
+                          scrollDirection: Axis.vertical,
+                          shrinkWrap: false,
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          cacheExtent: 500,
+                          itemCount: filteredDataList.length,
+                          itemBuilder: (context, index) {
+                            final stock = filteredDataList[index] as Map<String, dynamic>;
+                            
+                            return Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: Colors.transparent,
+                                border: Border(
+                                  bottom: BorderSide(
+                                    color: Colors.grey[300]!,
+                                    width: 1,
+                                  ),
+                                ),
+                              ),
+                              child: _buildStockRow(stock, reportColor),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+
+  static Widget _buildStockRow(Map<String, dynamic> stock, Color reportColor) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Codigo
+        SizedBox(
+          width: 120,
+          child: Text(
+            stock['codigo']?.toString() ?? 
+            stock['tcode']?.toString() ?? 
+            'N/A',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+              color: Colors.black87,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Descripción
+        SizedBox(
+          width: 250,
+          child: Text(
+            stock['descripcion']?.toString() ?? 
+            stock['tdesc']?.toString() ?? 
+            'N/A',
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey[600],
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Totaling
+        SizedBox(
+          width: 90,
+          child: Text(
+            stock['totaling']?.toString() ?? 'N/A',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[700],
+            ),
+            textAlign: TextAlign.right,
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Total Venta
+        SizedBox(
+          width: 100,
+          child: Text(
+            stock['totalventa']?.toString() ?? 'N/A',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[700],
+            ),
+            textAlign: TextAlign.right,
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Today Ingreso
+        SizedBox(
+          width: 110,
+          child: Text(
+            stock['todayingreso']?.toString() ?? 'N/A',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[700],
+            ),
+            textAlign: TextAlign.right,
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Today Venta
+        SizedBox(
+          width: 100,
+          child: Text(
+            stock['todayventa']?.toString() ?? 'N/A',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[700],
+            ),
+            textAlign: TextAlign.right,
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Total Reservado
+        SizedBox(
+          width: 120,
+          child: Text(
+            stock['totalreservado']?.toString() ?? 'N/A',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[700],
+            ),
+            textAlign: TextAlign.right,
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Cnt Offset
+        SizedBox(
+          width: 100,
+          child: Text(
+            stock['cntoffset']?.toString() ?? 'N/A',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[700],
+            ),
+            textAlign: TextAlign.right,
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Stock Real
+        SizedBox(
+          width: 100,
+          child: Text(
+            stock['stockreal']?.toString() ?? 
+            stock['stockreal3']?.toString() ?? 
+            'N/A',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[700],
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.right,
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Porcentaje
+        SizedBox(
+          width: 100,
+          child: Text(
+            stock['porcentaje']?.toString() ?? 'N/A',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[700],
+            ),
+            textAlign: TextAlign.right,
+          ),
+        ),
+        const SizedBox(width: 8),
+        // First Date
+        SizedBox(
+          width: 100,
+          child: Text(
+            stock['first_date']?.toString() ?? 'N/A',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[700],
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Last Date
+        SizedBox(
+          width: 100,
+          child: Text(
+            stock['last_date']?.toString() ?? 'N/A',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[700],
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Precio 1-5
+        SizedBox(
+          width: 90,
+          child: Text(
+            stock['pre1']?.toString() ?? 'N/A',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[700],
+            ),
+            textAlign: TextAlign.right,
+          ),
+        ),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 90,
+          child: Text(
+            stock['pre2']?.toString() ?? 'N/A',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[700],
+            ),
+            textAlign: TextAlign.right,
+          ),
+        ),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 90,
+          child: Text(
+            stock['pre3']?.toString() ?? 'N/A',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[700],
+            ),
+            textAlign: TextAlign.right,
+          ),
+        ),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 90,
+          child: Text(
+            stock['pre4']?.toString() ?? 'N/A',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[700],
+            ),
+            textAlign: TextAlign.right,
+          ),
+        ),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 90,
+          child: Text(
+            stock['pre5']?.toString() ?? 'N/A',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[700],
+            ),
+            textAlign: TextAlign.right,
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Sucursal
+        SizedBox(
+          width: 90,
+          child: Text(
+            stock['sucursal']?.toString() ?? 'N/A',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[700],
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        const SizedBox(width: 8),
+        // ID Codigo1
+        SizedBox(
+          width: 100,
+          child: Text(
+            stock['id_codigo1']?.toString() ?? 'N/A',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[700],
+            ),
+            textAlign: TextAlign.right,
           ),
         ),
       ],
@@ -372,7 +420,6 @@ class StocksBuilder {
     required bool sortAscending,
     required Function(String, bool) onSort,
     required Color reportColor,
-    ScrollController? horizontalScrollController, // 수평 스크롤 컨트롤러 추가
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -385,14 +432,10 @@ class StocksBuilder {
           ),
         ),
       ),
-      child: SingleChildScrollView(
-        controller: horizontalScrollController, // 수평 스크롤 컨트롤러 사용
-        scrollDirection: Axis.horizontal,
-        physics: const NeverScrollableScrollPhysics(), // 헤더는 직접 스크롤하지 않음 (데이터 스크롤에 따라 동기화)
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
             _buildSortableHeader('codigo', 'Codigo', 120, sortColumn, sortAscending, onSort, reportColor),
             const SizedBox(width: 8),
             _buildSortableHeader('descripcion', 'Descripción', 250, sortColumn, sortAscending, onSort, reportColor),
@@ -432,7 +475,6 @@ class StocksBuilder {
             _buildSortableHeader('id_codigo1', 'ID Codigo1', 100, sortColumn, sortAscending, onSort, reportColor),
           ],
         ),
-      ),
     );
   }
 

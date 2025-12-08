@@ -25,6 +25,8 @@ class CodigosBuilder {
 
     final filteredDataList = dataList;
     final totalWidth = columnWidths.values.fold(0.0, (sum, width) => sum + width) + (columnKeys.length * 12);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final needsHorizontalScroll = totalWidth > screenWidth;
 
     return Column(
       children: [
@@ -69,10 +71,176 @@ class CodigosBuilder {
                           : BorderSide.none,
                     ),
                   ),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: SizedBox(
-                      width: totalWidth,
+                  child: needsHorizontalScroll
+                      ? SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: SizedBox(
+                            width: totalWidth,
+                            child: Column(
+                              children: [
+                                // 칼럼 헤더 (수평 스크롤과 함께 이동)
+                                SizedBox(
+                                  width: totalWidth,
+                                  child: headerWidget,
+                                ),
+                                // 데이터 리스트
+                                Expanded(
+                                  child: ListView.builder(
+                                    controller: scrollController,
+                                    scrollDirection: Axis.vertical,
+                                    shrinkWrap: false,
+                                    physics: const AlwaysScrollableScrollPhysics(),
+                                    itemCount: filteredDataList.length,
+                                    itemBuilder: (context, index) {
+                                      final codigo = filteredDataList[index] as Map<String, dynamic>;
+                                      final isSelected = selectedCodigo != null && 
+                                          selectedCodigo!['codigo'] == codigo['codigo'];
+                                      
+                                      return InkWell(
+                                        onTap: () => onCodigoSelected(codigo),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+                                          decoration: BoxDecoration(
+                                            color: isSelected ? Colors.teal.withOpacity(0.1) : Colors.transparent,
+                                            border: Border(
+                                              bottom: BorderSide(
+                                                color: Colors.grey[300]!,
+                                                width: 1,
+                                              ),
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment: CrossAxisAlignment.center,
+                                            children: columnKeys.map((key) {
+                                              final value = codigo[key];
+                                              final width = columnWidths[key] ?? 100.0;
+                                              // codigo, tcodigo 같은 코드 필드는 숫자로 처리하지 않음
+                                              final isCodeColumn = key == 'codigo' || key == 'tcodigo';
+                                              final isNumeric = !isCodeColumn && ReportUtils.isNumeric(value);
+                                              
+                                              // codigo 칼럼은 원본 문자열 그대로 표시 (포맷팅 없이)
+                                              final displayValue = isCodeColumn 
+                                                  ? (value?.toString() ?? 'N/A')
+                                                  : ReportUtils.formatValue(value);
+                                              
+                                              return Padding(
+                                                padding: const EdgeInsets.only(right: 12),
+                                                child: SizedBox(
+                                                  width: width,
+                                                  child: Text(
+                                                    displayValue,
+                                                    style: TextStyle(
+                                                      fontWeight: key == 'codigo' ? FontWeight.bold : FontWeight.normal,
+                                                      fontSize: key == 'codigo' ? 14 : 12,
+                                                      color: isSelected && key == 'codigo' 
+                                                          ? Colors.teal[700] 
+                                                          : (key == 'codigo' ? Colors.black87 : Colors.grey[700]),
+                                                    ),
+                                                    textAlign: isNumeric ? TextAlign.right : TextAlign.left,
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              );
+                                            }).toList(),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : SizedBox(
+                          width: screenWidth,
+                          child: Column(
+                            children: [
+                              // 칼럼 헤더
+                              SizedBox(
+                                width: screenWidth,
+                                child: headerWidget,
+                              ),
+                              // 데이터 리스트
+                              Expanded(
+                                child: ListView.builder(
+                                  controller: scrollController,
+                                  scrollDirection: Axis.vertical,
+                                  shrinkWrap: false,
+                                  physics: const AlwaysScrollableScrollPhysics(),
+                                  itemCount: filteredDataList.length,
+                                  itemBuilder: (context, index) {
+                                    final codigo = filteredDataList[index] as Map<String, dynamic>;
+                                    final isSelected = selectedCodigo != null && 
+                                        selectedCodigo!['codigo'] == codigo['codigo'];
+                                    
+                                    return InkWell(
+                                      onTap: () => onCodigoSelected(codigo),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+                                        decoration: BoxDecoration(
+                                          color: isSelected ? Colors.teal.withOpacity(0.1) : Colors.transparent,
+                                          border: Border(
+                                            bottom: BorderSide(
+                                              color: Colors.grey[300]!,
+                                              width: 1,
+                                            ),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          crossAxisAlignment: CrossAxisAlignment.center,
+                                          children: columnKeys.map((key) {
+                                            final value = codigo[key];
+                                            final width = columnWidths[key] ?? 100.0;
+                                            // codigo, tcodigo 같은 코드 필드는 숫자로 처리하지 않음
+                                            final isCodeColumn = key == 'codigo' || key == 'tcodigo';
+                                            final isNumeric = !isCodeColumn && ReportUtils.isNumeric(value);
+                                            
+                                            // codigo 칼럼은 원본 문자열 그대로 표시 (포맷팅 없이)
+                                            final displayValue = isCodeColumn 
+                                                ? (value?.toString() ?? 'N/A')
+                                                : ReportUtils.formatValue(value);
+                                            
+                                            return Padding(
+                                              padding: const EdgeInsets.only(right: 12),
+                                              child: SizedBox(
+                                                width: width,
+                                                child: Text(
+                                                  displayValue,
+                                                  style: TextStyle(
+                                                    fontWeight: key == 'codigo' ? FontWeight.bold : FontWeight.normal,
+                                                    fontSize: key == 'codigo' ? 14 : 12,
+                                                    color: isSelected && key == 'codigo' 
+                                                        ? Colors.teal[700] 
+                                                        : (key == 'codigo' ? Colors.black87 : Colors.grey[700]),
+                                                  ),
+                                                  textAlign: isNumeric ? TextAlign.right : TextAlign.left,
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            );
+                                          }).toList(),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
                       child: Column(
                         children: [
                           // 칼럼 헤더 (수평 스크롤과 함께 이동)
@@ -468,38 +636,10 @@ class CodigosBuilder {
     
     // id_codigo는 URL에 포함되므로 바디에는 포함하지 않음
     
-    print('');
-    print('═══════════════════════════════════════════════════════════');
-    print('📤 CODIGO 업데이트 요청 - 서버로 전송되는 정보');
-    print('═══════════════════════════════════════════════════════════');
-    print('');
-    print('🔑 식별자 정보:');
+    print('📤 CODIGO 업데이트 요청');
     print('   - id_codigo: ${idCodigo ?? "없음"}');
     print('   - codigo: ${codigo.isNotEmpty ? codigo : "없음"}');
-    print('');
-    print('📋 선택된 Codigo 원본 데이터:');
-    selectedCodigo.forEach((key, value) {
-      print('   - $key: $value');
-    });
-    print('');
-    print('✏️ 편집된 필드 (서버로 전송될 데이터):');
-    if (updatedData.isEmpty) {
-      print('   ⚠️ 변경된 필드가 없습니다.');
-    } else {
-      updatedData.forEach((key, value) {
-        print('   - $key: $value (${value.runtimeType})');
-      });
-    }
-    print('');
-    print('📦 전송될 JSON 데이터:');
-    try {
-      final jsonData = json.encode(updatedData);
-      print('   $jsonData');
-    } catch (e) {
-      print('   ⚠️ JSON 변환 실패: $e');
-      print('   $updatedData');
-    }
-    print('');
+    print('   - 변경된 필드: ${updatedData.length}개');
     
     final response = await databaseService.updateCodigo(
       idCodigo: idCodigo,
@@ -507,12 +647,7 @@ class CodigosBuilder {
       updatedData: updatedData,
     );
     
-    print('═══════════════════════════════════════════════════════════');
-    print('📥 서버 응답');
-    print('═══════════════════════════════════════════════════════════');
-    print('Response: $response');
-    print('═══════════════════════════════════════════════════════════');
-    print('');
+    print('✅ 업데이트 완료');
 
     return response;
   }

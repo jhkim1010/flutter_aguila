@@ -155,8 +155,8 @@ class ReportTableBuilder {
                   scrollDirection: Axis.horizontal,
                   child: DataTable(
                     columnSpacing: 8,
-                            dataRowMinHeight: 48, // items 보고서는 행 높이를 48로 설정
-                            dataRowMaxHeight: 48,
+                            dataRowMinHeight: 32, // 읽기 가능한 높이로 조정
+                            dataRowMaxHeight: 32,
                             headingRowHeight: 0, // 헤더 높이를 0으로 설정하여 숨김
                     headingRowColor: MaterialStateProperty.all(
                               Colors.transparent, // 헤더 배경을 투명하게
@@ -203,7 +203,10 @@ class ReportTableBuilder {
                               alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
                               child: Text(
                                 formattedValue,
-                                style: const TextStyle(fontSize: 14),
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  height: 1.2, // 읽기 가능한 줄 높이로 조정
+                                ),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
@@ -512,7 +515,16 @@ class ReportTableBuilder {
       totals[key] = sum;
     }
     
+    // 컬럼별 고정 너비 설정 (헤더와 일치)
+    final columnWidths = <String, double>{
+      'codigo1': 150,
+      'desc1': 300,
+      'tprendas': 120,
+      'timporte': 150,
+    };
+    
     return Container(
+      width: double.infinity, // 전체 폭 차지
       decoration: BoxDecoration(
         color: reportColor.withOpacity(0.1),
         border: Border(
@@ -525,15 +537,18 @@ class ReportTableBuilder {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
-          children: keys.map((key) {
+          mainAxisSize: MainAxisSize.min,
+          children: keys.asMap().entries.map((entry) {
+            final index = entry.key;
+            final key = entry.value;
             final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1';
-            final cellWidth = 120.0; // 각 셀의 너비
+            final columnWidth = columnWidths[key] ?? 150.0;
             
             if (isCodigoColumn) {
               return SizedBox(
-                width: cellWidth,
+                width: columnWidth + (index < keys.length - 1 ? 8 : 0), // 마지막 컬럼 제외하고 8px 간격 추가
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5), // vertical padding을 12에서 5로 줄임
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
@@ -550,9 +565,9 @@ class ReportTableBuilder {
             
             final total = totals[key] ?? 0;
             return SizedBox(
-              width: cellWidth,
+              width: columnWidth + (index < keys.length - 1 ? 8 : 0), // 마지막 컬럼 제외하고 8px 간격 추가
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5), // vertical padding을 12에서 5로 줄임
                 child: Align(
                   alignment: Alignment.centerRight,
                   child: Text(

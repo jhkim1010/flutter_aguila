@@ -1330,50 +1330,33 @@ class _ReportScreenState extends State<ReportScreen> {
 
   // Stocks 보고서 전용 콘텐츠 빌드
   Widget _buildStocksContent(Map<String, dynamic> data) {
-    return Column(
-      children: [
-        StocksBuilder.buildHeader(
-          reportType: ReportType.stocks,
-          sortColumn: _stocksSortColumn,
-          sortAscending: _stocksSortAscending,
-          onSort: (column, ascending) {
-            setState(() {
-              if (_stocksSortColumn == column) {
-                _stocksSortAscending = ascending;
-              } else {
-                _stocksSortColumn = column;
-                _stocksSortAscending = false; // 첫 클릭 시 내림차순
-              }
-            });
-            _notifyStateChanged();
-            _reloadDataWithFilters();
-          },
-          reportColor: _getReportColor(),
-          horizontalScrollController: _horizontalScrollController, // 수평 스크롤 컨트롤러 전달
-        ),
-        Expanded(
-          child: NotificationListener<ScrollNotification>(
-            onNotification: (notification) {
-              // 데이터 부분의 수평 스크롤 이벤트를 헤더에 전달
-              if (notification is ScrollUpdateNotification && 
-                  notification.depth == 0 && 
-                  notification.metrics.axis == Axis.horizontal &&
-                  _horizontalScrollController.hasClients) {
-                _horizontalScrollController.jumpTo(notification.metrics.pixels);
-              }
-              return false;
-            },
-            child: StocksBuilder.buildContent(
-              data: data,
-              context: context,
-              scrollController: _scrollController,
-              horizontalScrollController: _horizontalScrollController, // 수평 스크롤 컨트롤러 전달
-              isLoadingMore: _isLoadingMoreStocks,
-              reportColor: _getReportColor(),
-            ),
-          ),
-        ),
-      ],
+    // 헤더 위젯 생성
+    final headerWidget = StocksBuilder.buildHeader(
+      reportType: ReportType.stocks,
+      sortColumn: _stocksSortColumn,
+      sortAscending: _stocksSortAscending,
+      onSort: (column, ascending) {
+        setState(() {
+          if (_stocksSortColumn == column) {
+            _stocksSortAscending = ascending;
+          } else {
+            _stocksSortColumn = column;
+            _stocksSortAscending = false; // 첫 클릭 시 내림차순
+          }
+        });
+        _notifyStateChanged();
+        _reloadDataWithFilters();
+      },
+      reportColor: _getReportColor(),
+    );
+    
+    return StocksBuilder.buildContent(
+      data: data,
+      context: context,
+      scrollController: _scrollController,
+      isLoadingMore: _isLoadingMoreStocks,
+      reportColor: _getReportColor(),
+      headerWidget: headerWidget,
     );
   }
 
@@ -1417,11 +1400,13 @@ class _ReportScreenState extends State<ReportScreen> {
             ),
           ),
         Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(
-              width: MediaQuery.of(context).size.width * 2, // 가로 스크롤을 위한 넓은 너비
-              child: Column(
+          child: Builder(
+            builder: (context) {
+              final totalWidth = MediaQuery.of(context).size.width * 2;
+              final screenWidth = MediaQuery.of(context).size.width;
+              final needsHorizontalScroll = totalWidth > screenWidth;
+              
+              final content = Column(
                 children: [
                   // 칼럼 헤더
                   _buildStocksHeader(),
@@ -1435,21 +1420,21 @@ class _ReportScreenState extends State<ReportScreen> {
                       itemCount: filteredDataList.length,
                       itemBuilder: (context, index) {
                         final stock = filteredDataList[index] as Map<String, dynamic>;
-    
-    return Container(
+        
+                        return Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
+                          decoration: BoxDecoration(
                             color: Colors.transparent,
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.grey[300]!,
-            width: 1,
-          ),
-        ),
-      ),
-      child: Row(
+                            border: Border(
+                              bottom: BorderSide(
+                                color: Colors.grey[300]!,
+                                width: 1,
+                              ),
+                            ),
+                          ),
+                          child: Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
+                            children: [
                               SizedBox(
                                 width: 150,
                                 child: Text(
@@ -1472,7 +1457,7 @@ class _ReportScreenState extends State<ReportScreen> {
                                   stock['descripcion']?.toString() ?? 
                                   stock['tdesc']?.toString() ?? 
                                   'N/A',
-            style: TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
                                     color: Colors.grey[600],
                                   ),
@@ -1508,12 +1493,27 @@ class _ReportScreenState extends State<ReportScreen> {
                             ],
                           ),
                         );
-                  },
-                ),
-              ),
-            ],
-              ),
-            ),
+                      },
+                    ),
+                  ),
+                ],
+              );
+              
+              if (needsHorizontalScroll) {
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: totalWidth,
+                    child: content,
+                  ),
+                );
+              } else {
+                return SizedBox(
+                  width: screenWidth,
+                  child: content,
+                );
+              }
+            },
           ),
         ),
       ],

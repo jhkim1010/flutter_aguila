@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
-import 'dart:io' show exit;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:local_auth/local_auth.dart';
-import '../services/secure_storage_helper.dart';
 import 'dart:math';
-import 'dart:ui';
 import '../l10n/app_localizations.dart';
 import '../services/database_service.dart';
 import '../models/connection_info.dart';
 import '../services/connection_storage_service.dart';
+import '../services/secure_storage_helper.dart';
 import '../utils/platform_utils.dart';
 import 'celebration_screen.dart';
 import 'connection_screen.dart';
@@ -19,6 +15,9 @@ import 'resumen_del_dia_screen.dart';
 import 'connection_list_screen.dart';
 import 'report_screen.dart';
 import '../widgets/report_utils.dart';
+import 'helpers/biometric_auth_handler.dart';
+import 'helpers/auto_connection_handler.dart';
+import 'helpers/connection_manager.dart';
 
 class MainConnectionScreen extends StatefulWidget {
   final bool skipAutoConnect;
@@ -52,6 +51,8 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
   final _localIpController = TextEditingController();
   
   final ConnectionStorageService _connectionStorageService = ConnectionStorageService();
+  final ConnectionManager _connectionManager = ConnectionManager();
+  final BiometricAuthHandler _biometricAuthHandler = BiometricAuthHandler();
   ServerType _selectedServerType = ServerType.hostinger;
   bool _isLoading = false;
   bool _isAutoConnecting = false;
@@ -59,7 +60,6 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
   String? _errorMessage;
   List<ConnectionInfo> _savedConnections = [];
   bool _isLoadingConnections = false;
-  final LocalAuthentication _localAuth = LocalAuthentication();
   bool _isBiometricAuthenticated = false; // 생체 인식 성공 여부
   
   // 연결 성공 후 보고서 관련 상태
@@ -99,99 +99,29 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
 
   // 연결 상태 확인
   Future<void> _checkConnectionStatus() async {
-    try {
-      final connectionSuccess = await SecureStorageHelper.read('connection_success');
-      final serverUrl = await SecureStorageHelper.read('server_url');
-      final databaseName = await SecureStorageHelper.read('database_name');
-      
-      if (connectionSuccess == 'true' && serverUrl != null && databaseName != null) {
-        // 저장된 연결 정보가 있으면 데이터베이스 서비스 초기화
-        setState(() {
-          _isConnected = true;
-          _currentServerUrl = serverUrl;
-          _currentDatabaseName = databaseName;
-          _databaseService = DatabaseService(serverUrl: serverUrl);
-        });
-      }
-    } catch (e) {
-      print('❌ 연결 상태 확인 오류: $e');
+    final status = await ConnectionManager.checkConnectionStatus();
+    if (status.isConnected && status.serverUrl != null && status.databaseName != null) {
+      setState(() {
+        _isConnected = true;
+        _currentServerUrl = status.serverUrl;
+        _currentDatabaseName = status.databaseName;
+        _databaseService = DatabaseService(serverUrl: status.serverUrl!);
+      });
     }
   }
 
   // 백그라운드에서 생체 인식 수행
   Future<void> _authenticateInBackground() async {
-    // Windows 플랫폼에서는 생체 인식 생략
-    if (defaultTargetPlatform == TargetPlatform.windows) {
-      print('🪟 Windows 플랫폼: 생체 인식 생략');
-      return;
-    }
-    
-    try {
-      final bool isSupported = await _localAuth.isDeviceSupported();
-      final bool canCheckBiometrics = await _localAuth.canCheckBiometrics;
-      
-      if (isSupported && canCheckBiometrics) {
-        // 약간의 지연 후 백그라운드에서 인증 시도
-        await Future.delayed(const Duration(milliseconds: 500));
-        
-        if (mounted) {
-          try {
-            final bool didAuthenticate = await _localAuth.authenticate(
-              localizedReason: 'Se requiere autenticación biométrica para usar la aplicación',
-              options: const AuthenticationOptions(
-                biometricOnly: false,
-                stickyAuth: true,
-              ),
-            );
-            
-            if (!didAuthenticate) {
-              // 인증 실패 또는 취소 시 즉시 앱 종료
-              print('🔐 생체 인식 실패 또는 취소됨 - 앱 종료');
-              // 지연 없이 즉시 종료
-              Future.microtask(() => _exitApp());
-              return;
-            }
-            
-            // 인증 성공
-            if (mounted) {
-              setState(() {
-                _isBiometricAuthenticated = true;
-              });
-              print('✅ 생체 인식 성공');
-            }
-          } on PlatformException catch (e) {
-            // 취소된 경우 (UserCancel) 또는 실패한 경우 앱 종료
-            print('🔐 생체 인식 예외 발생 - 앱 종료: ${e.code} - ${e.message}');
-            // 지연 없이 즉시 종료
-            Future.microtask(() => _exitApp());
-          } catch (e) {
-            print('❌ 생체 인식 알 수 없는 오류: $e - 앱 종료');
-            // 알 수 없는 오류도 앱 종료
-            Future.microtask(() => _exitApp());
-          }
-        }
-      }
-    } catch (e) {
-      print('❌ 생체 인식 확인 오류: $e');
-      // 생체 인식이 지원되지 않거나 오류가 발생해도 화면은 계속 표시
-    }
-  }
-
-  // 앱 종료 헬퍼 메서드
-  void _exitApp() {
-    print('🚪 앱 종료 중...');
-    if (defaultTargetPlatform == TargetPlatform.android || 
-        defaultTargetPlatform == TargetPlatform.iOS) {
-      SystemNavigator.pop();
-    } else {
-      // macOS/Windows/Linux - 즉시 종료
-      exit(0);
+    final success = await _biometricAuthHandler.authenticateInBackground();
+    if (mounted) {
+      setState(() {
+        _isBiometricAuthenticated = success;
+      });
     }
   }
 
   // 저장된 연결 목록 불러오기
   Future<void> _loadSavedConnections() async {
-    // 중복 호출 방지
     if (_isLoadingConnections) {
       print('⚠️ 이미 연결 리스트 로딩 중이므로 스킵');
       return;
@@ -203,25 +133,12 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
     });
 
     try {
-      print('🔄 저장된 연결 리스트 로드 시작...');
-      final connections = await _connectionStorageService.getAllConnections();
-      print('✅ 저장된 연결 리스트 로드 완료: ${connections.length}개 연결');
-      
-      // 각 연결 정보 출력
-      for (var conn in connections) {
-        print('   - ${conn.name} (ID: ${conn.id}, DB: ${conn.databaseName})');
-      }
-      
+      final connections = await _connectionManager.loadSavedConnections();
       if (mounted) {
         setState(() {
           _savedConnections = connections;
           _isLoadingConnections = false;
         });
-        print('🔄 UI 업데이트 완료: ${_savedConnections.length}개 연결 표시');
-        print('   현재 _savedConnections 리스트:');
-        for (var conn in _savedConnections) {
-          print('     - ${conn.name}');
-        }
       }
     } catch (e) {
       print('❌ 연결 리스트 로드 실패: $e');
@@ -235,108 +152,35 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
     }
   }
 
-  // 저장된 연결로 연결 시도
   // 연결 삭제하기
   Future<void> _deleteConnection(ConnectionInfo connection) async {
-    final l10n = AppLocalizations.of(context)!;
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.deleteConnection),
-        content: Text(l10n.deleteConnectionConfirm(connection.name)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(l10n.cancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(l10n.delete, style: const TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      try {
-        print('🗑️ 연결 삭제 시작: ${connection.name} (ID: ${connection.id})');
-        await _connectionStorageService.deleteConnection(connection.id);
-        await _loadSavedConnections();
-        
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l10n.connectionDeleted)),
-          );
-        }
-        print('✅ 연결 삭제 완료: ${connection.name}');
-      } catch (e) {
-        print('❌ 연결 삭제 실패: $e');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('삭제 실패: ${e.toString()}'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
+    final deleted = await _connectionManager.deleteConnection(context, connection);
+    if (deleted) {
+      await _loadSavedConnections();
     }
   }
 
   Future<void> _connectWithSavedConnection(ConnectionInfo connection) async {
-    try {
-      // 로딩 표시
-      setState(() {
-        _isLoading = true;
-        _errorMessage = null;
-      });
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
-      final service = DatabaseService(serverUrl: connection.serverUrl);
+    final result = await _connectionManager.connectWithSavedConnection(connection);
 
-      final request = DatabaseConnectionRequest(
-        databaseName: connection.databaseName,
-        username: connection.username,
-        password: connection.password,
+    if (result.isSuccess && mounted) {
+      print('✅ 저장된 연결로 연결 성공 - ResumenDelDiaScreen으로 이동');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ResumenDelDiaScreen(
+            serverUrl: result.serverUrl!,
+          ),
+        ),
       );
-
-      final success = await service.connectToDatabase(request);
-
-      if (success && mounted) {
-        // 연결 정보를 하이브리드 저장소에 저장
-        await SecureStorageHelper.save('database_name', connection.databaseName);
-        await SecureStorageHelper.save('username', connection.username);
-        // macOS: SharedPreferences, 다른 플랫폼: SecureStorage
-        if (defaultTargetPlatform == TargetPlatform.macOS) {
-          await SecureStorageHelper.save('password', connection.password);
-        } else {
-          await SecureStorageHelper.saveSecure('password', connection.password);
-        }
-        await SecureStorageHelper.save('server_url', connection.serverUrl);
-        await SecureStorageHelper.save('connection_success', 'true');
-        await SecureStorageHelper.save('profile_name', connection.name);
-
-        // 연결 성공 시 ResumenDelDiaScreen으로 완전히 이동
-        print('✅ 저장된 연결로 연결 성공 - ResumenDelDiaScreen으로 이동');
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ResumenDelDiaScreen(
-                serverUrl: connection.serverUrl,
-              ),
-            ),
-          );
-        }
-      } else {
-        setState(() {
-          _errorMessage = '연결에 실패했습니다.';
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      final errorMessage = e.toString().replaceFirst('Exception: ', '');
+    } else {
       setState(() {
-        _errorMessage = errorMessage;
+        _errorMessage = result.errorMessage ?? '연결에 실패했습니다.';
         _isLoading = false;
       });
     }
@@ -344,102 +188,42 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
   
   // 저장된 연결 정보 확인 후 자동 연결
   Future<void> _checkAndAutoConnect() async {
-    // skipAutoConnect가 true이면 자동 연결하지 않음
     if (widget.skipAutoConnect) {
       await _loadSavedConnectionInfo();
       return;
     }
     
-    try {
-      final serverUrl = await SecureStorageHelper.read('server_url');
-      final databaseName = await SecureStorageHelper.read('database_name');
-      final username = await SecureStorageHelper.read('username');
-      // macOS: SharedPreferences, 다른 플랫폼: SecureStorage
-      final password = defaultTargetPlatform == TargetPlatform.macOS
-          ? await SecureStorageHelper.read('password')
-          : await SecureStorageHelper.readSecure('password');
-      final connectionSuccess = await SecureStorageHelper.read('connection_success');
-      
-      // 저장된 연결 정보가 있고, 이전에 연결 성공한 경우 자동 연결
-      if (serverUrl != null && 
-          serverUrl.isNotEmpty &&
-          databaseName != null && 
-          databaseName.isNotEmpty &&
-          username != null && 
-          username.isNotEmpty &&
-          password != null && 
-          password.isNotEmpty &&
-          connectionSuccess == 'true') {
-        
-        setState(() {
-          _isAutoConnecting = true;
-        });
-        
-        // 저장된 정보로 자동 연결 시도
-        await _autoConnectToDatabase(
-          serverUrl: serverUrl,
-          databaseName: databaseName,
-          username: username,
-          password: password,
-        );
-      } else {
-        // 저장된 정보가 없으면 기존처럼 로드
-        await _loadSavedConnectionInfo();
-      }
-    } catch (e) {
-      // 오류 발생 시 기존 방식으로 로드
-      await _loadSavedConnectionInfo();
-    }
-  }
-  
-  // 자동 연결 시도
-  Future<void> _autoConnectToDatabase({
-    required String serverUrl,
-    required String databaseName,
-    required String username,
-    required String password,
-  }) async {
-    try {
-      final service = DatabaseService(serverUrl: serverUrl);
-      
-      final request = DatabaseConnectionRequest(
-        databaseName: databaseName,
-        username: username,
-        password: password,
-      );
+    setState(() {
+      _isAutoConnecting = true;
+    });
 
-      final success = await service.connectToDatabase(request);
-
-      if (success && mounted) {
-        print('✅ 자동 연결 성공 - ResumenDelDiaScreen으로 이동');
-        // 자동 연결 성공 시 ResumenDelDiaScreen으로 완전히 이동
+    final result = await AutoConnectionHandler.checkAndAutoConnect(
+      skipAutoConnect: widget.skipAutoConnect,
+      onSuccess: (serverUrl) {
         if (mounted) {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => ResumenDelDiaScreen(
-                serverUrl: serverUrl,
-              ),
+              builder: (context) => ResumenDelDiaScreen(serverUrl: serverUrl),
             ),
           );
         }
-      } else {
-        // 자동 연결 실패 시 연결 화면 표시
-        setState(() {
-          _isAutoConnecting = false;
-          _isConnected = false;
-        });
-        await _loadSavedConnectionInfo();
-      }
-    } catch (e) {
-      // 자동 연결 실패 시 연결 화면 표시
-      setState(() {
-        _isAutoConnecting = false;
-        _isConnected = false;
-        _errorMessage = '자동 연결 실패: ${e.toString().replaceFirst('Exception: ', '')}';
-      });
-      await _loadSavedConnectionInfo();
+      },
+    );
+
+    if (result.isSuccess) {
+      // 성공 시 onSuccess에서 처리됨
+      return;
     }
+
+    setState(() {
+      _isAutoConnecting = false;
+      if (result.errorMessage != null) {
+        _errorMessage = '자동 연결 실패: ${result.errorMessage}';
+      }
+    });
+
+    await _loadSavedConnectionInfo();
   }
 
   @override
@@ -453,15 +237,6 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
     _localIpController.dispose();
     super.dispose();
   }
-  
-  static const FlutterSecureStorage _storage = FlutterSecureStorage(
-    aOptions: AndroidOptions(
-      encryptedSharedPreferences: true,
-    ),
-    iOptions: IOSOptions(
-      accessibility: KeychainAccessibility.first_unlock_this_device,
-    ),
-  );
 
   // 저장된 기본 연결 정보 불러오기
   Future<void> _loadSavedConnectionInfo() async {
