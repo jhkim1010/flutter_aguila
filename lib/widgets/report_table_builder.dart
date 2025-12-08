@@ -31,7 +31,7 @@ class ReportTableBuilder {
     final firstItem = displayedList.first as Map<String, dynamic>;
     
     // Ventas report의 경우 특정 컬럼만 특정 순서로 표시
-    // Items report의 경우 start_date, end_date, sucursal 제외
+    // Items 및 Ingresos report의 경우 start_date, end_date, sucursal 제외
     List<String> keys;
     if (reportType == ReportType.ventas) {
       // 지정된 순서의 컬럼 목록
@@ -63,10 +63,15 @@ class ReportTableBuilder {
       
       // orderedColumns 순서 유지하면서 commonKeys에 있는 것만
       keys = orderedColumns.where((key) => commonKeys.contains(key)).toList();
-    } else if (reportType == ReportType.items) {
-      // Items 보고서: start_date, end_date, sucursal 제외
+    } else if (reportType == ReportType.items || reportType == ReportType.ingresos) {
+      // Items 및 Ingresos 보고서: start_date, end_date, startDate, endDate, sucursal 제외
       keys = firstItem.keys
-          .where((key) => key != 'start_date' && key != 'end_date' && key != 'sucursal')
+          .where((key) => 
+              key != 'start_date' && 
+              key != 'end_date' && 
+              key != 'startDate' && 
+              key != 'endDate' && 
+              key != 'sucursal')
           .toList();
     } else {
       keys = firstItem.keys.toList();
@@ -86,7 +91,10 @@ class ReportTableBuilder {
       final index = entry.key;
       final key = entry.value;
       final isSorted = sortColumn == key;
-      final isSortable = reportType == ReportType.items && (key == 'codigo' || key == 'desc1' || key == 'tprendas' || key == 'timporte');
+      final isSortable = (reportType == ReportType.items || reportType == ReportType.ingresos) && 
+          (key == 'codigo' || key == 'codigo1' || key == 'descripcion' || key == 'desc1' || 
+           key == 'tprendas' || key == 'timporte' || key == 'tIngreso' || key == 'tingreso' ||
+           key == 'cntEvent' || key == 'cntevent');
       
       return DataColumn(
         label: Row(
@@ -114,8 +122,8 @@ class ReportTableBuilder {
       );
     }).toList();
 
-    // Items 보고서의 경우 합계 행을 화면 하단에 고정하면서 수직 스크롤 가능
-    if (reportType == ReportType.items) {
+    // Items 및 Ingresos 보고서의 경우 합계 행을 화면 하단에 고정하면서 수직 스크롤 가능
+    if (reportType == ReportType.items || reportType == ReportType.ingresos) {
       // 헤더를 별도로 분리하여 수평 스크롤 동기화
       final headerRow = _buildHeaderRow(keys, columns, color, sortColumn, sortAscending, onSort);
       

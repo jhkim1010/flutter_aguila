@@ -995,9 +995,17 @@ class _ReportScreenState extends State<ReportScreen> {
           if (filteringWord.isNotEmpty) {
             filteredDataList = dataList.where((item) {
               if (item is Map<String, dynamic>) {
-                final codigo1 = item['codigo1']?.toString().toLowerCase() ?? '';
-                final desc1 = item['desc1']?.toString().toLowerCase() ?? '';
-                return codigo1.contains(filteringWord) || desc1.contains(filteringWord);
+                // Items 보고서: codigo1, desc1 사용
+                // Ingresos 보고서: codigo, descripcion 사용
+                if (widget.reportType == ReportType.items) {
+                  final codigo1 = item['codigo1']?.toString().toLowerCase() ?? '';
+                  final desc1 = item['desc1']?.toString().toLowerCase() ?? '';
+                  return codigo1.contains(filteringWord) || desc1.contains(filteringWord);
+                } else if (widget.reportType == ReportType.ingresos) {
+                  final codigo = item['codigo']?.toString().toLowerCase() ?? '';
+                  final descripcion = item['descripcion']?.toString().toLowerCase() ?? '';
+                  return codigo.contains(filteringWord) || descripcion.contains(filteringWord);
+                }
               }
               return false;
             }).toList();
@@ -1352,7 +1360,6 @@ class _ReportScreenState extends State<ReportScreen> {
     }
     
     // bcolorview 값에 따라 색상 결정
-    final isBcolorviewEnabled = ReportUtils.isBcolorviewEnabled(bcolorview);
     Color reportColor = Colors.orange; // 기본값
     if (filters != null && filters.containsKey('bcolorview')) {
       final bcolorviewValue = filters['bcolorview'];
