@@ -19,20 +19,26 @@ class ReportScreen extends StatefulWidget {
   final String serverUrl;
   final ReportType reportType;
   final DateTime? initialDate; // ventas report용 초기 날짜
+  final DateTime? initialItemsStartDate; // items report용 초기 시작 날짜
+  final DateTime? initialItemsEndDate; // items report용 초기 종료 날짜
   final String? initialFilteringWord; // 초기 필터링 단어
   final String? initialSortColumn; // 초기 정렬 컬럼
   final bool? initialSortAscending; // 초기 정렬 방향
   final Function(String?, String?, bool?)? onStateChanged; // 상태 변경 콜백 (filteringWord, sortColumn, sortAscending)
+  final Function(DateTime?, DateTime?)? onItemsDateRangeChanged; // items 보고서 날짜 범위 변경 콜백
 
   const ReportScreen({
     super.key,
     required this.serverUrl,
     required this.reportType,
     this.initialDate,
+    this.initialItemsStartDate,
+    this.initialItemsEndDate,
     this.initialFilteringWord,
     this.initialSortColumn,
     this.initialSortAscending,
     this.onStateChanged,
+    this.onItemsDateRangeChanged,
   });
 
   @override
@@ -107,11 +113,17 @@ class _ReportScreenState extends State<ReportScreen> {
       }
     }
     
-    // Items 보고서의 경우 기본 날짜 설정 (오늘 날짜)
+    // Items 보고서의 경우 기본 날짜 설정 (오늘 날짜 또는 초기값)
     if (widget.reportType == ReportType.items) {
-      final now = DateTime.now();
-      _itemsStartDate = now;
-      _itemsEndDate = now;
+      if (widget.initialItemsStartDate != null && widget.initialItemsEndDate != null) {
+        _itemsStartDate = widget.initialItemsStartDate;
+        _itemsEndDate = widget.initialItemsEndDate;
+        print('📅 Items 보고서 초기 날짜 범위 설정: ${DateFormat('yyyy-MM-dd').format(_itemsStartDate!)} ~ ${DateFormat('yyyy-MM-dd').format(_itemsEndDate!)}');
+      } else {
+        final now = DateTime.now();
+        _itemsStartDate = now;
+        _itemsEndDate = now;
+      }
     }
     // Ventas 보고서의 경우 초기 날짜 설정
     if (widget.reportType == ReportType.ventas) {
@@ -157,11 +169,16 @@ class _ReportScreenState extends State<ReportScreen> {
         _stocksSortAscending = true;
       }
       
-      // Items 보고서의 경우 기본 날짜 설정 (오늘 날짜)
+      // Items 보고서의 경우 기본 날짜 설정 (오늘 날짜 또는 초기값)
       if (widget.reportType == ReportType.items) {
-        final now = DateTime.now();
-        _itemsStartDate = now;
-        _itemsEndDate = now;
+        if (widget.initialItemsStartDate != null && widget.initialItemsEndDate != null) {
+          _itemsStartDate = widget.initialItemsStartDate;
+          _itemsEndDate = widget.initialItemsEndDate;
+        } else {
+          final now = DateTime.now();
+          _itemsStartDate = now;
+          _itemsEndDate = now;
+        }
       }
       
       // Ventas 보고서의 경우 초기 날짜 설정
@@ -628,6 +645,10 @@ class _ReportScreenState extends State<ReportScreen> {
           _itemsStartDate = startDate;
           _itemsEndDate = endDate;
         });
+        // 날짜 범위 변경 콜백 호출
+        if (widget.onItemsDateRangeChanged != null) {
+          widget.onItemsDateRangeChanged!(startDate, endDate);
+        }
         _loadData();
       },
       reportType: widget.reportType,
@@ -684,6 +705,10 @@ class _ReportScreenState extends State<ReportScreen> {
                   _itemsStartDate = startDate;
                   _itemsEndDate = endDate;
                 });
+                // 날짜 범위 변경 콜백 호출
+                if (widget.onItemsDateRangeChanged != null) {
+                  widget.onItemsDateRangeChanged!(startDate, endDate);
+                }
                 _loadData();
               },
             ),
@@ -1402,7 +1427,8 @@ class _ReportScreenState extends State<ReportScreen> {
         Expanded(
           child: Builder(
             builder: (context) {
-              final totalWidth = MediaQuery.of(context).size.width * 2;
+              // 실제 컨텐츠 너비 계산 (stocks_builder.dart와 동일)
+              final totalWidth = 1940.0 + 144.0 + 32.0; // 실제 컨텐츠 너비 = 2116
               final screenWidth = MediaQuery.of(context).size.width;
               final needsHorizontalScroll = totalWidth > screenWidth;
               

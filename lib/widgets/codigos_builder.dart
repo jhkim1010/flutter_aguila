@@ -24,7 +24,11 @@ class CodigosBuilder {
     }
 
     final filteredDataList = dataList;
-    final totalWidth = columnWidths.values.fold(0.0, (sum, width) => sum + width) + (columnKeys.length * 12);
+    // 실제 컨텐츠 너비 계산: 칼럼 너비 합 + 칼럼 사이 padding(12px) + 좌우 padding(16px * 2)
+    final columnsTotalWidth = columnWidths.values.fold(0.0, (sum, width) => sum + width);
+    final columnsSpacing = columnKeys.length > 0 ? (columnKeys.length - 1) * 12.0 : 0.0;
+    final horizontalPadding = 32.0; // 좌우 padding
+    final totalWidth = columnsTotalWidth + columnsSpacing + horizontalPadding;
     final screenWidth = MediaQuery.of(context).size.width;
     final needsHorizontalScroll = totalWidth > screenWidth;
 
@@ -72,253 +76,115 @@ class CodigosBuilder {
                     ),
                   ),
                   child: needsHorizontalScroll
-                      ? SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: SizedBox(
-                            width: totalWidth,
-                            child: Column(
-                              children: [
-                                // 칼럼 헤더 (수평 스크롤과 함께 이동)
-                                SizedBox(
-                                  width: totalWidth,
-                                  child: headerWidget,
-                                ),
-                                // 데이터 리스트
-                                Expanded(
-                                  child: ListView.builder(
-                                    controller: scrollController,
-                                    scrollDirection: Axis.vertical,
-                                    shrinkWrap: false,
-                                    physics: const AlwaysScrollableScrollPhysics(),
-                                    itemCount: filteredDataList.length,
-                                    itemBuilder: (context, index) {
-                                      final codigo = filteredDataList[index] as Map<String, dynamic>;
-                                      final isSelected = selectedCodigo != null && 
-                                          selectedCodigo!['codigo'] == codigo['codigo'];
-                                      
-                                      return InkWell(
-                                        onTap: () => onCodigoSelected(codigo),
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-                                          decoration: BoxDecoration(
-                                            color: isSelected ? Colors.teal.withOpacity(0.1) : Colors.transparent,
-                                            border: Border(
-                                              bottom: BorderSide(
-                                                color: Colors.grey[300]!,
-                                                width: 1,
-                                              ),
-                                            ),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            crossAxisAlignment: CrossAxisAlignment.center,
-                                            children: columnKeys.map((key) {
-                                              final value = codigo[key];
-                                              final width = columnWidths[key] ?? 100.0;
-                                              // codigo, tcodigo 같은 코드 필드는 숫자로 처리하지 않음
-                                              final isCodeColumn = key == 'codigo' || key == 'tcodigo';
-                                              final isNumeric = !isCodeColumn && ReportUtils.isNumeric(value);
-                                              
-                                              // codigo 칼럼은 원본 문자열 그대로 표시 (포맷팅 없이)
-                                              final displayValue = isCodeColumn 
-                                                  ? (value?.toString() ?? 'N/A')
-                                                  : ReportUtils.formatValue(value);
-                                              
-                                              return Padding(
-                                                padding: const EdgeInsets.only(right: 12),
-                                                child: SizedBox(
-                                                  width: width,
-                                                  child: Text(
-                                                    displayValue,
-                                                    style: TextStyle(
-                                                      fontWeight: key == 'codigo' ? FontWeight.bold : FontWeight.normal,
-                                                      fontSize: key == 'codigo' ? 14 : 12,
-                                                      color: isSelected && key == 'codigo' 
-                                                          ? Colors.teal[700] 
-                                                          : (key == 'codigo' ? Colors.black87 : Colors.grey[700]),
-                                                    ),
-                                                    textAlign: isNumeric ? TextAlign.right : TextAlign.left,
-                                                    maxLines: 1,
-                                                    overflow: TextOverflow.ellipsis,
+                      ? LayoutBuilder(
+                          builder: (context, constraints) {
+                            return SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              clipBehavior: Clip.hardEdge,
+                              child: SizedBox(
+                                width: totalWidth,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // 칼럼 헤더 (수평 스크롤과 함께 이동)
+                                    SizedBox(
+                                      width: totalWidth,
+                                      child: headerWidget,
+                                    ),
+                                    // 데이터 리스트
+                                    SizedBox(
+                                      height: constraints.maxHeight - 60, // 헤더 높이 대략 60px
+                                      width: totalWidth,
+                                      child: ListView.builder(
+                                        controller: scrollController,
+                                        scrollDirection: Axis.vertical,
+                                        shrinkWrap: false,
+                                        physics: const AlwaysScrollableScrollPhysics(),
+                                        itemCount: filteredDataList.length,
+                                        itemBuilder: (context, index) {
+                                          final codigo = filteredDataList[index] as Map<String, dynamic>;
+                                          final isSelected = selectedCodigo != null && 
+                                              selectedCodigo!['codigo'] == codigo['codigo'];
+                                          
+                                          return InkWell(
+                                            onTap: () => onCodigoSelected(codigo),
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+                                              decoration: BoxDecoration(
+                                                color: isSelected ? Colors.teal.withOpacity(0.1) : Colors.transparent,
+                                                border: Border(
+                                                  bottom: BorderSide(
+                                                    color: Colors.grey[300]!,
+                                                    width: 1,
                                                   ),
                                                 ),
-                                              );
-                                            }).toList(),
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
+                                              ),
+                                              child: _buildCodigoRow(
+                                                codigo: codigo,
+                                                columnKeys: columnKeys,
+                                                columnWidths: columnWidths,
+                                                isSelected: isSelected,
+                                                reportColor: reportColor,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                          ),
+                              ),
+                            );
+                          },
                         )
-                      : SizedBox(
-                          width: screenWidth,
-                          child: Column(
-                            children: [
-                              // 칼럼 헤더
-                              SizedBox(
-                                width: screenWidth,
-                                child: headerWidget,
-                              ),
-                              // 데이터 리스트
-                              Expanded(
-                                child: ListView.builder(
-                                  controller: scrollController,
-                                  scrollDirection: Axis.vertical,
-                                  shrinkWrap: false,
-                                  physics: const AlwaysScrollableScrollPhysics(),
-                                  itemCount: filteredDataList.length,
-                                  itemBuilder: (context, index) {
-                                    final codigo = filteredDataList[index] as Map<String, dynamic>;
-                                    final isSelected = selectedCodigo != null && 
-                                        selectedCodigo!['codigo'] == codigo['codigo'];
-                                    
-                                    return InkWell(
-                                      onTap: () => onCodigoSelected(codigo),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-                                        decoration: BoxDecoration(
-                                          color: isSelected ? Colors.teal.withOpacity(0.1) : Colors.transparent,
-                                          border: Border(
-                                            bottom: BorderSide(
-                                              color: Colors.grey[300]!,
-                                              width: 1,
-                                            ),
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          crossAxisAlignment: CrossAxisAlignment.center,
-                                          children: columnKeys.map((key) {
-                                            final value = codigo[key];
-                                            final width = columnWidths[key] ?? 100.0;
-                                            // codigo, tcodigo 같은 코드 필드는 숫자로 처리하지 않음
-                                            final isCodeColumn = key == 'codigo' || key == 'tcodigo';
-                                            final isNumeric = !isCodeColumn && ReportUtils.isNumeric(value);
-                                            
-                                            // codigo 칼럼은 원본 문자열 그대로 표시 (포맷팅 없이)
-                                            final displayValue = isCodeColumn 
-                                                ? (value?.toString() ?? 'N/A')
-                                                : ReportUtils.formatValue(value);
-                                            
-                                            return Padding(
-                                              padding: const EdgeInsets.only(right: 12),
-                                              child: SizedBox(
-                                                width: width,
-                                                child: Text(
-                                                  displayValue,
-                                                  style: TextStyle(
-                                                    fontWeight: key == 'codigo' ? FontWeight.bold : FontWeight.normal,
-                                                    fontSize: key == 'codigo' ? 14 : 12,
-                                                    color: isSelected && key == 'codigo' 
-                                                        ? Colors.teal[700] 
-                                                        : (key == 'codigo' ? Colors.black87 : Colors.grey[700]),
-                                                  ),
-                                                  textAlign: isNumeric ? TextAlign.right : TextAlign.left,
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                            );
-                                          }).toList(),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-                      child: Column(
-                        children: [
-                          // 칼럼 헤더 (수평 스크롤과 함께 이동)
-                          SizedBox(
-                            width: totalWidth,
-                            child: headerWidget,
-                          ),
-                          // 데이터 리스트
-                          Expanded(
-                            child: ListView.builder(
-                              controller: scrollController,
-                              scrollDirection: Axis.vertical,
-                              shrinkWrap: false,
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              itemCount: filteredDataList.length,
-                              itemBuilder: (context, index) {
-                                final codigo = filteredDataList[index] as Map<String, dynamic>;
-                                final isSelected = selectedCodigo != null && 
-                                    selectedCodigo!['codigo'] == codigo['codigo'];
-                                
-                                return InkWell(
-                                  onTap: () => onCodigoSelected(codigo),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-                                    decoration: BoxDecoration(
-                                      color: isSelected ? Colors.teal.withOpacity(0.1) : Colors.transparent,
-                                      border: Border(
-                                        bottom: BorderSide(
-                                          color: Colors.grey[300]!,
-                                          width: 1,
-                                        ),
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment: CrossAxisAlignment.center,
-                                      children: columnKeys.map((key) {
-                                        final value = codigo[key];
-                                        final width = columnWidths[key] ?? 100.0;
-                                        // codigo, tcodigo 같은 코드 필드는 숫자로 처리하지 않음
-                                        final isCodeColumn = key == 'codigo' || key == 'tcodigo';
-                                        final isNumeric = !isCodeColumn && ReportUtils.isNumeric(value);
-                                        
-                                        // codigo 칼럼은 원본 문자열 그대로 표시 (포맷팅 없이)
-                                        final displayValue = isCodeColumn 
-                                            ? (value?.toString() ?? 'N/A')
-                                            : ReportUtils.formatValue(value);
-                                        
-                                        return Padding(
-                                          padding: const EdgeInsets.only(right: 12),
-                                          child: SizedBox(
-                                            width: width,
-                                            child: Text(
-                                              displayValue,
-                                              style: TextStyle(
-                                                fontWeight: key == 'codigo' ? FontWeight.bold : FontWeight.normal,
-                                                fontSize: key == 'codigo' ? 14 : 12,
-                                                color: isSelected && key == 'codigo' 
-                                                    ? Colors.teal[700] 
-                                                    : (key == 'codigo' ? Colors.black87 : Colors.grey[700]),
-                                              ),
-                                              textAlign: isNumeric ? TextAlign.right : TextAlign.left,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        );
-                                      }).toList(),
-                                    ),
-                                  ),
-                                );
-                              },
+                      : Column(
+                          children: [
+                            // 칼럼 헤더
+                            SizedBox(
+                              width: screenWidth,
+                              child: headerWidget,
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                            // 데이터 리스트
+                            Expanded(
+                              child: ListView.builder(
+                                controller: scrollController,
+                                scrollDirection: Axis.vertical,
+                                shrinkWrap: false,
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                itemCount: filteredDataList.length,
+                                itemBuilder: (context, index) {
+                                  final codigo = filteredDataList[index] as Map<String, dynamic>;
+                                  final isSelected = selectedCodigo != null && 
+                                      selectedCodigo!['codigo'] == codigo['codigo'];
+                                  
+                                  return InkWell(
+                                    onTap: () => onCodigoSelected(codigo),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+                                      decoration: BoxDecoration(
+                                        color: isSelected ? Colors.teal.withOpacity(0.1) : Colors.transparent,
+                                        border: Border(
+                                          bottom: BorderSide(
+                                            color: Colors.grey[300]!,
+                                            width: 1,
+                                          ),
+                                        ),
+                                      ),
+                                      child: _buildCodigoRow(
+                                        codigo: codigo,
+                                        columnKeys: columnKeys,
+                                        columnWidths: columnWidths,
+                                        isSelected: isSelected,
+                                        reportColor: reportColor,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
                 ),
               ),
             ],
@@ -417,6 +283,52 @@ class CodigosBuilder {
           ],
         ),
       ),
+    );
+  }
+
+  static Widget _buildCodigoRow({
+    required Map<String, dynamic> codigo,
+    required List<String> columnKeys,
+    required Map<String, double> columnWidths,
+    required bool isSelected,
+    required Color reportColor,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.start,
+      children: columnKeys.map((key) {
+        final value = codigo[key];
+        final width = columnWidths[key] ?? 100.0;
+        // codigo, tcodigo 같은 코드 필드는 숫자로 처리하지 않음
+        final isCodeColumn = key == 'codigo' || key == 'tcodigo';
+        final isNumeric = !isCodeColumn && ReportUtils.isNumeric(value);
+        
+        // codigo 칼럼은 원본 문자열 그대로 표시 (포맷팅 없이)
+        final displayValue = isCodeColumn 
+            ? (value?.toString() ?? 'N/A')
+            : ReportUtils.formatValue(value);
+        
+        return Padding(
+          padding: const EdgeInsets.only(right: 12),
+          child: SizedBox(
+            width: width,
+            child: Text(
+              displayValue,
+              style: TextStyle(
+                fontWeight: key == 'codigo' ? FontWeight.bold : FontWeight.normal,
+                fontSize: key == 'codigo' ? 14 : 12,
+                color: isSelected && key == 'codigo' 
+                    ? Colors.teal[700] 
+                    : (key == 'codigo' ? Colors.black87 : Colors.grey[700]),
+              ),
+              textAlign: isNumeric ? TextAlign.right : TextAlign.left,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 

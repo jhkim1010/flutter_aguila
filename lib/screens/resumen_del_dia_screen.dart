@@ -19,6 +19,8 @@ class ResumenDelDiaScreen extends StatefulWidget {
   final String? initialFilteringWord; // 초기 필터링 단어
   final String? initialSortColumn; // 초기 정렬 컬럼
   final bool? initialSortAscending; // 초기 정렬 방향
+  final DateTime? initialItemsStartDate; // items 보고서용 초기 시작 날짜
+  final DateTime? initialItemsEndDate; // items 보고서용 초기 종료 날짜
 
   const ResumenDelDiaScreen({
     super.key,
@@ -27,6 +29,8 @@ class ResumenDelDiaScreen extends StatefulWidget {
     this.initialFilteringWord,
     this.initialSortColumn,
     this.initialSortAscending,
+    this.initialItemsStartDate,
+    this.initialItemsEndDate,
   });
 
   @override
@@ -56,6 +60,9 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
   String? _currentFilteringWord;
   String? _currentSortColumn;
   bool? _currentSortAscending;
+  // Items 보고서의 날짜 범위 정보 (연결 변경 시 유지용)
+  DateTime? _currentItemsStartDate;
+  DateTime? _currentItemsEndDate;
   List<ConnectionInfo> _savedConnections = []; // 저장된 연결 목록
   bool _showAllConnections = false; // 연결 목록 전체 표시 여부
   bool _isAddingNewConnection = false; // 새 연결 추가 모드 여부
@@ -79,6 +86,13 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     // 초기 보고서 타입 설정 (연결 변경 시 유지)
     if (widget.initialReportType != null) {
       _selectedReportType = widget.initialReportType;
+    }
+    // Items 보고서의 초기 날짜 범위 설정 (연결 변경 시 유지)
+    if (widget.initialItemsStartDate != null && widget.initialItemsEndDate != null) {
+      _currentItemsStartDate = widget.initialItemsStartDate;
+      _currentItemsEndDate = widget.initialItemsEndDate;
+    }
+    if (widget.initialReportType != null) {
       // _currentReport도 설정
       final reportType = widget.initialReportType!; // null 체크 후 non-null로 변환
       switch (reportType) {
@@ -495,6 +509,8 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
               initialFilteringWord: _currentFilteringWord,
               initialSortColumn: _currentSortColumn,
               initialSortAscending: _currentSortAscending,
+              initialItemsStartDate: _currentItemsStartDate,
+              initialItemsEndDate: _currentItemsEndDate,
             ),
           ),
         );
@@ -1558,15 +1574,24 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         key: ValueKey('report_${_selectedReportType.toString()}'),
         serverUrl: widget.serverUrl,
         reportType: _selectedReportType!,
-        initialFilteringWord: widget.initialFilteringWord,
-        initialSortColumn: widget.initialSortColumn,
-        initialSortAscending: widget.initialSortAscending,
+        initialFilteringWord: widget.initialFilteringWord ?? _currentFilteringWord,
+        initialSortColumn: widget.initialSortColumn ?? _currentSortColumn,
+        initialSortAscending: widget.initialSortAscending ?? _currentSortAscending,
+        initialItemsStartDate: widget.initialItemsStartDate ?? _currentItemsStartDate,
+        initialItemsEndDate: widget.initialItemsEndDate ?? _currentItemsEndDate,
         onStateChanged: (filteringWord, sortColumn, sortAscending) {
           // 보고서 상태 변경 시 저장 (연결 변경 시 유지용)
           setState(() {
             _currentFilteringWord = filteringWord;
             _currentSortColumn = sortColumn;
             _currentSortAscending = sortAscending;
+          });
+        },
+        onItemsDateRangeChanged: (startDate, endDate) {
+          // Items 보고서 날짜 범위 변경 시 저장 (연결 변경 시 유지용)
+          setState(() {
+            _currentItemsStartDate = startDate;
+            _currentItemsEndDate = endDate;
           });
         },
       );

@@ -31,8 +31,15 @@ class StocksBuilder {
     
     final filteredDataList = dataList;
     
-    // 전체 너비 계산 (헤더와 동일한 너비)
-    final totalWidth = MediaQuery.of(context).size.width * 3;
+    // 실제 컨텐츠 너비 계산 (각 칼럼 너비 + 간격)
+    // 칼럼 너비 합계: 120+250+90+100+110+100+120+100+100+100+100+100+90+90+90+90+90+90+100 = 1940
+    // 칼럼 사이 간격 (8px * 18개): 144
+    // Row의 좌우 padding은 Container에 있으므로 Row 자체 너비는 1940 + 144 = 2084
+    // Container의 좌우 padding (16px * 2): 32
+    // 총 너비: 2084 + 32 = 2116
+    final rowContentWidth = 1940.0 + 144.0; // Row 자체 너비 (padding 제외)
+    final containerPadding = 32.0; // 좌우 padding
+    final totalWidth = rowContentWidth + containerPadding; // 실제 컨텐츠 너비 = 2116
     final screenWidth = MediaQuery.of(context).size.width;
     final needsHorizontalScroll = totalWidth > screenWidth;
 
@@ -67,88 +74,95 @@ class StocksBuilder {
           ),
         Expanded(
           child: needsHorizontalScroll
-              ? SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: SizedBox(
-                    width: totalWidth,
-                    child: Column(
-                      children: [
-                        // 칼럼 헤더 (수평 스크롤과 함께 이동)
-                        SizedBox(
-                          width: totalWidth,
-                          child: headerWidget,
-                        ),
-                        // 데이터 리스트
-                        Expanded(
-                          child: ListView.builder(
-                            controller: scrollController,
-                            scrollDirection: Axis.vertical,
-                            shrinkWrap: false,
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            cacheExtent: 500, // 캐시 범위 증가로 스크롤 성능 개선
-                            itemCount: filteredDataList.length,
-                            itemBuilder: (context, index) {
-                              final stock = filteredDataList[index] as Map<String, dynamic>;
-                              
-                              return Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-                                decoration: BoxDecoration(
-                                  color: Colors.transparent,
-                                  border: Border(
-                                    bottom: BorderSide(
-                                      color: Colors.grey[300]!,
-                                      width: 1,
+              ? LayoutBuilder(
+                  builder: (context, constraints) {
+                    // 헤더 높이를 측정하기 위한 GlobalKey 사용
+                    return SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      clipBehavior: Clip.hardEdge,
+                      child: SizedBox(
+                        width: totalWidth,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // 칼럼 헤더 (수평 스크롤과 함께 이동)
+                            SizedBox(
+                              width: totalWidth, // Container padding 포함한 전체 너비
+                              child: headerWidget,
+                            ),
+                            // 데이터 리스트
+                            SizedBox(
+                              height: constraints.maxHeight - 60, // 헤더 높이 대략 60px
+                              width: totalWidth,
+                              child: ListView.builder(
+                                controller: scrollController,
+                                scrollDirection: Axis.vertical,
+                                shrinkWrap: false,
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                cacheExtent: 500,
+                                itemCount: filteredDataList.length,
+                                itemBuilder: (context, index) {
+                                  final stock = filteredDataList[index] as Map<String, dynamic>;
+                                  
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: Colors.transparent,
+                                      border: Border(
+                                        bottom: BorderSide(
+                                          color: Colors.grey[300]!,
+                                          width: 1,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                ),
-                                child: _buildStockRow(stock, reportColor),
-                              );
-                            },
-                          ),
+                                    child: _buildStockRow(stock, reportColor),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                )
-              : SizedBox(
-                  width: screenWidth,
-                  child: Column(
-                    children: [
-                      // 칼럼 헤더
-                      SizedBox(
-                        width: screenWidth,
-                        child: headerWidget,
                       ),
-                      // 데이터 리스트
-                      Expanded(
-                        child: ListView.builder(
-                          controller: scrollController,
-                          scrollDirection: Axis.vertical,
-                          shrinkWrap: false,
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          cacheExtent: 500,
-                          itemCount: filteredDataList.length,
-                          itemBuilder: (context, index) {
-                            final stock = filteredDataList[index] as Map<String, dynamic>;
-                            
-                            return Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: Colors.transparent,
-                                border: Border(
-                                  bottom: BorderSide(
-                                    color: Colors.grey[300]!,
-                                    width: 1,
-                                  ),
+                    );
+                  },
+                )
+              : Column(
+                  children: [
+                    // 칼럼 헤더
+                    SizedBox(
+                      width: screenWidth,
+                      child: headerWidget,
+                    ),
+                    // 데이터 리스트
+                    Expanded(
+                      child: ListView.builder(
+                        controller: scrollController,
+                        scrollDirection: Axis.vertical,
+                        shrinkWrap: false,
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        cacheExtent: 500,
+                        itemCount: filteredDataList.length,
+                        itemBuilder: (context, index) {
+                          final stock = filteredDataList[index] as Map<String, dynamic>;
+                          
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: Colors.transparent,
+                              border: Border(
+                                bottom: BorderSide(
+                                  color: Colors.grey[300]!,
+                                  width: 1,
                                 ),
                               ),
-                              child: _buildStockRow(stock, reportColor),
-                            );
-                          },
-                        ),
+                            ),
+                            child: _buildStockRow(stock, reportColor),
+                          );
+                        },
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
         ),
       ],
@@ -157,6 +171,7 @@ class StocksBuilder {
 
   static Widget _buildStockRow(Map<String, dynamic> stock, Color reportColor) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         // Codigo
@@ -435,6 +450,7 @@ class StocksBuilder {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
             _buildSortableHeader('codigo', 'Codigo', 120, sortColumn, sortAscending, onSort, reportColor),
             const SizedBox(width: 8),
