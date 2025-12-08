@@ -307,8 +307,8 @@ class AppLocalizations {
   String translate(String key, {Map<String, String>? params}) {
     String? value = _localizedValues[locale.languageCode]?[key];
     if (value == null) {
-      // Fallback to Korean if translation not found
-      value = _localizedValues['ko']?[key] ?? key;
+      // Fallback to Spanish if translation not found
+      value = _localizedValues['es']?[key] ?? key;
     }
     
     // Replace parameters

@@ -20,7 +20,7 @@ class CodigosBuilder {
   }) {
     final dataList = data['data'] as List;
     if (dataList.isEmpty) {
-      return const Center(child: Text('No data available'));
+      return const Center(child: Text('No hay datos disponibles'));
     }
 
     final filteredDataList = dataList;

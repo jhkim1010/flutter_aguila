@@ -88,11 +88,10 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // 화면이 다시 표시될 때마다 연결 리스트 갱신
+    // 화면이 다시 표시될 때마다 연결 리스트 갱신 (로딩 중이 아니고 이미 로드된 경우에만)
     final route = ModalRoute.of(context);
-    if (route != null && route.isCurrent) {
-      print('🔄 MainConnectionScreen: didChangeDependencies 호출, 화면이 활성화됨');
-      print('   현재 _savedConnections.length = ${_savedConnections.length}');
+    if (route != null && route.isCurrent && !_isLoadingConnections && _savedConnections.isEmpty) {
+      print('🔄 MainConnectionScreen: didChangeDependencies 호출, 연결 리스트 로드');
       _loadSavedConnections();
     }
   }
@@ -219,7 +218,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
     setState(() {
       _isAutoConnecting = false;
       if (result.errorMessage != null) {
-        _errorMessage = '자동 연결 실패: ${result.errorMessage}';
+        _errorMessage = 'Error de conexión automática: ${result.errorMessage}';
       }
     });
 
@@ -491,7 +490,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
         }
       } else {
         setState(() {
-          _errorMessage = '연결에 실패했습니다. (상태 코드 확인 필요)';
+          _errorMessage = 'Error de conexión. (Verificar código de estado)';
           _isLoading = false;
           _isConnected = false;
         });
@@ -503,7 +502,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
       final isSaveError = errorMessage.contains('저장') || errorMessage.contains('save');
       setState(() {
         _errorMessage = isSaveError 
-            ? '연결은 성공했지만 정보 저장에 실패했습니다. 다시 시도해주세요.\n$errorMessage'
+            ? 'La conexión fue exitosa pero falló al guardar la información. Por favor intente nuevamente.\n$errorMessage'
             : errorMessage;
         _isLoading = false;
         _isConnected = false;
@@ -532,13 +531,13 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(l10n.checkItems),
-                  const Text('• 서버 URL이 올바른지 확인'),
-                  const Text('• 서버가 실행 중인지 확인'),
-                  const Text('• 인터넷 연결 상태 확인'),
-                  const Text('• 방화벽 설정 확인'),
+                  const Text('• Verificar que la URL del servidor sea correcta'),
+                  const Text('• Verificar que el servidor esté en ejecución'),
+                  const Text('• Verificar el estado de la conexión a Internet'),
+                  const Text('• Verificar la configuración del firewall'),
                   const SizedBox(height: 16),
                   const Text(
-                    '자세한 로그는 터미널/콘솔을 확인하세요.',
+                    'Consulte la terminal/consola para obtener más detalles.',
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                 ],
@@ -1207,7 +1206,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                 child: OutlinedButton.icon(
                   onPressed: _disconnectDatabase,
                   icon: const Icon(Icons.logout, color: Colors.orange, size: 16),
-                  label: const Text('연결 끊기', style: TextStyle(color: Colors.orange, fontSize: 12)),
+                  label: const Text('Desconectar', style: TextStyle(color: Colors.orange, fontSize: 12)),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Colors.orange),
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -1327,7 +1326,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
               ),
               const SizedBox(height: 24),
               Text(
-                '데이터베이스에 연결하세요',
+                'Conecte a la base de datos',
                 style: TextStyle(
                   fontSize: 20,
                   color: Colors.grey[600],
@@ -1336,7 +1335,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                '왼쪽 패널에서 연결 정보를 입력하고\n연결 버튼을 클릭하세요',
+                'Ingrese la información de conexión en el panel izquierdo\ny haga clic en el botón de conectar',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,

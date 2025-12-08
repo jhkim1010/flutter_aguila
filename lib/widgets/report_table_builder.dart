@@ -15,7 +15,7 @@ class ReportTableBuilder {
     Color? reportColor, // 선택적 색상 파라미터 추가
   }) {
     if (dataList.isEmpty) {
-      return const Center(child: Text('No data'));
+      return const Center(child: Text('No hay datos'));
     }
 
     final displayedList = dataList.take(displayedItemsCount).toList();
@@ -25,7 +25,7 @@ class ReportTableBuilder {
     print('📊 ReportTableBuilder.buildTableFromList - reportType: $reportType, dataList.length: ${dataList.length}, displayedItemsCount: $displayedItemsCount, displayedList.length: ${displayedList.length}');
 
     if (displayedList.isEmpty) {
-      return const Center(child: Text('No items to display'));
+      return const Center(child: Text('No hay elementos para mostrar'));
     }
 
     final firstItem = displayedList.first as Map<String, dynamic>;

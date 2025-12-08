@@ -143,7 +143,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       final saved = await _storageService.saveConnection(connection);
       
       if (!saved) {
-        throw Exception('연결 정보 저장에 실패했습니다.');
+        throw Exception('Error al guardar la información de conexión.');
       }
       
       // 저장 확인: 바로 다시 읽어서 확인
@@ -163,7 +163,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       );
       
       if (foundConnection.id != connection.id) {
-        throw Exception('저장된 연결 정보를 확인할 수 없습니다.');
+        throw Exception('No se pudo verificar la información de conexión guardada.');
       }
       
       print('✅ 연결 정보 저장 및 확인 완료: ${foundConnection.name}');
@@ -212,7 +212,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         );
       } else {
         setState(() {
-          _errorMessage = '연결에 실패했습니다.';
+          _errorMessage = 'Error de conexión.';
           _isLoading = false;
         });
       }

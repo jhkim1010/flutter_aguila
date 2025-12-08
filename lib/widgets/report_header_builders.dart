@@ -95,14 +95,14 @@ class ReportHeaderBuilders {
             ),
             child: DropdownButton<String?>(
               value: selectedSucursal,
-              hint: const Text('모두', style: TextStyle(fontSize: 11)),
+              hint: const Text('Todos', style: TextStyle(fontSize: 11)),
               underline: const SizedBox(),
               isDense: true,
               icon: Icon(Icons.arrow_drop_down, color: reportColor, size: 18),
               items: [
                 const DropdownMenuItem<String?>(
                   value: null,
-                  child: Text('모두', style: TextStyle(fontSize: 11)),
+                  child: Text('Todos', style: TextStyle(fontSize: 11)),
                 ),
                 ...sucursales.map((sucursal) {
                   return DropdownMenuItem<String?>(

@@ -444,7 +444,7 @@ class _ReportScreenState extends State<ReportScreen> {
         }
       });
     } catch (e) {
-      String errorMessage = '알 수 없는 오류가 발생했습니다.';
+        String errorMessage = 'Ocurrió un error desconocido.';
       if (e is Exception) {
         errorMessage = e.toString().replaceFirst('Exception: ', '');
       } else {
@@ -959,7 +959,7 @@ class _ReportScreenState extends State<ReportScreen> {
 
   Widget _buildReportContent() {
     if (_data == null) {
-      return const Center(child: Text('No data'));
+      return const Center(child: Text('No hay datos'));
     }
 
     // 데이터 구조 분석 및 적절한 위젯 반환
@@ -983,7 +983,7 @@ class _ReportScreenState extends State<ReportScreen> {
     if (data.containsKey('data') && data['data'] is List) {
       final dataList = data['data'] as List;
       if (dataList.isEmpty) {
-        return const Center(child: Text('No data available'));
+        return const Center(child: Text('No hay datos disponibles'));
       }
       
       // 첫 번째 항목이 맵이고 여러 키를 가지고 있으면 테이블로 표시
@@ -1282,7 +1282,7 @@ class _ReportScreenState extends State<ReportScreen> {
       );
     }
     
-    return const Center(child: Text('Unknown data format'));
+    return const Center(child: Text('Formato de datos desconocido'));
   }
 
   // Stocks 보고서의 vista 타입 표시 (Body용)
@@ -1638,7 +1638,7 @@ class _ReportScreenState extends State<ReportScreen> {
   // Stocks 테이블 빌드 (bcolorview에 따라 다른 필드 사용)
   Widget _buildStocksTable(List<dynamic> dataList, bool isResumida) {
     if (dataList.isEmpty) {
-      return const Center(child: Text('No data'));
+      return const Center(child: Text('No hay datos'));
     }
     
     // filteringWord 필터 적용 (codigo와 descripcion에서 검색)
@@ -2166,7 +2166,7 @@ class _ReportScreenState extends State<ReportScreen> {
 
   Widget _buildTableFromList(List<dynamic> dataList) {
     if (dataList.isEmpty) {
-      return const Center(child: Text('No data'));
+      return const Center(child: Text('No hay datos'));
     }
     
     // 대량 데이터 처리: 처음 100개만 표시하고 나머지는 스크롤 시 로드
