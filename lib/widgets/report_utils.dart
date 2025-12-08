@@ -174,5 +174,21 @@ class ReportUtils {
       };
     }
   }
+
+  /// bcolorview 값이 활성화되었는지 확인
+  /// bcolorview가 '1', true, 또는 1이면 true 반환 (todocodigos 테이블 데이터 사용)
+  /// 그 외의 경우 false 반환 (vdetalle 테이블 데이터 사용)
+  static bool isBcolorviewEnabled(dynamic bcolorview) {
+    if (bcolorview == null) return false;
+    if (bcolorview == true) return true;
+    if (bcolorview == false) return false;
+    if (bcolorview == 1) return true;
+    if (bcolorview == 0) return false;
+    if (bcolorview == '1') return true;
+    if (bcolorview == '0') return false;
+    if (bcolorview.toString().toLowerCase() == 'true') return true;
+    if (bcolorview.toString().toLowerCase() == 'false') return false;
+    return false;
+  }
 }
 

@@ -37,9 +37,11 @@ class StocksBuilder {
     // Row의 좌우 padding은 Container에 있으므로 Row 자체 너비는 1940 + 144 = 2084
     // Container의 좌우 padding (16px * 2): 32
     // 총 너비: 2084 + 32 = 2116
+    // 오른쪽 끝 패턴 문제 방지를 위해 약간의 여유 공간 추가
     final rowContentWidth = 1940.0 + 144.0; // Row 자체 너비 (padding 제외)
     final containerPadding = 32.0; // 좌우 padding
-    final totalWidth = rowContentWidth + containerPadding; // 실제 컨텐츠 너비 = 2116
+    final extraPadding = 20.0; // 오른쪽 끝 패턴 방지를 위한 추가 공간
+    final totalWidth = rowContentWidth + containerPadding + extraPadding; // 실제 컨텐츠 너비
     final screenWidth = MediaQuery.of(context).size.width;
     final needsHorizontalScroll = totalWidth > screenWidth;
 
@@ -79,7 +81,8 @@ class StocksBuilder {
                     // 헤더 높이를 측정하기 위한 GlobalKey 사용
                     return SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
-                      clipBehavior: Clip.hardEdge,
+                      clipBehavior: Clip.none,
+                      physics: const ClampingScrollPhysics(),
                       child: SizedBox(
                         width: totalWidth,
                         child: Column(
@@ -171,7 +174,7 @@ class StocksBuilder {
 
   static Widget _buildStockRow(Map<String, dynamic> stock, Color reportColor) {
     return Row(
-      mainAxisSize: MainAxisSize.min,
+      mainAxisSize: MainAxisSize.max,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         // Codigo
@@ -448,7 +451,7 @@ class StocksBuilder {
         ),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: MainAxisSize.max,
         crossAxisAlignment: CrossAxisAlignment.center,
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
@@ -565,10 +568,11 @@ class StocksBuilder {
     } else {
       return const SizedBox.shrink();
     }
-    final viewType = (bcolorview == true) ? 'Vista Resumida' : 'VistaD';
+    final isBcolorviewEnabled = ReportUtils.isBcolorviewEnabled(bcolorview);
+    final viewType = isBcolorviewEnabled ? 'Vista Resumida' : 'VistaD';
     
     // Vista Detallada일 때만 sucursal 필터 표시
-    final bool showSucursalFilter = (bcolorview == false);
+    final bool showSucursalFilter = !isBcolorviewEnabled;
     List<String>? sucursales;
     
     if (showSucursalFilter && data.containsKey('data') && data['data'] is List) {
@@ -605,7 +609,7 @@ class StocksBuilder {
       child: Row(
         children: [
           Icon(
-            bcolorview == true ? Icons.view_compact : Icons.view_list,
+            isBcolorviewEnabled ? Icons.view_compact : Icons.view_list,
             color: reportColor,
             size: 20,
           ),

@@ -701,13 +701,26 @@ class _ReportScreenState extends State<ReportScreen> {
       }
     }
 
+    // bcolorview 값에 따라 색상 결정
+    Color itemsColor = Colors.blue; // 기본값 (items 보고서 기본 색상)
+    if (_data != null) {
+      if (_data!.containsKey('filters') && _data!['filters'] is Map) {
+        final filters = _data!['filters'] as Map<String, dynamic>;
+        final bcolorview = filters['bcolorview'];
+        itemsColor = ReportUtils.isBcolorviewEnabled(bcolorview) ? Colors.orange : Colors.lightBlue;
+      } else if (_data!.containsKey('bcolorview')) {
+        final bcolorview = _data!['bcolorview'];
+        itemsColor = ReportUtils.isBcolorviewEnabled(bcolorview) ? Colors.orange : Colors.lightBlue;
+      }
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
-        color: _getReportColor().withOpacity(0.05),
+        color: itemsColor.withOpacity(0.05),
         border: Border(
           bottom: BorderSide(
-            color: _getReportColor().withOpacity(0.3),
+            color: itemsColor.withOpacity(0.3),
             width: 1,
           ),
         ),
@@ -1104,6 +1117,20 @@ class _ReportScreenState extends State<ReportScreen> {
           }
           
           print('📊 Items 보고서 - sortedDataList.length: ${sortedDataList.length}, _displayedItemsCount: $_displayedItemsCount');
+          
+          // bcolorview 값에 따라 색상 결정
+          Color itemsColor = Colors.blue; // 기본값 (items 보고서 기본 색상)
+          if (_data != null) {
+            if (_data!.containsKey('filters') && _data!['filters'] is Map) {
+              final filters = _data!['filters'] as Map<String, dynamic>;
+              final bcolorview = filters['bcolorview'];
+              itemsColor = ReportUtils.isBcolorviewEnabled(bcolorview) ? Colors.orange : Colors.lightBlue;
+            } else if (_data!.containsKey('bcolorview')) {
+              final bcolorview = _data!['bcolorview'];
+              itemsColor = ReportUtils.isBcolorviewEnabled(bcolorview) ? Colors.orange : Colors.lightBlue;
+            }
+          }
+          
           // Items 보고서는 왼쪽과 오른쪽으로 절반씩 나눔
           return Row(
             children: [
@@ -1120,6 +1147,7 @@ class _ReportScreenState extends State<ReportScreen> {
                   sortColumn: _sortColumn,
                   sortAscending: _sortAscending,
                   horizontalScrollController: _horizontalScrollController,
+                  reportColor: itemsColor,
                   onSort: (columnIndex, ascending) {
                     setState(() {
                       // 키 목록을 정렬된 데이터에서 가져오기 (report_table_builder와 동일한 순서 보장)
@@ -1258,6 +1286,18 @@ class _ReportScreenState extends State<ReportScreen> {
         if (isLargeScreen) {
           return const SizedBox.shrink();
         }
+        // bcolorview 값에 따라 색상 결정
+        Color stocksColor = Colors.orange; // 기본값
+        if (_data != null) {
+          if (_data!.containsKey('filters') && _data!['filters'] is Map) {
+            final filters = _data!['filters'] as Map<String, dynamic>;
+            final bcolorview = filters['bcolorview'];
+            stocksColor = ReportUtils.isBcolorviewEnabled(bcolorview) ? Colors.orange : Colors.lightBlue;
+          } else if (_data!.containsKey('bcolorview')) {
+            final bcolorview = _data!['bcolorview'];
+            stocksColor = ReportUtils.isBcolorviewEnabled(bcolorview) ? Colors.orange : Colors.lightBlue;
+          }
+        }
         return StocksBuilder.buildViewType(
           data: _data,
           selectedSucursal: _selectedSucursal,
@@ -1266,7 +1306,7 @@ class _ReportScreenState extends State<ReportScreen> {
               _selectedSucursal = value;
             });
           },
-          reportColor: _getReportColor(),
+          reportColor: stocksColor,
         );
       },
     );
@@ -1284,10 +1324,11 @@ class _ReportScreenState extends State<ReportScreen> {
     }
     
     final bcolorview = filters['bcolorview'];
-    final viewType = (bcolorview == true) ? 'Vista Resumida' : 'VistaD';
+    final isBcolorviewEnabled = ReportUtils.isBcolorviewEnabled(bcolorview);
+    final viewType = isBcolorviewEnabled ? 'Vista Resumida' : 'VistaD';
     
     // Vista Detallada일 때만 sucursal 필터 표시
-    final bool showSucursalFilter = (bcolorview == false);
+    final bool showSucursalFilter = !isBcolorviewEnabled;
     List<String>? sucursales;
     
     if (showSucursalFilter && _data!.containsKey('data') && _data!['data'] is List) {
@@ -1310,13 +1351,19 @@ class _ReportScreenState extends State<ReportScreen> {
       });
     }
     
-    final reportColor = _getReportColor();
+    // bcolorview 값에 따라 색상 결정
+    final isBcolorviewEnabled = ReportUtils.isBcolorviewEnabled(bcolorview);
+    Color reportColor = Colors.orange; // 기본값
+    if (filters != null && filters.containsKey('bcolorview')) {
+      final bcolorviewValue = filters['bcolorview'];
+      reportColor = ReportUtils.isBcolorviewEnabled(bcolorviewValue) ? Colors.orange : Colors.lightBlue;
+    }
     
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(
-          bcolorview == true ? Icons.view_compact : Icons.view_list,
+          isBcolorviewEnabled ? Icons.view_compact : Icons.view_list,
           color: Colors.white,
           size: 18,
         ),
@@ -1375,6 +1422,21 @@ class _ReportScreenState extends State<ReportScreen> {
 
   // Stocks 보고서 전용 콘텐츠 빌드
   Widget _buildStocksContent(Map<String, dynamic> data) {
+    // bcolorview 값에 따라 색상 결정
+    Color stocksColor;
+    if (data.containsKey('filters') && data['filters'] is Map) {
+      final filters = data['filters'] as Map<String, dynamic>;
+      final bcolorview = filters['bcolorview'];
+      // bcolorview가 활성화되면 오렌지색, 비활성화되면 하늘색
+      stocksColor = ReportUtils.isBcolorviewEnabled(bcolorview) ? Colors.orange : Colors.lightBlue;
+    } else if (data.containsKey('bcolorview')) {
+      final bcolorview = data['bcolorview'];
+      stocksColor = ReportUtils.isBcolorviewEnabled(bcolorview) ? Colors.orange : Colors.lightBlue;
+    } else {
+      // 기본값은 오렌지색
+      stocksColor = Colors.orange;
+    }
+    
     // 헤더 위젯 생성
     final headerWidget = StocksBuilder.buildHeader(
       reportType: ReportType.stocks,
@@ -1392,7 +1454,7 @@ class _ReportScreenState extends State<ReportScreen> {
         _notifyStateChanged();
         _reloadDataWithFilters();
       },
-      reportColor: _getReportColor(),
+      reportColor: stocksColor,
     );
     
     return StocksBuilder.buildContent(
@@ -1400,7 +1462,7 @@ class _ReportScreenState extends State<ReportScreen> {
       context: context,
       scrollController: _scrollController,
       isLoadingMore: _isLoadingMoreStocks,
-      reportColor: _getReportColor(),
+      reportColor: stocksColor,
       headerWidget: headerWidget,
     );
   }

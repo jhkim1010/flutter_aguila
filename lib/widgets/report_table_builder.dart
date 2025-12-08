@@ -12,6 +12,7 @@ class ReportTableBuilder {
     bool sortAscending = true,
     Function(int columnIndex, bool ascending)? onSort,
     ScrollController? horizontalScrollController,
+    Color? reportColor, // 선택적 색상 파라미터 추가
   }) {
     if (dataList.isEmpty) {
       return const Center(child: Text('No data'));
@@ -19,7 +20,7 @@ class ReportTableBuilder {
 
     final displayedList = dataList.take(displayedItemsCount).toList();
     final totalCount = dataList.length;
-    final reportColor = ReportUtils.getReportColor(reportType);
+    final color = reportColor ?? ReportUtils.getReportColor(reportType);
     
     print('📊 ReportTableBuilder.buildTableFromList - reportType: $reportType, dataList.length: ${dataList.length}, displayedItemsCount: $displayedItemsCount, displayedList.length: ${displayedList.length}');
 
@@ -99,7 +100,7 @@ class ReportTableBuilder {
               Icon(
                 sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
                 size: 16,
-                color: reportColor,
+                color: color,
               ),
           ],
         ),
@@ -116,7 +117,7 @@ class ReportTableBuilder {
     // Items 보고서의 경우 합계 행을 화면 하단에 고정하면서 수직 스크롤 가능
     if (reportType == ReportType.items) {
       // 헤더를 별도로 분리하여 수평 스크롤 동기화
-      final headerRow = _buildHeaderRow(keys, columns, reportColor, sortColumn, sortAscending, onSort);
+      final headerRow = _buildHeaderRow(keys, columns, color, sortColumn, sortAscending, onSort);
       
       return Column(
         children: [
@@ -305,14 +306,14 @@ class ReportTableBuilder {
             ),
           ),
           // 고정된 합계 행 (현재 화면에 보이는 항목들의 합계)
-          _buildFixedTotalRow(keys, displayedList, reportColor),
+          _buildFixedTotalRow(keys, displayedList, color),
         ],
       );
     }
 
     // 다른 보고서는 기존 방식 유지 (ventas 포함)
     // 헤더를 별도로 분리하여 수평 스크롤 동기화
-    final headerRow = _buildHeaderRow(keys, columns, reportColor, sortColumn, sortAscending, onSort);
+    final headerRow = _buildHeaderRow(keys, columns, color, sortColumn, sortAscending, onSort);
     
     return Column(
       children: [
@@ -418,7 +419,7 @@ class ReportTableBuilder {
                     );
                   }),
                   // 합계 행 추가
-                  _buildTotalRow(keys, dataList, reportColor),
+                  _buildTotalRow(keys, dataList, color),
                   ],
                         ),
                       )
@@ -480,7 +481,7 @@ class ReportTableBuilder {
                                 }),
                               );
                             }),
-                            _buildTotalRow(keys, dataList, reportColor),
+                            _buildTotalRow(keys, dataList, color),
                           ],
                         ),
               ),
