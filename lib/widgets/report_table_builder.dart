@@ -14,6 +14,7 @@ class ReportTableBuilder {
     Function(int columnIndex, bool ascending)? onSort,
     ScrollController? horizontalScrollController,
     Color? reportColor, // 선택적 색상 파라미터 추가
+    String? unit, // ventas report의 unit (vcode, day, month, year)
   }) {
     if (dataList.isEmpty) {
       return const Center(child: Text('No hay datos'));
@@ -35,42 +36,284 @@ class ReportTableBuilder {
     // Items 및 Ingresos report의 경우 start_date, end_date, sucursal 제외
     List<String> keys;
     if (reportType == ReportType.ventas) {
-      // ConfigService에서 설정 읽기
-      final configService = ConfigService();
-      final shouldShowTpago = configService.shouldShowField('tpago');
-      final shouldShowTefectivo = configService.shouldShowField('tefectivo');
-      final shouldShowTreservado = configService.shouldShowField('treservado');
-      final shouldShowTfavor = configService.shouldShowField('tfavor');
-      
-      // 지정된 순서의 컬럼 목록 (설정에 따라 필터링)
-      final orderedColumns = <String>[
-        'vcode',
-        if (shouldShowTpago) 'tpago',
-        if (shouldShowTefectivo) 'tefectivo',
+      // vcode unit용 컬럼 목록
+      final vcodeColumns = <String>[
+        'id',              // vcode_id as id
+        'vcode',           // right(vcode, 5) as vcode
+        'hora',
+        'tpago',
+        'cntropas',
+        'clientenombre',
+        'tefectivo',
         'tcredito',
         'tbanco',
-        if (shouldShowTreservado) 'treservado',
-        if (shouldShowTfavor) 'tfavor',
-        'cntropas',
-        'hora',
+        'treservado',
+        'tfavor',
         'vendedor',
-        'clientenombre',
+        'tipo',
+        'dni',
+        'resiva',
+        'casoesp',
+        'nencargado',
+        'cretmp',
+        'fecha',
+        'sucursal',
+        'ntiqrepetir',
+        'b_mercadopago',
+        'd_num_caja',
+        'd_num_terminal',
       ];
       
-      // 모든 행에서 공통으로 존재하는 컬럼만 필터링
+      // unit 파라미터가 있으면 직접 사용, 없으면 데이터 구조로 판단
+      final isDayMonthYearUnit = unit != null && unit != 'vcode';
+      final isDayUnit = unit == 'day';
+      final isMonthUnit = unit == 'month';
+      final isYearUnit = unit == 'year';
+      
+      // 첫 번째 항목으로 데이터 구조 확인
+      final firstItem = displayedList.isNotEmpty && displayedList.first is Map<String, dynamic>
+          ? displayedList.first as Map<String, dynamic>
+          : <String, dynamic>{};
+      
+      // unit 파라미터가 없을 때만 데이터 구조로 판단
+      bool finalIsDayMonthYearUnit = isDayMonthYearUnit;
+      if (unit == null) {
+        // day/month/year unit 필드가 있는지 확인 (첫 번째 항목 기준)
+        final hasDayMonthYearFields = firstItem.containsKey('tVents') || 
+                                      firstItem.containsKey('tVentas') || 
+                                      firstItem.containsKey('eventCount') ||
+                                      firstItem.containsKey('tCntRopas');
+        
+        // vcode unit 필드가 있는지 확인 (첫 번째 항목 기준)
+        final hasVcodeFields = firstItem.containsKey('vcode') || 
+                               firstItem.containsKey('tpago') || 
+                               firstItem.containsKey('cntropas') ||
+                               firstItem.containsKey('d_num_caja') ||
+                               firstItem.containsKey('d_num_terminal') ||
+                               firstItem.containsKey('clientenombre');
+        
+        // day/month/year unit이 명확히 감지되고 vcode 필드가 없을 때만 day/month/year 컬럼 사용
+        finalIsDayMonthYearUnit = hasDayMonthYearFields && !hasVcodeFields;
+      }
+      
+      // 모든 행에서 공통으로 존재하는 컬럼 확인
       final commonKeys = <String>{};
+      final allKeys = <String>{}; // 모든 행에서 나타나는 키 (하나라도 있으면 포함)
       for (var item in displayedList) {
         if (item is Map<String, dynamic>) {
+          allKeys.addAll(item.keys);
           if (commonKeys.isEmpty) {
-            commonKeys.addAll(orderedColumns.where((key) => item.containsKey(key)));
+            commonKeys.addAll(item.keys);
           } else {
             commonKeys.removeWhere((key) => !item.containsKey(key));
           }
         }
       }
       
-      // orderedColumns 순서 유지하면서 commonKeys에 있는 것만
-      keys = orderedColumns.where((key) => commonKeys.contains(key)).toList();
+      if (finalIsDayMonthYearUnit) {
+        // day/month/year unit용 컬럼 목록 (실제 응답 구조에 맞게)
+        // day unit: fecha, eventCount, tVents, tCntRopas, tefectivo, tcredito, tbanco, treservado, tfavor, sucursal
+        // month unit: month, eventCount, tVents, tCntRopas, tefectivo, tcredito, tbanco, treservado, tfavor, nencargado, sucursal
+        // year unit: year, eventCount, tVentas, tCntRopas, tefectivo, tcredito, tbanco, treservado, tfavor, nencargado, sucursal
+        
+        // month unit일 때는 month 필드를 첫 번째로 배치
+        final actualMonthKey = allKeys.firstWhere(
+          (k) => k.toLowerCase() == 'month',
+          orElse: () => '',
+        );
+        final actualEventCountKeyForMonth = allKeys.firstWhere(
+          (k) => k.toLowerCase() == 'eventcount',
+          orElse: () => '',
+        );
+        
+        if (isMonthUnit && actualMonthKey.isNotEmpty) {
+          keys = [actualMonthKey];
+          
+          // eventCount를 두 번째 컬럼으로 명시적으로 추가 (allKeys에 있으면 무조건 포함)
+          if (actualEventCountKeyForMonth.isNotEmpty) {
+            keys.add(actualEventCountKeyForMonth);
+          }
+          
+          // 나머지 필수 필드들 (순서 보장)
+          final requiredMonthFields = ['tVents', 'tVentas', 'tCntRopas'];
+          for (var field in requiredMonthFields) {
+            if (!keys.contains(field) && (commonKeys.contains(field) || firstItem.containsKey(field))) {
+              keys.add(field);
+            }
+          }
+          
+          // 나머지 컬럼 추가 (순서 보장)
+          final otherColumns = <String>[
+            'tefectivo',    // 현금
+            'tcredito',     // 신용카드
+            'tbanco',       // 은행
+            'treservado',   // 예약
+            'tfavor',       // 호의
+            'nencargado',   // 담당자 (month/year unit에만 있을 수 있음)
+            'sucursal',     // 지점
+            'fecha',        // day unit용 (month unit에서는 사용 안 함)
+          ];
+          // 나머지 필드는 commonKeys에 있는 것만 순서대로 추가
+          for (var column in otherColumns) {
+            if (commonKeys.contains(column) && !keys.contains(column)) {
+              keys.add(column);
+            }
+          }
+        } else {
+          // day/year unit 또는 month 필드가 없을 때
+          final dayMonthYearColumns = <String>[
+            'fecha',
+            'month',        // month unit용
+            'year',         // year unit용
+            'eventCount',
+            'tVents',       // day unit의 총 판매액
+            'tVentas',      // month/year unit의 총 판매액 (있을 경우)
+            'tCntRopas',    // 총 의류 개수
+            'tefectivo',    // 현금
+            'tcredito',     // 신용카드
+            'tbanco',       // 은행
+            'treservado',   // 예약
+            'tfavor',       // 호의
+            'nencargado',   // 담당자 (month/year unit에만 있을 수 있음)
+            'sucursal',     // 지점
+          ];
+          
+          // day/month/year 컬럼 목록에서 실제 데이터에 있는 것만 선택
+          // 단, day/month unit의 필수 필드는 allKeys에 하나라도 있으면 무조건 포함 (대소문자 구분 없이)
+          final requiredFields = <String>[];
+          final actualEventCountKey = allKeys.firstWhere(
+            (key) => key.toLowerCase() == 'eventcount',
+            orElse: () => '',
+          );
+          final actualTVentsKey = allKeys.firstWhere(
+            (key) => key.toLowerCase() == 'tvents',
+            orElse: () => '',
+          );
+          final actualTVentasKey = allKeys.firstWhere(
+            (key) => key.toLowerCase() == 'tventas',
+            orElse: () => '',
+          );
+          final actualTCntRopasKey = allKeys.firstWhere(
+            (key) => key.toLowerCase() == 'tcntropas',
+            orElse: () => '',
+          );
+          
+          if (isDayUnit || isMonthUnit) {
+            if (actualEventCountKey.isNotEmpty) {
+              requiredFields.add(actualEventCountKey);
+            }
+            if (actualTVentsKey.isNotEmpty) {
+              requiredFields.add(actualTVentsKey);
+            }
+            if (actualTVentasKey.isNotEmpty) {
+              requiredFields.add(actualTVentasKey);
+            }
+            if (actualTCntRopasKey.isNotEmpty) {
+              requiredFields.add(actualTCntRopasKey);
+            }
+          }
+          
+          // commonKeys에 있는 필드들 추가 (필수 필드는 allKeys에 있으면 포함)
+          // 대소문자 구분 없이 매칭
+          keys = dayMonthYearColumns.where((key) {
+            final keyLower = key.toLowerCase();
+            return commonKeys.any((k) => k.toLowerCase() == keyLower) ||
+                   requiredFields.any((k) => k.toLowerCase() == keyLower);
+          }).toList();
+          
+          // 실제 키 이름으로 교체
+          final keyMap = <String, String>{};
+          for (var key in keys) {
+            final actualKey = allKeys.firstWhere(
+              (k) => k.toLowerCase() == key.toLowerCase(),
+              orElse: () => key,
+            );
+            if (actualKey != key) {
+              keyMap[key] = actualKey;
+            }
+          }
+          keys = keys.map((key) => keyMap[key] ?? key).toList();
+          
+          // day unit일 때는 fecha를 첫 번째로, eventCount를 두 번째로 배치
+          if (isDayUnit) {
+            // fecha를 첫 번째로 이동
+            final actualFechaKey = allKeys.firstWhere(
+              (k) => k.toLowerCase() == 'fecha',
+              orElse: () => 'fecha',
+            );
+            if (keys.contains(actualFechaKey)) {
+              keys.remove(actualFechaKey);
+              keys.insert(0, actualFechaKey);
+            }
+            // eventCount를 두 번째 위치에 명시적으로 배치
+            if (actualEventCountKey.isNotEmpty) {
+              if (keys.contains(actualEventCountKey)) {
+                keys.remove(actualEventCountKey);
+              }
+              keys.insert(1, actualEventCountKey);
+            }
+          }
+          // month unit일 때는 month를 첫 번째로 이동하고, eventCount를 두 번째로 배치
+          else if (isMonthUnit) {
+            final actualMonthKey = allKeys.firstWhere(
+              (k) => k.toLowerCase() == 'month',
+              orElse: () => 'month',
+            );
+            final actualEventCountKey = allKeys.firstWhere(
+              (k) => k.toLowerCase() == 'eventcount',
+              orElse: () => '',
+            );
+            
+            if (keys.contains(actualMonthKey)) {
+              keys.remove(actualMonthKey);
+              keys.insert(0, actualMonthKey);
+            }
+            // eventCount를 두 번째 위치에 명시적으로 배치
+            if (actualEventCountKey.isNotEmpty) {
+              if (keys.contains(actualEventCountKey)) {
+                keys.remove(actualEventCountKey);
+              }
+              keys.insert(1, actualEventCountKey);
+            }
+          }
+        }
+        
+        // day unit일 때는 nencargado 제외 (day unit 응답에는 없음)
+        if (isDayUnit) {
+          keys.removeWhere((key) => key == 'nencargado');
+        }
+        
+        // vcode unit 전용 필드가 섞여 있으면 제거 (반드시 제거)
+        final vcodeOnlyFields = ['vcode', 'tpago', 'cntropas', 'd_num_caja', 'd_num_terminal', 
+                                 'id', 'hora', 'clientenombre', 'vendedor', 'tipo', 'dni', 
+                                 'resiva', 'casoesp', 'cretmp', 'ntiqrepetir', 'b_mercadopago'];
+        keys.removeWhere((key) => vcodeOnlyFields.contains(key));
+        
+        print('🔍 Ventas report - unit: $unit, isDayMonthYearUnit: $finalIsDayMonthYearUnit, isDayUnit: $isDayUnit, isMonthUnit: $isMonthUnit');
+        print('🔍 First item: $firstItem');
+        print('🔍 First item keys: ${firstItem.keys.toList()}');
+        print('🔍 All keys in data: $allKeys');
+        print('🔍 Common keys in data: $commonKeys');
+        print('🔍 Selected columns: $keys');
+        final eventCountKey = allKeys.firstWhere(
+          (k) => k.toLowerCase() == 'eventcount',
+          orElse: () => '',
+        );
+        print('🔍 eventCount key (case-insensitive): "$eventCountKey", in allKeys: ${eventCountKey.isNotEmpty}, in commonKeys: ${commonKeys.any((k) => k.toLowerCase() == 'eventcount')}, in firstItem: ${firstItem.keys.any((k) => k.toLowerCase() == 'eventcount')}, value: ${eventCountKey.isNotEmpty ? firstItem[eventCountKey] : 'N/A'}');
+      } else {
+        // vcode unit: 기존 로직 사용
+        final commonKeysVcode = <String>{};
+        for (var item in displayedList) {
+          if (item is Map<String, dynamic>) {
+            if (commonKeysVcode.isEmpty) {
+              commonKeysVcode.addAll(vcodeColumns.where((key) => item.containsKey(key)));
+            } else {
+              commonKeysVcode.removeWhere((key) => !item.containsKey(key));
+            }
+          }
+        }
+        keys = vcodeColumns.where((key) => commonKeysVcode.contains(key)).toList();
+      }
     } else if (reportType == ReportType.items || reportType == ReportType.ingresos) {
       // Items 및 Ingresos 보고서: start_date, end_date, startDate, endDate, sucursal 제외
       keys = firstItem.keys
@@ -102,7 +345,8 @@ class ReportTableBuilder {
       final isSortable = (reportType == ReportType.items || reportType == ReportType.ingresos) && 
           (key == 'codigo' || key == 'codigo1' || key == 'descripcion' || key == 'desc1' || 
            key == 'tprendas' || key == 'timporte' || key == 'tIngreso' || key == 'tingreso' ||
-           key == 'cntEvent' || key == 'cntevent');
+           key == 'cntEvent' || key == 'cntevent') ||
+          reportType == ReportType.ventas; // ventas 보고서는 모든 컬럼 정렬 가능
       
       return DataColumn(
         label: Row(
@@ -110,12 +354,15 @@ class ReportTableBuilder {
           children: [
             Text(
               key.toString(),
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: reportType == ReportType.ventas ? 12 : 14,
+              ),
             ),
             if (isSorted && isSortable)
               Icon(
                 sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                size: 16,
+                size: reportType == ReportType.ventas ? 14 : 16,
                 color: color,
               ),
           ],
@@ -198,21 +445,26 @@ class ReportTableBuilder {
                           final value = item[key];
                           String formattedValue;
                           
-                          // vcode는 오른쪽 5글자만 표시
-                          if (key == 'vcode' && value != null) {
-                            final vcodeStr = value.toString();
-                            formattedValue = vcodeStr.length > 5 
-                                ? vcodeStr.substring(vcodeStr.length - 5)
-                                : vcodeStr;
+                          // codigo 관련 칼럼은 문자로 처리 (숫자 포맷팅 제외)
+                          // vcode는 서버에서 이미 right(vcode, 5)로 처리되었으므로 특별 처리 불필요
+                          final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1' || key == 'vcode';
+                          
+                          // month 필드 포맷팅: "2025-12-01" -> "2025-12"
+                          if (key == 'month' && value != null) {
+                            final monthStr = value.toString();
+                            if (monthStr.length >= 7 && monthStr.contains('-')) {
+                              // "YYYY-MM-DD" 형식을 "YYYY-MM"으로 변환
+                              formattedValue = monthStr.substring(0, 7);
+                            } else {
+                              formattedValue = monthStr;
+                            }
                           } else {
-                            // codigo 관련 칼럼은 문자로 처리 (숫자 포맷팅 제외)
-                            final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1';
                             formattedValue = isCodigoColumn 
                                 ? (value?.toString() ?? 'N/A')
                                 : ReportUtils.formatValue(value);
                           }
                           
-                          final isNumeric = (key != 'vcode' && key != 'codigo' && key != 'codigo1' && key != 'tcode' && key != 'id_codigo1') 
+                          final isNumeric = (key != 'codigo' && key != 'codigo1' && key != 'tcode' && key != 'id_codigo1' && key != 'vcode') 
                               ? ReportUtils.isNumeric(value) 
                               : false;
                           return DataCell(
@@ -273,18 +525,25 @@ class ReportTableBuilder {
                               final cells = keys.map((key) {
                                 final value = item[key];
                                 String formattedValue;
-                                if (key == 'vcode' && value != null) {
-                                  final vcodeStr = value.toString();
-                                  formattedValue = vcodeStr.length > 5 
-                                      ? vcodeStr.substring(vcodeStr.length - 5)
-                                      : vcodeStr;
+                                // codigo 관련 칼럼은 문자로 처리 (숫자 포맷팅 제외)
+                                // vcode는 서버에서 이미 right(vcode, 5)로 처리되었으므로 특별 처리 불필요
+                                final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1' || key == 'vcode';
+                                
+                                // month 필드 포맷팅: "2025-12-01" -> "2025-12"
+                                if (key == 'month' && value != null) {
+                                  final monthStr = value.toString();
+                                  if (monthStr.length >= 7 && monthStr.contains('-')) {
+                                    // "YYYY-MM-DD" 형식을 "YYYY-MM"으로 변환
+                                    formattedValue = monthStr.substring(0, 7);
+                                  } else {
+                                    formattedValue = monthStr;
+                                  }
                                 } else {
-                                  final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1';
                                   formattedValue = isCodigoColumn 
                                       ? (value?.toString() ?? 'N/A')
                                       : ReportUtils.formatValue(value);
                                 }
-                                final isNumeric = (key != 'vcode' && key != 'codigo' && key != 'codigo1' && key != 'tcode' && key != 'id_codigo1') 
+                                final isNumeric = (key != 'codigo' && key != 'codigo1' && key != 'tcode' && key != 'id_codigo1' && key != 'vcode') 
                                     ? ReportUtils.isNumeric(value) 
                                     : false;
                                 return DataCell(
@@ -365,88 +624,86 @@ class ReportTableBuilder {
             child: SingleChildScrollView(
               controller: scrollController,
               scrollDirection: Axis.vertical,
-                child: horizontalScrollController != null
+                child: (horizontalScrollController != null || reportType == ReportType.ventas)
                     ? SingleChildScrollView(
                         controller: horizontalScrollController,
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
-                  columnSpacing: 8,
-                  dataRowMinHeight: 48,
-                  dataRowMaxHeight: 56,
-                  headingRowHeight: 56,
-                  headingRowColor: MaterialStateProperty.all(
-                    Colors.transparent, // 헤더 배경을 투명하게
-                  ),
-                  columns: columns,
-                  rows: [
-                  ...displayedList.map((item) {
-                    if (item is Map<String, dynamic>) {
-                      // keys의 각 키에 대해 셀 생성 (키가 없어도 셀은 생성)
-                      final cells = keys.map((key) {
-                        final value = item[key];
-                        String formattedValue;
-                        
-                        // vcode는 오른쪽 5글자만 표시
-                        if (key == 'vcode' && value != null) {
-                          final vcodeStr = value.toString();
-                          formattedValue = vcodeStr.length > 5 
-                              ? vcodeStr.substring(vcodeStr.length - 5)
-                              : vcodeStr;
-                        } else {
-                          // codigo 관련 칼럼은 문자로 처리 (숫자 포맷팅 제외)
-                          final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1';
-                          formattedValue = isCodigoColumn 
-                              ? (value?.toString() ?? 'N/A')
-                              : ReportUtils.formatValue(value);
-                        }
-                        
-                        final isNumeric = (key != 'vcode' && key != 'codigo' && key != 'codigo1' && key != 'tcode' && key != 'id_codigo1') 
-                            ? ReportUtils.isNumeric(value) 
-                            : false;
-                        return DataCell(
-                          Align(
-                            alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
-                            child: Text(
-                              formattedValue,
-                              style: const TextStyle(fontSize: 14),
-                            ),
+                        scrollDirection: Axis.horizontal,
+                        child: DataTable(
+                          columnSpacing: 8,
+                          dataRowMinHeight: reportType == ReportType.ventas ? 32 : 48,
+                          dataRowMaxHeight: reportType == ReportType.ventas ? 40 : 56,
+                          headingRowHeight: reportType == ReportType.ventas ? 40 : 56,
+                          headingRowColor: MaterialStateProperty.all(
+                            Colors.transparent, // 헤더 배경을 투명하게
                           ),
-                        );
-                      }).toList();
-                      
-                      // 셀 개수가 keys.length와 일치하는지 확인
-                      assert(cells.length == keys.length, 
-                        'Row cells count (${cells.length}) must match keys count (${keys.length})');
-                      
-                      return DataRow(cells: cells);
-                    }
-                    // Map이 아닌 경우에도 keys.length만큼 셀 생성
-                    final formattedValue = ReportUtils.formatValue(item);
-                    final isNumeric = ReportUtils.isNumeric(item);
-                    return DataRow(
-                      cells: List.generate(keys.length, (index) {
-                        return DataCell(
-                          Align(
-                            alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
-                            child: Text(
-                              index == 0 ? formattedValue : '',
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                          ),
-                        );
-                      }),
-                    );
-                  }),
-                  // 합계 행 추가
-                  _buildTotalRow(keys, dataList, color),
-                  ],
+                          columns: columns,
+                          rows: [
+                          ...displayedList.map((item) {
+                            if (item is Map<String, dynamic>) {
+                              // keys의 각 키에 대해 셀 생성 (키가 없어도 셀은 생성)
+                              final cells = keys.map((key) {
+                                final value = item[key];
+                                String formattedValue;
+                                
+                                // codigo 관련 칼럼은 문자로 처리 (숫자 포맷팅 제외)
+                                final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1';
+                                formattedValue = isCodigoColumn 
+                                    ? (value?.toString() ?? 'N/A')
+                                    : ReportUtils.formatValue(value);
+                                
+                                final isNumeric = (key != 'codigo' && key != 'codigo1' && key != 'tcode' && key != 'id_codigo1') 
+                                    ? ReportUtils.isNumeric(value) 
+                                    : false;
+                                return DataCell(
+                                  Align(
+                                    alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+                                    child: Text(
+                                      formattedValue,
+                                      style: TextStyle(
+                                        fontSize: reportType == ReportType.ventas ? 12 : 14,
+                                        height: reportType == ReportType.ventas ? 1.0 : 1.2,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList();
+                              
+                              // 셀 개수가 keys.length와 일치하는지 확인
+                              assert(cells.length == keys.length, 
+                                'Row cells count (${cells.length}) must match keys count (${keys.length})');
+                              
+                              return DataRow(cells: cells);
+                            }
+                            // Map이 아닌 경우에도 keys.length만큼 셀 생성
+                            final formattedValue = ReportUtils.formatValue(item);
+                            final isNumeric = ReportUtils.isNumeric(item);
+                            return DataRow(
+                              cells: List.generate(keys.length, (index) {
+                                return DataCell(
+                                  Align(
+                                    alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+                                    child: Text(
+                                      index == 0 ? formattedValue : '',
+                                      style: TextStyle(
+                                        fontSize: reportType == ReportType.ventas ? 12 : 14,
+                                        height: reportType == ReportType.ventas ? 1.0 : 1.2,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }),
+                            );
+                          }),
+                          // 합계 행 추가
+                          _buildTotalRow(keys, dataList, color, reportType: reportType),
+                          ],
                         ),
                       )
                       : DataTable(
                           columnSpacing: 8,
-                          dataRowMinHeight: 48,
-                          dataRowMaxHeight: 56,
-                          headingRowHeight: reportType == ReportType.ventas ? 0 : 56, // ventas는 상단 헤더 사용
+                          dataRowMinHeight: reportType == ReportType.ventas ? 32 : 48,
+                          dataRowMaxHeight: reportType == ReportType.ventas ? 40 : 56,
+                          headingRowHeight: reportType == ReportType.ventas ? 40 : 56,
                           headingRowColor: MaterialStateProperty.all(
                             Colors.transparent,
                           ),
@@ -457,18 +714,25 @@ class ReportTableBuilder {
                                 final cells = keys.map((key) {
                                   final value = item[key];
                                   String formattedValue;
-                                  if (key == 'vcode' && value != null) {
-                                    final vcodeStr = value.toString();
-                                    formattedValue = vcodeStr.length > 5 
-                                        ? vcodeStr.substring(vcodeStr.length - 5)
-                                        : vcodeStr;
+                                  // codigo 관련 칼럼은 문자로 처리 (숫자 포맷팅 제외)
+                                  // vcode는 서버에서 이미 right(vcode, 5)로 처리되었으므로 특별 처리 불필요
+                                  final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1' || key == 'vcode';
+                                  
+                                  // month 필드 포맷팅: "2025-12-01" -> "2025-12"
+                                  if (key == 'month' && value != null) {
+                                    final monthStr = value.toString();
+                                    if (monthStr.length >= 7 && monthStr.contains('-')) {
+                                      // "YYYY-MM-DD" 형식을 "YYYY-MM"으로 변환
+                                      formattedValue = monthStr.substring(0, 7);
+                                    } else {
+                                      formattedValue = monthStr;
+                                    }
                                   } else {
-                                    final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1';
                                     formattedValue = isCodigoColumn 
                                         ? (value?.toString() ?? 'N/A')
                                         : ReportUtils.formatValue(value);
                                   }
-                                  final isNumeric = (key != 'vcode' && key != 'codigo' && key != 'codigo1' && key != 'tcode' && key != 'id_codigo1') 
+                                  final isNumeric = (key != 'codigo' && key != 'codigo1' && key != 'tcode' && key != 'id_codigo1' && key != 'vcode') 
                                       ? ReportUtils.isNumeric(value) 
                                       : false;
                                   return DataCell(
@@ -476,7 +740,10 @@ class ReportTableBuilder {
                                       alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
                                       child: Text(
                                         formattedValue,
-                                        style: const TextStyle(fontSize: 14),
+                                        style: TextStyle(
+                                          fontSize: reportType == ReportType.ventas ? 12 : 14,
+                                          height: reportType == ReportType.ventas ? 1.0 : 1.2,
+                                        ),
                                       ),
                                     ),
                                   );
@@ -493,14 +760,17 @@ class ReportTableBuilder {
                                       alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
                                       child: Text(
                                         index == 0 ? formattedValue : '',
-                                        style: const TextStyle(fontSize: 14),
+                                        style: TextStyle(
+                                          fontSize: reportType == ReportType.ventas ? 12 : 14,
+                                          height: reportType == ReportType.ventas ? 1.0 : 1.2,
+                                        ),
                                       ),
                                     ),
                                   );
                                 }),
                               );
                             }),
-                            _buildTotalRow(keys, dataList, color),
+                            _buildTotalRow(keys, dataList, color, reportType: reportType),
                           ],
                         ),
               ),
@@ -709,13 +979,14 @@ class ReportTableBuilder {
   }
 
   // 합계 행 빌드
-  static DataRow _buildTotalRow(List<String> keys, List<dynamic> dataList, Color reportColor) {
+  static DataRow _buildTotalRow(List<String> keys, List<dynamic> dataList, Color reportColor, {ReportType? reportType}) {
     // 각 칼럼별 합계 계산
     final totals = <String, num>{};
     
     for (var key in keys) {
       final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1';
-      if (isCodigoColumn) continue; // 문자 칼럼은 합계 계산 제외
+      final isDateColumn = key == 'fecha' || key == 'month' || key == 'year' || key == 'hora';
+      if (isCodigoColumn || isDateColumn) continue; // 문자 칼럼 및 날짜 칼럼은 합계 계산 제외
       
       num sum = 0;
       for (var item in dataList) {
@@ -732,19 +1003,23 @@ class ReportTableBuilder {
       totals[key] = sum;
     }
     
+    final isVentas = reportType == ReportType.ventas;
+    
     return DataRow(
       color: MaterialStateProperty.all(reportColor.withOpacity(0.1)),
       cells: keys.map((key) {
         final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1';
-        if (isCodigoColumn) {
+        final isDateColumn = key == 'fecha' || key == 'month' || key == 'year' || key == 'hora';
+        if (isCodigoColumn || isDateColumn) {
           return DataCell(
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
                 'Total',
-                style: const TextStyle(
-                  fontSize: 14,
+                style: TextStyle(
+                  fontSize: isVentas ? 12 : 14,
                   fontWeight: FontWeight.bold,
+                  height: isVentas ? 1.0 : 1.2,
                 ),
               ),
             ),
@@ -757,9 +1032,10 @@ class ReportTableBuilder {
             alignment: Alignment.centerRight,
             child: Text(
               ReportUtils.formatValue(total),
-              style: const TextStyle(
-                fontSize: 14,
+              style: TextStyle(
+                fontSize: isVentas ? 12 : 14,
                 fontWeight: FontWeight.bold,
+                height: isVentas ? 1.0 : 1.2,
               ),
             ),
           ),

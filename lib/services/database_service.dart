@@ -162,9 +162,13 @@ class DatabaseService {
   /// 판매 보고서 가져오기
   Future<Map<String, dynamic>> getVentasReport({
     String? filteringWord,
+    String? currentDate,
+    String? unit, // 'vcode', 'day', 'month', 'year'
     Map<String, dynamic>? filters,
   }) => _reportsApi.getVentasReport(
     filteringWord: filteringWord,
+    currentDate: currentDate,
+    unit: unit,
     filters: filters,
   );
 

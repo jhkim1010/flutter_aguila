@@ -107,6 +107,8 @@ class ReportsApi {
   /// 판매 보고서 가져오기
   Future<Map<String, dynamic>> getVentasReport({
     String? filteringWord,
+    String? currentDate,
+    String? unit, // 'vcode', 'day', 'month', 'year'
     Map<String, dynamic>? filters,
   }) async {
     final endpoint = '/api/reporte/ventas';
@@ -116,12 +118,54 @@ class ReportsApi {
       queryParams['filtering_word'] = filteringWord;
     }
     
+    // current_date 파라미터 추가 (필수)
+    if (currentDate != null && currentDate.isNotEmpty) {
+      queryParams['current_date'] = currentDate;
+    }
+    
+    // unit 파라미터 추가
+    if (unit != null && unit.isNotEmpty) {
+      queryParams['unit'] = unit;
+    }
+    
     if (filters != null) {
       filters.forEach((key, value) {
         if (value != null) {
           queryParams[key] = value.toString();
         }
       });
+    }
+    
+    // Ventas 요청 헤더 및 파라미터 출력
+    try {
+      final headers = await _httpHandler.getDatabaseHeaders();
+      print('=== Ventas 요청 헤더 ===');
+      headers.forEach((key, value) {
+        // 비밀번호는 보안상 일부만 표시
+        if (key == 'x-db-password') {
+          if (value.length > 4) {
+            final prefix = value.substring(0, 2);
+            final suffix = value.substring(value.length - 2);
+            final maskLength = value.length - 4;
+            final masked = '*' * maskLength;
+            print('  $key: $prefix$masked$suffix');
+          } else {
+            print('  $key: ****');
+          }
+        } else {
+          print('  $key: $value');
+        }
+      });
+      
+      // Query Parameters 출력
+      if (queryParams.isNotEmpty) {
+        print('=== Ventas 요청 파라미터 ===');
+        queryParams.forEach((key, value) {
+          print('  $key: $value');
+        });
+      }
+    } catch (e) {
+      print('⚠️ 헤더 가져오기 실패: $e');
     }
     
     return await _httpHandler.performGetRequest(

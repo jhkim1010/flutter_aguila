@@ -5,6 +5,13 @@
       "showTefectivo": true,
       "showTreservado": true,
       "showTfavor": true
+    },
+    "resumenDelDia": {
+      "showTotalVentaDay": true,
+      "showTotalEfectivoDay": true,
+      "showTotalCreditoDay": true,
+      "showTotalBancoDay": true,
+      "showTotalFavorDay": true
     }
   }
 }

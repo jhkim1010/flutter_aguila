@@ -6,6 +6,7 @@ import '../l10n/app_localizations.dart';
 import '../services/database_service.dart';
 import '../services/connection_storage_service.dart';
 import '../services/secure_storage_helper.dart';
+import '../services/config_service.dart';
 import '../models/connection_info.dart';
 import '../utils/platform_utils.dart';
 import 'main_connection_screen.dart' show ServerType, MainConnectionScreen;
@@ -1492,6 +1493,15 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       Colors.indigo,
     ));
     
+    // Ventas
+    items.add(_buildReportMenuItem(
+      context,
+      'ventas',
+      'Ventas',
+      Icons.shopping_cart,
+      Colors.purple,
+    ));
+    
     return items;
   }
 
@@ -2307,7 +2317,9 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
 
   List<Widget> _buildVcodesSection(Map<String, dynamic> vcodes) {
     final cards = <Widget>[];
+    final configService = ConfigService();
     
+    // 항상 표시되어야 하는 필드들
     if (vcodes.containsKey('operation_count')) {
       cards.add(_buildDataCard(
         'Evento de Venta',
@@ -2316,7 +2328,9 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       ));
     }
     
-    if (vcodes.containsKey('total_venta_day')) {
+    // 설정에 따라 표시/숨김 처리되는 필드들
+    if (vcodes.containsKey('total_venta_day') && 
+        configService.shouldShowResumenField('total_venta_day')) {
       cards.add(_buildDataCard(
         'Total de Ventas',
         vcodes['total_venta_day'],
@@ -2325,7 +2339,8 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       ));
     }
     
-    if (vcodes.containsKey('total_efectivo_day')) {
+    if (vcodes.containsKey('total_efectivo_day') && 
+        configService.shouldShowResumenField('total_efectivo_day')) {
       cards.add(_buildDataCard(
         'Ventas en Efectivo',
         vcodes['total_efectivo_day'],
@@ -2334,7 +2349,8 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       ));
     }
     
-    if (vcodes.containsKey('total_credito_day')) {
+    if (vcodes.containsKey('total_credito_day') && 
+        configService.shouldShowResumenField('total_credito_day')) {
       cards.add(_buildDataCard(
         'Ventas a Crédito',
         vcodes['total_credito_day'],
@@ -2343,7 +2359,8 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       ));
     }
     
-    if (vcodes.containsKey('total_banco_day')) {
+    if (vcodes.containsKey('total_banco_day') && 
+        configService.shouldShowResumenField('total_banco_day')) {
       cards.add(_buildDataCard(
         'Ventas Bancarias',
         vcodes['total_banco_day'],
@@ -2352,7 +2369,8 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       ));
     }
     
-    if (vcodes.containsKey('total_favor_day')) {
+    if (vcodes.containsKey('total_favor_day') && 
+        configService.shouldShowResumenField('total_favor_day')) {
       cards.add(_buildDataCard(
         'Ventas Favor',
         vcodes['total_favor_day'],
@@ -2361,6 +2379,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       ));
     }
     
+    // 항상 표시되어야 하는 필드들
     if (vcodes.containsKey('total_count_ropas')) {
       cards.add(_buildDataCard(
         'Total de Ropas',
@@ -2636,9 +2655,12 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     );
   }
 
+  /// MercadoPago 섹션 빌드
+  /// ⚠️ 중요: 이 섹션은 항상 표시되어야 하며, 설정에 의해 숨겨지지 않습니다.
   List<Widget> _buildMpagoSection(Map<String, dynamic> mpago) {
     final cards = <Widget>[];
     
+    // MercadoPago 필드들은 항상 표시 (설정과 무관하게)
     if (mpago.containsKey('count_mpago_total')) {
       cards.add(_buildDataCard(
         'Evento de MPago',
