@@ -1200,6 +1200,13 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                 Icons.inventory_2,
                 Colors.green,
               ),
+              _buildReportMenuItem(
+                context,
+                'ventas',
+                'Ventas',
+                Icons.shopping_cart,
+                Colors.purple,
+              ),
               // 연결 끊기 버튼
               Padding(
                 padding: const EdgeInsets.all(8.0),
@@ -1249,6 +1256,9 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                 break;
               case 'items':
                 _selectedReportType = ReportType.items;
+                break;
+              case 'ventas':
+                _selectedReportType = ReportType.ventas;
                 break;
               default:
                 _selectedReportType = null;
@@ -1350,6 +1360,14 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
     
     // 연결 후: 보고서 결과 표시
     if (_selectedReportType != null && _currentServerUrl != null) {
+      // ventas 보고서는 항상 오늘 날짜로 요청
+      if (_selectedReportType == ReportType.ventas) {
+        return ReportScreen(
+          serverUrl: _currentServerUrl!,
+          reportType: _selectedReportType!,
+          initialDate: DateTime.now(), // 오늘 날짜로 설정
+        );
+      }
       return ReportScreen(
         serverUrl: _currentServerUrl!,
         reportType: _selectedReportType!,

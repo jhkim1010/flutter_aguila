@@ -1594,6 +1594,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         initialSortAscending: widget.initialSortAscending ?? _currentSortAscending,
         initialItemsStartDate: widget.initialItemsStartDate ?? _currentItemsStartDate,
         initialItemsEndDate: widget.initialItemsEndDate ?? _currentItemsEndDate,
+        useFullWidth: true, // resumen del dia에서 사용 시 전체 너비 사용
         onStateChanged: (filteringWord, sortColumn, sortAscending) {
           // 보고서 상태 변경 시 저장 (연결 변경 시 유지용)
           setState(() {

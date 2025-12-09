@@ -164,9 +164,9 @@ class ReportTableBuilder {
                   scrollDirection: Axis.horizontal,
                   child: DataTable(
                     columnSpacing: 8,
-                            dataRowMinHeight: 32, // 읽기 가능한 높이로 조정
-                            dataRowMaxHeight: 32,
-                            headingRowHeight: 0, // 헤더 높이를 0으로 설정하여 숨김
+                            dataRowMinHeight: 48, // 읽기 가능한 높이로 조정
+                            dataRowMaxHeight: 56,
+                            headingRowHeight: 56, // 헤더 높이 설정
                     headingRowColor: MaterialStateProperty.all(
                               Colors.transparent, // 헤더 배경을 투명하게
                     ),
@@ -249,9 +249,9 @@ class ReportTableBuilder {
                         )
                       : DataTable(
                           columnSpacing: 8,
-                          dataRowMinHeight: 5,
-                          dataRowMaxHeight: 5,
-                          headingRowHeight: 0,
+                          dataRowMinHeight: 48,
+                          dataRowMaxHeight: 56,
+                          headingRowHeight: reportType == ReportType.ventas ? 0 : 56, // ventas는 상단 헤더 사용
                           headingRowColor: MaterialStateProperty.all(
                             Colors.transparent,
                           ),
@@ -319,22 +319,25 @@ class ReportTableBuilder {
       );
     }
 
-    // 다른 보고서는 기존 방식 유지 (ventas 포함)
-    // 헤더를 별도로 분리하여 수평 스크롤 동기화
-    final headerRow = _buildHeaderRow(keys, columns, color, sortColumn, sortAscending, onSort);
+    // 다른 보고서는 기존 방식 유지 (ventas는 DataTable 헤더 사용)
+    // ventas 보고서의 경우 별도 헤더를 사용하지 않고 DataTable 헤더만 사용
+    final headerRow = reportType == ReportType.ventas 
+        ? null 
+        : _buildHeaderRow(keys, columns, color, sortColumn, sortAscending, onSort);
     
     return Column(
       children: [
-        // 헤더 (수평 스크롤 동기화)
-        if (horizontalScrollController != null)
-          SingleChildScrollView(
-            controller: horizontalScrollController,
-            scrollDirection: Axis.horizontal,
-            physics: const NeverScrollableScrollPhysics(),
-            child: headerRow,
-          )
-        else
-          headerRow,
+        // 헤더 (수평 스크롤 동기화) - ventas는 제외
+        if (headerRow != null)
+          if (horizontalScrollController != null)
+            SingleChildScrollView(
+              controller: horizontalScrollController,
+              scrollDirection: Axis.horizontal,
+              physics: const NeverScrollableScrollPhysics(),
+              child: headerRow,
+            )
+          else
+            headerRow,
         Expanded(
           child: Scrollbar(
             controller: scrollController,
@@ -360,9 +363,9 @@ class ReportTableBuilder {
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
                   columnSpacing: 8,
-                  dataRowMinHeight: 5,
-                  dataRowMaxHeight: 5,
-                  headingRowHeight: 0, // 헤더 높이를 0으로 설정하여 숨김
+                  dataRowMinHeight: 48,
+                  dataRowMaxHeight: 56,
+                  headingRowHeight: 56,
                   headingRowColor: MaterialStateProperty.all(
                     Colors.transparent, // 헤더 배경을 투명하게
                   ),
@@ -433,9 +436,9 @@ class ReportTableBuilder {
                       )
                       : DataTable(
                           columnSpacing: 8,
-                          dataRowMinHeight: 5,
-                          dataRowMaxHeight: 5,
-                          headingRowHeight: 0,
+                          dataRowMinHeight: 48,
+                          dataRowMaxHeight: 56,
+                          headingRowHeight: reportType == ReportType.ventas ? 0 : 56, // ventas는 상단 헤더 사용
                           headingRowColor: MaterialStateProperty.all(
                             Colors.transparent,
                           ),
@@ -839,8 +842,8 @@ class ReportTableBuilder {
       scrollDirection: Axis.horizontal,
       child: DataTable(
         columnSpacing: 8,
-        dataRowMinHeight: 5,
-        dataRowMaxHeight: 5,
+        dataRowMinHeight: 48,
+        dataRowMaxHeight: 56,
         headingRowColor: MaterialStateProperty.all(
           reportColor.withOpacity(0.1),
         ),

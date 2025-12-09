@@ -106,10 +106,15 @@ class ReportsApi {
 
   /// 판매 보고서 가져오기
   Future<Map<String, dynamic>> getVentasReport({
+    String? filteringWord,
     Map<String, dynamic>? filters,
   }) async {
     final endpoint = '/api/reporte/ventas';
     final queryParams = <String, String>{};
+    
+    if (filteringWord != null && filteringWord.isNotEmpty) {
+      queryParams['filtering_word'] = filteringWord;
+    }
     
     if (filters != null) {
       filters.forEach((key, value) {

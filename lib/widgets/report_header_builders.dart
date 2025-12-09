@@ -9,11 +9,13 @@ class ReportHeaderBuilders {
   static Widget buildVentasHeader({
     required BuildContext context,
     required Map<String, dynamic>? data,
-    required DateTime? ventasDate,
+    required DateTime? startDate,
+    required DateTime? endDate,
     required String? selectedSucursal,
-    required Function(DateTime) onDateChanged,
+    required Function(DateTime, DateTime) onDateRangeChanged,
     required Function(String?) onSucursalChanged,
     required Color reportColor,
+    required ReportType reportType,
   }) {
     // 데이터에서 sucursal 목록 추출
     List<String>? sucursales;
@@ -39,82 +41,160 @@ class ReportHeaderBuilders {
       }
     }
     
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // 날짜 표시 및 선택
-        GestureDetector(
-          onTap: () async {
-            final DateTime? picked = await showDatePicker(
-              context: context,
-              initialDate: ventasDate ?? DateTime.now(),
-              firstDate: DateTime(2000),
-              lastDate: DateTime.now(),
-              locale: const Locale('ko', 'KR'),
-            );
-            
-            if (picked != null && picked != ventasDate) {
-              onDateChanged(picked);
+    // Summary 정보 추출 (total_venta_day 등)
+    num? totalVentaDay;
+    
+    if (data != null && data.containsKey('summary') && data['summary'] is Map) {
+      final summary = data['summary'] as Map<String, dynamic>;
+      if (summary.containsKey('total_venta_day')) {
+        final value = summary['total_venta_day'];
+        if (value is num) {
+          totalVentaDay = value;
+        } else if (value is String) {
+          totalVentaDay = num.tryParse(value.replaceAll(',', '').replaceAll('.', ''));
+        }
+      }
+    } else if (data != null && data.containsKey('vcodes')) {
+      if (data['vcodes'] is Map) {
+        final vcodes = data['vcodes'] as Map<String, dynamic>;
+        if (vcodes.containsKey('total_venta_day')) {
+          final value = vcodes['total_venta_day'];
+          if (value is num) {
+            totalVentaDay = value;
+          } else if (value is String) {
+            totalVentaDay = num.tryParse(value.replaceAll(',', '').replaceAll('.', ''));
+          }
+        }
+      } else if (data['vcodes'] is List && (data['vcodes'] as List).isNotEmpty) {
+        final firstVcode = (data['vcodes'] as List).first;
+        if (firstVcode is Map && firstVcode.containsKey('total_venta_day')) {
+          final value = firstVcode['total_venta_day'];
+          if (value is num) {
+            totalVentaDay = value;
+          } else if (value is String) {
+            totalVentaDay = num.tryParse(value.replaceAll(',', '').replaceAll('.', ''));
+          }
+        }
+      }
+    }
+    
+    // summary나 vcodes에 없으면 테이블 데이터에서 계산
+    if (totalVentaDay == null && data != null && data.containsKey('data') && data['data'] is List) {
+      final dataList = data['data'] as List;
+      num sum = 0;
+      for (var item in dataList) {
+        if (item is Map<String, dynamic>) {
+          // tpago 필드 합계 계산
+          final tpago = item['tpago'];
+          if (tpago != null) {
+            if (tpago is num) {
+              sum += tpago;
+            } else if (tpago is String) {
+              final numValue = num.tryParse(tpago.replaceAll(',', '').replaceAll('.', ''));
+              if (numValue != null) {
+                sum += numValue;
+              }
             }
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
+          }
+        }
+      }
+      if (sum > 0) {
+        totalVentaDay = sum;
+      }
+    }
+    
+    return Column(
+      children: [
+        // 날짜 범위 선택
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          decoration: BoxDecoration(
+            color: reportColor.withOpacity(0.05),
+            border: Border(
+              bottom: BorderSide(
+                color: reportColor.withOpacity(0.3),
+                width: 1,
+              ),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.calendar_today, color: Colors.white, size: 14),
-                const SizedBox(width: 4),
-                Text(
-                  ventasDate != null
-                      ? DateFormat('yyyy-MM-dd').format(ventasDate!)
-                      : '날짜',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
+          ),
+          child: ItemsDateRangeSelector(
+            reportType: reportType,
+            startDate: startDate,
+            endDate: endDate,
+            onDateRangeChanged: onDateRangeChanged,
+          ),
+        ),
+        // Total 및 Sucursal 선택
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: reportColor.withOpacity(0.1),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Total Venta del Día 표시
+              if (totalVentaDay != null && totalVentaDay! > 0) ...[
+                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: reportColor.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.attach_money, color: reportColor, size: 14),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Total: ${_formatNumber(totalVentaDay!)}',
+                        style: TextStyle(
+                          color: reportColor,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
-            ),
+              // Sucursal이 1개 이상일 때만 콤보박스 표시
+              if (sucursales != null && sucursales.length > 1) ...[
+                const SizedBox(width: 8),
+                Container(
+                  constraints: const BoxConstraints(minWidth: 80),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: DropdownButton<String?>(
+                    value: selectedSucursal,
+                    hint: const Text('Todos', style: TextStyle(fontSize: 11)),
+                    underline: const SizedBox(),
+                    isDense: true,
+                    icon: Icon(Icons.arrow_drop_down, color: reportColor, size: 18),
+                    items: [
+                      const DropdownMenuItem<String?>(
+                        value: null,
+                        child: Text('Todos', style: TextStyle(fontSize: 11)),
+                      ),
+                      ...sucursales.map((sucursal) {
+                        return DropdownMenuItem<String?>(
+                          value: sucursal,
+                          child: Text(sucursal, style: const TextStyle(fontSize: 11)),
+                        );
+                      }).toList(),
+                    ],
+                    onChanged: onSucursalChanged,
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
-        // Sucursal이 1개 이상일 때만 콤보박스 표시
-        if (sucursales != null && sucursales.length > 1) ...[
-          const SizedBox(width: 8),
-          Container(
-            constraints: const BoxConstraints(minWidth: 80),
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey[300]!),
-            ),
-            child: DropdownButton<String?>(
-              value: selectedSucursal,
-              hint: const Text('Todos', style: TextStyle(fontSize: 11)),
-              underline: const SizedBox(),
-              isDense: true,
-              icon: Icon(Icons.arrow_drop_down, color: reportColor, size: 18),
-              items: [
-                const DropdownMenuItem<String?>(
-                  value: null,
-                  child: Text('Todos', style: TextStyle(fontSize: 11)),
-                ),
-                ...sucursales.map((sucursal) {
-                  return DropdownMenuItem<String?>(
-                    value: sucursal,
-                    child: Text(sucursal, style: const TextStyle(fontSize: 11)),
-                  );
-                }).toList(),
-              ],
-              onChanged: onSucursalChanged,
-            ),
-          ),
-        ],
       ],
     );
   }
@@ -206,6 +286,22 @@ class ReportHeaderBuilders {
         fontWeight: FontWeight.normal,
       ),
     );
+  }
+  
+  /// 숫자 포맷팅 헬퍼 함수
+  static String _formatNumber(dynamic value) {
+    if (value == null) return '0';
+    if (value is num) {
+      return NumberFormat('#,###').format(value);
+    }
+    if (value is String) {
+      final numValue = num.tryParse(value.replaceAll(',', '').replaceAll('.', ''));
+      if (numValue != null) {
+        return NumberFormat('#,###').format(numValue);
+      }
+      return value;
+    }
+    return value.toString();
   }
 }
 

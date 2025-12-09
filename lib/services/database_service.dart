@@ -161,8 +161,12 @@ class DatabaseService {
 
   /// 판매 보고서 가져오기
   Future<Map<String, dynamic>> getVentasReport({
+    String? filteringWord,
     Map<String, dynamic>? filters,
-  }) => _reportsApi.getVentasReport(filters: filters);
+  }) => _reportsApi.getVentasReport(
+    filteringWord: filteringWord,
+    filters: filters,
+  );
 
   /// 알림 보고서 가져오기
   Future<Map<String, dynamic>> getAlertasReport({

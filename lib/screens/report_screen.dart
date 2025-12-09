@@ -26,6 +26,7 @@ class ReportScreen extends StatefulWidget {
   final bool? initialSortAscending; // 초기 정렬 방향
   final Function(String?, String?, bool?)? onStateChanged; // 상태 변경 콜백 (filteringWord, sortColumn, sortAscending)
   final Function(DateTime?, DateTime?)? onItemsDateRangeChanged; // items 보고서 날짜 범위 변경 콜백
+  final bool useFullWidth; // 전체 너비 사용 여부 (resumen del dia에서 사용 시 true)
 
   const ReportScreen({
     super.key,
@@ -39,6 +40,7 @@ class ReportScreen extends StatefulWidget {
     this.initialSortAscending,
     this.onStateChanged,
     this.onItemsDateRangeChanged,
+    this.useFullWidth = false,
   });
 
   @override
@@ -65,8 +67,9 @@ class _ReportScreenState extends State<ReportScreen> {
   // Items 보고서용 날짜 범위
   DateTime? _itemsStartDate;
   DateTime? _itemsEndDate;
-  // Ventas 보고서용 날짜
-  DateTime? _ventasDate;
+  // Ventas 보고서용 날짜 범위
+  DateTime? _ventasStartDate;
+  DateTime? _ventasEndDate;
   
   // Codigos 보고서용 상태
   Map<String, dynamic>? _selectedCodigo; // 선택된 codigo
@@ -125,15 +128,18 @@ class _ReportScreenState extends State<ReportScreen> {
         _itemsEndDate = now;
       }
     }
-    // Ventas 보고서의 경우 초기 날짜 설정
+    // Ventas 보고서의 경우 초기 날짜 범위 설정
     if (widget.reportType == ReportType.ventas) {
+      final now = DateTime.now();
       if (widget.initialDate != null) {
-        _ventasDate = widget.initialDate;
-        print('📅 Ventas 보고서 초기 날짜 설정: ${DateFormat('yyyy-MM-dd').format(_ventasDate!)}');
+        _ventasStartDate = widget.initialDate;
+        _ventasEndDate = widget.initialDate;
+        print('📅 Ventas 보고서 초기 날짜 범위 설정: ${DateFormat('yyyy-MM-dd').format(_ventasStartDate!)} ~ ${DateFormat('yyyy-MM-dd').format(_ventasEndDate!)}');
       } else {
         // initialDate가 없으면 오늘 날짜로 설정
-        _ventasDate = DateTime.now();
-        print('📅 Ventas 보고서 날짜 설정 (오늘): ${DateFormat('yyyy-MM-dd').format(_ventasDate!)}');
+        _ventasStartDate = now;
+        _ventasEndDate = now;
+        print('📅 Ventas 보고서 날짜 범위 설정 (오늘): ${DateFormat('yyyy-MM-dd').format(_ventasStartDate!)} ~ ${DateFormat('yyyy-MM-dd').format(_ventasEndDate!)}');
       }
     }
     // 초기 상태 저장
@@ -181,11 +187,19 @@ class _ReportScreenState extends State<ReportScreen> {
         }
       }
       
-      // Ventas 보고서의 경우 초기 날짜 설정
-      if (widget.reportType == ReportType.ventas && widget.initialDate != null) {
-        _ventasDate = widget.initialDate;
-      } else if (widget.reportType == ReportType.ventas && oldWidget.reportType != ReportType.ventas) {
-        _ventasDate = null;
+      // Ventas 보고서의 경우 초기 날짜 범위 설정
+      if (widget.reportType == ReportType.ventas) {
+        final now = DateTime.now();
+        if (widget.initialDate != null) {
+          _ventasStartDate = widget.initialDate;
+          _ventasEndDate = widget.initialDate;
+        } else if (oldWidget.reportType != ReportType.ventas) {
+          _ventasStartDate = now;
+          _ventasEndDate = now;
+        }
+      } else if (oldWidget.reportType == ReportType.ventas && widget.reportType != ReportType.ventas) {
+        _ventasStartDate = null;
+        _ventasEndDate = null;
       }
       
       // 데이터 다시 로드
@@ -332,14 +346,21 @@ class _ReportScreenState extends State<ReportScreen> {
           data = await _databaseService.getGastosReport();
           break;
         case ReportType.ventas:
-          // 날짜 필터가 있으면 날짜 범위로 전달 (해당 날짜의 시작부터 끝까지)
-          final ventasDateToUse = _ventasDate ?? widget.initialDate ?? DateTime.now();
+          // 날짜 범위 필터 사용 (기본값: 오늘부터 오늘까지)
+          final now = DateTime.now();
+          final startDate = _ventasStartDate ?? now;
+          final endDate = _ventasEndDate ?? now;
+          final currentFilteringWord = filteringWord ?? _filteringWordController.text.trim();
+          
           final filters = <String, dynamic>{
-            'fecha_inicio': DateFormat('yyyy-MM-dd').format(ventasDateToUse),
-            'fecha_fin': DateFormat('yyyy-MM-dd').format(ventasDateToUse),
+            'fecha_inicio': DateFormat('yyyy-MM-dd').format(startDate),
+            'fecha_fin': DateFormat('yyyy-MM-dd').format(endDate),
           };
-          print('📅 Ventas 보고서 요청 - 날짜 필터: ${filters['fecha_inicio']} ~ ${filters['fecha_fin']}');
-          data = await _databaseService.getVentasReport(filters: filters);
+          print('📅 Ventas 보고서 요청 - 날짜 필터: ${filters['fecha_inicio']} ~ ${filters['fecha_fin']}, filteringWord: $currentFilteringWord');
+          data = await _databaseService.getVentasReport(
+            filteringWord: currentFilteringWord.isNotEmpty ? currentFilteringWord : null,
+            filters: filters,
+          );
           break;
         case ReportType.alertas:
           data = await _databaseService.getAlertasReport();
@@ -924,6 +945,26 @@ class _ReportScreenState extends State<ReportScreen> {
                     )
                   : Builder(
                       builder: (context) {
+                        // useFullWidth가 true이면 전체 너비 사용 (resumen del dia에서 사용)
+                        if (widget.useFullWidth) {
+                          return Column(
+                            children: [
+                              // Items 및 Ingresos 보고서의 날짜 범위 선택 UI 및 필터링
+                              if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos)
+                                _buildItemsFilterSection(),
+                              // 스톡 보고서의 vista 타입 표시
+                              if (widget.reportType == ReportType.stocks && _data != null)
+                                _buildStocksViewType(),
+                              Expanded(
+                                child: RefreshIndicator(
+                                  onRefresh: () => _loadData(),
+                                  child: _buildReportContent(),
+                                ),
+                              ),
+                            ],
+                          );
+                        }
+                        
                         final maxWidth = PlatformUtils.getMaxWidth(
                           context,
                           mobileMaxWidth: double.infinity,
@@ -988,15 +1029,16 @@ class _ReportScreenState extends State<ReportScreen> {
       
       // 첫 번째 항목이 맵이고 여러 키를 가지고 있으면 테이블로 표시
       if (dataList.isNotEmpty && dataList.first is Map) {
-        // Items 및 Ingresos 보고서의 경우 filteringWord 필터 적용
+        // Items, Ingresos 및 Ventas 보고서의 경우 filteringWord 필터 적용
         List<dynamic> filteredDataList = dataList;
-        if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos) {
+        if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.ventas) {
           final filteringWord = _filteringWordController.text.trim().toLowerCase();
           if (filteringWord.isNotEmpty) {
             filteredDataList = dataList.where((item) {
               if (item is Map<String, dynamic>) {
                 // Items 보고서: codigo1, desc1 사용
                 // Ingresos 보고서: codigo, descripcion 사용
+                // Ventas 보고서: vcode, vendedor, clientenombre 등 주요 필드에서 검색
                 if (widget.reportType == ReportType.items) {
                   final codigo1 = item['codigo1']?.toString().toLowerCase() ?? '';
                   final desc1 = item['desc1']?.toString().toLowerCase() ?? '';
@@ -1005,43 +1047,18 @@ class _ReportScreenState extends State<ReportScreen> {
                   final codigo = item['codigo']?.toString().toLowerCase() ?? '';
                   final descripcion = item['descripcion']?.toString().toLowerCase() ?? '';
                   return codigo.contains(filteringWord) || descripcion.contains(filteringWord);
+                } else if (widget.reportType == ReportType.ventas) {
+                  final vcode = item['vcode']?.toString().toLowerCase() ?? '';
+                  final vendedor = item['vendedor']?.toString().toLowerCase() ?? '';
+                  final clientenombre = item['clientenombre']?.toString().toLowerCase() ?? '';
+                  return vcode.contains(filteringWord) || vendedor.contains(filteringWord) || clientenombre.contains(filteringWord);
                 }
               }
               return false;
             }).toList();
           }
         }
-        // Ventas 보고서의 경우 날짜 필터 적용 (클라이언트 측)
-        if (widget.reportType == ReportType.ventas) {
-          final ventasDateToUse = _ventasDate ?? widget.initialDate ?? DateTime.now();
-          final targetDateStr = DateFormat('yyyy-MM-dd').format(ventasDateToUse);
-          print('📅 Ventas 보고서 클라이언트 필터 적용 - 대상 날짜: $targetDateStr');
-          final beforeCount = filteredDataList.length;
-          filteredDataList = filteredDataList.where((item) {
-            if (item is Map<String, dynamic>) {
-              // 여러 가능한 날짜 필드명 확인
-              final fecha = item['fecha']?.toString() ?? 
-                          item['fecha_venta']?.toString() ?? 
-                          item['fechaVenta']?.toString() ??
-                          item['date']?.toString() ?? '';
-              
-              if (fecha.isNotEmpty) {
-                try {
-                  // 날짜 문자열을 파싱하여 비교
-                  final itemDate = DateTime.parse(fecha);
-                  final itemDateStr = DateFormat('yyyy-MM-dd').format(itemDate);
-                  return itemDateStr == targetDateStr;
-                } catch (e) {
-                  // 날짜 파싱 실패 시 문자열 직접 비교
-                  return fecha.startsWith(targetDateStr);
-                }
-              }
-            }
-            return false;
-          }).toList();
-          final afterCount = filteredDataList.length;
-          print('📅 필터 적용 결과: $beforeCount개 → $afterCount개 (날짜: $targetDateStr)');
-        }
+        // Ventas 보고서의 경우 날짜 필터는 서버에서 처리되므로 클라이언트 측 필터링 제거
         // Ventas 보고서의 경우 filteringWord 필터 적용
         if (widget.reportType == ReportType.ventas) {
           final filteringWord = _filteringWordController.text.trim().toLowerCase();
@@ -2009,16 +2026,18 @@ class _ReportScreenState extends State<ReportScreen> {
 
   // Stocks 필드명 매핑 (스페인어)
 
-  // Ventas report 헤더 (날짜 및 sucursal 선택)
+  // Ventas report 헤더 (날짜 범위 및 sucursal 선택)
   Widget _buildVentasHeader() {
     return ReportHeaderBuilders.buildVentasHeader(
       context: context,
       data: _data,
-      ventasDate: _ventasDate,
+      startDate: _ventasStartDate,
+      endDate: _ventasEndDate,
       selectedSucursal: _selectedSucursal,
-      onDateChanged: (date) {
+      onDateRangeChanged: (startDate, endDate) {
         setState(() {
-          _ventasDate = date;
+          _ventasStartDate = startDate;
+          _ventasEndDate = endDate;
         });
         _loadData();
       },
@@ -2028,10 +2047,13 @@ class _ReportScreenState extends State<ReportScreen> {
         });
       },
       reportColor: _getReportColor(),
+      reportType: widget.reportType,
     );
   }
 
-  // Ventas report 헤더 (이전 버전 - 제거 예정)
+  // Ventas report 헤더 (이전 버전 - 제거 예정, 사용되지 않음)
+  // 전체 함수가 주석 처리되어 있음 - 필요시 삭제 가능
+  /*
   Widget _buildVentasHeaderOld() {
     // 데이터에서 sucursal 목록 추출
     List<String>? sucursales;
@@ -2060,49 +2082,6 @@ class _ReportScreenState extends State<ReportScreen> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // 날짜 표시 및 선택
-        GestureDetector(
-          onTap: () async {
-            final DateTime? picked = await showDatePicker(
-              context: context,
-              initialDate: _ventasDate ?? DateTime.now(),
-              firstDate: DateTime(2000),
-              lastDate: DateTime.now(),
-              locale: const Locale('ko', 'KR'),
-            );
-            
-            if (picked != null && picked != _ventasDate) {
-              setState(() {
-                _ventasDate = picked;
-              });
-              _loadData();
-            }
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.calendar_today, color: Colors.white, size: 14),
-                const SizedBox(width: 4),
-                Text(
-                  _ventasDate != null
-                      ? DateFormat('yyyy-MM-dd').format(_ventasDate!)
-                      : '날짜',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
         // Sucursal이 1개 이상일 때만 콤보박스 표시
         if (sucursales != null && sucursales.length > 1) ...[
           const SizedBox(width: 8),
@@ -2143,6 +2122,7 @@ class _ReportScreenState extends State<ReportScreen> {
       ],
     );
   }
+  */
 
   // Filtering word 입력 필드 (AppBar용)
   Widget _buildFilteringWordFieldInAppBar() {
