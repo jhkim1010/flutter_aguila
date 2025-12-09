@@ -7,9 +7,13 @@ import 'dart:ui';
 import 'l10n/app_localizations.dart';
 import 'screens/main_connection_screen.dart';
 import 'screens/biometric_auth_screen.dart';
+import 'services/config_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // ConfigService 초기화
+  await ConfigService().initialize();
   
   // 데스크톱 환경에서만 window_manager 초기화
   if (isDesktop()) {

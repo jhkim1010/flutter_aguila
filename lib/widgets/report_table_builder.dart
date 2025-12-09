@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'report_utils.dart';
+import '../services/config_service.dart';
 
 class ReportTableBuilder {
   static Widget buildTableFromList(
@@ -34,15 +35,22 @@ class ReportTableBuilder {
     // Items 및 Ingresos report의 경우 start_date, end_date, sucursal 제외
     List<String> keys;
     if (reportType == ReportType.ventas) {
-      // 지정된 순서의 컬럼 목록
-      final orderedColumns = [
+      // ConfigService에서 설정 읽기
+      final configService = ConfigService();
+      final shouldShowTpago = configService.shouldShowField('tpago');
+      final shouldShowTefectivo = configService.shouldShowField('tefectivo');
+      final shouldShowTreservado = configService.shouldShowField('treservado');
+      final shouldShowTfavor = configService.shouldShowField('tfavor');
+      
+      // 지정된 순서의 컬럼 목록 (설정에 따라 필터링)
+      final orderedColumns = <String>[
         'vcode',
-        'tpago',
-        'tefectivo',
+        if (shouldShowTpago) 'tpago',
+        if (shouldShowTefectivo) 'tefectivo',
         'tcredito',
         'tbanco',
-        'treservado',
-        'tfavor',
+        if (shouldShowTreservado) 'treservado',
+        if (shouldShowTfavor) 'tfavor',
         'cntropas',
         'hora',
         'vendedor',

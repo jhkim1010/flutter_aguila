@@ -1,0 +1,10 @@
+{
+  "report": {
+    "ventas": {
+      "showTpago": true,
+      "showTefectivo": true,
+      "showTreservado": true,
+      "showTfavor": true
+    }
+  }
+}
