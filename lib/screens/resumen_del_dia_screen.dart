@@ -1599,6 +1599,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         key: ValueKey('report_${_selectedReportType.toString()}'),
         serverUrl: widget.serverUrl,
         reportType: _selectedReportType!,
+        initialDate: _selectedReportType == ReportType.ventas ? (_selectedDate ?? DateTime.now()) : null,
         initialFilteringWord: widget.initialFilteringWord ?? _currentFilteringWord,
         initialSortColumn: widget.initialSortColumn ?? _currentSortColumn,
         initialSortAscending: widget.initialSortAscending ?? _currentSortAscending,
@@ -3349,22 +3350,24 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       ),
       PopupMenuItem<String>(
         value: 'ventas',
-        enabled: false,
         child: Row(
           children: [
             Icon(
               Icons.shopping_cart,
-              color: Colors.grey[400],
+              color: _currentReport == 'ventas' ? Colors.purple : Colors.grey,
               size: 20,
             ),
             const SizedBox(width: 12),
             Text(
               'Ventas',
               style: TextStyle(
-                color: Colors.grey[400],
-                fontWeight: FontWeight.normal,
+                fontWeight: _currentReport == 'ventas' ? FontWeight.bold : FontWeight.normal,
               ),
             ),
+            if (_currentReport == 'ventas') ...[
+              const Spacer(),
+              const Icon(Icons.check, color: Colors.purple, size: 18),
+            ],
           ],
         ),
       ),
@@ -3442,12 +3445,14 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       });
     } else {
       // 핸드폰: 기존 방식 (Navigator.push)
+      // ventas 보고서의 경우 initialDate 전달
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => ReportScreen(
             serverUrl: widget.serverUrl,
             reportType: reportTypeEnum,
+            initialDate: reportTypeEnum == ReportType.ventas ? (_selectedDate ?? DateTime.now()) : null,
           ),
         ),
       ).then((_) {

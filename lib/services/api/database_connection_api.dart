@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../secure_storage_helper.dart';
 import 'http_request_handler.dart';
+import '../../utils/ssl_client_helper.dart';
 
 export 'http_request_handler.dart';
 
@@ -31,9 +32,18 @@ class DatabaseConnectionRequest {
 /// 데이터베이스 연결 관련 API
 class DatabaseConnectionApi {
   final HttpRequestHandler _httpHandler;
+  late final http.Client _httpClient;
 
   DatabaseConnectionApi({required HttpRequestHandler httpHandler})
-      : _httpHandler = httpHandler;
+      : _httpHandler = httpHandler {
+    // 자체 서명 인증서를 허용하는 커스텀 클라이언트 사용
+    _httpClient = SslClientHelper.createUnsafeClient();
+  }
+
+  /// 리소스 정리
+  void dispose() {
+    _httpClient.close();
+  }
 
   /// 기존 데이터베이스 연결 끊기
   Future<void> disconnectDatabase() async {
@@ -51,7 +61,7 @@ class DatabaseConnectionApi {
       print('Headers: $headers');
 
       try {
-        final response = await http.post(
+        final response = await _httpClient.post(
           Uri.parse('${_httpHandler.serverUrl}/api/disconnect'),
           headers: headers,
         ).timeout(
@@ -106,7 +116,7 @@ class DatabaseConnectionApi {
     print('Headers: Content-Type: application/json');
     
     try {
-      final response = await http.post(
+      final response = await _httpClient.post(
         Uri.parse(url),
         headers: {
           'Content-Type': 'application/json',
@@ -135,11 +145,16 @@ class DatabaseConnectionApi {
       }
     } catch (e) {
       print('❌ 연결 오류: ${e.toString()}');
-      if (e.toString().contains('SocketException') || 
-          e.toString().contains('Failed host lookup')) {
+      final errorMessage = e.toString();
+      if (errorMessage.contains('SocketException') || 
+          errorMessage.contains('Failed host lookup')) {
         throw Exception('네트워크 오류: 서버에 연결할 수 없습니다. 서버 URL과 인터넷 연결을 확인하세요.');
-      } else if (e.toString().contains('timeout')) {
+      } else if (errorMessage.contains('timeout')) {
         throw Exception('연결 타임아웃: 서버가 응답하지 않습니다. 서버가 실행 중인지 확인하세요.');
+      } else if (errorMessage.contains('CERTIFICATE_VERIFY_FAILED') ||
+                 errorMessage.contains('HandshakeException') ||
+                 errorMessage.contains('self signed certificate')) {
+        throw Exception('SSL 인증서 오류: 자체 서명 인증서가 감지되었습니다. SSL 클라이언트 설정을 확인하세요.');
       } else {
         throw Exception('연결 실패: ${e.toString()}');
       }
@@ -257,7 +272,7 @@ class DatabaseConnectionApi {
       final testKey = 'test_${DateTime.now().millisecondsSinceEpoch}';
       final testSaved = await testPrefs.setString(testKey, 'test');
       if (testSaved) {
-        final testRead = testPrefs.getString(testKey);
+        final _ = testPrefs.getString(testKey);
         await testPrefs.remove(testKey);
         print('   ✅ SharedPreferences: 정상 작동');
       } else {

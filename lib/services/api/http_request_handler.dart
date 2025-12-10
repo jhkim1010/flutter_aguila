@@ -2,12 +2,22 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import '../secure_storage_helper.dart';
+import '../../utils/ssl_client_helper.dart';
 
 /// 공통 HTTP 요청 핸들러
 class HttpRequestHandler {
   final String serverUrl;
+  late final http.Client _httpClient;
 
-  HttpRequestHandler({required this.serverUrl});
+  HttpRequestHandler({required this.serverUrl}) {
+    // 자체 서명 인증서를 허용하는 커스텀 클라이언트 사용
+    _httpClient = SslClientHelper.createUnsafeClient();
+  }
+
+  /// 리소스 정리
+  void dispose() {
+    _httpClient.close();
+  }
 
   /// 저장된 데이터베이스 연결 정보를 읽어와서 헤더로 변환
   Future<Map<String, String>> getDatabaseHeaders() async {
@@ -66,7 +76,7 @@ class HttpRequestHandler {
         print('Query Parameters: $queryParameters');
       }
       
-      final response = await http.get(
+      final response = await _httpClient.get(
         uriWithQuery,
         headers: headers,
       ).timeout(
@@ -131,7 +141,7 @@ class HttpRequestHandler {
       print('Headers: $headers');
       print('Timeout: ${timeoutSeconds}초');
       
-      final response = await http.post(
+      final response = await _httpClient.post(
         Uri.parse('$serverUrl$endpoint'),
         headers: headers,
         body: json.encode(body),
@@ -194,7 +204,7 @@ class HttpRequestHandler {
       print('=== PUT $endpoint 요청 ===');
       print('URL: $serverUrl$endpoint');
       
-      final response = await http.put(
+      final response = await _httpClient.put(
         Uri.parse('$serverUrl$endpoint'),
         headers: headers,
         body: json.encode(body),
@@ -276,6 +286,10 @@ class HttpRequestHandler {
       throw Exception('네트워크 오류: 서버에 연결할 수 없습니다. 서버 URL과 인터넷 연결을 확인하세요.');
     } else if (errorMessage.contains('timeout')) {
       throw Exception('요청 타임아웃: 서버가 응답하지 않습니다. 서버가 실행 중인지 확인하세요.');
+    } else if (errorMessage.contains('CERTIFICATE_VERIFY_FAILED') ||
+               errorMessage.contains('HandshakeException') ||
+               errorMessage.contains('self signed certificate')) {
+      throw Exception('SSL 인증서 오류: 자체 서명 인증서가 감지되었습니다. SSL 클라이언트 설정을 확인하세요.');
     } else {
       throw Exception('요청 실패: $errorMessage');
     }
