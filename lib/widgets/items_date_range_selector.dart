@@ -110,6 +110,7 @@ class _ItemsDateRangeSelectorState extends State<ItemsDateRangeSelector> {
     final startYear = await _selectYear(
       initialDate: _startDate ?? DateTime.now(),
       maxDate: _endDate,
+      title: 'Desde',
     );
     
     if (startYear != null) {
@@ -117,6 +118,7 @@ class _ItemsDateRangeSelectorState extends State<ItemsDateRangeSelector> {
       final endYear = await _selectYear(
         initialDate: _endDate ?? adjustedStartDate,
         minDate: adjustedStartDate,
+        title: 'Hasta',
       );
       
       if (endYear != null) {
@@ -135,6 +137,7 @@ class _ItemsDateRangeSelectorState extends State<ItemsDateRangeSelector> {
     final startMonth = await _selectYearMonth(
       initialDate: _startDate ?? DateTime.now(),
       maxDate: _endDate,
+      title: 'Desde',
     );
     
     if (startMonth != null) {
@@ -142,6 +145,7 @@ class _ItemsDateRangeSelectorState extends State<ItemsDateRangeSelector> {
       final endMonth = await _selectYearMonth(
         initialDate: _endDate ?? adjustedStartDate,
         minDate: adjustedStartDate,
+        title: 'Hasta',
       );
       
       if (endMonth != null) {
@@ -160,6 +164,7 @@ class _ItemsDateRangeSelectorState extends State<ItemsDateRangeSelector> {
     required DateTime initialDate,
     DateTime? minDate,
     DateTime? maxDate,
+    String title = 'Seleccionar Año',
   }) async {
     final currentYear = initialDate.year;
     final minYear = minDate?.year ?? 2000;
@@ -172,7 +177,7 @@ class _ItemsDateRangeSelectorState extends State<ItemsDateRangeSelector> {
         final reportColor = ReportUtils.getReportColor(widget.reportType);
         
         return AlertDialog(
-          title: const Text('Seleccionar Año'),
+          title: Text(title),
           content: StatefulBuilder(
             builder: (context, setState) {
               return SizedBox(
@@ -264,6 +269,7 @@ class _ItemsDateRangeSelectorState extends State<ItemsDateRangeSelector> {
     required DateTime initialDate,
     DateTime? minDate,
     DateTime? maxDate,
+    String title = 'Seleccionar Año y Mes',
   }) async {
     final currentYear = initialDate.year;
     final currentMonth = initialDate.month;
@@ -277,7 +283,7 @@ class _ItemsDateRangeSelectorState extends State<ItemsDateRangeSelector> {
         int selectedMonth = currentMonth;
         
         return AlertDialog(
-          title: const Text('Seleccionar Año y Mes'),
+          title: Text(title),
           content: StatefulBuilder(
             builder: (context, setState) {
               return SizedBox(

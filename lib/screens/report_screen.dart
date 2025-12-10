@@ -1191,6 +1191,7 @@ class _ReportScreenState extends State<ReportScreen> {
                   reportColor: itemsColor,
                   unit: widget.reportType == ReportType.ventas ? _ventasUnit : null,
                   onRowDoubleTap: widget.reportType == ReportType.ventas ? _handleRowDoubleTap : null,
+                  onRowTap: null, // vcode 단위에서는 단일 클릭 비활성화 (더블 클릭만 사용)
                   onSort: (columnIndex, ascending) {
                     setState(() {
                       // 키 목록을 정렬된 데이터에서 가져오기 (report_table_builder와 동일한 순서 보장)
@@ -1288,6 +1289,7 @@ class _ReportScreenState extends State<ReportScreen> {
           reportColor: widget.reportType == ReportType.ventas ? Colors.purple : null,
           unit: widget.reportType == ReportType.ventas ? _ventasUnit : null,
           onRowDoubleTap: widget.reportType == ReportType.ventas ? _handleRowDoubleTap : null,
+          onRowTap: null, // vcode 단위에서는 단일 클릭 비활성화 (더블 클릭만 사용)
           onSort: widget.reportType == ReportType.ventas
               ? (columnIndex, ascending) {
                   setState(() {
@@ -2356,7 +2358,23 @@ class _ReportScreenState extends State<ReportScreen> {
 
   /// 행 더블 클릭 핸들러 - 세부 내역 보기
   void _handleRowDoubleTap(Map<String, dynamic> rowData) {
-    if (widget.reportType != ReportType.ventas) return;
+    print('🔵🔵🔵 더블 클릭 감지됨! 🔵🔵🔵');
+    print('🔵 reportType: ${widget.reportType}, ventasUnit: $_ventasUnit');
+    
+    if (widget.reportType != ReportType.ventas) {
+      print('❌ reportType이 ventas가 아닙니다: ${widget.reportType}');
+      return;
+    }
+    
+    // vcode 단위에서는 더블 클릭으로 vdetalle 상세 정보 보기
+    if (_ventasUnit == 'vcode') {
+      print('🔵 vcode 단위 더블 클릭 - vdetalle 요청');
+      _handleVcodeRowTap(rowData);
+      return;
+    }
+    
+    print('🔍 더블 클릭 - 현재 unit: $_ventasUnit, rowData keys: ${rowData.keys.toList()}');
+    print('🔍 rowData: $rowData');
     
     DateTime? selectedDate;
     String? newUnit;
@@ -2365,19 +2383,107 @@ class _ReportScreenState extends State<ReportScreen> {
     
     // 현재 unit에 따라 처리
     if (_ventasUnit == 'year') {
+      print('🔵🔵🔵 YEAR 단위 더블 클릭 처리 시작! 🔵🔵🔵');
       // year 단위: 해당 연도의 month 단위로 변경
-      final yearValue = rowData['year'] ?? rowData['Year'];
+      // year 단위에서는 fecha 필드가 "YYYY" 형식이거나 'year' 필드가 있을 수 있음
+      // year 필드가 "YYYY-MM-DD" 형식일 수도 있음
+      dynamic yearValue;
+      
+      // 1. 'year' 필드 확인
+      yearValue = rowData['year'] ?? rowData['Year'] ?? rowData['YEAR'];
+      
+      // year 필드가 "YYYY-MM-DD" 형식인 경우 "YYYY"만 추출
       if (yearValue != null) {
-        final year = int.tryParse(yearValue.toString());
-        if (year != null) {
+        final yearStr = yearValue.toString();
+        if (yearStr.contains('-')) {
+          // "YYYY-MM-DD" 또는 "YYYY-MM" 형식에서 연도 추출
+          final parts = yearStr.split('-');
+          if (parts.isNotEmpty) {
+            yearValue = parts[0];
+          }
+        }
+      }
+      
+      // 2. 'fecha' 필드 확인 (year 단위에서는 "YYYY" 형식)
+      if (yearValue == null) {
+        final fechaValue = rowData['fecha'] ?? rowData['Fecha'] ?? rowData['FECHA'];
+        if (fechaValue != null) {
+          final fechaStr = fechaValue.toString();
+          // "YYYY" 형식인지 확인 (길이가 4이고 숫자만 포함)
+          if (fechaStr.length == 4 && int.tryParse(fechaStr) != null) {
+            yearValue = fechaStr;
+          } else if (fechaStr.contains('-')) {
+            // "YYYY-MM-DD" 형식에서 연도 추출
+            final parts = fechaStr.split('-');
+            if (parts.isNotEmpty) {
+              yearValue = parts[0];
+            }
+          }
+        }
+      }
+      
+      // 3. 다른 필드에서 4자리 숫자 찾기
+      if (yearValue == null) {
+        yearValue = rowData.values.firstWhere(
+          (v) {
+            if (v == null) return false;
+            final str = v.toString();
+            // "YYYY" 형식이거나 "YYYY-MM-DD" 형식의 시작 부분이 4자리 숫자인지 확인
+            if (str.length == 4 && int.tryParse(str) != null) {
+              return true;
+            }
+            if (str.contains('-')) {
+              final parts = str.split('-');
+              if (parts.isNotEmpty && parts[0].length == 4 && int.tryParse(parts[0]) != null) {
+                return true;
+              }
+            }
+            return false;
+          },
+          orElse: () => null,
+        );
+        // 찾은 값이 날짜 형식이면 연도만 추출
+        if (yearValue != null && yearValue.toString().contains('-')) {
+          final parts = yearValue.toString().split('-');
+          if (parts.isNotEmpty) {
+            yearValue = parts[0];
+          }
+        }
+      }
+      
+      print('🔍 year 단위 - yearValue: $yearValue, rowData keys: ${rowData.keys.toList()}');
+      
+      if (yearValue != null) {
+        final yearStr = yearValue.toString();
+        // 최종적으로 연도만 추출 (혹시 모를 경우를 대비)
+        final year = yearStr.contains('-') 
+            ? int.tryParse(yearStr.split('-')[0])
+            : int.tryParse(yearStr);
+            
+        if (year != null && year >= 2000 && year <= DateTime.now().year) {
           newUnit = 'month';
           newStartDate = DateTime(year, 1, 1);
           newEndDate = DateTime(year, 12, 31);
+          print('✅ year -> month: $year년 (${newStartDate} ~ ${newEndDate})');
+        } else {
+          print('❌ year 값이 유효하지 않습니다: $year (범위: 2000 ~ ${DateTime.now().year})');
         }
+      } else {
+        print('❌ year 값을 찾을 수 없습니다. rowData: $rowData');
       }
     } else if (_ventasUnit == 'month') {
       // month 단위: 해당 월의 day 단위로 변경
-      final monthValue = rowData['month'] ?? rowData['Month'];
+      // 다양한 필드명 시도
+      final monthValue = rowData['month'] ?? 
+                        rowData['Month'] ?? 
+                        rowData['MONTH'] ??
+                        rowData.values.firstWhere(
+                          (v) => v != null && v.toString().contains('-') && v.toString().split('-').length >= 2,
+                          orElse: () => null,
+                        );
+      
+      print('🔍 month 단위 - monthValue: $monthValue');
+      
       if (monthValue != null) {
         final monthStr = monthValue.toString();
         // "YYYY-MM-DD" 또는 "YYYY-MM" 형식 파싱
@@ -2385,16 +2491,27 @@ class _ReportScreenState extends State<ReportScreen> {
         if (parts.length >= 2) {
           final year = int.tryParse(parts[0]);
           final month = int.tryParse(parts[1]);
-          if (year != null && month != null) {
+          if (year != null && month != null && month >= 1 && month <= 12) {
             newUnit = 'day';
             newStartDate = DateTime(year, month, 1);
             newEndDate = DateTime(year, month + 1, 0); // 해당 월의 마지막 날
+            print('✅ month -> day: ${year}년 ${month}월 (${newStartDate} ~ ${newEndDate})');
           }
         }
       }
     } else if (_ventasUnit == 'day') {
       // day 단위: 해당 날짜의 vcode 단위로 변경
-      final fechaValue = rowData['fecha'] ?? rowData['Fecha'];
+      // 다양한 필드명 시도
+      final fechaValue = rowData['fecha'] ?? 
+                        rowData['Fecha'] ?? 
+                        rowData['FECHA'] ??
+                        rowData.values.firstWhere(
+                          (v) => v != null && v.toString().split('-').length == 3,
+                          orElse: () => null,
+                        );
+      
+      print('🔍 day 단위 - fechaValue: $fechaValue');
+      
       if (fechaValue != null) {
         final fechaStr = fechaValue.toString();
         // "YYYY-MM-DD" 형식 파싱
@@ -2408,6 +2525,7 @@ class _ReportScreenState extends State<ReportScreen> {
             selectedDate = DateTime(year, month, day);
             newStartDate = selectedDate;
             newEndDate = selectedDate;
+            print('✅ day -> vcode: ${year}년 ${month}월 ${day}일');
           }
         }
       }
@@ -2415,13 +2533,232 @@ class _ReportScreenState extends State<ReportScreen> {
     
     // unit과 날짜 범위 변경
     if (newUnit != null && newStartDate != null && newEndDate != null) {
+      print('✅ 변경 적용: unit=$newUnit, startDate=$newStartDate, endDate=$newEndDate');
       setState(() {
         _ventasUnit = newUnit!;
         _ventasStartDate = newStartDate;
         _ventasEndDate = newEndDate;
       });
       _loadData();
+    } else {
+      print('❌ 변경 실패: newUnit=$newUnit, newStartDate=$newStartDate, newEndDate=$newEndDate');
     }
+  }
+
+  /// vcode 행 탭 핸들러 - vdetalle 상세 정보 보기
+  void _handleVcodeRowTap(Map<String, dynamic> rowData) async {
+    if (widget.reportType != ReportType.ventas || _ventasUnit != 'vcode') return;
+    
+    print('🔍 vcode 행 탭 - rowData: $rowData');
+    
+    // vcode_id와 sucursal 추출
+    final vcodeId = rowData['id'] ?? rowData['vcode_id'] ?? rowData['Id'] ?? rowData['Vcode_id'];
+    final sucursal = rowData['sucursal'] ?? rowData['Sucursal'];
+    
+    if (vcodeId == null || sucursal == null) {
+      print('❌ vcode_id 또는 sucursal이 없습니다. vcode_id: $vcodeId, sucursal: $sucursal');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('vcode_id 또는 sucursal 정보를 찾을 수 없습니다.')),
+      );
+      return;
+    }
+    
+    final vcodeIdInt = vcodeId is int ? vcodeId : int.tryParse(vcodeId.toString());
+    final sucursalInt = sucursal is int ? sucursal : int.tryParse(sucursal.toString());
+    
+    if (vcodeIdInt == null || sucursalInt == null) {
+      print('❌ vcode_id 또는 sucursal을 정수로 변환할 수 없습니다.');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('vcode_id 또는 sucursal 형식이 올바르지 않습니다.')),
+      );
+      return;
+    }
+    
+    print('✅ vdetalle 요청 - vcode_id: $vcodeIdInt, sucursal: $sucursalInt');
+    
+    // 로딩 다이얼로그 표시
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+    
+    try {
+      // vdetalle 데이터 요청
+      final vdetalleData = await _databaseService.getVdetalle(
+        vcodeId: vcodeIdInt,
+        sucursal: sucursalInt,
+      );
+      
+      // 로딩 다이얼로그 닫기
+      if (mounted) Navigator.of(context).pop();
+      
+      print('✅ vdetalle 응답: $vdetalleData');
+      
+      // vdetalle 카드 다이얼로그 표시
+      if (mounted) {
+        _showVdetalleDialog(vdetalleData, rowData);
+      }
+    } catch (e) {
+      // 로딩 다이얼로그 닫기
+      if (mounted) Navigator.of(context).pop();
+      
+      print('❌ vdetalle 요청 실패: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('vdetalle 데이터를 가져오는 중 오류가 발생했습니다: $e')),
+        );
+      }
+    }
+  }
+
+  /// vdetalle 데이터를 카드 형태로 표시하는 다이얼로그
+  void _showVdetalleDialog(Map<String, dynamic> vdetalleData, Map<String, dynamic> rowData) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        insetPadding: const EdgeInsets.all(16),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 600, maxHeight: 700),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 헤더
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.purple,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(8),
+                    topRight: Radius.circular(8),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Detalle de Venta',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+              ),
+              // 내용
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: _buildVdetalleCards(vdetalleData, rowData),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// vdetalle 데이터를 카드 형태로 구성
+  Widget _buildVdetalleCards(Map<String, dynamic> vdetalleData, Map<String, dynamic> rowData) {
+    final cards = <Widget>[];
+    
+    // 기본 정보 카드
+    cards.add(_buildInfoCard('Información Básica', {
+      'Vcode': rowData['vcode']?.toString() ?? 'N/A',
+      'Fecha': rowData['fecha']?.toString() ?? 'N/A',
+      'Hora': rowData['hora']?.toString() ?? 'N/A',
+      'Cliente': rowData['clientenombre']?.toString() ?? 'N/A',
+      'Vendedor': rowData['vendedor']?.toString() ?? 'N/A',
+      'Sucursal': rowData['sucursal']?.toString() ?? 'N/A',
+    }));
+    
+    // 결제 정보 카드
+    cards.add(_buildInfoCard('Información de Pago', {
+      'Total Pago': ReportUtils.formatValue(rowData['tpago']),
+      'Efectivo': ReportUtils.formatValue(rowData['tefectivo']),
+      'Crédito': ReportUtils.formatValue(rowData['tcredito']),
+      'Banco': ReportUtils.formatValue(rowData['tbanco']),
+      'Reservado': ReportUtils.formatValue(rowData['treservado']),
+      'Favor': ReportUtils.formatValue(rowData['tfavor']),
+    }));
+    
+    // vdetalle 데이터가 있으면 추가 카드 생성
+    if (vdetalleData.containsKey('data') && vdetalleData['data'] is List) {
+      final dataList = vdetalleData['data'] as List;
+      if (dataList.isNotEmpty) {
+        final firstItem = dataList.first as Map<String, dynamic>;
+        cards.add(_buildInfoCard('Detalles Adicionales', firstItem));
+      }
+    } else if (vdetalleData is Map) {
+      // vdetalleData 자체가 Map인 경우
+      final filteredData = Map<String, dynamic>.from(vdetalleData)
+        ..remove('success')
+        ..remove('data');
+      if (filteredData.isNotEmpty) {
+        cards.add(_buildInfoCard('Detalles Adicionales', filteredData));
+      }
+    }
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: cards,
+    );
+  }
+
+  /// 정보 카드 위젯 생성
+  Widget _buildInfoCard(String title, Map<String, dynamic> data) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.purple,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...data.entries.map((entry) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 120,
+                    child: Text(
+                      '${entry.key}:',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      entry.value?.toString() ?? 'N/A',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  ),
+                ],
+              ),
+            )),
+          ],
+        ),
+      ),
+    );
   }
 
   // Ventas report 헤더 (이전 버전 - 제거 예정, 사용되지 않음)

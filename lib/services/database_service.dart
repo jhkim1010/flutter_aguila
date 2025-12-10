@@ -185,4 +185,13 @@ class DatabaseService {
     filteringWord: filteringWord,
     filters: filters,
   );
+
+  /// vdetalle 데이터 가져오기 (vcode 상세 정보)
+  Future<Map<String, dynamic>> getVdetalle({
+    required int vcodeId,
+    required int sucursal,
+  }) => _reportsApi.getVdetalle(
+    vcodeId: vcodeId,
+    sucursal: sucursal,
+  );
 }

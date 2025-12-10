@@ -16,6 +16,7 @@ class ReportTableBuilder {
     Color? reportColor, // 선택적 색상 파라미터 추가
     String? unit, // ventas report의 unit (vcode, day, month, year)
     Function(Map<String, dynamic>)? onRowDoubleTap, // 행 더블 클릭 콜백
+    Function(Map<String, dynamic>)? onRowTap, // 행 단일 클릭 콜백
   }) {
     if (dataList.isEmpty) {
       return const Center(child: Text('No hay datos'));
@@ -25,7 +26,8 @@ class ReportTableBuilder {
     final totalCount = dataList.length;
     final color = reportColor ?? ReportUtils.getReportColor(reportType);
     
-    print('📊 ReportTableBuilder.buildTableFromList - reportType: $reportType, dataList.length: ${dataList.length}, displayedItemsCount: $displayedItemsCount, displayedList.length: ${displayedList.length}');
+    print('📊 ReportTableBuilder.buildTableFromList - reportType: $reportType, unit: $unit, dataList.length: ${dataList.length}, displayedItemsCount: $displayedItemsCount, displayedList.length: ${displayedList.length}');
+    print('📊 onRowDoubleTap: ${onRowDoubleTap != null}, onRowTap: ${onRowTap != null}');
 
     if (displayedList.isEmpty) {
       return const Center(child: Text('No hay elementos para mostrar'));
@@ -442,7 +444,7 @@ class ReportTableBuilder {
                         };
                         
                         // keys의 각 키에 대해 셀 생성 (키가 없어도 셀은 생성)
-                        final cells = keys.map((key) {
+                        var cells = keys.map((key) {
                           final value = item[key];
                           String formattedValue;
                           
@@ -487,18 +489,33 @@ class ReportTableBuilder {
                         assert(cells.length == keys.length, 
                           'Row cells count (${cells.length}) must match keys count (${keys.length})');
                         
-                        // 첫 번째 셀에 더블 탭 제스처 추가
-                        if (onRowDoubleTap != null && reportType == ReportType.ventas && cells.isNotEmpty) {
-                          final firstCell = cells[0];
-                          if (firstCell.child is Align) {
-                            final align = firstCell.child as Align;
-                            cells[0] = DataCell(
-                              GestureDetector(
-                                onDoubleTap: () => onRowDoubleTap(item),
-                                child: align.child,
-                              ),
-                            );
-                          }
+                        // 모든 셀에 더블 탭 및 단일 탭 제스처 추가 (ventas 보고서만)
+                        if ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas) {
+                          print('🔵 GestureDetector 추가 중 - unit: $unit, onRowDoubleTap: ${onRowDoubleTap != null}, onRowTap: ${onRowTap != null}');
+                          cells = cells.map((cell) {
+                            if (cell.child is Align) {
+                              final align = cell.child as Align;
+                              return DataCell(
+                                GestureDetector(
+                                  onTap: (onRowTap != null && unit == 'vcode') ? () {
+                                    print('🔵 단일 탭 감지 (vcode unit)');
+                                    onRowTap(item);
+                                  } : null,
+                                  onDoubleTap: onRowDoubleTap != null ? () {
+                                    print('🔵🔵 더블 탭 감지! unit: $unit');
+                                    onRowDoubleTap(item);
+                                  } : null,
+                                  behavior: HitTestBehavior.opaque,
+                                  child: align.child,
+                                ),
+                              );
+                            } else {
+                              print('⚠️ cell.child가 Align이 아닙니다: ${cell.child.runtimeType}');
+                            }
+                            return cell;
+                          }).toList();
+                        } else {
+                          print('⚠️ GestureDetector 추가 안됨 - reportType: $reportType, onRowDoubleTap: ${onRowDoubleTap != null}, onRowTap: ${onRowTap != null}');
                         }
                         
                         return DataRow(cells: cells);
@@ -518,18 +535,23 @@ class ReportTableBuilder {
                         );
                       });
                       
-                      // 첫 번째 셀에 더블 탭 제스처 추가
-                      if (onRowDoubleTap != null && reportType == ReportType.ventas && nonMapCells.isNotEmpty && item is Map<String, dynamic>) {
-                        final firstCell = nonMapCells[0];
-                        if (firstCell.child is Align) {
-                          final align = firstCell.child as Align;
-                          nonMapCells[0] = DataCell(
-                            GestureDetector(
-                              onDoubleTap: () => onRowDoubleTap(item),
-                              child: align.child,
-                            ),
-                          );
-                        }
+                      // 모든 셀에 더블 탭 및 단일 탭 제스처 추가 (ventas 보고서만)
+                      if ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas && item is Map<String, dynamic>) {
+                        final updatedCells = nonMapCells.map((cell) {
+                          if (cell.child is Align) {
+                            final align = cell.child as Align;
+                            return DataCell(
+                              GestureDetector(
+                                onTap: (onRowTap != null && unit == 'vcode') ? () => onRowTap(item) : null,
+                                onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
+                                behavior: HitTestBehavior.opaque,
+                                child: align.child,
+                              ),
+                            );
+                          }
+                          return cell;
+                        }).toList();
+                        return DataRow(cells: updatedCells);
                       }
                       
                       return DataRow(cells: nonMapCells);
@@ -550,8 +572,9 @@ class ReportTableBuilder {
                           sortAscending: sortAscending,
                           columns: columns,
                           rows: displayedList.map((item) {
+                            print('🔵 DataTable rows 생성 - unit: $unit, reportType: $reportType, onRowDoubleTap: ${onRowDoubleTap != null}');
                             if (item is Map<String, dynamic>) {
-                              final cells = keys.map((key) {
+                              var cells = keys.map((key) {
                                 final value = item[key];
                                 String formattedValue;
                                 // codigo 관련 칼럼은 문자로 처리 (숫자 포맷팅 제외)
@@ -587,21 +610,37 @@ class ReportTableBuilder {
                               }).toList();
                               assert(cells.length == keys.length);
                               
-                              // 첫 번째 셀에 더블 탭 제스처 추가
-                              if (onRowDoubleTap != null && reportType == ReportType.ventas && cells.isNotEmpty) {
-                                final firstCell = cells[0];
-                                if (firstCell.child is Align) {
-                                  final align = firstCell.child as Align;
-                                  cells[0] = DataCell(
-                                    GestureDetector(
-                                      onDoubleTap: () => onRowDoubleTap(item),
-                                      child: align.child,
-                                    ),
-                                  );
-                                }
+                              // 모든 셀에 더블 탭 및 단일 탭 제스처 추가 (ventas 보고서만)
+                              print('🔵 year/month/day unit - GestureDetector 체크: unit=$unit, reportType=$reportType, onRowDoubleTap=${onRowDoubleTap != null}, onRowTap=${onRowTap != null}');
+                              final finalCells = ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas)
+                                  ? cells.map((cell) {
+                                      if (cell.child is Align) {
+                                        final align = cell.child as Align;
+                                        return DataCell(
+                                          GestureDetector(
+                                            onTap: (onRowTap != null && unit == 'vcode') ? () {
+                                              print('🔵 단일 탭 감지 (vcode unit)');
+                                              onRowTap(item);
+                                            } : null,
+                                            onDoubleTap: onRowDoubleTap != null ? () {
+                                              print('🔵🔵 더블 탭 감지! unit: $unit');
+                                              onRowDoubleTap(item);
+                                            } : null,
+                                            behavior: HitTestBehavior.opaque,
+                                            child: align.child,
+                                          ),
+                                        );
+                                      } else {
+                                        print('⚠️ cell.child가 Align이 아닙니다: ${cell.child.runtimeType}');
+                                      }
+                                      return cell;
+                                    }).toList()
+                                  : cells;
+                              if (finalCells == cells) {
+                                print('⚠️ GestureDetector가 적용되지 않았습니다!');
                               }
                               
-                              return DataRow(cells: cells);
+                              return DataRow(cells: finalCells);
                             }
                             final formattedValue = ReportUtils.formatValue(item);
                             final isNumeric = ReportUtils.isNumeric(item);
@@ -617,18 +656,30 @@ class ReportTableBuilder {
                               );
                             });
                             
-                            // 첫 번째 셀에 더블 탭 제스처 추가
-                            if (onRowDoubleTap != null && reportType == ReportType.ventas && nonMapCells.isNotEmpty && item is Map<String, dynamic>) {
-                              final firstCell = nonMapCells[0];
-                              if (firstCell.child is Align) {
-                                final align = firstCell.child as Align;
-                                nonMapCells[0] = DataCell(
-                                  GestureDetector(
-                                    onDoubleTap: () => onRowDoubleTap(item),
-                                    child: align.child,
-                                  ),
-                                );
-                              }
+                            // 모든 셀에 더블 탭 및 단일 탭 제스처 추가 (ventas 보고서만)
+                            if ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas && nonMapCells.isNotEmpty && item is Map<String, dynamic>) {
+                              print('🔵 nonMapCells - GestureDetector 추가: unit=$unit');
+                              final updatedCells = nonMapCells.map((cell) {
+                                if (cell.child is Align) {
+                                  final align = cell.child as Align;
+                                  return DataCell(
+                                    GestureDetector(
+                                      onTap: (onRowTap != null && unit == 'vcode') ? () {
+                                        print('🔵 단일 탭 감지 (vcode unit)');
+                                        onRowTap(item);
+                                      } : null,
+                                      onDoubleTap: onRowDoubleTap != null ? () {
+                                        print('🔵🔵 더블 탭 감지! unit: $unit');
+                                        onRowDoubleTap(item);
+                                      } : null,
+                                      behavior: HitTestBehavior.opaque,
+                                      child: align.child,
+                                    ),
+                                  );
+                                }
+                                return cell;
+                              }).toList();
+                              return DataRow(cells: updatedCells);
                             }
                             
                             return DataRow(cells: nonMapCells);
@@ -699,7 +750,7 @@ class ReportTableBuilder {
                           ...displayedList.map((item) {
                             if (item is Map<String, dynamic>) {
                               // keys의 각 키에 대해 셀 생성 (키가 없어도 셀은 생성)
-                              final cells = keys.map((key) {
+                              var cells = keys.map((key) {
                                 final value = item[key];
                                 String formattedValue;
                                 
@@ -730,18 +781,33 @@ class ReportTableBuilder {
                               assert(cells.length == keys.length, 
                                 'Row cells count (${cells.length}) must match keys count (${keys.length})');
                               
-                              // 첫 번째 셀에 더블 탭 제스처 추가
-                              if (onRowDoubleTap != null && reportType == ReportType.ventas && cells.isNotEmpty) {
-                                final firstCell = cells[0];
-                                if (firstCell.child is Align) {
-                                  final align = firstCell.child as Align;
-                                  cells[0] = DataCell(
-                                    GestureDetector(
-                                      onDoubleTap: () => onRowDoubleTap(item),
-                                      child: align.child,
-                                    ),
-                                  );
-                                }
+                              // 모든 셀에 더블 탭 및 단일 탭 제스처 추가 (ventas 보고서만)
+                              if ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas) {
+                                print('🔵 GestureDetector 추가 중 - unit: $unit, onRowDoubleTap: ${onRowDoubleTap != null}, onRowTap: ${onRowTap != null}');
+                                cells = cells.map((cell) {
+                                  if (cell.child is Align) {
+                                    final align = cell.child as Align;
+                                    return DataCell(
+                                      GestureDetector(
+                                        onTap: (onRowTap != null && unit == 'vcode') ? () {
+                                          print('🔵 단일 탭 감지 (vcode unit)');
+                                          onRowTap(item);
+                                        } : null,
+                                        onDoubleTap: onRowDoubleTap != null ? () {
+                                          print('🔵🔵 더블 탭 감지! unit: $unit');
+                                          onRowDoubleTap(item);
+                                        } : null,
+                                        behavior: HitTestBehavior.opaque,
+                                        child: align.child,
+                                      ),
+                                    );
+                                  } else {
+                                    print('⚠️ cell.child가 Align이 아닙니다: ${cell.child.runtimeType}');
+                                  }
+                                  return cell;
+                                }).toList();
+                              } else {
+                                print('⚠️ GestureDetector 추가 안됨 - reportType: $reportType, onRowDoubleTap: ${onRowDoubleTap != null}, onRowTap: ${onRowTap != null}');
                               }
                               
                               return DataRow(cells: cells);
@@ -783,7 +849,7 @@ class ReportTableBuilder {
                           rows: [
                             ...displayedList.map((item) {
                               if (item is Map<String, dynamic>) {
-                                final cells = keys.map((key) {
+                                var cells = keys.map((key) {
                                   final value = item[key];
                                   String formattedValue;
                                   // codigo 관련 칼럼은 문자로 처리 (숫자 포맷팅 제외)
@@ -822,21 +888,33 @@ class ReportTableBuilder {
                                 }).toList();
                                 assert(cells.length == keys.length);
                                 
-                                // 첫 번째 셀에 더블 탭 제스처 추가
-                                if (onRowDoubleTap != null && reportType == ReportType.ventas && cells.isNotEmpty) {
-                                  final firstCell = cells[0];
-                                  if (firstCell.child is Align) {
-                                    final align = firstCell.child as Align;
-                                    cells[0] = DataCell(
-                                      GestureDetector(
-                                        onDoubleTap: () => onRowDoubleTap(item),
-                                        child: align.child,
-                                      ),
-                                    );
-                                  }
-                                }
+                                // 모든 셀에 더블 탭 및 단일 탭 제스처 추가 (ventas 보고서만)
+                                final finalCells = ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas)
+                                    ? cells.map((cell) {
+                                        if (cell.child is Align) {
+                                          final align = cell.child as Align;
+                                          return DataCell(
+                                            GestureDetector(
+                                              onTap: (onRowTap != null && unit == 'vcode') ? () {
+                                                print('🔵 단일 탭 감지 (vcode unit)');
+                                                onRowTap(item);
+                                              } : null,
+                                              onDoubleTap: onRowDoubleTap != null ? () {
+                                                print('🔵🔵 더블 탭 감지! unit: $unit');
+                                                onRowDoubleTap(item);
+                                              } : null,
+                                              behavior: HitTestBehavior.opaque,
+                                              child: align.child,
+                                            ),
+                                          );
+                                        } else {
+                                          print('⚠️ cell.child가 Align이 아닙니다: ${cell.child.runtimeType}');
+                                        }
+                                        return cell;
+                                      }).toList()
+                                    : cells;
                                 
-                                return DataRow(cells: cells);
+                                return DataRow(cells: finalCells);
                               }
                               final formattedValue = ReportUtils.formatValue(item);
                               final isNumeric = ReportUtils.isNumeric(item);
@@ -855,18 +933,23 @@ class ReportTableBuilder {
                                 );
                               });
                               
-                              // 첫 번째 셀에 더블 탭 제스처 추가
-                              if (onRowDoubleTap != null && reportType == ReportType.ventas && nonMapCells.isNotEmpty && item is Map<String, dynamic>) {
-                                final firstCell = nonMapCells[0];
-                                if (firstCell.child is Align) {
-                                  final align = firstCell.child as Align;
-                                  nonMapCells[0] = DataCell(
-                                    GestureDetector(
-                                      onDoubleTap: () => onRowDoubleTap(item),
-                                      child: align.child,
-                                    ),
-                                  );
-                                }
+                              // 모든 셀에 더블 탭 및 단일 탭 제스처 추가 (ventas 보고서만)
+                              if ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas && item is Map<String, dynamic>) {
+                                final updatedCells = nonMapCells.map((cell) {
+                                  if (cell.child is Align) {
+                                    final align = cell.child as Align;
+                                    return DataCell(
+                                      GestureDetector(
+                                        onTap: (onRowTap != null && unit == 'vcode') ? () => onRowTap(item) : null,
+                                        onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
+                                        behavior: HitTestBehavior.opaque,
+                                        child: align.child,
+                                      ),
+                                    );
+                                  }
+                                  return cell;
+                                }).toList();
+                                return DataRow(cells: updatedCells);
                               }
                               
                               return DataRow(cells: nonMapCells);

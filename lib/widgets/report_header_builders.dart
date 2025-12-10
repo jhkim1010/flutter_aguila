@@ -619,6 +619,7 @@ class ReportHeaderBuilders {
       endDate,
       reportColor,
       reportType,
+      title: 'Desde',
     );
     
     if (startYear != null) {
@@ -630,6 +631,7 @@ class ReportHeaderBuilders {
         reportColor,
         reportType,
         minDate: adjustedStartDate,
+        title: 'Hasta',
       );
       
       if (endYear != null) {
@@ -654,6 +656,7 @@ class ReportHeaderBuilders {
       endDate,
       reportColor,
       reportType,
+      title: 'Desde',
     );
     
     if (startMonth != null) {
@@ -665,6 +668,7 @@ class ReportHeaderBuilders {
         reportColor,
         reportType,
         minDate: adjustedStartDate,
+        title: 'Hasta',
       );
       
       if (endMonth != null) {
@@ -682,6 +686,7 @@ class ReportHeaderBuilders {
     Color reportColor,
     ReportType reportType, {
     DateTime? minDate,
+    String title = 'Seleccionar Año',
   }) async {
     final currentYear = initialDate.year;
     final minYear = minDate?.year ?? 2000;
@@ -693,7 +698,7 @@ class ReportHeaderBuilders {
         int selectedYear = currentYear;
         
         return AlertDialog(
-          title: const Text('Seleccionar Año'),
+          title: Text(title),
           content: StatefulBuilder(
             builder: (context, setState) {
               return SizedBox(
@@ -779,6 +784,7 @@ class ReportHeaderBuilders {
     Color reportColor,
     ReportType reportType, {
     DateTime? minDate,
+    String title = 'Seleccionar Año y Mes',
   }) async {
     final currentYear = initialDate.year;
     final currentMonth = initialDate.month;
@@ -792,7 +798,7 @@ class ReportHeaderBuilders {
         int selectedMonth = currentMonth;
         
         return AlertDialog(
-          title: const Text('Seleccionar Año y Mes'),
+          title: Text(title),
           content: StatefulBuilder(
             builder: (context, setState) {
               return SizedBox(

@@ -220,4 +220,26 @@ class ReportsApi {
       queryParameters: queryParams.isNotEmpty ? queryParams : null,
     );
   }
+
+  /// vdetalle 데이터 가져오기 (vcode 상세 정보)
+  Future<Map<String, dynamic>> getVdetalle({
+    required int vcodeId,
+    required int sucursal,
+  }) async {
+    final endpoint = '/api/vdetalle';
+    final queryParams = <String, String>{
+      'vcode_id': vcodeId.toString(),
+      'sucursal': sucursal.toString(),
+    };
+    
+    print('=== Vdetalle 요청 ===');
+    print('  - 엔드포인트: $endpoint');
+    print('  - vcode_id: $vcodeId');
+    print('  - sucursal: $sucursal');
+    
+    return await _httpHandler.performGetRequest(
+      endpoint,
+      queryParameters: queryParams,
+    );
+  }
 }
