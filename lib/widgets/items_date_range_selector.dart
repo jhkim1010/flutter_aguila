@@ -44,108 +44,96 @@ class _ItemsDateRangeSelectorState extends State<ItemsDateRangeSelector> {
     }
   }
 
-  Future<void> _selectStartDate() async {
-    DateTime? picked;
-    
+  /// 날짜 범위 선택 (하나의 달력에서 시작일과 종료일 선택)
+  Future<void> _selectDateRange() async {
     if (widget.unit == 'year') {
-      // 연도만 선택
-      picked = await _selectYear(
-        initialDate: _startDate ?? DateTime.now(),
-        maxDate: _endDate,
-      );
+      // 연도 범위 선택
+      await _selectYearRange();
     } else if (widget.unit == 'month') {
-      // 연도와 월 선택
-      picked = await _selectYearMonth(
-        initialDate: _startDate ?? DateTime.now(),
-        maxDate: _endDate,
-      );
+      // 월 범위 선택
+      await _selectMonthRange();
     } else {
-      // 전체 날짜 선택 (vcode, day)
-      picked = await showDatePicker(
+      // 일반 날짜 범위 선택 (vcode, day) - showDateRangePicker 사용
+      final DateTimeRange? picked = await showDateRangePicker(
         context: context,
-        initialDate: _startDate ?? DateTime.now(),
+        initialDateRange: _startDate != null && _endDate != null
+            ? DateTimeRange(start: _startDate!, end: _endDate!)
+            : null,
         firstDate: DateTime(2000),
-        lastDate: _endDate ?? DateTime.now(),
+        lastDate: DateTime.now(),
         locale: const Locale('es', 'ES'),
+        builder: (context, child) {
+          return Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: ColorScheme.light(
+                primary: ReportUtils.getReportColor(widget.reportType),
+                onPrimary: Colors.white,
+                surface: Colors.white,
+                onSurface: Colors.black,
+              ),
+            ),
+            child: child!,
+          );
+        },
       );
-    }
 
-    if (picked != null) {
-      final endDate = _endDate;
-      DateTime adjustedStartDate = picked!;
-      
-      // month unit일 때는 시작 날짜를 해당 월의 1일로 설정
-      if (widget.unit == 'month') {
-        adjustedStartDate = DateTime(picked.year, picked.month, 1);
+      if (picked != null) {
+        setState(() {
+          _startDate = picked.start;
+          _endDate = picked.end;
+        });
+        widget.onDateRangeChanged(picked.start, picked.end);
       }
-      // year unit일 때는 시작 날짜를 해당 연도의 1월 1일로 설정
-      else if (widget.unit == 'year') {
-        adjustedStartDate = DateTime(picked.year, 1, 1);
-      }
-      
-      setState(() {
-        _startDate = adjustedStartDate;
-        if (endDate != null && endDate.isBefore(adjustedStartDate)) {
-          _endDate = adjustedStartDate;
-        }
-      });
-      widget.onDateRangeChanged(
-        adjustedStartDate,
-        _endDate ?? adjustedStartDate,
-      );
     }
   }
 
-  Future<void> _selectEndDate() async {
-    DateTime? picked;
+  /// 연도 범위 선택
+  Future<void> _selectYearRange() async {
+    final startYear = await _selectYear(
+      initialDate: _startDate ?? DateTime.now(),
+      maxDate: _endDate,
+    );
     
-    if (widget.unit == 'year') {
-      // 연도만 선택
-      picked = await _selectYear(
-        initialDate: _endDate ?? DateTime.now(),
-        minDate: _startDate,
+    if (startYear != null) {
+      final adjustedStartDate = DateTime(startYear.year, 1, 1);
+      final endYear = await _selectYear(
+        initialDate: _endDate ?? adjustedStartDate,
+        minDate: adjustedStartDate,
       );
-    } else if (widget.unit == 'month') {
-      // 연도와 월 선택
-      picked = await _selectYearMonth(
-        initialDate: _endDate ?? DateTime.now(),
-        minDate: _startDate,
-      );
-    } else {
-      // 전체 날짜 선택 (vcode, day)
-      picked = await showDatePicker(
-        context: context,
-        initialDate: _endDate ?? DateTime.now(),
-        firstDate: _startDate ?? DateTime(2000),
-        lastDate: DateTime.now(),
-        locale: const Locale('es', 'ES'),
-      );
+      
+      if (endYear != null) {
+        final adjustedEndDate = DateTime(endYear.year, 12, 31);
+        setState(() {
+          _startDate = adjustedStartDate;
+          _endDate = adjustedEndDate;
+        });
+        widget.onDateRangeChanged(adjustedStartDate, adjustedEndDate);
+      }
     }
+  }
 
-    if (picked != null) {
-      final startDate = _startDate;
-      DateTime adjustedEndDate = picked!;
-      
-      // month unit일 때는 종료 날짜를 해당 월의 마지막 날로 설정
-      if (widget.unit == 'month') {
-        // 다음 달의 0일 = 이번 달의 마지막 날
-        adjustedEndDate = DateTime(picked.year, picked.month + 1, 0);
-      }
-      // year unit일 때는 종료 날짜를 해당 연도의 12월 31일로 설정
-      else if (widget.unit == 'year') {
-        adjustedEndDate = DateTime(picked.year, 12, 31);
-      }
-      
-      setState(() {
-        _endDate = adjustedEndDate;
-        if (startDate != null && adjustedEndDate.isBefore(startDate)) {
-          _startDate = adjustedEndDate;
-        }
-      });
-      widget.onDateRangeChanged(
-        _startDate ?? adjustedEndDate,
-        adjustedEndDate,
+  /// 월 범위 선택
+  Future<void> _selectMonthRange() async {
+    final startMonth = await _selectYearMonth(
+      initialDate: _startDate ?? DateTime.now(),
+      maxDate: _endDate,
+    );
+    
+    if (startMonth != null) {
+      final adjustedStartDate = DateTime(startMonth.year, startMonth.month, 1);
+      final endMonth = await _selectYearMonth(
+        initialDate: _endDate ?? adjustedStartDate,
+        minDate: adjustedStartDate,
       );
+      
+      if (endMonth != null) {
+        final adjustedEndDate = DateTime(endMonth.year, endMonth.month + 1, 0);
+        setState(() {
+          _startDate = adjustedStartDate;
+          _endDate = adjustedEndDate;
+        });
+        widget.onDateRangeChanged(adjustedStartDate, adjustedEndDate);
+      }
     }
   }
 
@@ -412,32 +400,30 @@ class _ItemsDateRangeSelectorState extends State<ItemsDateRangeSelector> {
   @override
   Widget build(BuildContext context) {
     final reportColor = ReportUtils.getReportColor(widget.reportType);
-    String startLabel;
-    String endLabel;
-    String startValue;
-    String endValue;
     DateFormat dateFormat;
 
-    // unit에 따라 레이블과 포맷 결정
+    // unit에 따라 포맷 결정
     if (widget.unit == 'year') {
-      startLabel = 'Año Inicio';
-      endLabel = 'Año Fin';
       dateFormat = DateFormat('yyyy');
-      startValue = _startDate != null ? dateFormat.format(_startDate!) : 'Seleccionar';
-      endValue = _endDate != null ? dateFormat.format(_endDate!) : 'Seleccionar';
     } else if (widget.unit == 'month') {
-      startLabel = 'Mes Inicio';
-      endLabel = 'Mes Fin';
       dateFormat = DateFormat('yyyy-MM');
-      startValue = _startDate != null ? dateFormat.format(_startDate!) : 'Seleccionar';
-      endValue = _endDate != null ? dateFormat.format(_endDate!) : 'Seleccionar';
     } else {
       // vcode, day
-      startLabel = 'Fecha Inicio';
-      endLabel = 'Fecha Fin';
       dateFormat = DateFormat('yyyy-MM-dd');
-      startValue = _startDate != null ? dateFormat.format(_startDate!) : 'Seleccionar';
-      endValue = _endDate != null ? dateFormat.format(_endDate!) : 'Seleccionar';
+    }
+
+    // 날짜 범위 표시 문자열 생성
+    String rangeDisplay;
+    if (_startDate != null && _endDate != null) {
+      if (widget.unit == 'year') {
+        rangeDisplay = '${dateFormat.format(_startDate!)} - ${dateFormat.format(_endDate!)}';
+      } else if (widget.unit == 'month') {
+        rangeDisplay = '${dateFormat.format(_startDate!)} - ${dateFormat.format(_endDate!)}';
+      } else {
+        rangeDisplay = '${dateFormat.format(_startDate!)} ~ ${dateFormat.format(_endDate!)}';
+      }
+    } else {
+      rangeDisplay = 'Seleccionar rango';
     }
 
     return Container(
@@ -451,110 +437,59 @@ class _ItemsDateRangeSelectorState extends State<ItemsDateRangeSelector> {
           ),
         ),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: _selectStartDate,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: reportColor.withOpacity(0.5),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: GestureDetector(
+        onTap: _selectDateRange,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: reportColor.withOpacity(0.5),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          startLabel,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          startValue,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Icon(
+                    Text(
                       widget.unit == 'year'
-                          ? Icons.event
+                          ? 'Rango de Años'
                           : widget.unit == 'month'
-                              ? Icons.calendar_view_month
-                              : Icons.calendar_today,
-                      color: reportColor,
-                      size: 20,
+                              ? 'Rango de Meses'
+                              : 'Rango de Fechas',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      rangeDisplay,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 ),
               ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: GestureDetector(
-              onTap: _selectEndDate,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: reportColor.withOpacity(0.5),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          endLabel,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          endValue,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Icon(
-                      widget.unit == 'year'
-                          ? Icons.event
-                          : widget.unit == 'month'
-                              ? Icons.calendar_view_month
-                              : Icons.calendar_today,
-                      color: reportColor,
-                      size: 20,
-                    ),
-                  ],
-                ),
+              Icon(
+                widget.unit == 'year'
+                    ? Icons.event
+                    : widget.unit == 'month'
+                        ? Icons.calendar_view_month
+                        : Icons.date_range,
+                color: reportColor,
+                size: 24,
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

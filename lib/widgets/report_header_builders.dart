@@ -112,62 +112,11 @@ class ReportHeaderBuilders {
       builder: (context, constraints) {
         final isLargeScreen = constraints.maxWidth > 600;
         
-        // Unit에 따른 헤더 제목
-        String headerTitle;
-        switch (unit) {
-          case 'vcode':
-            headerTitle = 'Ventas Individuales';
-            break;
-          case 'day':
-            headerTitle = 'Ventas por Día';
-            break;
-          case 'month':
-            headerTitle = 'Ventas por Mes';
-            break;
-          case 'year':
-            headerTitle = 'Ventas por Año';
-            break;
-          default:
-            headerTitle = 'Reporte de Ventas';
-        }
-        
         return Column(
           children: [
-            // 헤더 제목 (unit에 따라 다름)
+            // 화면 크기에 따라 1줄 또는 2줄로 배치 (제목 없이 바로 컨트롤만 표시)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: reportColor.withOpacity(0.15),
-                border: Border(
-                  bottom: BorderSide(
-                    color: reportColor.withOpacity(0.3),
-                    width: 2,
-                  ),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.receipt_long,
-                    color: reportColor,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    headerTitle,
-                    style: TextStyle(
-                      color: reportColor,
-                      fontSize: isLargeScreen ? 20 : 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // 화면 크기에 따라 1줄 또는 2줄로 배치
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
               decoration: BoxDecoration(
                 color: reportColor.withOpacity(0.1),
                 border: Border(
@@ -181,7 +130,7 @@ class ReportHeaderBuilders {
                   ? Row(
                       children: [
                         // Unit 버튼 3개 (Day, Month, Year)
-                        _buildUnitButton(
+                        buildUnitButton(
                           context: context,
                           label: 'Day',
                           value: 'day',
@@ -190,7 +139,7 @@ class ReportHeaderBuilders {
                           onTap: () => onUnitChanged('day'),
                         ),
                         const SizedBox(width: 8),
-                        _buildUnitButton(
+                        buildUnitButton(
                           context: context,
                           label: 'Month',
                           value: 'month',
@@ -199,7 +148,7 @@ class ReportHeaderBuilders {
                           onTap: () => onUnitChanged('month'),
                         ),
                         const SizedBox(width: 8),
-                        _buildUnitButton(
+                        buildUnitButton(
                           context: context,
                           label: 'Year',
                           value: 'year',
@@ -208,28 +157,16 @@ class ReportHeaderBuilders {
                           onTap: () => onUnitChanged('year'),
                         ),
                         const SizedBox(width: 12),
-                        // 달력 버튼 2개 (시작일, 종료일)
+                        // 날짜 범위 선택 버튼 (하나의 달력)
                         Expanded(
-                          flex: 2,
-                          child: _buildDateButton(
+                          flex: 4,
+                          child: buildDateRangeButton(
                             context: context,
-                            label: 'Inicio',
-                            date: startDate,
+                            startDate: startDate,
+                            endDate: endDate,
                             unit: unit,
                             reportColor: reportColor,
-                            onTap: () => _selectStartDate(context, startDate, endDate, unit, reportColor, reportType, onDateRangeChanged),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          flex: 2,
-                          child: _buildDateButton(
-                            context: context,
-                            label: 'Fin',
-                            date: endDate,
-                            unit: unit,
-                            reportColor: reportColor,
-                            onTap: () => _selectEndDate(context, startDate, endDate, unit, reportColor, reportType, onDateRangeChanged),
+                            onTap: () => selectDateRange(context, startDate, endDate, unit, reportColor, reportType, onDateRangeChanged),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -285,125 +222,78 @@ class ReportHeaderBuilders {
                           ),
                       ],
                     )
-                  : Column(
+                  : Row(
                       children: [
-                        // 1줄: Unit 버튼 3개 (Day, Month, Year)
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Expanded(
-                              child: _buildUnitButton(
-                                context: context,
-                                label: 'Day',
-                                value: 'day',
-                                currentUnit: unit,
-                                reportColor: reportColor,
-                                onTap: () => onUnitChanged('day'),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _buildUnitButton(
-                                context: context,
-                                label: 'Month',
-                                value: 'month',
-                                currentUnit: unit,
-                                reportColor: reportColor,
-                                onTap: () => onUnitChanged('month'),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _buildUnitButton(
-                                context: context,
-                                label: 'Year',
-                                value: 'year',
-                                currentUnit: unit,
-                                reportColor: reportColor,
-                                onTap: () => onUnitChanged('year'),
-                              ),
-                            ),
-                          ],
+                        // Unit 선택 DropdownButton (combo box 형태)
+                        buildUnitDropdown(
+                          context: context,
+                          currentUnit: unit,
+                          reportColor: reportColor,
+                          onUnitChanged: onUnitChanged,
                         ),
-                        const SizedBox(height: 3),
-                        // 2줄: 달력 버튼 2개 + filteringWord 입력 필드
-                        Row(
-                          children: [
-                            // 달력 버튼 2개 (시작일, 종료일)
-                            Expanded(
-                              child: _buildDateButton(
-                                context: context,
-                                label: 'Inicio',
-                                date: startDate,
-                                unit: unit,
-                                reportColor: reportColor,
-                                onTap: () => _selectStartDate(context, startDate, endDate, unit, reportColor, reportType, onDateRangeChanged),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _buildDateButton(
-                                context: context,
-                                label: 'Fin',
-                                date: endDate,
-                                unit: unit,
-                                reportColor: reportColor,
-                                onTap: () => _selectEndDate(context, startDate, endDate, unit, reportColor, reportType, onDateRangeChanged),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            // filteringWord 입력 필드
-                            if (filteringWordController != null)
-                              Expanded(
-                                flex: 2,
-                                child: ValueListenableBuilder<TextEditingValue>(
-                                  valueListenable: filteringWordController,
-                                  builder: (context, value, child) {
-                                    return Container(
-                                      height: 30,
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(
-                                          color: reportColor.withOpacity(0.5),
-                                          width: 1,
-                                        ),
-                                      ),
-                                      child: TextField(
-                                        controller: filteringWordController,
-                                        style: TextStyle(
-                                          color: reportColor,
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                        decoration: InputDecoration(
-                                          hintText: 'Filtrar...',
-                                          hintStyle: TextStyle(
-                                            color: Colors.grey[400],
-                                            fontSize: 15,
-                                          ),
-                                          border: InputBorder.none,
-                                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                          prefixIcon: Icon(Icons.search, color: reportColor, size: 22),
-                                          suffixIcon: value.text.isNotEmpty
-                                              ? IconButton(
-                                                  icon: Icon(Icons.clear, color: reportColor, size: 22),
-                                                  onPressed: onFilteringWordClear ?? () {
-                                                    filteringWordController.clear();
-                                                  },
-                                                  padding: EdgeInsets.zero,
-                                                  constraints: const BoxConstraints(),
-                                                )
-                                              : null,
-                                        ),
-                                        onSubmitted: onFilteringWordSubmitted,
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                          ],
+                        const SizedBox(width: 8),
+                        // 날짜 범위 선택 버튼 (하나의 달력)
+                        Expanded(
+                          child: buildDateRangeButton(
+                            context: context,
+                            startDate: startDate,
+                            endDate: endDate,
+                            unit: unit,
+                            reportColor: reportColor,
+                            onTap: () => selectDateRange(context, startDate, endDate, unit, reportColor, reportType, onDateRangeChanged),
+                          ),
                         ),
+                        const SizedBox(width: 8),
+                        // filteringWord 입력 필드
+                        if (filteringWordController != null)
+                          Expanded(
+                            flex: 2,
+                            child: ValueListenableBuilder<TextEditingValue>(
+                              valueListenable: filteringWordController,
+                              builder: (context, value, child) {
+                                return Container(
+                                  height: 30,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: reportColor.withOpacity(0.5),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: TextField(
+                                    controller: filteringWordController,
+                                    style: TextStyle(
+                                      color: reportColor,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    decoration: InputDecoration(
+                                      hintText: 'Filtrar...',
+                                      hintStyle: TextStyle(
+                                        color: Colors.grey[400],
+                                        fontSize: 15,
+                                      ),
+                                      border: InputBorder.none,
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                      prefixIcon: Icon(Icons.search, color: reportColor, size: 22),
+                                      suffixIcon: value.text.isNotEmpty
+                                          ? IconButton(
+                                              icon: Icon(Icons.clear, color: reportColor, size: 22),
+                                              onPressed: onFilteringWordClear ?? () {
+                                                filteringWordController.clear();
+                                              },
+                                              padding: EdgeInsets.zero,
+                                              constraints: const BoxConstraints(),
+                                            )
+                                          : null,
+                                    ),
+                                    onSubmitted: onFilteringWordSubmitted,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
                       ],
                     ),
             ),
@@ -417,7 +307,7 @@ class ReportHeaderBuilders {
             mainAxisSize: MainAxisSize.min,
             children: [
               // Total 표시 (unit에 따라 다른 레이블)
-              if (totalVentaDay != null && totalVentaDay! > 0) ...[
+              if (totalVentaDay != null && totalVentaDay > 0) ...[
                 const SizedBox(width: 12),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -431,7 +321,7 @@ class ReportHeaderBuilders {
                       Icon(Icons.attach_money, color: reportColor, size: 14),
                       const SizedBox(width: 4),
                       Text(
-                        _getTotalLabel(unit) + ': ${_formatNumber(totalVentaDay!)}',
+                        _getTotalLabel(unit) + ': ${_formatNumber(totalVentaDay)}',
                         style: TextStyle(
                           color: reportColor,
                           fontSize: 11,
@@ -574,7 +464,7 @@ class ReportHeaderBuilders {
   }
   
   /// Unit 선택 버튼 빌드
-  static Widget _buildUnitButton({
+  static Widget buildUnitButton({
     required BuildContext context,
     required String label,
     required String value,
@@ -608,16 +498,87 @@ class ReportHeaderBuilders {
     );
   }
 
-  /// 날짜 선택 버튼 빌드
-  static Widget _buildDateButton({
+  /// Unit 선택 DropdownButton 빌드 (좁은 화면용)
+  static Widget buildUnitDropdown({
     required BuildContext context,
-    required String label,
-    required DateTime? date,
+    required String currentUnit,
+    required Color reportColor,
+    required Function(String) onUnitChanged,
+  }) {
+    // Unit 레이블 매핑
+    String getUnitLabel(String unit) {
+      switch (unit) {
+        case 'vcode':
+          return 'VCode';
+        case 'day':
+          return 'Day';
+        case 'month':
+          return 'Month';
+        case 'year':
+          return 'Year';
+        default:
+          return 'VCode';
+      }
+    }
+
+    // 현재 unit이 유효한지 확인하고, 없으면 기본값으로 설정
+    final validUnits = ['vcode', 'day', 'month', 'year'];
+    final displayUnit = validUnits.contains(currentUnit) ? currentUnit : 'vcode';
+
+    return Container(
+      constraints: const BoxConstraints(minWidth: 80),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: reportColor.withOpacity(0.5),
+          width: 1,
+        ),
+      ),
+      child: DropdownButton<String>(
+        value: displayUnit,
+        isDense: true,
+        isExpanded: false,
+        underline: const SizedBox.shrink(),
+        icon: Icon(Icons.arrow_drop_down, color: reportColor, size: 24),
+        style: TextStyle(
+          color: reportColor,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+        items: validUnits.map((String unit) {
+          return DropdownMenuItem<String>(
+            value: unit,
+            child: Text(
+              getUnitLabel(unit),
+              style: TextStyle(
+                color: reportColor,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          );
+        }).toList(),
+        onChanged: (String? newUnit) {
+          if (newUnit != null) {
+            onUnitChanged(newUnit);
+          }
+        },
+      ),
+    );
+  }
+
+  /// 날짜 범위 선택 버튼 빌드
+  static Widget buildDateRangeButton({
+    required BuildContext context,
+    required DateTime? startDate,
+    required DateTime? endDate,
     required String? unit,
     required Color reportColor,
     required VoidCallback onTap,
   }) {
-    String dateText = 'Seleccionar';
+    String rangeText = 'Seleccionar rango';
     DateFormat dateFormat;
     
     if (unit == 'year') {
@@ -628,8 +589,12 @@ class ReportHeaderBuilders {
       dateFormat = DateFormat('yyyy-MM-dd');
     }
     
-    if (date != null) {
-      dateText = dateFormat.format(date);
+    if (startDate != null && endDate != null) {
+      if (unit == 'year' || unit == 'month') {
+        rangeText = '${dateFormat.format(startDate)} - ${dateFormat.format(endDate)}';
+      } else {
+        rangeText = '${dateFormat.format(startDate)} ~ ${dateFormat.format(endDate)}';
+      }
     }
     
     return InkWell(
@@ -653,20 +618,21 @@ class ReportHeaderBuilders {
                   ? Icons.event
                   : unit == 'month'
                       ? Icons.calendar_view_month
-                      : Icons.calendar_today,
+                      : Icons.date_range,
               color: reportColor,
               size: 20,
             ),
             const SizedBox(width: 6),
             Flexible(
               child: Text(
-                '$label: $dateText',
+                rangeText,
                 style: TextStyle(
                   color: reportColor,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                 ),
                 overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
               ),
             ),
           ],
@@ -675,8 +641,8 @@ class ReportHeaderBuilders {
     );
   }
 
-  /// 시작일 선택
-  static Future<void> _selectStartDate(
+  /// 날짜 범위 선택 (하나의 달력에서 시작일과 종료일 선택)
+  static Future<void> selectDateRange(
     BuildContext context,
     DateTime? startDate,
     DateTime? endDate,
@@ -685,61 +651,110 @@ class ReportHeaderBuilders {
     ReportType reportType,
     Function(DateTime, DateTime) onDateRangeChanged,
   ) async {
-    DateTime? picked;
-    final initialDate = startDate ?? DateTime.now();
-    
     if (unit == 'year') {
-      picked = await _selectYearDialog(context, initialDate, endDate, reportColor, reportType);
+      // 연도 범위 선택
+      await _selectYearRange(context, startDate, endDate, reportColor, reportType, onDateRangeChanged);
     } else if (unit == 'month') {
-      picked = await _selectYearMonthDialog(context, initialDate, endDate, reportColor, reportType);
+      // 월 범위 선택
+      await _selectMonthRange(context, startDate, endDate, reportColor, reportType, onDateRangeChanged);
     } else {
-      picked = await showDatePicker(
+      // 일반 날짜 범위 선택 (vcode, day) - showDateRangePicker 사용
+      final DateTimeRange? picked = await showDateRangePicker(
         context: context,
-        initialDate: initialDate,
+        initialDateRange: startDate != null && endDate != null
+            ? DateTimeRange(start: startDate, end: endDate)
+            : null,
         firstDate: DateTime(2000),
-        lastDate: endDate ?? DateTime.now(),
+        lastDate: DateTime.now(),
         locale: const Locale('es', 'ES'),
+        builder: (context, child) {
+          return Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: ColorScheme.light(
+                primary: reportColor,
+                onPrimary: Colors.white,
+                surface: Colors.white,
+                onSurface: Colors.black,
+              ),
+            ),
+            child: child!,
+          );
+        },
       );
-    }
-    
-    if (picked != null) {
-      final newStartDate = picked;
-      final newEndDate = (endDate != null && endDate.isBefore(picked)) ? picked : endDate ?? picked;
-      onDateRangeChanged(newStartDate, newEndDate);
+
+      if (picked != null) {
+        onDateRangeChanged(picked.start, picked.end);
+      }
     }
   }
 
-  /// 종료일 선택
-  static Future<void> _selectEndDate(
+  /// 연도 범위 선택
+  static Future<void> _selectYearRange(
     BuildContext context,
     DateTime? startDate,
     DateTime? endDate,
-    String? unit,
     Color reportColor,
     ReportType reportType,
     Function(DateTime, DateTime) onDateRangeChanged,
   ) async {
-    DateTime? picked;
-    final initialDate = endDate ?? DateTime.now();
+    final startYear = await _selectYearDialog(
+      context,
+      startDate ?? DateTime.now(),
+      endDate,
+      reportColor,
+      reportType,
+    );
     
-    if (unit == 'year') {
-      picked = await _selectYearDialog(context, initialDate, null, reportColor, reportType, minDate: startDate);
-    } else if (unit == 'month') {
-      picked = await _selectYearMonthDialog(context, initialDate, null, reportColor, reportType, minDate: startDate);
-    } else {
-      picked = await showDatePicker(
-        context: context,
-        initialDate: initialDate,
-        firstDate: startDate ?? DateTime(2000),
-        lastDate: DateTime.now(),
-        locale: const Locale('es', 'ES'),
+    if (startYear != null) {
+      final adjustedStartDate = DateTime(startYear.year, 1, 1);
+      final endYear = await _selectYearDialog(
+        context,
+        endDate ?? adjustedStartDate,
+        null,
+        reportColor,
+        reportType,
+        minDate: adjustedStartDate,
       );
+      
+      if (endYear != null) {
+        final adjustedEndDate = DateTime(endYear.year, 12, 31);
+        onDateRangeChanged(adjustedStartDate, adjustedEndDate);
+      }
     }
+  }
+
+  /// 월 범위 선택
+  static Future<void> _selectMonthRange(
+    BuildContext context,
+    DateTime? startDate,
+    DateTime? endDate,
+    Color reportColor,
+    ReportType reportType,
+    Function(DateTime, DateTime) onDateRangeChanged,
+  ) async {
+    final startMonth = await _selectYearMonthDialog(
+      context,
+      startDate ?? DateTime.now(),
+      endDate,
+      reportColor,
+      reportType,
+    );
     
-    if (picked != null) {
-      final newEndDate = picked;
-      final newStartDate = (startDate != null && picked.isBefore(startDate)) ? picked : startDate ?? picked;
-      onDateRangeChanged(newStartDate, newEndDate);
+    if (startMonth != null) {
+      final adjustedStartDate = DateTime(startMonth.year, startMonth.month, 1);
+      final endMonth = await _selectYearMonthDialog(
+        context,
+        endDate ?? adjustedStartDate,
+        null,
+        reportColor,
+        reportType,
+        minDate: adjustedStartDate,
+      );
+      
+      if (endMonth != null) {
+        final adjustedEndDate = DateTime(endMonth.year, endMonth.month + 1, 0);
+        onDateRangeChanged(adjustedStartDate, adjustedEndDate);
+      }
     }
   }
 

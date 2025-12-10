@@ -843,9 +843,17 @@ class _ReportScreenState extends State<ReportScreen> {
                         children: [
                           Icon(reportIcon, color: Colors.white),
                           const SizedBox(width: 8),
-                          Expanded(
-                            child: _buildVentasHeader(),
+                          Text(
+                            reportTitle,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
+                          const Spacer(),
+                          // 콤보박스, 달력, 필터 입력 필드 (AppBar 오른쪽)
+                          _buildVentasControlsInAppBar(),
                         ],
                       )
                     : (widget.reportType == ReportType.codigos || widget.reportType == ReportType.todocodigos)
@@ -2099,6 +2107,241 @@ class _ReportScreenState extends State<ReportScreen> {
   // Stocks 필드명 매핑 (스페인어)
 
   // Ventas report 헤더 (날짜 범위 및 sucursal 선택)
+  /// Ventas 보고서의 컨트롤을 AppBar에 표시 (오른쪽)
+  Widget _buildVentasControlsInAppBar() {
+    final reportColor = _getReportColor();
+    
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isLargeScreen = constraints.maxWidth > 600;
+        
+        if (isLargeScreen) {
+          // 큰 화면: Unit 버튼 3개 + 날짜 범위 + 필터
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildCompactUnitButton('Day', 'day', reportColor),
+              const SizedBox(width: 4),
+              _buildCompactUnitButton('Month', 'month', reportColor),
+              const SizedBox(width: 4),
+              _buildCompactUnitButton('Year', 'year', reportColor),
+              const SizedBox(width: 6),
+              SizedBox(
+                width: 140,
+                child: _buildCompactDateRangeButton(reportColor),
+              ),
+              const SizedBox(width: 6),
+              SizedBox(
+                width: 100,
+                child: _buildFilteringWordFieldInAppBar(),
+              ),
+            ],
+          );
+        } else {
+          // 작은 화면: Dropdown + 날짜 범위 + 필터
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildCompactUnitDropdown(reportColor),
+              const SizedBox(width: 4),
+              SizedBox(
+                width: 90,
+                child: _buildCompactDateRangeButton(reportColor),
+              ),
+              const SizedBox(width: 4),
+              SizedBox(
+                width: 70,
+                child: _buildFilteringWordFieldInAppBar(),
+              ),
+            ],
+          );
+        }
+      },
+    );
+  }
+
+  /// 컴팩트한 Unit 버튼 (AppBar용)
+  Widget _buildCompactUnitButton(String label, String value, Color reportColor) {
+    final isSelected = _ventasUnit == value;
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _ventasUnit = value;
+        });
+        _loadData();
+      },
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? reportColor : Colors.white,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: isSelected ? reportColor : reportColor.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : reportColor,
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 컴팩트한 Unit Dropdown (AppBar용)
+  Widget _buildCompactUnitDropdown(Color reportColor) {
+    String getUnitLabel(String unit) {
+      switch (unit) {
+        case 'vcode':
+          return 'VCode';
+        case 'day':
+          return 'Day';
+        case 'month':
+          return 'Month';
+        case 'year':
+          return 'Year';
+        default:
+          return 'VCode';
+      }
+    }
+
+    final validUnits = ['vcode', 'day', 'month', 'year'];
+    final displayUnit = validUnits.contains(_ventasUnit) ? _ventasUnit : 'vcode';
+
+    return Container(
+      constraints: const BoxConstraints(minWidth: 60),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: reportColor.withOpacity(0.5),
+          width: 1,
+        ),
+      ),
+      child: DropdownButton<String>(
+        value: displayUnit,
+        isDense: true,
+        isExpanded: false,
+        underline: const SizedBox.shrink(),
+        icon: Icon(Icons.arrow_drop_down, color: reportColor, size: 18),
+        style: TextStyle(
+          color: reportColor,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
+        items: validUnits.map((String unit) {
+          return DropdownMenuItem<String>(
+            value: unit,
+            child: Text(
+              getUnitLabel(unit),
+              style: TextStyle(
+                color: reportColor,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          );
+        }).toList(),
+        onChanged: (String? newUnit) {
+          if (newUnit != null) {
+            setState(() {
+              _ventasUnit = newUnit;
+            });
+            _loadData();
+          }
+        },
+      ),
+    );
+  }
+
+  /// 컴팩트한 날짜 범위 버튼 (AppBar용)
+  Widget _buildCompactDateRangeButton(Color reportColor) {
+    String rangeText = 'Rango';
+    DateFormat dateFormat;
+    
+    if (_ventasUnit == 'year') {
+      dateFormat = DateFormat('yyyy');
+    } else if (_ventasUnit == 'month') {
+      dateFormat = DateFormat('yyyy-MM');
+    } else {
+      dateFormat = DateFormat('yyyy-MM-dd');
+    }
+    
+    if (_ventasStartDate != null && _ventasEndDate != null) {
+      if (_ventasUnit == 'year' || _ventasUnit == 'month') {
+        rangeText = '${dateFormat.format(_ventasStartDate!)} - ${dateFormat.format(_ventasEndDate!)}';
+      } else {
+        rangeText = '${dateFormat.format(_ventasStartDate!)} ~ ${dateFormat.format(_ventasEndDate!)}';
+      }
+      // 텍스트가 너무 길면 줄임
+      if (rangeText.length > 12) {
+        rangeText = '${rangeText.substring(0, 10)}...';
+      }
+    }
+    
+    return InkWell(
+      onTap: () => ReportHeaderBuilders.selectDateRange(
+        context,
+        _ventasStartDate,
+        _ventasEndDate,
+        _ventasUnit,
+        reportColor,
+        widget.reportType,
+        (startDate, endDate) {
+          setState(() {
+            _ventasStartDate = startDate;
+            _ventasEndDate = endDate;
+          });
+          _loadData();
+        },
+      ),
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: reportColor.withOpacity(0.5),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _ventasUnit == 'year'
+                  ? Icons.event
+                  : _ventasUnit == 'month'
+                      ? Icons.calendar_view_month
+                      : Icons.date_range,
+              color: reportColor,
+              size: 14,
+            ),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                rangeText,
+                style: TextStyle(
+                  color: reportColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildVentasHeader() {
     return ReportHeaderBuilders.buildVentasHeader(
       context: context,

@@ -14,8 +14,15 @@ class SslClientHelper {
         // 자체 서명 인증서를 허용합니다.
         // 개발 환경에서만 사용하세요.
         print('⚠️ SSL 인증서 검증 우회: $host:$port');
+        print('   인증서 정보: ${cert.subject}');
+        print('   발급자: ${cert.issuer}');
+        // 모든 인증서를 허용 (자체 서명 인증서 포함)
         return true;
-      };
+      }
+      // 연결 타임아웃 설정
+      ..connectionTimeout = const Duration(seconds: 30)
+      // 읽기 타임아웃 설정
+      ..idleTimeout = const Duration(seconds: 30);
 
     return IOClient(httpClient);
   }
