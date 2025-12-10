@@ -54,11 +54,17 @@ class _ItemsDateRangeSelectorState extends State<ItemsDateRangeSelector> {
       await _selectMonthRange();
     } else {
       // 일반 날짜 범위 선택 (vcode, day) - showDateRangePicker 사용
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      
+      // 기본값: 오늘 날짜가 이미 선택된 상태로 시작
+      final defaultRange = _startDate != null && _endDate != null
+          ? DateTimeRange(start: _startDate!, end: _endDate!)
+          : DateTimeRange(start: today, end: today);
+      
       final DateTimeRange? picked = await showDateRangePicker(
         context: context,
-        initialDateRange: _startDate != null && _endDate != null
-            ? DateTimeRange(start: _startDate!, end: _endDate!)
-            : null,
+        initialDateRange: defaultRange,
         firstDate: DateTime(2000),
         lastDate: DateTime.now(),
         locale: const Locale('es', 'ES'),

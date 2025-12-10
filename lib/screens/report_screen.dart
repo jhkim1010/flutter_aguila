@@ -2111,52 +2111,22 @@ class _ReportScreenState extends State<ReportScreen> {
   Widget _buildVentasControlsInAppBar() {
     final reportColor = _getReportColor();
     
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isLargeScreen = constraints.maxWidth > 600;
-        
-        if (isLargeScreen) {
-          // 큰 화면: Unit 버튼 3개 + 날짜 범위 + 필터
-          return Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildCompactUnitButton('Day', 'day', reportColor),
-              const SizedBox(width: 4),
-              _buildCompactUnitButton('Month', 'month', reportColor),
-              const SizedBox(width: 4),
-              _buildCompactUnitButton('Year', 'year', reportColor),
-              const SizedBox(width: 6),
-              SizedBox(
-                width: 140,
-                child: _buildCompactDateRangeButton(reportColor),
-              ),
-              const SizedBox(width: 6),
-              SizedBox(
-                width: 100,
-                child: _buildFilteringWordFieldInAppBar(),
-              ),
-            ],
-          );
-        } else {
-          // 작은 화면: Dropdown + 날짜 범위 + 필터
-          return Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildCompactUnitDropdown(reportColor),
-              const SizedBox(width: 4),
-              SizedBox(
-                width: 90,
-                child: _buildCompactDateRangeButton(reportColor),
-              ),
-              const SizedBox(width: 4),
-              SizedBox(
-                width: 70,
-                child: _buildFilteringWordFieldInAppBar(),
-              ),
-            ],
-          );
-        }
-      },
+    // 핸드폰 좁은 화면에서는 항상 콤보박스 사용
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildCompactUnitDropdown(reportColor),
+        const SizedBox(width: 4),
+        SizedBox(
+          width: 90,
+          child: _buildCompactDateRangeButton(reportColor),
+        ),
+        const SizedBox(width: 4),
+        SizedBox(
+          width: 70,
+          child: _buildFilteringWordFieldInAppBar(),
+        ),
+      ],
     );
   }
 
