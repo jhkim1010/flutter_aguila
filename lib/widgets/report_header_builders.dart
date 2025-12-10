@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'items_date_range_selector.dart';
 import 'report_utils.dart';
+import 'toggle_date_range_picker.dart';
 
 /// 보고서 헤더 빌더들
 class ReportHeaderBuilders {
@@ -539,7 +540,7 @@ class ReportHeaderBuilders {
     );
   }
 
-  /// 날짜 범위 선택 (하나의 달력에서 시작일과 종료일 선택)
+  /// 날짜 범위 선택 (모든 단위에 대해 토글 방식 사용)
   static Future<void> selectDateRange(
     BuildContext context,
     DateTime? startDate,
@@ -549,46 +550,46 @@ class ReportHeaderBuilders {
     ReportType reportType,
     Function(DateTime, DateTime) onDateRangeChanged,
   ) async {
-    if (unit == 'year') {
-      // 연도 범위 선택
-      await _selectYearRange(context, startDate, endDate, reportColor, reportType, onDateRangeChanged);
-    } else if (unit == 'month') {
-      // 월 범위 선택
-      await _selectMonthRange(context, startDate, endDate, reportColor, reportType, onDateRangeChanged);
-    } else {
-      // 일반 날짜 범위 선택 (vcode, day) - showDateRangePicker 사용
+    // 모든 단위에 대해 토글 방식 날짜 선택기 사용
+    // 동작 방식:
+    // 1. 달력 시작 시 종료일은 오늘로 초기화
+    // 2. 첫 번째 선택: 시작일 선택
+    // 3. 두 번째 선택: 종료일 선택
+    // 4. 세 번째 선택: 다시 시작일 선택
+    final DateTimeRange? picked = await ToggleDateRangePicker.show(
+      context: context,
+      reportColor: reportColor,
+      initialStartDate: startDate,
+      initialEndDate: endDate,
+      unit: unit,
+    );
+
+    if (picked != null) {
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
       
-      // 기본값: 오늘 날짜가 이미 선택된 상태로 시작
-      final defaultRange = startDate != null && endDate != null
-          ? DateTimeRange(start: startDate, end: endDate)
-          : DateTimeRange(start: today, end: today);
+      // 선택한 범위 적용
+      DateTime finalStartDate = picked.start;
+      DateTime finalEndDate = picked.end;
       
-      final DateTimeRange? picked = await showDateRangePicker(
-        context: context,
-        initialDateRange: defaultRange,
-        firstDate: DateTime(2000),
-        lastDate: DateTime.now(),
-        locale: const Locale('es', 'ES'),
-        builder: (context, child) {
-          return Theme(
-            data: Theme.of(context).copyWith(
-              colorScheme: ColorScheme.light(
-                primary: reportColor,
-                onPrimary: Colors.white,
-                surface: Colors.white,
-                onSurface: Colors.black,
-              ),
-            ),
-            child: child!,
-          );
-        },
-      );
-
-      if (picked != null) {
-        onDateRangeChanged(picked.start, picked.end);
+      // unit에 따라 날짜 조정
+      if (unit == 'year') {
+        finalStartDate = DateTime(finalStartDate.year, 1, 1);
+        finalEndDate = DateTime(finalEndDate.year, 12, 31);
+      } else if (unit == 'month') {
+        finalStartDate = DateTime(finalStartDate.year, finalStartDate.month, 1);
+        finalEndDate = DateTime(finalEndDate.year, finalEndDate.month + 1, 0);
       }
+      
+      // 시작일이 오늘보다 미래면 오늘로 제한
+      if (finalStartDate.isAfter(today)) {
+        finalStartDate = today;
+      }
+      if (finalEndDate.isAfter(today)) {
+        finalEndDate = today;
+      }
+      
+      onDateRangeChanged(finalStartDate, finalEndDate);
     }
   }
 
