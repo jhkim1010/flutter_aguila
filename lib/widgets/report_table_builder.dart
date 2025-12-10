@@ -15,6 +15,7 @@ class ReportTableBuilder {
     ScrollController? horizontalScrollController,
     Color? reportColor, // 선택적 색상 파라미터 추가
     String? unit, // ventas report의 unit (vcode, day, month, year)
+    Function(Map<String, dynamic>)? onRowDoubleTap, // 행 더블 클릭 콜백
   }) {
     if (dataList.isEmpty) {
       return const Center(child: Text('No hay datos'));
@@ -486,24 +487,52 @@ class ReportTableBuilder {
                         assert(cells.length == keys.length, 
                           'Row cells count (${cells.length}) must match keys count (${keys.length})');
                         
+                        // 첫 번째 셀에 더블 탭 제스처 추가
+                        if (onRowDoubleTap != null && reportType == ReportType.ventas && cells.isNotEmpty) {
+                          final firstCell = cells[0];
+                          if (firstCell.child is Align) {
+                            final align = firstCell.child as Align;
+                            cells[0] = DataCell(
+                              GestureDetector(
+                                onDoubleTap: () => onRowDoubleTap(item),
+                                child: align.child,
+                              ),
+                            );
+                          }
+                        }
+                        
                         return DataRow(cells: cells);
                       }
                       // Map이 아닌 경우에도 keys.length만큼 셀 생성
                       final formattedValue = ReportUtils.formatValue(item);
                       final isNumeric = ReportUtils.isNumeric(item);
-                      return DataRow(
-                        cells: List.generate(keys.length, (index) {
-                          return DataCell(
-                            Align(
-                              alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
-                              child: Text(
-                                index == 0 ? formattedValue : '',
-                                style: const TextStyle(fontSize: 14),
-                              ),
+                      final nonMapCells = List.generate(keys.length, (index) {
+                        return DataCell(
+                          Align(
+                            alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+                            child: Text(
+                              index == 0 ? formattedValue : '',
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ),
+                        );
+                      });
+                      
+                      // 첫 번째 셀에 더블 탭 제스처 추가
+                      if (onRowDoubleTap != null && reportType == ReportType.ventas && nonMapCells.isNotEmpty && item is Map<String, dynamic>) {
+                        final firstCell = nonMapCells[0];
+                        if (firstCell.child is Align) {
+                          final align = firstCell.child as Align;
+                          nonMapCells[0] = DataCell(
+                            GestureDetector(
+                              onDoubleTap: () => onRowDoubleTap(item),
+                              child: align.child,
                             ),
                           );
-                        }),
-                      );
+                        }
+                      }
+                      
+                      return DataRow(cells: nonMapCells);
                     }).toList(),
                           ),
                         )
@@ -557,23 +586,52 @@ class ReportTableBuilder {
                                 );
                               }).toList();
                               assert(cells.length == keys.length);
+                              
+                              // 첫 번째 셀에 더블 탭 제스처 추가
+                              if (onRowDoubleTap != null && reportType == ReportType.ventas && cells.isNotEmpty) {
+                                final firstCell = cells[0];
+                                if (firstCell.child is Align) {
+                                  final align = firstCell.child as Align;
+                                  cells[0] = DataCell(
+                                    GestureDetector(
+                                      onDoubleTap: () => onRowDoubleTap(item),
+                                      child: align.child,
+                                    ),
+                                  );
+                                }
+                              }
+                              
                               return DataRow(cells: cells);
                             }
                             final formattedValue = ReportUtils.formatValue(item);
                             final isNumeric = ReportUtils.isNumeric(item);
-                            return DataRow(
-                              cells: List.generate(keys.length, (index) {
-                                return DataCell(
-                                  Align(
-                                    alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
-                                    child: Text(
-                                      index == 0 ? formattedValue : '',
-                                      style: const TextStyle(fontSize: 14),
-                                    ),
+                            final nonMapCells = List.generate(keys.length, (index) {
+                              return DataCell(
+                                Align(
+                                  alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+                                  child: Text(
+                                    index == 0 ? formattedValue : '',
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                ),
+                              );
+                            });
+                            
+                            // 첫 번째 셀에 더블 탭 제스처 추가
+                            if (onRowDoubleTap != null && reportType == ReportType.ventas && nonMapCells.isNotEmpty && item is Map<String, dynamic>) {
+                              final firstCell = nonMapCells[0];
+                              if (firstCell.child is Align) {
+                                final align = firstCell.child as Align;
+                                nonMapCells[0] = DataCell(
+                                  GestureDetector(
+                                    onDoubleTap: () => onRowDoubleTap(item),
+                                    child: align.child,
                                   ),
                                 );
-                              }),
-                            );
+                              }
+                            }
+                            
+                            return DataRow(cells: nonMapCells);
                           }).toList(),
                         ),
                 ),
@@ -672,6 +730,20 @@ class ReportTableBuilder {
                               assert(cells.length == keys.length, 
                                 'Row cells count (${cells.length}) must match keys count (${keys.length})');
                               
+                              // 첫 번째 셀에 더블 탭 제스처 추가
+                              if (onRowDoubleTap != null && reportType == ReportType.ventas && cells.isNotEmpty) {
+                                final firstCell = cells[0];
+                                if (firstCell.child is Align) {
+                                  final align = firstCell.child as Align;
+                                  cells[0] = DataCell(
+                                    GestureDetector(
+                                      onDoubleTap: () => onRowDoubleTap(item),
+                                      child: align.child,
+                                    ),
+                                  );
+                                }
+                              }
+                              
                               return DataRow(cells: cells);
                             }
                             // Map이 아닌 경우에도 keys.length만큼 셀 생성
@@ -749,26 +821,55 @@ class ReportTableBuilder {
                                   );
                                 }).toList();
                                 assert(cells.length == keys.length);
+                                
+                                // 첫 번째 셀에 더블 탭 제스처 추가
+                                if (onRowDoubleTap != null && reportType == ReportType.ventas && cells.isNotEmpty) {
+                                  final firstCell = cells[0];
+                                  if (firstCell.child is Align) {
+                                    final align = firstCell.child as Align;
+                                    cells[0] = DataCell(
+                                      GestureDetector(
+                                        onDoubleTap: () => onRowDoubleTap(item),
+                                        child: align.child,
+                                      ),
+                                    );
+                                  }
+                                }
+                                
                                 return DataRow(cells: cells);
                               }
                               final formattedValue = ReportUtils.formatValue(item);
                               final isNumeric = ReportUtils.isNumeric(item);
-                              return DataRow(
-                                cells: List.generate(keys.length, (index) {
-                                  return DataCell(
-                                    Align(
-                                      alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
-                                      child: Text(
-                                        index == 0 ? formattedValue : '',
-                                        style: TextStyle(
-                                          fontSize: reportType == ReportType.ventas ? 12 : 14,
-                                          height: reportType == ReportType.ventas ? 1.0 : 1.2,
-                                        ),
+                              final nonMapCells = List.generate(keys.length, (index) {
+                                return DataCell(
+                                  Align(
+                                    alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+                                    child: Text(
+                                      index == 0 ? formattedValue : '',
+                                      style: TextStyle(
+                                        fontSize: reportType == ReportType.ventas ? 12 : 14,
+                                        height: reportType == ReportType.ventas ? 1.0 : 1.2,
                                       ),
                                     ),
+                                  ),
+                                );
+                              });
+                              
+                              // 첫 번째 셀에 더블 탭 제스처 추가
+                              if (onRowDoubleTap != null && reportType == ReportType.ventas && nonMapCells.isNotEmpty && item is Map<String, dynamic>) {
+                                final firstCell = nonMapCells[0];
+                                if (firstCell.child is Align) {
+                                  final align = firstCell.child as Align;
+                                  nonMapCells[0] = DataCell(
+                                    GestureDetector(
+                                      onDoubleTap: () => onRowDoubleTap(item),
+                                      child: align.child,
+                                    ),
                                   );
-                                }),
-                              );
+                                }
+                              }
+                              
+                              return DataRow(cells: nonMapCells);
                             }),
                             _buildTotalRow(keys, dataList, color, reportType: reportType),
                           ],

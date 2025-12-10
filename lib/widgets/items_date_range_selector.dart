@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'report_utils.dart';
-import 'toggle_date_range_picker.dart';
 
 class ItemsDateRangeSelector extends StatefulWidget {
   final ReportType reportType;
@@ -45,52 +44,64 @@ class _ItemsDateRangeSelectorState extends State<ItemsDateRangeSelector> {
     }
   }
 
-  /// 날짜 범위 선택 (모든 단위에 대해 토글 방식 사용)
+  /// 날짜 범위 선택 (하나의 달력에서 시작일과 종료일 선택)
   Future<void> _selectDateRange() async {
-    // 모든 단위에 대해 토글 방식 날짜 선택기 사용
-    // 동작 방식:
-    // 1. 달력 시작 시 종료일은 오늘로 초기화
-    // 2. 첫 번째 선택: 시작일 선택
-    // 3. 두 번째 선택: 종료일 선택
-    // 4. 세 번째 선택: 다시 시작일 선택
-    final DateTimeRange? picked = await ToggleDateRangePicker.show(
-      context: context,
-      reportColor: ReportUtils.getReportColor(widget.reportType),
-      initialStartDate: _startDate,
-      initialEndDate: _endDate,
-      unit: widget.unit,
-    );
-
-    if (picked != null) {
+    if (widget.unit == 'year') {
+      // 연도 범위 선택 (이전 방식)
+      await _selectYearRange();
+    } else if (widget.unit == 'month') {
+      // 월 범위 선택 (이전 방식)
+      await _selectMonthRange();
+    } else {
+      // 일반 날짜 범위 선택 (vcode, day) - showDateRangePicker 사용
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
       
-      // 선택한 범위 적용
-      DateTime finalStartDate = picked.start;
-      DateTime finalEndDate = picked.end;
+      // 기본값: 기존 범위가 있으면 사용, 없으면 오늘~오늘
+      final defaultRange = _startDate != null && _endDate != null
+          ? DateTimeRange(start: _startDate!, end: _endDate!)
+          : DateTimeRange(start: today, end: today);
       
-      // unit에 따라 날짜 조정
-      if (widget.unit == 'year') {
-        finalStartDate = DateTime(finalStartDate.year, 1, 1);
-        finalEndDate = DateTime(finalEndDate.year, 12, 31);
-      } else if (widget.unit == 'month') {
-        finalStartDate = DateTime(finalStartDate.year, finalStartDate.month, 1);
-        finalEndDate = DateTime(finalEndDate.year, finalEndDate.month + 1, 0);
+      final DateTimeRange? picked = await showDateRangePicker(
+        context: context,
+        initialDateRange: defaultRange,
+        firstDate: DateTime(2000),
+        lastDate: today,
+        locale: const Locale('es', 'ES'),
+        builder: (context, child) {
+          return Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: ColorScheme.light(
+                primary: ReportUtils.getReportColor(widget.reportType),
+                onPrimary: Colors.white,
+                surface: Colors.white,
+                onSurface: Colors.black,
+              ),
+            ),
+            child: child!,
+          );
+        },
+      );
+
+      if (picked != null) {
+        // 선택한 범위 적용
+        final selectedStartDate = picked.start;
+        final selectedEndDate = picked.end;
+        
+        // 시작일이 오늘보다 미래면 오늘로 제한
+        final finalStartDate = selectedStartDate.isAfter(today) 
+            ? today 
+            : selectedStartDate;
+        final finalEndDate = selectedEndDate.isAfter(today) 
+            ? today 
+            : selectedEndDate;
+        
+        setState(() {
+          _startDate = finalStartDate;
+          _endDate = finalEndDate;
+        });
+        widget.onDateRangeChanged(finalStartDate, finalEndDate);
       }
-      
-      // 시작일이 오늘보다 미래면 오늘로 제한
-      if (finalStartDate.isAfter(today)) {
-        finalStartDate = today;
-      }
-      if (finalEndDate.isAfter(today)) {
-        finalEndDate = today;
-      }
-      
-      setState(() {
-        _startDate = finalStartDate;
-        _endDate = finalEndDate;
-      });
-      widget.onDateRangeChanged(finalStartDate, finalEndDate);
     }
   }
 

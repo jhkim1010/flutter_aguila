@@ -1190,6 +1190,7 @@ class _ReportScreenState extends State<ReportScreen> {
                   horizontalScrollController: _horizontalScrollController,
                   reportColor: itemsColor,
                   unit: widget.reportType == ReportType.ventas ? _ventasUnit : null,
+                  onRowDoubleTap: widget.reportType == ReportType.ventas ? _handleRowDoubleTap : null,
                   onSort: (columnIndex, ascending) {
                     setState(() {
                       // 키 목록을 정렬된 데이터에서 가져오기 (report_table_builder와 동일한 순서 보장)
@@ -1286,6 +1287,7 @@ class _ReportScreenState extends State<ReportScreen> {
           horizontalScrollController: _horizontalScrollController,
           reportColor: widget.reportType == ReportType.ventas ? Colors.purple : null,
           unit: widget.reportType == ReportType.ventas ? _ventasUnit : null,
+          onRowDoubleTap: widget.reportType == ReportType.ventas ? _handleRowDoubleTap : null,
           onSort: widget.reportType == ReportType.ventas
               ? (columnIndex, ascending) {
                   setState(() {
@@ -2350,6 +2352,76 @@ class _ReportScreenState extends State<ReportScreen> {
         });
       },
     );
+  }
+
+  /// 행 더블 클릭 핸들러 - 세부 내역 보기
+  void _handleRowDoubleTap(Map<String, dynamic> rowData) {
+    if (widget.reportType != ReportType.ventas) return;
+    
+    DateTime? selectedDate;
+    String? newUnit;
+    DateTime? newStartDate;
+    DateTime? newEndDate;
+    
+    // 현재 unit에 따라 처리
+    if (_ventasUnit == 'year') {
+      // year 단위: 해당 연도의 month 단위로 변경
+      final yearValue = rowData['year'] ?? rowData['Year'];
+      if (yearValue != null) {
+        final year = int.tryParse(yearValue.toString());
+        if (year != null) {
+          newUnit = 'month';
+          newStartDate = DateTime(year, 1, 1);
+          newEndDate = DateTime(year, 12, 31);
+        }
+      }
+    } else if (_ventasUnit == 'month') {
+      // month 단위: 해당 월의 day 단위로 변경
+      final monthValue = rowData['month'] ?? rowData['Month'];
+      if (monthValue != null) {
+        final monthStr = monthValue.toString();
+        // "YYYY-MM-DD" 또는 "YYYY-MM" 형식 파싱
+        final parts = monthStr.split('-');
+        if (parts.length >= 2) {
+          final year = int.tryParse(parts[0]);
+          final month = int.tryParse(parts[1]);
+          if (year != null && month != null) {
+            newUnit = 'day';
+            newStartDate = DateTime(year, month, 1);
+            newEndDate = DateTime(year, month + 1, 0); // 해당 월의 마지막 날
+          }
+        }
+      }
+    } else if (_ventasUnit == 'day') {
+      // day 단위: 해당 날짜의 vcode 단위로 변경
+      final fechaValue = rowData['fecha'] ?? rowData['Fecha'];
+      if (fechaValue != null) {
+        final fechaStr = fechaValue.toString();
+        // "YYYY-MM-DD" 형식 파싱
+        final parts = fechaStr.split('-');
+        if (parts.length >= 3) {
+          final year = int.tryParse(parts[0]);
+          final month = int.tryParse(parts[1]);
+          final day = int.tryParse(parts[2]);
+          if (year != null && month != null && day != null) {
+            newUnit = 'vcode';
+            selectedDate = DateTime(year, month, day);
+            newStartDate = selectedDate;
+            newEndDate = selectedDate;
+          }
+        }
+      }
+    }
+    
+    // unit과 날짜 범위 변경
+    if (newUnit != null && newStartDate != null && newEndDate != null) {
+      setState(() {
+        _ventasUnit = newUnit!;
+        _ventasStartDate = newStartDate;
+        _ventasEndDate = newEndDate;
+      });
+      _loadData();
+    }
   }
 
   // Ventas report 헤더 (이전 버전 - 제거 예정, 사용되지 않음)
