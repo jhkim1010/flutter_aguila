@@ -26,8 +26,6 @@ class ReportTableBuilder {
     final totalCount = dataList.length;
     final color = reportColor ?? ReportUtils.getReportColor(reportType);
     
-    print('📊 ReportTableBuilder.buildTableFromList - reportType: $reportType, unit: $unit, dataList.length: ${dataList.length}, displayedItemsCount: $displayedItemsCount, displayedList.length: ${displayedList.length}');
-    print('📊 onRowDoubleTap: ${onRowDoubleTap != null}, onRowTap: ${onRowTap != null}');
 
     if (displayedList.isEmpty) {
       return const Center(child: Text('No hay elementos para mostrar'));
@@ -298,6 +296,9 @@ class ReportTableBuilder {
         print('🔍 All keys in data: $allKeys');
         print('🔍 Common keys in data: $commonKeys');
         print('🔍 Selected columns: $keys');
+        if (unit == 'year' && firstItem.containsKey('year')) {
+          print('🔵🔵🔵 year unit 확인 - year 필드 값: ${firstItem['year']}, 타입: ${firstItem['year'].runtimeType}');
+        }
         final eventCountKey = allKeys.firstWhere(
           (k) => k.toLowerCase() == 'eventcount',
           orElse: () => '',
@@ -452,8 +453,21 @@ class ReportTableBuilder {
                           // vcode는 서버에서 이미 right(vcode, 5)로 처리되었으므로 특별 처리 불필요
                           final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1' || key == 'vcode';
                           
-                          // month 필드 포맷팅: "2025-12-01" -> "2025-12"
-                          if (key == 'month' && value != null) {
+                          // year 필드 포맷팅: "2025-01-01" 또는 "2025" -> "2025" (대소문자 구분 없음)
+                          final keyLower = key.toLowerCase();
+                          if (keyLower == 'year' && value != null) {
+                            final yearStr = value.toString();
+                            print('🔵🔵🔵 year 필드 포맷팅 - key: $key, keyLower: $keyLower, value: $yearStr, unit: $unit');
+                            if (yearStr.contains('-')) {
+                              // "YYYY-MM-DD" 또는 "YYYY-MM" 형식에서 연도만 추출
+                              formattedValue = yearStr.split('-')[0];
+                              print('🔵🔵🔵 year 포맷팅 결과: $formattedValue (원본: $yearStr)');
+                            } else {
+                              formattedValue = yearStr;
+                            }
+                          }
+                          // month 필드 포맷팅: "2025-12-01" -> "2025-12" (대소문자 구분 없음)
+                          else if (keyLower == 'month' && value != null) {
                             final monthStr = value.toString();
                             if (monthStr.length >= 7 && monthStr.contains('-')) {
                               // "YYYY-MM-DD" 형식을 "YYYY-MM"으로 변환
@@ -465,6 +479,11 @@ class ReportTableBuilder {
                             formattedValue = isCodigoColumn 
                                 ? (value?.toString() ?? 'N/A')
                                 : ReportUtils.formatValue(value);
+                          }
+                          
+                          // 디버깅: year 필드인데 포맷팅이 안 된 경우
+                          if (keyLower == 'year' && formattedValue.contains('-')) {
+                            print('⚠️⚠️⚠️ year 필드가 포맷팅되지 않았습니다! key: $key, formattedValue: $formattedValue');
                           }
                           
                           final isNumeric = (key != 'codigo' && key != 'codigo1' && key != 'tcode' && key != 'id_codigo1' && key != 'vcode') 
@@ -489,33 +508,25 @@ class ReportTableBuilder {
                         assert(cells.length == keys.length, 
                           'Row cells count (${cells.length}) must match keys count (${keys.length})');
                         
-                        // 모든 셀에 더블 탭 및 단일 탭 제스처 추가 (ventas 보고서만)
-                        if ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas) {
-                          print('🔵 GestureDetector 추가 중 - unit: $unit, onRowDoubleTap: ${onRowDoubleTap != null}, onRowTap: ${onRowTap != null}');
-                          cells = cells.map((cell) {
-                            if (cell.child is Align) {
-                              final align = cell.child as Align;
-                              return DataCell(
-                                GestureDetector(
-                                  onTap: (onRowTap != null && unit == 'vcode') ? () {
-                                    print('🔵 단일 탭 감지 (vcode unit)');
-                                    onRowTap(item);
-                                  } : null,
-                                  onDoubleTap: onRowDoubleTap != null ? () {
-                                    print('🔵🔵 더블 탭 감지! unit: $unit');
-                                    onRowDoubleTap(item);
-                                  } : null,
-                                  behavior: HitTestBehavior.opaque,
+                        // 첫 번째 셀에만 더블 탭 및 단일 탭 제스처 추가 (ventas 보고서만)
+                        if ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas && cells.isNotEmpty) {
+                          final firstCell = cells[0];
+                          if (firstCell.child is Align) {
+                            final align = firstCell.child as Align;
+                            cells[0] = DataCell(
+                              GestureDetector(
+                                onTap: (onRowTap != null && unit == 'vcode') ? () => onRowTap(item) : null,
+                                onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
+                                behavior: HitTestBehavior.opaque,
+                                child: Container(
+                                  width: double.infinity,
+                                  height: double.infinity,
+                                  alignment: align.alignment,
                                   child: align.child,
                                 ),
-                              );
-                            } else {
-                              print('⚠️ cell.child가 Align이 아닙니다: ${cell.child.runtimeType}');
-                            }
-                            return cell;
-                          }).toList();
-                        } else {
-                          print('⚠️ GestureDetector 추가 안됨 - reportType: $reportType, onRowDoubleTap: ${onRowDoubleTap != null}, onRowTap: ${onRowTap != null}');
+                              ),
+                            );
+                          }
                         }
                         
                         return DataRow(cells: cells);
@@ -535,22 +546,26 @@ class ReportTableBuilder {
                         );
                       });
                       
-                      // 모든 셀에 더블 탭 및 단일 탭 제스처 추가 (ventas 보고서만)
-                      if ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas && item is Map<String, dynamic>) {
-                        final updatedCells = nonMapCells.map((cell) {
-                          if (cell.child is Align) {
-                            final align = cell.child as Align;
-                            return DataCell(
-                              GestureDetector(
-                                onTap: (onRowTap != null && unit == 'vcode') ? () => onRowTap(item) : null,
-                                onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
-                                behavior: HitTestBehavior.opaque,
+                      // 첫 번째 셀에만 더블 탭 및 단일 탭 제스처 추가 (ventas 보고서만)
+                      if ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas && nonMapCells.isNotEmpty && item is Map<String, dynamic>) {
+                        final updatedCells = List<DataCell>.from(nonMapCells);
+                        final firstCell = updatedCells[0];
+                        if (firstCell.child is Align) {
+                          final align = firstCell.child as Align;
+                          updatedCells[0] = DataCell(
+                            GestureDetector(
+                              onTap: (onRowTap != null && unit == 'vcode') ? () => onRowTap(item) : null,
+                              onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
+                              behavior: HitTestBehavior.opaque,
+                              child: Container(
+                                width: double.infinity,
+                                height: double.infinity,
+                                alignment: align.alignment,
                                 child: align.child,
                               ),
-                            );
-                          }
-                          return cell;
-                        }).toList();
+                            ),
+                          );
+                        }
                         return DataRow(cells: updatedCells);
                       }
                       
@@ -581,8 +596,21 @@ class ReportTableBuilder {
                                 // vcode는 서버에서 이미 right(vcode, 5)로 처리되었으므로 특별 처리 불필요
                                 final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1' || key == 'vcode';
                                 
-                                // month 필드 포맷팅: "2025-12-01" -> "2025-12"
-                                if (key == 'month' && value != null) {
+                                // year 필드 포맷팅: "2025-01-01" 또는 "2025" -> "2025" (대소문자 구분 없음)
+                                final keyLower = key.toLowerCase();
+                                if (keyLower == 'year' && value != null) {
+                                  final yearStr = value.toString();
+                                  print('🔵 year 필드 포맷팅 - key: $key, value: $yearStr');
+                                  if (yearStr.contains('-')) {
+                                    // "YYYY-MM-DD" 또는 "YYYY-MM" 형식에서 연도만 추출
+                                    formattedValue = yearStr.split('-')[0];
+                                    print('🔵 year 포맷팅 결과: $formattedValue');
+                                  } else {
+                                    formattedValue = yearStr;
+                                  }
+                                }
+                                // month 필드 포맷팅: "2025-12-01" -> "2025-12" (대소문자 구분 없음)
+                                else if (keyLower == 'month' && value != null) {
                                   final monthStr = value.toString();
                                   if (monthStr.length >= 7 && monthStr.contains('-')) {
                                     // "YYYY-MM-DD" 형식을 "YYYY-MM"으로 변환
@@ -610,35 +638,30 @@ class ReportTableBuilder {
                               }).toList();
                               assert(cells.length == keys.length);
                               
-                              // 모든 셀에 더블 탭 및 단일 탭 제스처 추가 (ventas 보고서만)
-                              print('🔵 year/month/day unit - GestureDetector 체크: unit=$unit, reportType=$reportType, onRowDoubleTap=${onRowDoubleTap != null}, onRowTap=${onRowTap != null}');
-                              final finalCells = ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas)
-                                  ? cells.map((cell) {
-                                      if (cell.child is Align) {
-                                        final align = cell.child as Align;
-                                        return DataCell(
+                              // 첫 번째 셀에만 더블 탭 및 단일 탭 제스처 추가 (ventas 보고서만)
+                              final finalCells = ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas && cells.isNotEmpty)
+                                  ? (() {
+                                      final updatedCells = List<DataCell>.from(cells);
+                                      final firstCell = updatedCells[0];
+                                      if (firstCell.child is Align) {
+                                        final align = firstCell.child as Align;
+                                        updatedCells[0] = DataCell(
                                           GestureDetector(
-                                            onTap: (onRowTap != null && unit == 'vcode') ? () {
-                                              print('🔵 단일 탭 감지 (vcode unit)');
-                                              onRowTap(item);
-                                            } : null,
-                                            onDoubleTap: onRowDoubleTap != null ? () {
-                                              print('🔵🔵 더블 탭 감지! unit: $unit');
-                                              onRowDoubleTap(item);
-                                            } : null,
+                                            onTap: (onRowTap != null && unit == 'vcode') ? () => onRowTap(item) : null,
+                                            onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
                                             behavior: HitTestBehavior.opaque,
-                                            child: align.child,
+                                            child: Container(
+                                              width: double.infinity,
+                                              height: double.infinity,
+                                              alignment: align.alignment,
+                                              child: align.child,
+                                            ),
                                           ),
                                         );
-                                      } else {
-                                        print('⚠️ cell.child가 Align이 아닙니다: ${cell.child.runtimeType}');
                                       }
-                                      return cell;
-                                    }).toList()
+                                      return updatedCells;
+                                    })()
                                   : cells;
-                              if (finalCells == cells) {
-                                print('⚠️ GestureDetector가 적용되지 않았습니다!');
-                              }
                               
                               return DataRow(cells: finalCells);
                             }
@@ -656,29 +679,26 @@ class ReportTableBuilder {
                               );
                             });
                             
-                            // 모든 셀에 더블 탭 및 단일 탭 제스처 추가 (ventas 보고서만)
+                            // 첫 번째 셀에만 더블 탭 및 단일 탭 제스처 추가 (ventas 보고서만)
                             if ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas && nonMapCells.isNotEmpty && item is Map<String, dynamic>) {
-                              print('🔵 nonMapCells - GestureDetector 추가: unit=$unit');
-                              final updatedCells = nonMapCells.map((cell) {
-                                if (cell.child is Align) {
-                                  final align = cell.child as Align;
-                                  return DataCell(
-                                    GestureDetector(
-                                      onTap: (onRowTap != null && unit == 'vcode') ? () {
-                                        print('🔵 단일 탭 감지 (vcode unit)');
-                                        onRowTap(item);
-                                      } : null,
-                                      onDoubleTap: onRowDoubleTap != null ? () {
-                                        print('🔵🔵 더블 탭 감지! unit: $unit');
-                                        onRowDoubleTap(item);
-                                      } : null,
-                                      behavior: HitTestBehavior.opaque,
+                              final updatedCells = List<DataCell>.from(nonMapCells);
+                              final firstCell = updatedCells[0];
+                              if (firstCell.child is Align) {
+                                final align = firstCell.child as Align;
+                                updatedCells[0] = DataCell(
+                                  GestureDetector(
+                                    onTap: (onRowTap != null && unit == 'vcode') ? () => onRowTap(item) : null,
+                                    onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
+                                    behavior: HitTestBehavior.opaque,
+                                    child: Container(
+                                      width: double.infinity,
+                                      height: double.infinity,
+                                      alignment: align.alignment,
                                       child: align.child,
                                     ),
-                                  );
-                                }
-                                return cell;
-                              }).toList();
+                                  ),
+                                );
+                              }
                               return DataRow(cells: updatedCells);
                             }
                             
@@ -756,9 +776,33 @@ class ReportTableBuilder {
                                 
                                 // codigo 관련 칼럼은 문자로 처리 (숫자 포맷팅 제외)
                                 final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1';
-                                formattedValue = isCodigoColumn 
-                                    ? (value?.toString() ?? 'N/A')
-                                    : ReportUtils.formatValue(value);
+                                
+                                // year 필드 포맷팅: "2025-01-01" 또는 "2025" -> "2025" (대소문자 구분 없음)
+                                final keyLower = key.toLowerCase();
+                                if (keyLower == 'year' && value != null) {
+                                  final yearStr = value.toString();
+                                  if (yearStr.contains('-')) {
+                                    // "YYYY-MM-DD" 또는 "YYYY-MM" 형식에서 연도만 추출
+                                    formattedValue = yearStr.split('-')[0];
+                                  } else {
+                                    formattedValue = yearStr;
+                                  }
+                                }
+                                // month 필드 포맷팅: "2025-12-01" -> "2025-12" (대소문자 구분 없음)
+                                else if (keyLower == 'month' && value != null) {
+                                  final monthStr = value.toString();
+                                  if (monthStr.length >= 7 && monthStr.contains('-')) {
+                                    // "YYYY-MM-DD" 형식을 "YYYY-MM"으로 변환
+                                    formattedValue = monthStr.substring(0, 7);
+                                  } else {
+                                    formattedValue = monthStr;
+                                  }
+                                } else {
+                                  formattedValue = isCodigoColumn 
+                                      ? (value?.toString() ?? 'N/A')
+                                      : ReportUtils.formatValue(value);
+                                }
+                                
                                 
                                 final isNumeric = (key != 'codigo' && key != 'codigo1' && key != 'tcode' && key != 'id_codigo1') 
                                     ? ReportUtils.isNumeric(value) 
@@ -781,33 +825,26 @@ class ReportTableBuilder {
                               assert(cells.length == keys.length, 
                                 'Row cells count (${cells.length}) must match keys count (${keys.length})');
                               
-                              // 모든 셀에 더블 탭 및 단일 탭 제스처 추가 (ventas 보고서만)
-                              if ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas) {
-                                print('🔵 GestureDetector 추가 중 - unit: $unit, onRowDoubleTap: ${onRowDoubleTap != null}, onRowTap: ${onRowTap != null}');
-                                cells = cells.map((cell) {
-                                  if (cell.child is Align) {
-                                    final align = cell.child as Align;
-                                    return DataCell(
-                                      GestureDetector(
-                                        onTap: (onRowTap != null && unit == 'vcode') ? () {
-                                          print('🔵 단일 탭 감지 (vcode unit)');
-                                          onRowTap(item);
-                                        } : null,
-                                        onDoubleTap: onRowDoubleTap != null ? () {
-                                          print('🔵🔵 더블 탭 감지! unit: $unit');
-                                          onRowDoubleTap(item);
-                                        } : null,
-                                        behavior: HitTestBehavior.opaque,
+                              // 첫 번째 셀에만 더블 탭 및 단일 탭 제스처 추가 (ventas 보고서만)
+                              // 전체 행을 감지하도록 HitTestBehavior.opaque 사용
+                              if ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas && cells.isNotEmpty) {
+                                final firstCell = cells[0];
+                                if (firstCell.child is Align) {
+                                  final align = firstCell.child as Align;
+                                  cells[0] = DataCell(
+                                    GestureDetector(
+                                      onTap: (onRowTap != null && unit == 'vcode') ? () => onRowTap(item) : null,
+                                      onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
+                                      behavior: HitTestBehavior.opaque,
+                                      child: Container(
+                                        width: double.infinity,
+                                        height: double.infinity,
+                                        alignment: align.alignment,
                                         child: align.child,
                                       ),
-                                    );
-                                  } else {
-                                    print('⚠️ cell.child가 Align이 아닙니다: ${cell.child.runtimeType}');
-                                  }
-                                  return cell;
-                                }).toList();
-                              } else {
-                                print('⚠️ GestureDetector 추가 안됨 - reportType: $reportType, onRowDoubleTap: ${onRowDoubleTap != null}, onRowTap: ${onRowTap != null}');
+                                    ),
+                                  );
+                                }
                               }
                               
                               return DataRow(cells: cells);
@@ -856,8 +893,21 @@ class ReportTableBuilder {
                                   // vcode는 서버에서 이미 right(vcode, 5)로 처리되었으므로 특별 처리 불필요
                                   final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1' || key == 'vcode';
                                   
-                                  // month 필드 포맷팅: "2025-12-01" -> "2025-12"
-                                  if (key == 'month' && value != null) {
+                                  // year 필드 포맷팅: "2025-01-01" 또는 "2025" -> "2025" (대소문자 구분 없음)
+                                  final keyLower = key.toLowerCase();
+                                  if (keyLower == 'year' && value != null) {
+                                    final yearStr = value.toString();
+                                    print('🔵 year 필드 포맷팅 - key: $key, value: $yearStr');
+                                    if (yearStr.contains('-')) {
+                                      // "YYYY-MM-DD" 또는 "YYYY-MM" 형식에서 연도만 추출
+                                      formattedValue = yearStr.split('-')[0];
+                                      print('🔵 year 포맷팅 결과: $formattedValue');
+                                    } else {
+                                      formattedValue = yearStr;
+                                    }
+                                  }
+                                  // month 필드 포맷팅: "2025-12-01" -> "2025-12" (대소문자 구분 없음)
+                                  else if (keyLower == 'month' && value != null) {
                                     final monthStr = value.toString();
                                     if (monthStr.length >= 7 && monthStr.contains('-')) {
                                       // "YYYY-MM-DD" 형식을 "YYYY-MM"으로 변환
@@ -933,22 +983,26 @@ class ReportTableBuilder {
                                 );
                               });
                               
-                              // 모든 셀에 더블 탭 및 단일 탭 제스처 추가 (ventas 보고서만)
-                              if ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas && item is Map<String, dynamic>) {
-                                final updatedCells = nonMapCells.map((cell) {
-                                  if (cell.child is Align) {
-                                    final align = cell.child as Align;
-                                    return DataCell(
-                                      GestureDetector(
-                                        onTap: (onRowTap != null && unit == 'vcode') ? () => onRowTap(item) : null,
-                                        onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
-                                        behavior: HitTestBehavior.opaque,
+                              // 첫 번째 셀에만 더블 탭 및 단일 탭 제스처 추가 (ventas 보고서만)
+                              if ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas && nonMapCells.isNotEmpty && item is Map<String, dynamic>) {
+                                final updatedCells = List<DataCell>.from(nonMapCells);
+                                final firstCell = updatedCells[0];
+                                if (firstCell.child is Align) {
+                                  final align = firstCell.child as Align;
+                                  updatedCells[0] = DataCell(
+                                    GestureDetector(
+                                      onTap: (onRowTap != null && unit == 'vcode') ? () => onRowTap(item) : null,
+                                      onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
+                                      behavior: HitTestBehavior.opaque,
+                                      child: Container(
+                                        width: double.infinity,
+                                        height: double.infinity,
+                                        alignment: align.alignment,
                                         child: align.child,
                                       ),
-                                    );
-                                  }
-                                  return cell;
-                                }).toList();
+                                    ),
+                                  );
+                                }
                                 return DataRow(cells: updatedCells);
                               }
                               

@@ -1446,6 +1446,15 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       Colors.blue,
     ));
     
+    // Ventas
+    items.add(_buildReportMenuItem(
+      context,
+      'ventas',
+      'Ventas',
+      Icons.shopping_cart,
+      Colors.purple,
+    ));
+    
     items.add(const Divider(height: 1));
     
     // Stocks
@@ -3190,6 +3199,29 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
           ],
         ),
       ),
+      PopupMenuItem<String>(
+        value: 'ventas',
+        child: Row(
+          children: [
+            Icon(
+              Icons.shopping_cart,
+              color: _currentReport == 'ventas' ? Colors.purple : Colors.grey,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Ventas',
+              style: TextStyle(
+                fontWeight: _currentReport == 'ventas' ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+            if (_currentReport == 'ventas') ...[
+              const Spacer(),
+              const Icon(Icons.check, color: Colors.purple, size: 18),
+            ],
+          ],
+        ),
+      ),
       const PopupMenuDivider(),
       PopupMenuItem<String>(
         value: 'stocks',
@@ -3345,29 +3377,6 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                 fontWeight: FontWeight.normal,
               ),
             ),
-          ],
-        ),
-      ),
-      PopupMenuItem<String>(
-        value: 'ventas',
-        child: Row(
-          children: [
-            Icon(
-              Icons.shopping_cart,
-              color: _currentReport == 'ventas' ? Colors.purple : Colors.grey,
-              size: 20,
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'Ventas',
-              style: TextStyle(
-                fontWeight: _currentReport == 'ventas' ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-            if (_currentReport == 'ventas') ...[
-              const Spacer(),
-              const Icon(Icons.check, color: Colors.purple, size: 18),
-            ],
           ],
         ),
       ),

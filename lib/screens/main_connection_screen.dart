@@ -1171,6 +1171,13 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                 Icons.today,
                 Colors.blue,
               ),
+              _buildReportMenuItem(
+                context,
+                'ventas',
+                'Ventas',
+                Icons.shopping_cart,
+                Colors.purple,
+              ),
               const Divider(height: 1),
               _buildReportMenuItem(
                 context,
@@ -1199,13 +1206,6 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                 'Items',
                 Icons.inventory_2,
                 Colors.green,
-              ),
-              _buildReportMenuItem(
-                context,
-                'ventas',
-                'Ventas',
-                Icons.shopping_cart,
-                Colors.purple,
               ),
               // 연결 끊기 버튼
               Padding(

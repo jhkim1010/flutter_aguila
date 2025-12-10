@@ -2472,32 +2472,50 @@ class _ReportScreenState extends State<ReportScreen> {
         print('❌ year 값을 찾을 수 없습니다. rowData: $rowData');
       }
     } else if (_ventasUnit == 'month') {
+      print('🔵🔵🔵 MONTH 단위 더블 클릭 처리 시작! 🔵🔵🔵');
       // month 단위: 해당 월의 day 단위로 변경
       // 다양한 필드명 시도
-      final monthValue = rowData['month'] ?? 
+      dynamic monthValue = rowData['month'] ?? 
                         rowData['Month'] ?? 
-                        rowData['MONTH'] ??
-                        rowData.values.firstWhere(
-                          (v) => v != null && v.toString().contains('-') && v.toString().split('-').length >= 2,
-                          orElse: () => null,
-                        );
+                        rowData['MONTH'];
       
-      print('🔍 month 단위 - monthValue: $monthValue');
+      // month 필드가 없으면 다른 필드에서 찾기
+      if (monthValue == null) {
+        monthValue = rowData.values.firstWhere(
+          (v) => v != null && v.toString().contains('-') && v.toString().split('-').length >= 2,
+          orElse: () => null,
+        );
+      }
+      
+      print('🔍 month 단위 - monthValue: $monthValue, rowData keys: ${rowData.keys.toList()}');
+      print('🔍 rowData: $rowData');
       
       if (monthValue != null) {
         final monthStr = monthValue.toString();
+        print('🔍 monthStr: $monthStr');
+        
         // "YYYY-MM-DD" 또는 "YYYY-MM" 형식 파싱
         final parts = monthStr.split('-');
+        print('🔍 parts: $parts, length: ${parts.length}');
+        
         if (parts.length >= 2) {
           final year = int.tryParse(parts[0]);
           final month = int.tryParse(parts[1]);
+          print('🔍 파싱 결과 - year: $year, month: $month');
+          
           if (year != null && month != null && month >= 1 && month <= 12) {
             newUnit = 'day';
             newStartDate = DateTime(year, month, 1);
             newEndDate = DateTime(year, month + 1, 0); // 해당 월의 마지막 날
             print('✅ month -> day: ${year}년 ${month}월 (${newStartDate} ~ ${newEndDate})');
+          } else {
+            print('❌ year 또는 month 값이 유효하지 않습니다: year=$year, month=$month');
           }
+        } else {
+          print('❌ monthStr을 파싱할 수 없습니다. parts.length=${parts.length}');
         }
+      } else {
+        print('❌ month 값을 찾을 수 없습니다. rowData: $rowData');
       }
     } else if (_ventasUnit == 'day') {
       // day 단위: 해당 날짜의 vcode 단위로 변경
