@@ -136,11 +136,27 @@ class ReportsApi {
       });
     }
     
-    // Ventas 요청 헤더 및 파라미터 출력
+    // Ventas 요청: 필요한 헤더만 필터링
     try {
-      final headers = await _httpHandler.getDatabaseHeaders();
-      print('=== Ventas 요청 헤더 ===');
-      headers.forEach((key, value) {
+      final allHeaders = await _httpHandler.getDatabaseHeaders();
+      
+      // 필요한 헤더만 선택: x-db-user, x-db-password, x-db-name, Content-Type
+      final ventasHeaders = <String, String>{
+        'Content-Type': allHeaders['Content-Type'] ?? 'application/json',
+        'x-db-user': allHeaders['x-db-user'] ?? '',
+        'x-db-password': allHeaders['x-db-password'] ?? '',
+        'x-db-name': allHeaders['x-db-name'] ?? '',
+      };
+      
+      // 빈 값이 있는지 확인
+      if (ventasHeaders['x-db-user']!.isEmpty || 
+          ventasHeaders['x-db-password']!.isEmpty || 
+          ventasHeaders['x-db-name']!.isEmpty) {
+        throw Exception('필수 헤더 정보가 없습니다: x-db-user, x-db-password, x-db-name');
+      }
+      
+      print('=== Ventas 요청 헤더 (필터링됨) ===');
+      ventasHeaders.forEach((key, value) {
         // 비밀번호는 보안상 일부만 표시
         if (key == 'x-db-password') {
           if (value.length > 4) {
@@ -164,14 +180,17 @@ class ReportsApi {
           print('  $key: $value');
         });
       }
+      
+      // 필터링된 헤더로 직접 GET 요청 수행
+      return await _httpHandler.performGetRequestWithHeaders(
+        endpoint,
+        headers: ventasHeaders,
+        queryParameters: queryParams.isNotEmpty ? queryParams : null,
+      );
     } catch (e) {
       print('⚠️ 헤더 가져오기 실패: $e');
+      rethrow;
     }
-    
-    return await _httpHandler.performGetRequest(
-      endpoint,
-      queryParameters: queryParams.isNotEmpty ? queryParams : null,
-    );
   }
 
   /// 알림 보고서 가져오기

@@ -1,7 +1,9 @@
-import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 import '../services/database_service.dart';
+import '../services/pdf_service.dart';
 import '../l10n/app_localizations.dart';
 import '../utils/platform_utils.dart';
 import '../widgets/report_utils.dart';
@@ -280,6 +282,340 @@ class _ReportScreenState extends State<ReportScreen> {
     }
     _codigoEditControllers.clear();
     super.dispose();
+  }
+
+  /// 화면에 표시되는 모든 데이터를 수집 (필터링/정렬 적용)
+  Map<String, dynamic> _getDisplayedData() {
+    if (_data == null) {
+      return {};
+    }
+
+    final data = Map<String, dynamic>.from(_data!);
+    
+    // 데이터 리스트가 있는 경우 필터링/정렬 적용
+    if (data.containsKey('data') && data['data'] is List) {
+      List<dynamic> dataList = List.from(data['data'] as List);
+      
+      // 필터링 적용
+      if (widget.reportType == ReportType.items || 
+          widget.reportType == ReportType.ingresos || 
+          widget.reportType == ReportType.ventas) {
+        final filteringWord = _filteringWordController.text.trim().toLowerCase();
+        if (filteringWord.isNotEmpty) {
+          dataList = dataList.where((item) {
+            if (item is Map<String, dynamic>) {
+              if (widget.reportType == ReportType.items) {
+                final codigo1 = item['codigo1']?.toString().toLowerCase() ?? '';
+                final desc1 = item['desc1']?.toString().toLowerCase() ?? '';
+                return codigo1.contains(filteringWord) || desc1.contains(filteringWord);
+              } else if (widget.reportType == ReportType.ingresos) {
+                final codigo = item['codigo']?.toString().toLowerCase() ?? '';
+                final descripcion = item['descripcion']?.toString().toLowerCase() ?? '';
+                return codigo.contains(filteringWord) || descripcion.contains(filteringWord);
+              } else if (widget.reportType == ReportType.ventas) {
+                if (item.containsKey('clientenombre')) {
+                  final clientenombre = item['clientenombre']?.toString().toLowerCase() ?? '';
+                  return clientenombre.contains(filteringWord);
+                } else {
+                  final fecha = item['fecha']?.toString().toLowerCase() ?? '';
+                  final sucursal = item['sucursal']?.toString().toLowerCase() ?? '';
+                  final nencargado = item['nencargado']?.toString().toLowerCase() ?? '';
+                  return fecha.contains(filteringWord) || 
+                         sucursal.contains(filteringWord) ||
+                         nencargado.contains(filteringWord);
+                }
+              }
+            }
+            return false;
+          }).toList();
+        }
+      }
+      
+      // Ventas 보고서의 sucursal 필터 적용
+      if (widget.reportType == ReportType.ventas && _selectedSucursal != null) {
+        dataList = dataList.where((item) {
+          if (item is Map<String, dynamic> && item.containsKey('sucursal')) {
+            final sucursal = item['sucursal']?.toString();
+            return sucursal == _selectedSucursal;
+          }
+          return false;
+        }).toList();
+      }
+      
+      // Codigos 및 Todo Codigos 보고서의 필터링
+      if (widget.reportType == ReportType.codigos || widget.reportType == ReportType.todocodigos) {
+        final filteringWord = _filteringWordController.text.trim().toLowerCase();
+        if (filteringWord.isNotEmpty) {
+          dataList = dataList.where((item) {
+            if (item is Map<String, dynamic>) {
+              final codigo = item['codigo']?.toString().toLowerCase() ?? '';
+              final descripcion = item['descripcion']?.toString().toLowerCase() ?? '';
+              return codigo.contains(filteringWord) || descripcion.contains(filteringWord);
+            }
+            return false;
+          }).toList();
+        }
+      }
+      
+      // Items 및 Ingresos 보고서의 정렬 적용
+      if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos) {
+        if (_sortColumn != null) {
+          dataList.sort((a, b) {
+            if (a is! Map<String, dynamic> || b is! Map<String, dynamic>) {
+              return 0;
+            }
+            
+            final aValue = a[_sortColumn];
+            final bValue = b[_sortColumn];
+            
+            if (aValue == null && bValue == null) return 0;
+            if (aValue == null) return _sortAscending ? -1 : 1;
+            if (bValue == null) return _sortAscending ? 1 : -1;
+            
+            final aNum = ReportUtils.isNumeric(aValue) ? num.tryParse(aValue.toString().replaceAll(',', '')) : null;
+            final bNum = ReportUtils.isNumeric(bValue) ? num.tryParse(bValue.toString().replaceAll(',', '')) : null;
+            
+            if (aNum != null && bNum != null) {
+              final comparison = aNum.compareTo(bNum);
+              return _sortAscending ? comparison : -comparison;
+            }
+            
+            final aStr = aValue.toString().toLowerCase();
+            final bStr = bValue.toString().toLowerCase();
+            final comparison = aStr.compareTo(bStr);
+            return _sortAscending ? comparison : -comparison;
+          });
+        }
+      }
+      
+      // 필터링/정렬된 데이터로 업데이트
+      data['data'] = dataList;
+    }
+    
+    return data;
+  }
+
+  /// PDF로 변환하여 공유
+  Future<void> _shareAsPdf() async {
+    if (_data == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No hay datos para compartir'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    try {
+      // 로딩 표시
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Generando PDF...'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // 날짜 범위 가져오기
+      DateTime? startDate;
+      DateTime? endDate;
+      
+      if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos) {
+        startDate = _itemsStartDate;
+        endDate = _itemsEndDate;
+      } else if (widget.reportType == ReportType.ventas) {
+        startDate = _ventasStartDate;
+        endDate = _ventasEndDate;
+      }
+
+      // 필터링 단어 가져오기
+      final filteringWord = _filteringWordController.text.trim();
+      final filterWord = filteringWord.isEmpty ? null : filteringWord;
+
+      // 화면에 표시되는 모든 데이터 수집 (필터링/정렬 적용)
+      final displayedData = _getDisplayedData();
+      
+      // 화면에 표시되는 컬럼 목록 가져오기
+      List<String>? displayedColumns;
+      if (displayedData.containsKey('data') && displayedData['data'] is List) {
+        final dataList = displayedData['data'] as List;
+        if (dataList.isNotEmpty) {
+          displayedColumns = ReportTableBuilder.getDisplayedColumns(
+            dataList,
+            widget.reportType,
+            unit: widget.reportType == ReportType.ventas ? _ventasUnit : null,
+          );
+          print('📋 PDF용 표시 컬럼: $displayedColumns');
+        }
+      }
+
+      // PDF 생성
+      final pdfFile = await PdfService.generateReportPdf(
+        reportType: widget.reportType,
+        data: displayedData,
+        startDate: startDate,
+        endDate: endDate,
+        filteringWord: filterWord,
+        displayedColumns: displayedColumns,
+      );
+
+      // 로딩 다이얼로그 닫기
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // 파일 존재 확인
+      if (!await pdfFile.exists()) {
+        throw Exception('PDF 파일이 생성되지 않았습니다: ${pdfFile.path}');
+      }
+
+      print('📄 PDF 파일 생성 완료: ${pdfFile.path}');
+      print('📄 파일 크기: ${await pdfFile.length()} bytes');
+
+      // 공유 시도
+      bool shareSuccess = false;
+      try {
+        await Share.shareXFiles(
+          [XFile(pdfFile.path)],
+          text: 'Reporte ${ReportUtils.getReportTitle(widget.reportType)}',
+        );
+        print('✅ PDF 공유 성공');
+        shareSuccess = true;
+      } catch (shareError) {
+        print('❌ PDF 공유 실패: $shareError');
+        shareSuccess = false;
+        
+        // macOS에서 공유가 실패하면 데스크톱에 복사하고 Finder에서 열기
+        if (Platform.isMacOS && mounted) {
+          try {
+            // 데스크톱 경로 가져오기
+            final homeDir = Platform.environment['HOME'] ?? '';
+            final desktopPath = '$homeDir/Desktop';
+            final desktopDir = Directory(desktopPath);
+            
+            if (await desktopDir.exists()) {
+              final fileName = pdfFile.path.split('/').last;
+              final desktopFile = File('$desktopPath/$fileName');
+              
+              // 파일 복사
+              await pdfFile.copy(desktopFile.path);
+              print('✅ PDF 파일을 데스크톱에 복사: ${desktopFile.path}');
+              
+              // Finder에서 파일 열기
+              final result = await Process.run(
+                'open',
+                ['-R', desktopFile.path],
+              );
+              
+              if (result.exitCode == 0) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('PDF가 데스크톱에 저장되었습니다: $fileName'),
+                      duration: const Duration(seconds: 4),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+                return; // 성공적으로 처리되었으므로 종료
+              }
+            }
+          } catch (copyError) {
+            print('❌ 데스크톱 복사 실패: $copyError');
+          }
+        }
+        
+        // macOS가 아니거나 데스크톱 복사가 실패한 경우
+        if (mounted) {
+          final shouldOpenFinder = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('PDF 생성 완료'),
+              content: Text(
+                'PDF 파일이 생성되었습니다.\n\n'
+                '파일 위치:\n${pdfFile.path}\n\n'
+                'Finder에서 파일을 열까요?',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('취소'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('Finder에서 열기'),
+                ),
+              ],
+            ),
+          );
+
+          if (shouldOpenFinder == true) {
+            // macOS에서 Finder로 파일 열기
+            try {
+              final result = await Process.run(
+                'open',
+                ['-R', pdfFile.path],
+              );
+              if (result.exitCode != 0) {
+                print('❌ Finder 열기 실패: ${result.stderr}');
+              } else {
+                print('✅ Finder에서 파일 열기 성공');
+              }
+            } catch (e) {
+              print('❌ Finder 열기 실패: $e');
+            }
+          }
+        }
+      }
+      
+      // 공유가 성공한 경우에만 성공 메시지 표시
+      if (!shareSuccess) {
+        return; // 이미 에러 처리되었으므로 종료
+      }
+
+      // 성공 메시지
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('PDF generado y listo para compartir'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e, stackTrace) {
+      // 로딩 다이얼로그 닫기
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // 상세한 에러 로깅
+      print('❌ PDF 생성/공유 오류: $e');
+      print('❌ Stack trace: $stackTrace');
+
+      // 에러 메시지
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al generar/compartir PDF: $e'),
+            duration: const Duration(seconds: 5),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _loadData({String? filteringWord}) async {
@@ -913,6 +1249,15 @@ class _ReportScreenState extends State<ReportScreen> {
                             ],
                           ),
         backgroundColor: reportColor,
+        actions: [
+          // PDF 공유 버튼
+          if (_data != null)
+            IconButton(
+              icon: const Icon(Icons.share, color: Colors.white),
+              tooltip: 'Compartir como PDF',
+              onPressed: () => _shareAsPdf(),
+            ),
+        ],
       ),
       body: _isLoading
           ? Center(
@@ -2115,22 +2460,59 @@ class _ReportScreenState extends State<ReportScreen> {
   Widget _buildVentasControlsInAppBar() {
     final reportColor = _getReportColor();
     
-    // 핸드폰 좁은 화면에서는 항상 콤보박스 사용
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _buildCompactUnitDropdown(reportColor),
-        const SizedBox(width: 4),
-        SizedBox(
-          width: 90,
-          child: _buildCompactDateRangeButton(reportColor),
-        ),
-        const SizedBox(width: 4),
-        SizedBox(
-          width: 70,
-          child: _buildFilteringWordFieldInAppBar(),
-        ),
-      ],
+    // 큰 화면(macOS, iPad)에서는 버튼 3개를 나란히 표시
+    return Builder(
+      builder: (context) {
+        final platformType = PlatformUtils.getPlatformType(context);
+        final size = MediaQuery.of(context).size;
+        final isLargeScreen = (platformType == PlatformType.desktop || 
+                              PlatformUtils.isIPad(context)) && 
+                             size.width >= 800;
+        
+        if (isLargeScreen) {
+          // 큰 화면: 버튼 4개를 나란히 표시 (VCode, Day, Month, Year)
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildCompactUnitButton('VCode', 'vcode', reportColor),
+              const SizedBox(width: 4),
+              _buildCompactUnitButton('Day', 'day', reportColor),
+              const SizedBox(width: 4),
+              _buildCompactUnitButton('Month', 'month', reportColor),
+              const SizedBox(width: 4),
+              _buildCompactUnitButton('Year', 'year', reportColor),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 90,
+                child: _buildCompactDateRangeButton(reportColor),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 300, // 큰 화면에서는 충분히 넓게
+                child: _buildFilteringWordFieldInAppBar(),
+              ),
+            ],
+          );
+        } else {
+          // 작은 화면: 드롭다운 사용
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildCompactUnitDropdown(reportColor),
+              const SizedBox(width: 4),
+              SizedBox(
+                width: 90,
+                child: _buildCompactDateRangeButton(reportColor),
+              ),
+              const SizedBox(width: 4),
+              SizedBox(
+                width: 180, // 작은 화면에서도 충분한 크기
+                child: _buildFilteringWordFieldInAppBar(),
+              ),
+            ],
+          );
+        }
+      },
     );
   }
 

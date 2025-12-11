@@ -62,7 +62,24 @@ class HttpRequestHandler {
     try {
       // 데이터베이스 연결 정보를 헤더로 가져오기
       final headers = await getDatabaseHeaders();
-      
+      return await performGetRequestWithHeaders(
+        endpoint,
+        headers: headers,
+        queryParameters: queryParameters,
+      );
+    } catch (e) {
+      print('❌ GET $endpoint 오류: $e');
+      return _handleError(e);
+    }
+  }
+
+  /// 헤더를 직접 지정하는 GET 요청 메서드
+  Future<Map<String, dynamic>> performGetRequestWithHeaders(
+    String endpoint, {
+    required Map<String, String> headers,
+    Map<String, String>? queryParameters,
+  }) async {
+    try {
       // 쿼리 파라미터가 있으면 URL에 추가
       final uri = Uri.parse('$serverUrl$endpoint');
       final uriWithQuery = queryParameters != null && queryParameters.isNotEmpty

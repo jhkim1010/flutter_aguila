@@ -3,6 +3,174 @@ import 'report_utils.dart';
 import '../services/config_service.dart';
 
 class ReportTableBuilder {
+  /// 화면에 표시되는 컬럼 목록을 반환 (PDF 생성용)
+  static List<String> getDisplayedColumns(
+    List<dynamic> dataList,
+    ReportType reportType, {
+    String? unit,
+  }) {
+    if (dataList.isEmpty) {
+      return [];
+    }
+
+    final displayedList = dataList;
+    final firstItem = displayedList.first as Map<String, dynamic>;
+    List<String> keys;
+    
+    if (reportType == ReportType.ventas) {
+      // vcode unit용 컬럼 목록
+      final vcodeColumns = <String>[
+        'id', 'vcode', 'hora', 'tpago', 'cntropas', 'clientenombre',
+        'tefectivo', 'tcredito', 'tbanco', 'treservado', 'tfavor',
+        'vendedor', 'tipo', 'dni', 'resiva', 'casoesp', 'nencargado',
+        'cretmp', 'fecha', 'sucursal', 'ntiqrepetir', 'b_mercadopago',
+        'd_num_caja', 'd_num_terminal',
+      ];
+      
+      final isDayMonthYearUnit = unit != null && unit != 'vcode';
+      final isDayUnit = unit == 'day';
+      final isMonthUnit = unit == 'month';
+      
+      // 모든 행에서 공통으로 존재하는 컬럼 확인
+      final commonKeys = <String>{};
+      final allKeys = <String>{};
+      for (var item in displayedList) {
+        if (item is Map<String, dynamic>) {
+          allKeys.addAll(item.keys);
+          if (commonKeys.isEmpty) {
+            commonKeys.addAll(item.keys);
+          } else {
+            commonKeys.removeWhere((key) => !item.containsKey(key));
+          }
+        }
+      }
+      
+      if (isDayMonthYearUnit) {
+        // day/month/year unit용 컬럼
+        final dayMonthYearColumns = <String>[
+          'fecha', 'month', 'year', 'eventCount',
+          'tVents', 'tVentas', 'tCntRopas',
+          'tefectivo', 'tcredito', 'tbanco', 'treservado', 'tfavor',
+          'nencargado', 'sucursal',
+        ];
+        
+        final requiredFields = <String>[];
+        final actualEventCountKey = allKeys.firstWhere(
+          (key) => key.toLowerCase() == 'eventcount',
+          orElse: () => '',
+        );
+        final actualTVentsKey = allKeys.firstWhere(
+          (key) => key.toLowerCase() == 'tvents',
+          orElse: () => '',
+        );
+        final actualTVentasKey = allKeys.firstWhere(
+          (key) => key.toLowerCase() == 'tventas',
+          orElse: () => '',
+        );
+        final actualTCntRopasKey = allKeys.firstWhere(
+          (key) => key.toLowerCase() == 'tcntropas',
+          orElse: () => '',
+        );
+        
+        if (isDayUnit || isMonthUnit) {
+          if (actualEventCountKey.isNotEmpty) requiredFields.add(actualEventCountKey);
+          if (actualTVentsKey.isNotEmpty) requiredFields.add(actualTVentsKey);
+          if (actualTVentasKey.isNotEmpty) requiredFields.add(actualTVentasKey);
+          if (actualTCntRopasKey.isNotEmpty) requiredFields.add(actualTCntRopasKey);
+        }
+        
+        keys = dayMonthYearColumns.where((key) {
+          final keyLower = key.toLowerCase();
+          return commonKeys.any((k) => k.toLowerCase() == keyLower) ||
+                 requiredFields.any((k) => k.toLowerCase() == keyLower);
+        }).toList();
+        
+        // 실제 키 이름으로 교체
+        final keyMap = <String, String>{};
+        for (var key in keys) {
+          final actualKey = allKeys.firstWhere(
+            (k) => k.toLowerCase() == key.toLowerCase(),
+            orElse: () => key,
+          );
+          if (actualKey != key) {
+            keyMap[key] = actualKey;
+          }
+        }
+        keys = keys.map((key) => keyMap[key] ?? key).toList();
+        
+        // day unit일 때 fecha를 첫 번째로
+        if (isDayUnit) {
+          final actualFechaKey = allKeys.firstWhere(
+            (k) => k.toLowerCase() == 'fecha',
+            orElse: () => 'fecha',
+          );
+          if (keys.contains(actualFechaKey)) {
+            keys.remove(actualFechaKey);
+            keys.insert(0, actualFechaKey);
+          }
+          if (actualEventCountKey.isNotEmpty && keys.contains(actualEventCountKey)) {
+            keys.remove(actualEventCountKey);
+            keys.insert(1, actualEventCountKey);
+          }
+        }
+        
+        // month unit일 때 month를 첫 번째로
+        if (isMonthUnit) {
+          final actualMonthKey = allKeys.firstWhere(
+            (k) => k.toLowerCase() == 'month',
+            orElse: () => 'month',
+          );
+          if (keys.contains(actualMonthKey)) {
+            keys.remove(actualMonthKey);
+            keys.insert(0, actualMonthKey);
+          }
+          if (actualEventCountKey.isNotEmpty && keys.contains(actualEventCountKey)) {
+            keys.remove(actualEventCountKey);
+            keys.insert(1, actualEventCountKey);
+          }
+        }
+        
+        // day unit일 때는 nencargado 제외
+        if (isDayUnit) {
+          keys.removeWhere((key) => key == 'nencargado');
+        }
+        
+        // vcode unit 전용 필드 제거
+        final vcodeOnlyFields = ['vcode', 'tpago', 'cntropas', 'd_num_caja', 'd_num_terminal', 
+                                 'id', 'hora', 'clientenombre', 'vendedor', 'tipo', 'dni', 
+                                 'resiva', 'casoesp', 'cretmp', 'ntiqrepetir', 'b_mercadopago'];
+        keys.removeWhere((key) => vcodeOnlyFields.contains(key));
+      } else {
+        // vcode unit
+        final commonKeysVcode = <String>{};
+        for (var item in displayedList) {
+          if (item is Map<String, dynamic>) {
+            if (commonKeysVcode.isEmpty) {
+              commonKeysVcode.addAll(vcodeColumns.where((key) => item.containsKey(key)));
+            } else {
+              commonKeysVcode.removeWhere((key) => !item.containsKey(key));
+            }
+          }
+        }
+        keys = vcodeColumns.where((key) => commonKeysVcode.contains(key)).toList();
+      }
+    } else if (reportType == ReportType.items || reportType == ReportType.ingresos) {
+      // Items 및 Ingresos 보고서: start_date, end_date, startDate, endDate, sucursal 제외
+      keys = firstItem.keys
+          .where((key) => 
+              key != 'start_date' && 
+              key != 'end_date' && 
+              key != 'startDate' && 
+              key != 'endDate' && 
+              key != 'sucursal')
+          .toList();
+    } else {
+      keys = firstItem.keys.toList();
+    }
+    
+    return keys;
+  }
+
   static Widget buildTableFromList(
     List<dynamic> dataList,
     int displayedItemsCount,
