@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -5,8 +8,15 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Load keystore properties
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
 android {
-    namespace = "com.example.flutter_app"
+    namespace = "com.coolsistema.becoolaguila"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -20,8 +30,8 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.flutter_app"
+        // Application ID for Google Play Store
+        applicationId = "com.coolsistema.becoolaguila"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -30,11 +40,25 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (keystorePropertiesFile.exists()) {
+            create("release") {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                // Fallback to debug signing if key.properties doesn't exist
+                signingConfig = signingConfigs.getByName("debug")
+            }
         }
     }
 }
@@ -62,8 +86,23 @@ tasks.register("copyApkToDropbox") {
     }
 }
 
-// 모든 빌드 타입의 assemble 작업 후 복사
+// AAB 파일 이름을 beCool.aab로 변경
 afterEvaluate {
+    // Bundle 작업에서 AAB 파일 이름 변경
+    tasks.matching { it.name == "bundleRelease" }.configureEach {
+        doLast {
+            val bundleDir = file("${project.buildDir}/outputs/bundle/release")
+            val originalAab = file("${bundleDir}/app-release.aab")
+            val renamedAab = file("${bundleDir}/beCool.aab")
+            
+            if (originalAab.exists()) {
+                originalAab.renameTo(renamedAab)
+                println("✅ AAB 파일 이름 변경 완료: ${renamedAab.name}")
+            }
+        }
+    }
+    
+    // APK 빌드 후 자동으로 Dropbox 폴더로 복사
     tasks.matching { it.name.startsWith("assemble") && it.name.endsWith("Release") }.configureEach {
         finalizedBy("copyApkToDropbox")
     }

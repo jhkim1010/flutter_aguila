@@ -581,21 +581,37 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         
         // Stock resumen 데이터를 resumen del dia 데이터에 추가
         if (stockResumen != null && stockResumen.isNotEmpty) {
+          print('📊 Stock resumen 응답 데이터 구조:');
+          print('   - 키 목록: ${stockResumen.keys.toList()}');
+          
           // 새로운 응답 형식: resumen_del_dia 배열이 stocks 응답에 포함됨
           if (stockResumen.containsKey('resumen_del_dia') && stockResumen['resumen_del_dia'] is List) {
             final resumenDelDia = stockResumen['resumen_del_dia'] as List;
+            print('   - resumen_del_dia 배열 길이: ${resumenDelDia.length}');
+            if (resumenDelDia.isNotEmpty) {
+              print('   - 첫 번째 항목: ${resumenDelDia[0]}');
+            }
             // 기존 코드와 호환성을 위해 stocks 키로 변환
             data['stocks'] = resumenDelDia;
             data['stock_resumen'] = {'stocks': resumenDelDia};
             print('✅ Stock resumen 데이터 추가 완료 (resumen_del_dia에서 추출: ${resumenDelDia.length}개 항목)');
-          } else {
+          } else if (stockResumen.containsKey('stocks') && stockResumen['stocks'] is List) {
             // 기존 형식 지원 (하위 호환성)
-            data['stock_resumen'] = stockResumen;
-            if (stockResumen.containsKey('stocks') && stockResumen['stocks'] is List) {
-              data['stocks'] = stockResumen['stocks'];
+            final stocksList = stockResumen['stocks'] as List;
+            print('   - stocks 배열 길이: ${stocksList.length}');
+            if (stocksList.isNotEmpty) {
+              print('   - 첫 번째 항목: ${stocksList[0]}');
             }
-            print('✅ Stock resumen 데이터 추가 완료 (기존 형식)');
+            data['stock_resumen'] = stockResumen;
+            data['stocks'] = stocksList;
+            print('✅ Stock resumen 데이터 추가 완료 (기존 형식: ${stocksList.length}개 항목)');
+          } else {
+            print('⚠️ Stock resumen에 stocks 또는 resumen_del_dia 배열이 없습니다.');
+            print('   - 전체 응답: $stockResumen');
+            data['stock_resumen'] = stockResumen;
           }
+        } else {
+          print('⚠️ Stock resumen 응답이 비어있습니다.');
         }
       } catch (e) {
         print('⚠️ Stock resumen 가져오기 실패 (무시하고 계속 진행): $e');
@@ -2473,10 +2489,17 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     if (stockResumen.containsKey('stocks') && stockResumen['stocks'] is List) {
       final stocksList = stockResumen['stocks'] as List;
       
+      print('📊 Stock Resumen 데이터 분석 시작...');
+      print('   - stocks 배열 길이: ${stocksList.length}');
+      
       if (stocksList.isNotEmpty) {
         // 각 sucursal별로 카드 생성
         for (var stock in stocksList) {
           if (stock is Map<String, dynamic>) {
+            // 디버깅: 실제 받은 데이터 출력
+            print('   - Stock 항목 키: ${stock.keys.toList()}');
+            print('   - Stock 항목 값: $stock');
+            
             final sucursalValue = stock['sucursal'];
             final sucursal = sucursalValue?.toString() ?? 'N/A';
             
@@ -2494,13 +2517,24 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
               continue;
             }
             
-            final itemCount = stock['item_count'] ?? 0;
-            final tVentas = stock['tVentas'] ?? 0.0;
-            final tIngresos = stock['tIngresos'] ?? 0.0;
-            final tOffset = stock['tOffset'] ?? 0.0;
-            final hVentas = stock['hVentas'] ?? 0.0;
-            final hIngresos = stock['hIngresos'] ?? 0.0;
-            final finalStock = stock['finalStock'] ?? 0.0;
+            // 다양한 필드명 시도 (대소문자, 언더스코어 등)
+            final itemCount = _getValue(stock, ['item_count', 'itemCount', 'itemcount']) ?? 0;
+            final tVentas = _getDoubleValue(stock, ['tVentas', 't_ventas', 'total_ventas', 'totalVentas']) ?? 0.0;
+            final tIngresos = _getDoubleValue(stock, ['tIngresos', 't_ingresos', 'total_ingresos', 'totalIngresos']) ?? 0.0;
+            final tOffset = _getDoubleValue(stock, ['tOffset', 't_offset', 'total_offset', 'totalOffset']) ?? 0.0;
+            final hVentas = _getDoubleValue(stock, ['hVentas', 'h_ventas', 'hoy_ventas', 'hoyVentas']) ?? 0.0;
+            final hIngresos = _getDoubleValue(stock, ['hIngresos', 'h_ingresos', 'hoy_ingresos', 'hoyIngresos']) ?? 0.0;
+            final finalStock = _getDoubleValue(stock, ['finalStock', 'final_stock', 'finalstock']) ?? 0.0;
+            
+            // 디버깅: 파싱된 값 출력
+            print('   - Sucursal $sucursal 파싱 결과:');
+            print('     itemCount: $itemCount');
+            print('     tVentas: $tVentas');
+            print('     tIngresos: $tIngresos');
+            print('     tOffset: $tOffset');
+            print('     hVentas: $hVentas');
+            print('     hIngresos: $hIngresos');
+            print('     finalStock: $finalStock');
             
             cards.add(
               Card(
@@ -2622,6 +2656,28 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     }
     
     return cards;
+  }
+
+  /// 다양한 필드명으로 값 찾기 (헬퍼 함수)
+  dynamic _getValue(Map<String, dynamic> map, List<String> keys) {
+    for (final key in keys) {
+      if (map.containsKey(key)) {
+        return map[key];
+      }
+    }
+    return null;
+  }
+
+  /// 다양한 필드명으로 double 값 찾기 (헬퍼 함수)
+  double? _getDoubleValue(Map<String, dynamic> map, List<String> keys) {
+    final value = _getValue(map, keys);
+    if (value == null) return null;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) {
+      return double.tryParse(value);
+    }
+    return null;
   }
 
   Widget _buildStockDataItem(String label, String value, IconData icon) {
