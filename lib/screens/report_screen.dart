@@ -11,6 +11,7 @@ import '../widgets/items_date_range_selector.dart';
 import '../widgets/report_table_builder.dart';
 import '../widgets/codigos_builder.dart';
 import '../widgets/stocks_builder.dart';
+import '../widgets/gastos_builder.dart';
 import '../widgets/report_data_builder.dart';
 import '../widgets/report_filters.dart';
 import '../widgets/report_header_builders.dart';
@@ -65,6 +66,7 @@ class _ReportScreenState extends State<ReportScreen> {
   bool _sortAscending = true;
   Map<String, String> _columnFilters = {}; // 컬럼별 필터 값
   String? _selectedSucursal; // 선택된 sucursal 필터 (null이면 "모두")
+  List<String>? _availableSucursales; // 사용 가능한 sucursal 목록
   
   // Items 보고서용 날짜 범위
   DateTime? _itemsStartDate;
@@ -120,12 +122,13 @@ class _ReportScreenState extends State<ReportScreen> {
       }
     }
     
-    // Items 및 Ingresos 보고서의 경우 기본 날짜 설정 (오늘 날짜 또는 초기값)
-    if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos) {
+    // Items, Ingresos, Gastos 및 Alertas 보고서의 경우 기본 날짜 설정 (오늘 날짜 또는 초기값)
+    if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas) {
       if (widget.initialItemsStartDate != null && widget.initialItemsEndDate != null) {
         _itemsStartDate = widget.initialItemsStartDate;
         _itemsEndDate = widget.initialItemsEndDate;
-        print('📅 ${widget.reportType == ReportType.items ? "Items" : "Ingresos"} 보고서 초기 날짜 범위 설정: ${DateFormat('yyyy-MM-dd').format(_itemsStartDate!)} ~ ${DateFormat('yyyy-MM-dd').format(_itemsEndDate!)}');
+        final reportName = widget.reportType == ReportType.items ? "Items" : (widget.reportType == ReportType.ingresos ? "Ingresos" : "Gastos");
+        print('📅 $reportName 보고서 초기 날짜 범위 설정: ${DateFormat('yyyy-MM-dd').format(_itemsStartDate!)} ~ ${DateFormat('yyyy-MM-dd').format(_itemsEndDate!)}');
       } else {
         final now = DateTime.now();
         _itemsStartDate = now;
@@ -179,8 +182,8 @@ class _ReportScreenState extends State<ReportScreen> {
         _stocksSortAscending = true;
       }
       
-      // Items 및 Ingresos 보고서의 경우 기본 날짜 설정 (오늘 날짜 또는 초기값)
-      if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos) {
+      // Items, Ingresos, Gastos 및 Alertas 보고서의 경우 기본 날짜 설정 (오늘 날짜 또는 초기값)
+      if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas) {
         if (widget.initialItemsStartDate != null && widget.initialItemsEndDate != null) {
           _itemsStartDate = widget.initialItemsStartDate;
           _itemsEndDate = widget.initialItemsEndDate;
@@ -217,8 +220,13 @@ class _ReportScreenState extends State<ReportScreen> {
     final currentWord = _filteringWordController.text.trim();
     // debounce를 위해 타이머 사용 (500ms 후 실행)
     Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted && currentWord == _filteringWordController.text.trim() && 
-          currentWord != _lastFilteringWord) {
+      if (!mounted) return;
+      if (currentWord != _filteringWordController.text.trim()) return;
+      if (currentWord == _lastFilteringWord) return;
+      
+      // 프레임 완료 후 상태 업데이트를 보장하여 mouse_tracker assertion 오류 방지
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
         _lastFilteringWord = currentWord;
         // 상태 변경 콜백 호출
         _notifyStateChanged();
@@ -228,7 +236,7 @@ class _ReportScreenState extends State<ReportScreen> {
             widget.reportType == ReportType.stocks) {
           _reloadDataWithFilters();
         }
-      }
+      });
     });
   }
   
@@ -299,6 +307,8 @@ class _ReportScreenState extends State<ReportScreen> {
       // 필터링 적용
       if (widget.reportType == ReportType.items || 
           widget.reportType == ReportType.ingresos || 
+          widget.reportType == ReportType.gastos ||
+          widget.reportType == ReportType.alertas ||
           widget.reportType == ReportType.ventas) {
         final filteringWord = _filteringWordController.text.trim().toLowerCase();
         if (filteringWord.isNotEmpty) {
@@ -312,6 +322,16 @@ class _ReportScreenState extends State<ReportScreen> {
                 final codigo = item['codigo']?.toString().toLowerCase() ?? '';
                 final descripcion = item['descripcion']?.toString().toLowerCase() ?? '';
                 return codigo.contains(filteringWord) || descripcion.contains(filteringWord);
+              } else if (widget.reportType == ReportType.gastos) {
+                // gastos 필터링 로직 추가 (필요한 필드에 따라 수정 가능)
+                final codigo = item['codigo']?.toString().toLowerCase() ?? '';
+                final descripcion = item['descripcion']?.toString().toLowerCase() ?? '';
+                final concepto = item['concepto']?.toString().toLowerCase() ?? '';
+                return codigo.contains(filteringWord) || descripcion.contains(filteringWord) || concepto.contains(filteringWord);
+              } else if (widget.reportType == ReportType.alertas) {
+                // alertas 필터링 로직: evento 필드에서 검색
+                final evento = item['evento']?.toString().toLowerCase() ?? '';
+                return evento.contains(filteringWord);
               } else if (widget.reportType == ReportType.ventas) {
                 if (item.containsKey('clientenombre')) {
                   final clientenombre = item['clientenombre']?.toString().toLowerCase() ?? '';
@@ -331,8 +351,8 @@ class _ReportScreenState extends State<ReportScreen> {
         }
       }
       
-      // Ventas 보고서의 sucursal 필터 적용
-      if (widget.reportType == ReportType.ventas && _selectedSucursal != null) {
+      // 모든 보고서의 sucursal 필터 적용
+      if (_selectedSucursal != null) {
         dataList = dataList.where((item) {
           if (item is Map<String, dynamic> && item.containsKey('sucursal')) {
             final sucursal = item['sucursal']?.toString();
@@ -357,8 +377,8 @@ class _ReportScreenState extends State<ReportScreen> {
         }
       }
       
-      // Items 및 Ingresos 보고서의 정렬 적용
-      if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos) {
+      // Items, Ingresos, Gastos 및 Alertas 보고서의 정렬 적용
+      if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas) {
         if (_sortColumn != null) {
           dataList.sort((a, b) {
             if (a is! Map<String, dynamic> || b is! Map<String, dynamic>) {
@@ -390,6 +410,32 @@ class _ReportScreenState extends State<ReportScreen> {
       
       // 필터링/정렬된 데이터로 업데이트
       data['data'] = dataList;
+    }
+    
+    // Gastos 보고서의 경우 data.detail에 필터링 적용
+    if (widget.reportType == ReportType.gastos && 
+        data.containsKey('data') && 
+        data['data'] is Map &&
+        (data['data'] as Map).containsKey('detail')) {
+      final dataMap = data['data'] as Map<String, dynamic>;
+      if (dataMap['detail'] is List) {
+        List<dynamic> detailList = List.from(dataMap['detail'] as List);
+        
+        // sucursal 필터 적용
+        if (_selectedSucursal != null) {
+          detailList = detailList.where((item) {
+            if (item is Map<String, dynamic> && item.containsKey('sucursal')) {
+              final sucursal = item['sucursal']?.toString();
+              return sucursal == _selectedSucursal;
+            }
+            return false;
+          }).toList();
+        }
+        
+        // 필터링된 detail로 업데이트
+        dataMap['detail'] = detailList;
+        data['data'] = dataMap;
+      }
     }
     
     return data;
@@ -433,7 +479,7 @@ class _ReportScreenState extends State<ReportScreen> {
       DateTime? startDate;
       DateTime? endDate;
       
-      if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos) {
+      if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas) {
         startDate = _itemsStartDate;
         endDate = _itemsEndDate;
       } else if (widget.reportType == ReportType.ventas) {
@@ -485,115 +531,9 @@ class _ReportScreenState extends State<ReportScreen> {
       print('📄 PDF 파일 생성 완료: ${pdfFile.path}');
       print('📄 파일 크기: ${await pdfFile.length()} bytes');
 
-      // 공유 시도
-      bool shareSuccess = false;
-      try {
-        await Share.shareXFiles(
-          [XFile(pdfFile.path)],
-          text: 'Reporte ${ReportUtils.getReportTitle(widget.reportType)}',
-        );
-        print('✅ PDF 공유 성공');
-        shareSuccess = true;
-      } catch (shareError) {
-        print('❌ PDF 공유 실패: $shareError');
-        shareSuccess = false;
-        
-        // macOS에서 공유가 실패하면 데스크톱에 복사하고 Finder에서 열기
-        if (Platform.isMacOS && mounted) {
-          try {
-            // 데스크톱 경로 가져오기
-            final homeDir = Platform.environment['HOME'] ?? '';
-            final desktopPath = '$homeDir/Desktop';
-            final desktopDir = Directory(desktopPath);
-            
-            if (await desktopDir.exists()) {
-              final fileName = pdfFile.path.split('/').last;
-              final desktopFile = File('$desktopPath/$fileName');
-              
-              // 파일 복사
-              await pdfFile.copy(desktopFile.path);
-              print('✅ PDF 파일을 데스크톱에 복사: ${desktopFile.path}');
-              
-              // Finder에서 파일 열기
-              final result = await Process.run(
-                'open',
-                ['-R', desktopFile.path],
-              );
-              
-              if (result.exitCode == 0) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('PDF가 데스크톱에 저장되었습니다: $fileName'),
-                      duration: const Duration(seconds: 4),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                }
-                return; // 성공적으로 처리되었으므로 종료
-              }
-            }
-          } catch (copyError) {
-            print('❌ 데스크톱 복사 실패: $copyError');
-          }
-        }
-        
-        // macOS가 아니거나 데스크톱 복사가 실패한 경우
-        if (mounted) {
-          final shouldOpenFinder = await showDialog<bool>(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('PDF 생성 완료'),
-              content: Text(
-                'PDF 파일이 생성되었습니다.\n\n'
-                '파일 위치:\n${pdfFile.path}\n\n'
-                'Finder에서 파일을 열까요?',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('취소'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text('Finder에서 열기'),
-                ),
-              ],
-            ),
-          );
-
-          if (shouldOpenFinder == true) {
-            // macOS에서 Finder로 파일 열기
-            try {
-              final result = await Process.run(
-                'open',
-                ['-R', pdfFile.path],
-              );
-              if (result.exitCode != 0) {
-                print('❌ Finder 열기 실패: ${result.stderr}');
-              } else {
-                print('✅ Finder에서 파일 열기 성공');
-              }
-            } catch (e) {
-              print('❌ Finder 열기 실패: $e');
-            }
-          }
-        }
-      }
-      
-      // 공유가 성공한 경우에만 성공 메시지 표시
-      if (!shareSuccess) {
-        return; // 이미 에러 처리되었으므로 종료
-      }
-
-      // 성공 메시지
+      // PDF 미리보기 및 공유 다이얼로그 표시
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('PDF generado y listo para compartir'),
-            duration: Duration(seconds: 2),
-          ),
-        );
+        await _showPdfPreviewDialog(pdfFile);
       }
     } catch (e, stackTrace) {
       // 로딩 다이얼로그 닫기
@@ -611,6 +551,222 @@ class _ReportScreenState extends State<ReportScreen> {
           SnackBar(
             content: Text('Error al generar/compartir PDF: $e'),
             duration: const Duration(seconds: 5),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// PDF 미리보기 및 공유 다이얼로그 표시
+  Future<void> _showPdfPreviewDialog(File pdfFile) async {
+    final reportTitle = ReportUtils.getReportTitle(widget.reportType);
+    final fileName = pdfFile.path.split('/').last;
+    final fileSize = await pdfFile.length();
+    final fileSizeMB = (fileSize / (1024 * 1024)).toStringAsFixed(2);
+
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.picture_as_pdf, color: Colors.red, size: 28),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'PDF 생성 완료',
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '보고서: $reportTitle',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '파일명: $fileName',
+              style: const TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '파일 크기: $fileSizeMB MB',
+              style: const TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 16),
+            const Text(
+              'PDF를 먼저 확인한 후 공유할 수 있습니다.',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('취소'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await _openPdfFile(pdfFile);
+            },
+            icon: const Icon(Icons.preview, size: 20),
+            label: const Text('PDF 보기'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await _sharePdfFile(pdfFile);
+            },
+            icon: const Icon(Icons.share, size: 20),
+            label: const Text('공유'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// PDF 파일을 시스템 기본 뷰어로 열기
+  Future<void> _openPdfFile(File pdfFile) async {
+    try {
+      if (Platform.isMacOS) {
+        // macOS: Preview 앱으로 열기
+        final result = await Process.run(
+          'open',
+          [pdfFile.path],
+        );
+        if (result.exitCode == 0) {
+          print('✅ PDF 파일 열기 성공: ${pdfFile.path}');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('PDF가 열렸습니다'),
+                duration: Duration(seconds: 2),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        } else {
+          throw Exception('PDF 열기 실패: ${result.stderr}');
+        }
+      } else if (Platform.isWindows) {
+        // Windows: 기본 PDF 뷰어로 열기
+        await Process.run('start', [pdfFile.path], runInShell: true);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('PDF가 열렸습니다'),
+              duration: Duration(seconds: 2),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else if (Platform.isLinux) {
+        // Linux: xdg-open 사용
+        await Process.run('xdg-open', [pdfFile.path]);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('PDF가 열렸습니다'),
+              duration: Duration(seconds: 2),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ PDF 파일 열기 실패: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('PDF 열기 실패: $e'),
+            duration: const Duration(seconds: 3),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// PDF 파일 공유
+  Future<void> _sharePdfFile(File pdfFile) async {
+    try {
+      await Share.shareXFiles(
+        [XFile(pdfFile.path)],
+        text: 'Reporte ${ReportUtils.getReportTitle(widget.reportType)}',
+      );
+      print('✅ PDF 공유 성공');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('PDF 공유 완료'),
+            duration: Duration(seconds: 2),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (shareError) {
+      print('❌ PDF 공유 실패: $shareError');
+      
+      // macOS에서 공유가 실패하면 데스크톱에 복사하고 Finder에서 열기
+      if (Platform.isMacOS && mounted) {
+        try {
+          final homeDir = Platform.environment['HOME'] ?? '';
+          final desktopPath = '$homeDir/Desktop';
+          final desktopDir = Directory(desktopPath);
+          
+          if (await desktopDir.exists()) {
+            final fileName = pdfFile.path.split('/').last;
+            final desktopFile = File('$desktopPath/$fileName');
+            
+            await pdfFile.copy(desktopFile.path);
+            print('✅ PDF 파일을 데스크톱에 복사: ${desktopFile.path}');
+            
+            final result = await Process.run(
+              'open',
+              ['-R', desktopFile.path],
+            );
+            
+            if (result.exitCode == 0) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('PDF가 데스크톱에 저장되었습니다: $fileName'),
+                    duration: const Duration(seconds: 4),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
+              return;
+            }
+          }
+        } catch (copyError) {
+          print('❌ 데스크톱 복사 실패: $copyError');
+        }
+      }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('PDF 공유 실패: $shareError'),
+            duration: const Duration(seconds: 3),
             backgroundColor: Colors.red,
           ),
         );
@@ -681,7 +837,20 @@ class _ReportScreenState extends State<ReportScreen> {
           data = await _databaseService.getClientesReport();
           break;
         case ReportType.gastos:
-          data = await _databaseService.getGastosReport();
+          // gastos 보고서는 날짜 범위 필터 사용 (기본값: 오늘부터 오늘까지)
+          final now = DateTime.now();
+          final startDate = _itemsStartDate ?? now;
+          final endDate = _itemsEndDate ?? now;
+          final currentFilteringWord = filteringWord ?? _filteringWordController.text.trim();
+          
+          final filters = <String, dynamic>{
+            'fecha_inicio': DateFormat('yyyy-MM-dd').format(startDate),
+            'fecha_fin': DateFormat('yyyy-MM-dd').format(endDate),
+          };
+          data = await _databaseService.getGastosReport(
+            filteringWord: currentFilteringWord.isNotEmpty ? currentFilteringWord : null,
+            filters: filters,
+          );
           break;
         case ReportType.ventas:
           // current_date 사용 (기본값: 오늘)
@@ -721,7 +890,20 @@ class _ReportScreenState extends State<ReportScreen> {
           );
           break;
         case ReportType.alertas:
-          data = await _databaseService.getAlertasReport();
+          // alertas 보고서는 날짜 범위 필터 사용 (기본값: 오늘부터 오늘까지)
+          final now = DateTime.now();
+          final startDate = _itemsStartDate ?? now;
+          final endDate = _itemsEndDate ?? now;
+          final currentFilteringWord = filteringWord ?? _filteringWordController.text.trim();
+          
+          final filters = <String, dynamic>{
+            'fecha_inicio': DateFormat('yyyy-MM-dd').format(startDate),
+            'fecha_fin': DateFormat('yyyy-MM-dd').format(endDate),
+          };
+          data = await _databaseService.getAlertasReport(
+            filteringWord: currentFilteringWord.isNotEmpty ? currentFilteringWord : null,
+            filters: filters,
+          );
           break;
         case ReportType.ingresos:
           // ingresos 보고서는 날짜 범위 필터 사용 (기본값: 오늘부터 오늘까지)
@@ -811,13 +993,76 @@ class _ReportScreenState extends State<ReportScreen> {
           break;
       }
 
+      // 데이터에서 sucursal 목록 추출
+      List<String>? sucursales;
+      if (data.containsKey('data')) {
+        if (data['data'] is List) {
+          final dataList = data['data'] as List;
+          final sucursalSet = <String>{};
+          for (var item in dataList) {
+            if (item is Map<String, dynamic> && item.containsKey('sucursal')) {
+              final sucursal = item['sucursal']?.toString();
+              if (sucursal != null && sucursal.isNotEmpty) {
+                sucursalSet.add(sucursal);
+              }
+            }
+          }
+          if (sucursalSet.isNotEmpty) {
+            sucursales = sucursalSet.toList()..sort((a, b) {
+              final aNum = int.tryParse(a) ?? 0;
+              final bNum = int.tryParse(b) ?? 0;
+              return aNum.compareTo(bNum);
+            });
+          }
+        } else if (data['data'] is Map) {
+          // gastos 보고서처럼 data가 Map인 경우
+          final dataMap = data['data'] as Map<String, dynamic>;
+          if (dataMap.containsKey('detail') && dataMap['detail'] is List) {
+            final detailList = dataMap['detail'] as List;
+            final sucursalSet = <String>{};
+            for (var item in detailList) {
+              if (item is Map<String, dynamic> && item.containsKey('sucursal')) {
+                final sucursal = item['sucursal']?.toString();
+                if (sucursal != null && sucursal.isNotEmpty) {
+                  sucursalSet.add(sucursal);
+                }
+              }
+            }
+            if (sucursalSet.isNotEmpty) {
+              sucursales = sucursalSet.toList()..sort((a, b) {
+                final aNum = int.tryParse(a) ?? 0;
+                final bNum = int.tryParse(b) ?? 0;
+                return aNum.compareTo(bNum);
+              });
+            }
+          }
+        }
+      }
+
       setState(() {
         _data = data;
         _isLoading = false;
+        _availableSucursales = sucursales;
+        // sucursal이 1개 이하이면 필터 초기화
+        if (sucursales == null || sucursales.length <= 1) {
+          _selectedSucursal = null;
+        }
         // 데이터가 로드되면 처음 100개만 표시
-        if (data.containsKey('data') && data['data'] is List) {
-          final dataList = data['data'] as List;
-          _displayedItemsCount = dataList.length > _itemsPerPage ? _itemsPerPage : dataList.length;
+        if (data.containsKey('data')) {
+          if (data['data'] is List) {
+            final dataList = data['data'] as List;
+            _displayedItemsCount = dataList.length > _itemsPerPage ? _itemsPerPage : dataList.length;
+          } else if (data['data'] is Map) {
+            final dataMap = data['data'] as Map<String, dynamic>;
+            if (dataMap.containsKey('detail') && dataMap['detail'] is List) {
+              final detailList = dataMap['detail'] as List;
+              _displayedItemsCount = detailList.length > _itemsPerPage ? _itemsPerPage : detailList.length;
+            } else {
+              _displayedItemsCount = 100;
+            }
+          } else {
+            _displayedItemsCount = 100;
+          }
         } else {
           _displayedItemsCount = 100;
         }
@@ -1162,17 +1407,49 @@ class _ReportScreenState extends State<ReportScreen> {
                   ),
                 ],
               )
-            : (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos)
-                ? Row(
-                    children: [
-                      Icon(reportIcon, color: Colors.white),
-                      const SizedBox(width: 8),
-                      Text(reportTitle),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildFilteringWordFieldInAppBar(),
-                      ),
-                    ],
+            : (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas)
+                ? LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isLargeScreen = constraints.maxWidth >= 800;
+                      return Row(
+                        children: [
+                          Icon(reportIcon, color: Colors.white),
+                          const SizedBox(width: 8),
+                          Text(reportTitle),
+                          const SizedBox(width: 16),
+                          // 큰 화면에서는 달력 선택을 AppBar에 추가
+                          if (isLargeScreen) ...[
+                            SizedBox(
+                              width: 300,
+                              child: ItemsDateRangeSelector(
+                                reportType: widget.reportType,
+                                startDate: _itemsStartDate,
+                                endDate: _itemsEndDate,
+                                onDateRangeChanged: (startDate, endDate) {
+                                  setState(() {
+                                    _itemsStartDate = startDate;
+                                    _itemsEndDate = endDate;
+                                  });
+                                  if (widget.onItemsDateRangeChanged != null) {
+                                    widget.onItemsDateRangeChanged!(startDate, endDate);
+                                  }
+                                  _loadData();
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            // 지점 선택 UI (sucursal이 1개 이상일 때만 표시)
+                            if (_availableSucursales != null && _availableSucursales!.length > 1) ...[
+                              _buildSucursalSelector(),
+                              const SizedBox(width: 16),
+                            ],
+                          ],
+                          Expanded(
+                            child: _buildFilteringWordFieldInAppBar(),
+                          ),
+                        ],
+                      );
+                    },
                   )
                 : widget.reportType == ReportType.ventas
                     ? Row(
@@ -1318,14 +1595,33 @@ class _ReportScreenState extends State<ReportScreen> {
                       builder: (context) {
                         // useFullWidth가 true이면 전체 너비 사용 (resumen del dia에서 사용)
                         if (widget.useFullWidth) {
+                          return LayoutBuilder(
+                            builder: (context, constraints) {
+                              final isLargeScreen = constraints.maxWidth >= 800;
+                              return Column(
+                                children: [
+                                  // 작은 화면에서만 날짜 범위 선택 UI 표시 (큰 화면은 AppBar에 있음)
+                                  if (!isLargeScreen && (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas))
+                                    _buildItemsFilterSection(),
+                                  // 스톡 보고서의 vista 타입 표시
+                                  if (widget.reportType == ReportType.stocks && _data != null)
+                                    _buildStocksViewType(),
+                                  Expanded(
+                                    child: RefreshIndicator(
+                                      onRefresh: () => _loadData(),
+                                      child: _buildReportContent(),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        }
+                        
+                        // Alertas 보고서는 전체 화면 너비 사용
+                        if (widget.reportType == ReportType.alertas) {
                           return Column(
                             children: [
-                              // Items 및 Ingresos 보고서의 날짜 범위 선택 UI 및 필터링
-                              if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos)
-                                _buildItemsFilterSection(),
-                              // 스톡 보고서의 vista 타입 표시
-                              if (widget.reportType == ReportType.stocks && _data != null)
-                                _buildStocksViewType(),
                               Expanded(
                                 child: RefreshIndicator(
                                   onRefresh: () => _loadData(),
@@ -1391,6 +1687,30 @@ class _ReportScreenState extends State<ReportScreen> {
       return _buildCodigosContent(data);
     }
     
+    // Gastos 보고서의 경우 특별 처리 (새로운 응답 구조)
+    if (widget.reportType == ReportType.gastos && 
+        data.containsKey('data') && 
+        data['data'] is Map &&
+        (data['data'] as Map).containsKey('detail')) {
+      final filteringWord = _filteringWordController.text.trim();
+      // _getDisplayedData()를 사용하여 필터링/정렬 적용
+      final displayedData = _getDisplayedData();
+      return GastosBuilder.buildContent(
+        data: displayedData,
+        context: context,
+        scrollController: _scrollController,
+        onSort: (column, ascending) {
+          setState(() {
+            _sortColumn = column;
+            _sortAscending = ascending;
+          });
+        },
+        sortColumn: _sortColumn,
+        sortAscending: _sortAscending,
+        filteringWord: filteringWord.isNotEmpty ? filteringWord : null,
+      );
+    }
+    
     // 'data' 키가 있고 리스트인 경우
     if (data.containsKey('data') && data['data'] is List) {
       final dataList = data['data'] as List;
@@ -1400,15 +1720,17 @@ class _ReportScreenState extends State<ReportScreen> {
       
       // 첫 번째 항목이 맵이고 여러 키를 가지고 있으면 테이블로 표시
       if (dataList.isNotEmpty && dataList.first is Map) {
-        // Items, Ingresos 및 Ventas 보고서의 경우 filteringWord 필터 적용
+        // Items, Ingresos, Gastos, Alertas 및 Ventas 보고서의 경우 filteringWord 필터 적용
         List<dynamic> filteredDataList = dataList;
-        if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.ventas) {
+        if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas || widget.reportType == ReportType.ventas) {
           final filteringWord = _filteringWordController.text.trim().toLowerCase();
           if (filteringWord.isNotEmpty) {
             filteredDataList = dataList.where((item) {
               if (item is Map<String, dynamic>) {
                 // Items 보고서: codigo1, desc1 사용
                 // Ingresos 보고서: codigo, descripcion 사용
+                // Gastos 보고서: codigo, descripcion, concepto 사용
+                // Alertas 보고서: codigo, descripcion, mensaje, tipo 사용
                 // Ventas 보고서: vcode, vendedor, clientenombre 등 주요 필드에서 검색
                 if (widget.reportType == ReportType.items) {
                   final codigo1 = item['codigo1']?.toString().toLowerCase() ?? '';
@@ -1418,6 +1740,15 @@ class _ReportScreenState extends State<ReportScreen> {
                   final codigo = item['codigo']?.toString().toLowerCase() ?? '';
                   final descripcion = item['descripcion']?.toString().toLowerCase() ?? '';
                   return codigo.contains(filteringWord) || descripcion.contains(filteringWord);
+                } else if (widget.reportType == ReportType.gastos) {
+                  final codigo = item['codigo']?.toString().toLowerCase() ?? '';
+                  final descripcion = item['descripcion']?.toString().toLowerCase() ?? '';
+                  final concepto = item['concepto']?.toString().toLowerCase() ?? '';
+                  return codigo.contains(filteringWord) || descripcion.contains(filteringWord) || concepto.contains(filteringWord);
+                } else if (widget.reportType == ReportType.alertas) {
+                  // alertas 필터링 로직: evento 필드에서 검색
+                  final evento = item['evento']?.toString().toLowerCase() ?? '';
+                  return evento.contains(filteringWord);
                 } else if (widget.reportType == ReportType.ventas) {
                   // Ventas 보고서 필터링
                   // vcode unit: clientenombre에서 검색
@@ -1467,9 +1798,81 @@ class _ReportScreenState extends State<ReportScreen> {
             }).toList();
           }
         }
-        if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos) {
+        // Alertas 보고서는 별도 처리 (화면을 나누지 않음)
+        if (widget.reportType == ReportType.alertas) {
+          // Alertas 보고서의 경우 정렬 적용
+          List<dynamic> sortedDataList = List.from(filteredDataList);
+          if (_sortColumn != null) {
+            sortedDataList.sort((a, b) {
+              if (a is! Map<String, dynamic> || b is! Map<String, dynamic>) {
+                return 0;
+              }
+              
+              final aValue = a[_sortColumn];
+              final bValue = b[_sortColumn];
+              
+              // null 처리
+              if (aValue == null && bValue == null) return 0;
+              if (aValue == null) return _sortAscending ? -1 : 1;
+              if (bValue == null) return _sortAscending ? 1 : -1;
+              
+              // 숫자 비교
+              final aNum = ReportUtils.isNumeric(aValue) ? num.tryParse(aValue.toString().replaceAll(',', '')) : null;
+              final bNum = ReportUtils.isNumeric(bValue) ? num.tryParse(bValue.toString().replaceAll(',', '')) : null;
+              
+              if (aNum != null && bNum != null) {
+                final comparison = aNum.compareTo(bNum);
+                return _sortAscending ? comparison : -comparison;
+              }
+              
+              // 문자열 비교
+              final aStr = aValue.toString().toLowerCase();
+              final bStr = bValue.toString().toLowerCase();
+              final comparison = aStr.compareTo(bStr);
+              return _sortAscending ? comparison : -comparison;
+            });
+          }
+          
+          // Alertas 보고서 색상 결정
+          Color alertasColor = Colors.orange; // alertas 보고서 기본 색상
+          
+          // 테이블 위젯 생성 (화면을 나누지 않음)
+          return ReportTableBuilder.buildTableFromList(
+            sortedDataList,
+            _displayedItemsCount,
+            _itemsPerPage,
+            _scrollController,
+            widget.reportType,
+            sortColumn: _sortColumn,
+            sortAscending: _sortAscending,
+            horizontalScrollController: _horizontalScrollController,
+            reportColor: alertasColor,
+            unit: null,
+            onRowDoubleTap: null,
+            onRowTap: null,
+            onSort: (columnIndex, ascending) {
+              setState(() {
+                final allKeys = sortedDataList.isNotEmpty 
+                    ? (sortedDataList.first as Map<String, dynamic>).keys.toList()
+                    : <String>[];
+                if (columnIndex >= 0 && columnIndex < allKeys.length) {
+                  final key = allKeys[columnIndex];
+                  if (_sortColumn == key) {
+                    _sortAscending = !_sortAscending;
+                  } else {
+                    _sortColumn = key;
+                    _sortAscending = false;
+                  }
+                  _displayedItemsCount = _itemsPerPage;
+                }
+              });
+            },
+          );
+        }
+        
+        if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos) {
 
-          // Items 및 Ingresos 보고서의 경우 정렬 적용
+          // Items, Ingresos, Gastos 보고서의 경우 정렬 적용
           List<dynamic> sortedDataList = List.from(filteredDataList);
           if (_sortColumn != null) {
             sortedDataList.sort((a, b) {
@@ -1517,14 +1920,12 @@ class _ReportScreenState extends State<ReportScreen> {
             }
           }
           
-          // Items 보고서는 왼쪽과 오른쪽으로 절반씩 나눔
-          return Row(
-            children: [
-              // 왼쪽 부분: Items 보고서 내용 (내용에 맞게 크기 조정)
-              Flexible(
-                flex: 1,
-                fit: FlexFit.loose,
-                child: ReportTableBuilder.buildTableFromList(
+          // 화면 너비 확인 (좁은 화면인지 체크)
+          final screenWidth = MediaQuery.of(context).size.width;
+          final isWideScreen = screenWidth >= 800; // 800px 이상이면 큰 화면으로 간주
+          
+          // 테이블 위젯 생성
+          final tableWidget = ReportTableBuilder.buildTableFromList(
                   sortedDataList,
                   _displayedItemsCount,
                   _itemsPerPage,
@@ -1562,31 +1963,45 @@ class _ReportScreenState extends State<ReportScreen> {
                       }
                     });
                   },
+                );
+          
+          // 큰 화면일 때만 2/3, 1/3로 나눔 (Items, Ingresos, Gastos만)
+          if (isWideScreen && (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos)) {
+            return Row(
+              children: [
+                // 왼쪽 2/3: 서버에서 우선 응답 온 내용 (Items/Ingresos 보고서 내용)
+                Flexible(
+                  flex: 2,
+                  fit: FlexFit.loose,
+                  child: tableWidget,
                 ),
-              ),
-              // 구분선
-              Container(
-                width: 1,
-                color: Colors.grey[300],
-              ),
-              // 오른쪽 절반: 비어있음 (나중에 사용 가능)
-              Expanded(
-                flex: 1,
-                child: Container(
-                  color: Colors.grey[50],
-                  child: const Center(
-                    child: Text(
-                      'Right Panel',
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontSize: 16,
+                // 구분선
+                Container(
+                  width: 1,
+                  color: Colors.grey[300],
+                ),
+                // 오른쪽 1/3: 비어있음 (나중에 사용 가능)
+                Expanded(
+                  flex: 1,
+                  child: Container(
+                    color: Colors.grey[50],
+                    child: const Center(
+                      child: Text(
+                        'Right Panel',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          );
+              ],
+            );
+          } else {
+            // 좁은 화면이거나 Gastos 보고서일 때는 전체 화면 사용
+            return tableWidget;
+          }
         }
         
         // Ventas 보고서의 경우 정렬 적용
@@ -2236,7 +2651,20 @@ class _ReportScreenState extends State<ReportScreen> {
                         final formattedValue = isCodigoColumn 
                             ? (value?.toString() ?? 'N/A')
                             : ReportUtils.formatValue(value);
-                        final isNumeric = isCodigoColumn ? false : ReportUtils.isNumeric(value);
+                        
+                        // 금액/숫자 관련 컬럼명 체크 (명시적으로 숫자로 처리)
+                        final keyLower = key.toLowerCase();
+                        final isAmountColumn = keyLower.contains('costo') || 
+                                               keyLower.contains('importe') || 
+                                               keyLower.contains('ingreso') || 
+                                               keyLower.contains('precio') ||
+                                               keyLower.contains('pre') ||
+                                               keyLower.contains('venta') ||
+                                               keyLower.contains('cantidad') ||
+                                               keyLower.contains('count') ||
+                                               keyLower.contains('total');
+                        
+                        final isNumeric = isCodigoColumn ? false : (ReportUtils.isNumeric(value) || isAmountColumn);
                         return DataCell(
                           Align(
                             alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
@@ -2487,6 +2915,11 @@ class _ReportScreenState extends State<ReportScreen> {
                 child: _buildCompactDateRangeButton(reportColor),
               ),
               const SizedBox(width: 8),
+              // 지점 선택 UI (sucursal이 1개 이상일 때만 표시)
+              if (_availableSucursales != null && _availableSucursales!.length > 1) ...[
+                _buildSucursalSelector(),
+                const SizedBox(width: 8),
+              ],
               SizedBox(
                 width: 300, // 큰 화면에서는 충분히 넓게
                 child: _buildFilteringWordFieldInAppBar(),
@@ -2504,6 +2937,14 @@ class _ReportScreenState extends State<ReportScreen> {
                 width: 90,
                 child: _buildCompactDateRangeButton(reportColor),
               ),
+              // 지점 선택 UI (sucursal이 1개 이상일 때만 표시)
+              if (_availableSucursales != null && _availableSucursales!.length > 1) ...[
+                const SizedBox(width: 4),
+                SizedBox(
+                  width: 100,
+                  child: _buildSucursalSelector(),
+                ),
+              ],
               const SizedBox(width: 4),
               SizedBox(
                 width: 180, // 작은 화면에서도 충분한 크기
@@ -3251,6 +3692,47 @@ class _ReportScreenState extends State<ReportScreen> {
                       _filteringWordController.clear();
                     });
                   },
+    );
+  }
+
+  // 지점 선택 UI (AppBar용)
+  Widget _buildSucursalSelector() {
+    final reportColor = _getReportColor();
+    
+    return Container(
+      constraints: const BoxConstraints(minWidth: 120),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: DropdownButton<String?>(
+        value: _selectedSucursal,
+        hint: const Text('Todos', style: TextStyle(fontSize: 12)),
+        underline: const SizedBox(),
+        isDense: true,
+        isExpanded: true,
+        icon: Icon(Icons.arrow_drop_down, color: reportColor, size: 20),
+        items: [
+          const DropdownMenuItem<String?>(
+            value: null,
+            child: Text('Todos', style: TextStyle(fontSize: 12)),
+          ),
+          if (_availableSucursales != null)
+            ..._availableSucursales!.map((sucursal) {
+              return DropdownMenuItem<String?>(
+                value: sucursal,
+                child: Text('Sucursal $sucursal', style: const TextStyle(fontSize: 12)),
+              );
+            }).toList(),
+        ],
+        onChanged: (String? value) {
+          setState(() {
+            _selectedSucursal = value;
+          });
+        },
+      ),
     );
   }
 

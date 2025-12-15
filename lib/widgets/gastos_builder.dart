@@ -1,0 +1,638 @@
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'report_utils.dart';
+
+/// Gastos 보고서 UI 빌더
+class GastosBuilder {
+  /// Gastos 콘텐츠 빌드
+  static Widget buildContent({
+    required Map<String, dynamic> data,
+    required BuildContext context,
+    required ScrollController scrollController,
+    required Function(String?, bool) onSort,
+    String? sortColumn,
+    bool sortAscending = true,
+    String? filteringWord,
+  }) {
+    // summary 카드
+    Widget? summaryCard;
+    if (data.containsKey('summary') && data['summary'] is Map) {
+      summaryCard = _buildSummaryCard(data['summary'] as Map<String, dynamic>);
+    }
+
+    // data.summary 카드 그리드
+    Widget? summaryGrid;
+    if (data.containsKey('data') && 
+        data['data'] is Map &&
+        (data['data'] as Map).containsKey('summary') &&
+        (data['data'] as Map)['summary'] is List) {
+      summaryGrid = _buildSummaryGrid((data['data'] as Map)['summary'] as List, context);
+    }
+
+    // data.detail 테이블
+    Widget? detailTable;
+    if (data.containsKey('data') && 
+        data['data'] is Map &&
+        (data['data'] as Map).containsKey('detail') &&
+        (data['data'] as Map)['detail'] is List) {
+      var detailList = (data['data'] as Map)['detail'] as List;
+      
+      // filteringWord 필터 적용
+      if (filteringWord != null && filteringWord.isNotEmpty) {
+        final filterLower = filteringWord.toLowerCase();
+        detailList = detailList.where((item) {
+          if (item is Map<String, dynamic>) {
+            final tema = item['tema']?.toString().toLowerCase() ?? '';
+            final rubro = item['rubro']?.toString().toLowerCase() ?? '';
+            final codigo = item['codigo']?.toString().toLowerCase() ?? '';
+            final fecha = item['fecha']?.toString().toLowerCase() ?? '';
+            final hora = item['hora']?.toString().toLowerCase() ?? '';
+            return tema.contains(filterLower) || 
+                   rubro.contains(filterLower) || 
+                   codigo.contains(filterLower) ||
+                   fecha.contains(filterLower) ||
+                   hora.contains(filterLower);
+          }
+          return false;
+        }).toList();
+      }
+      
+      if (detailList.isNotEmpty) {
+        detailTable = _buildDetailTable(
+          detailList,
+          context,
+          scrollController,
+          onSort,
+          sortColumn,
+          sortAscending,
+        );
+      }
+    }
+
+    // detailTable이 있으면 별도 레이아웃 사용
+    if (detailTable != null) {
+      return Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SingleChildScrollView(
+              controller: scrollController,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (summaryCard != null) ...[
+                    summaryCard,
+                    const SizedBox(height: 24),
+                  ],
+                  if (summaryGrid != null) ...[
+                    summaryGrid,
+                    const SizedBox(height: 24),
+                  ],
+                  const Text(
+                    'Detalle de Gastos',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
+            Expanded(child: detailTable),
+          ],
+        ),
+      );
+    }
+    
+    // detailTable이 없으면 기존 방식 유지
+    return SingleChildScrollView(
+      controller: scrollController,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (summaryCard != null) ...[
+              summaryCard,
+              const SizedBox(height: 24),
+            ],
+            if (summaryGrid != null) ...[
+              summaryGrid,
+              const SizedBox(height: 24),
+            ],
+            if (summaryCard == null && summaryGrid == null)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32.0),
+                  child: Text(
+                    'No hay datos disponibles',
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 전체 요약 카드 빌드
+  static Widget _buildSummaryCard(Map<String, dynamic> summary) {
+    final totalRubros = summary['total_rubros']?.toString() ?? '0';
+    final totalItems = summary['total_items']?.toString() ?? '0';
+    final totalCosto = summary['total_costo']?.toString() ?? '0.00';
+    
+    final costoNum = num.tryParse(totalCosto.replaceAll(',', '')) ?? 0;
+    final formattedCosto = NumberFormat.currency(
+      symbol: '\$',
+      decimalDigits: 2,
+    ).format(costoNum);
+
+    return Card(
+      elevation: 4,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0), // 세로 padding을 절반으로 줄임
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildSummaryItem(
+              'Total Rubros',
+              totalRubros,
+              Icons.category,
+              Colors.blue,
+            ),
+            _buildSummaryItem(
+              'Total Items',
+              totalItems,
+              Icons.list,
+              Colors.green,
+            ),
+            _buildSummaryItem(
+              'Total Costo',
+              formattedCosto,
+              Icons.attach_money,
+              Colors.red,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 요약 아이템 빌드 (1줄로 표시)
+  static Widget _buildSummaryItem(String label, String value, IconData icon, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: color, size: 28),
+        const SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 22, // 큰 글자로 표시
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// 카테고리별 요약 그리드 빌드
+  static Widget _buildSummaryGrid(List summaryList, BuildContext context) {
+    if (summaryList.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // LayoutBuilder를 사용하여 실제 사용 가능한 너비 측정
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // 큰 화면에서는 4개씩, 중간 화면에서는 3개, 작은 화면에서는 2개씩 표시
+        final availableWidth = constraints.maxWidth;
+        int crossAxisCount;
+        double childAspectRatio;
+        
+        if (availableWidth >= 1200) {
+          // 매우 큰 화면: 4개씩
+          crossAxisCount = 4;
+          childAspectRatio = 2.2 * 1.5; // 높이를 2/3로 줄임 (3.3)
+        } else if (availableWidth >= 900) {
+          // 큰 화면: 3개씩
+          crossAxisCount = 3;
+          childAspectRatio = 2.3 * 1.5; // 높이를 2/3로 줄임 (3.45)
+        } else {
+          // 작은 화면: 2개씩
+          crossAxisCount = 2;
+          childAspectRatio = 2.5 * 1.5; // 높이를 2/3로 줄임 (3.75)
+        }
+
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: childAspectRatio,
+          ),
+          itemCount: summaryList.length,
+          itemBuilder: (context, index) {
+            final item = summaryList[index] as Map<String, dynamic>;
+            final descGasto = item['desc_gasto']?.toString() ?? '';
+            final count = item['count']?.toString() ?? '0';
+            final sumCosto = item['sum_costo']?.toString() ?? '0.00';
+            final codigoRubro = item['codigo_rubro']?.toString() ?? '';
+
+            final costoNum = num.tryParse(sumCosto.replaceAll(',', '')) ?? 0;
+            final formattedCosto = NumberFormat.currency(
+              symbol: '\$',
+              decimalDigits: 2,
+            ).format(costoNum);
+
+            return Card(
+              elevation: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            codigoRubro,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            descGasto,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Items: $count',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        Text(
+                          formattedCosto,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// 상세 내역 테이블 빌드
+  static Widget _buildDetailTable(
+    List detailList,
+    BuildContext context,
+    ScrollController scrollController,
+    Function(String?, bool) onSort,
+    String? sortColumn,
+    bool sortAscending,
+  ) {
+    if (detailList.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32.0),
+          child: Text(
+            'No hay detalles disponibles',
+            style: TextStyle(fontSize: 16, color: Colors.grey),
+          ),
+        ),
+      );
+    }
+
+    // 정렬 적용
+    List<dynamic> sortedList = List.from(detailList);
+    if (sortColumn != null) {
+      sortedList.sort((a, b) {
+        if (a is! Map<String, dynamic> || b is! Map<String, dynamic>) {
+          return 0;
+        }
+
+        final aValue = a[sortColumn];
+        final bValue = b[sortColumn];
+
+        if (aValue == null && bValue == null) return 0;
+        if (aValue == null) return sortAscending ? -1 : 1;
+        if (bValue == null) return sortAscending ? 1 : -1;
+
+        // 숫자 비교
+        final aNum = ReportUtils.isNumeric(aValue) 
+            ? num.tryParse(aValue.toString().replaceAll(',', '')) 
+            : null;
+        final bNum = ReportUtils.isNumeric(bValue) 
+            ? num.tryParse(bValue.toString().replaceAll(',', '')) 
+            : null;
+
+        if (aNum != null && bNum != null) {
+          final comparison = aNum.compareTo(bNum);
+          return sortAscending ? comparison : -comparison;
+        }
+
+        // 날짜 비교
+        if (sortColumn == 'fecha') {
+          try {
+            final aDate = DateTime.parse(aValue.toString());
+            final bDate = DateTime.parse(bValue.toString());
+            final comparison = aDate.compareTo(bDate);
+            return sortAscending ? comparison : -comparison;
+          } catch (e) {
+            // 파싱 실패 시 문자열 비교
+          }
+        }
+
+        // 문자열 비교
+        final aStr = aValue.toString().toLowerCase();
+        final bStr = bValue.toString().toLowerCase();
+        final comparison = aStr.compareTo(bStr);
+        return sortAscending ? comparison : -comparison;
+      });
+    }
+
+    // 첫 번째 항목에서 키 가져오기
+    final firstItem = sortedList.first as Map<String, dynamic>;
+    final keys = firstItem.keys.toList();
+    
+    // 칼럼 순서 정의
+    final columnOrder = [
+      'fecha',
+      'hora',
+      'tema',
+      'rubro',
+      'codigo',
+      'costo',
+      'sucursal',
+    ];
+    
+    // 정의된 순서대로 정렬하고, 없는 키는 뒤에 추가
+    final orderedKeys = <String>[];
+    for (var key in columnOrder) {
+      if (keys.contains(key)) {
+        orderedKeys.add(key);
+      }
+    }
+    for (var key in keys) {
+      if (!orderedKeys.contains(key)) {
+        orderedKeys.add(key);
+      }
+    }
+
+    final reportColor = Colors.red;
+
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              columnSpacing: 12,
+              dataRowMinHeight: 48,
+              dataRowMaxHeight: 56,
+              headingRowHeight: 56,
+              headingRowColor: MaterialStateProperty.all(
+                reportColor.withOpacity(0.1),
+              ),
+              columns: orderedKeys.map((key) {
+                final isSorted = sortColumn == key;
+                return DataColumn(
+                  label: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _getColumnLabel(key),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      if (isSorted)
+                        Icon(
+                          sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                          size: 16,
+                          color: reportColor,
+                        ),
+                    ],
+                  ),
+                  onSort: (columnIndex, ascending) {
+                    onSort(key, ascending);
+                  },
+                );
+              }).toList(),
+              rows: sortedList.map((item) {
+                if (item is Map<String, dynamic>) {
+                  return DataRow(
+                    cells: orderedKeys.map((key) {
+                      final value = item[key];
+                      String formattedValue = ReportUtils.formatValue(value);
+                      
+                      // costo 필드는 통화 형식으로 표시
+                      final isCosto = key == 'costo';
+                      if (isCosto) {
+                        final costoNum = num.tryParse(value?.toString().replaceAll(',', '').replaceAll('\$', '') ?? '0') ?? 0;
+                        formattedValue = NumberFormat.currency(
+                          symbol: '\$',
+                          decimalDigits: 2,
+                        ).format(costoNum);
+                      }
+                      
+                      // 숫자 또는 금액 필드는 오른쪽 정렬
+                      final isNumeric = ReportUtils.isNumeric(value) || isCosto;
+                      return DataCell(
+                        Text(
+                          formattedValue,
+                          textAlign: isNumeric ? TextAlign.right : TextAlign.left,
+                        ),
+                      );
+                    }).toList(),
+                  );
+                }
+                return DataRow(cells: orderedKeys.map((_) => const DataCell(Text(''))).toList());
+              }).toList(),
+            ),
+          ),
+        ),
+        // 총합 행 추가
+        GastosBuilder._buildFixedTotalRow(orderedKeys, sortedList, reportColor),
+      ],
+    );
+  }
+
+  /// 칼럼 라벨 가져오기
+  static String _getColumnLabel(String key) {
+    final labels = {
+      'fecha': 'Fecha',
+      'hora': 'Hora',
+      'tema': 'Tema',
+      'rubro': 'Rubro',
+      'codigo': 'Código',
+      'costo': 'Costo',
+      'sucursal': 'Sucursal',
+    };
+    return labels[key] ?? key;
+  }
+
+  /// 고정된 합계 행 빌드 (화면 하단에 고정, 현재 보이는 항목들의 합계)
+  static Widget _buildFixedTotalRow(List<String> keys, List<dynamic> displayedList, Color reportColor) {
+    // 각 칼럼별 합계 계산 (현재 화면에 보이는 항목들만)
+    final totals = <String, num>{};
+    
+    for (var key in keys) {
+      // 날짜, 시간, 문자열 칼럼은 합계 계산 제외
+      final isExcludedColumn = key == 'fecha' || key == 'hora' || 
+                                key == 'tema' || key == 'rubro' || 
+                                key == 'codigo' || key == 'sucursal';
+      if (isExcludedColumn) continue;
+      
+      num sum = 0;
+      for (var item in displayedList) {
+        if (item is Map<String, dynamic> && item.containsKey(key)) {
+          final value = item[key];
+          if (ReportUtils.isNumeric(value)) {
+            final numValue = num.tryParse(value.toString().replaceAll(',', '').replaceAll('\$', '').trim());
+            if (numValue != null) {
+              sum += numValue;
+            }
+          }
+        }
+      }
+      totals[key] = sum;
+    }
+    
+    // 컬럼별 고정 너비 설정 (DataTable과 일치)
+    final columnWidths = <String, double>{
+      'fecha': 120,
+      'hora': 100,
+      'tema': 200,
+      'rubro': 150,
+      'codigo': 120,
+      'costo': 150,
+      'sucursal': 120,
+    };
+    
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: reportColor.withOpacity(0.1),
+        border: Border(
+          top: BorderSide(
+            color: reportColor.withOpacity(0.3),
+            width: 2,
+          ),
+        ),
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: keys.asMap().entries.map((entry) {
+            final index = entry.key;
+            final key = entry.value;
+            final isExcludedColumn = key == 'fecha' || key == 'hora' || 
+                                      key == 'tema' || key == 'rubro' || 
+                                      key == 'codigo' || key == 'sucursal';
+            final columnWidth = columnWidths[key] ?? 150.0;
+            
+            if (isExcludedColumn) {
+              return SizedBox(
+                width: columnWidth + (index < keys.length - 1 ? 12 : 0), // DataTable의 columnSpacing(12)과 일치
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Total',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }
+            
+            final total = totals[key] ?? 0;
+            String formattedTotal;
+            if (key == 'costo') {
+              formattedTotal = NumberFormat.currency(
+                symbol: '\$',
+                decimalDigits: 2,
+              ).format(total);
+            } else {
+              formattedTotal = ReportUtils.formatValue(total);
+            }
+            
+            return SizedBox(
+              width: columnWidth + (index < keys.length - 1 ? 12 : 0), // DataTable의 columnSpacing(12)과 일치
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    formattedTotal,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+}

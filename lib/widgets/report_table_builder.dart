@@ -18,13 +18,14 @@ class ReportTableBuilder {
     List<String> keys;
     
     if (reportType == ReportType.ventas) {
-      // vcode unit용 컬럼 목록
+      // vcode unit용 컬럼 목록 (응답 순서대로)
       final vcodeColumns = <String>[
-        'id', 'vcode', 'hora', 'tpago', 'cntropas', 'clientenombre',
+        'vcode', 'tpago', 'cntropas', 'clientenombre',
         'tefectivo', 'tcredito', 'tbanco', 'treservado', 'tfavor',
-        'vendedor', 'tipo', 'dni', 'resiva', 'casoesp', 'nencargado',
-        'cretmp', 'fecha', 'sucursal', 'ntiqrepetir', 'b_mercadopago',
-        'd_num_caja', 'd_num_terminal',
+        'vendedor', 'tipo', 'dni', 'hora', 'fecha',
+        'resiva', 'casoesp', 'nencargado', 'cretmp',
+        'sucursal', 'ntiqrepetir', 'b_mercadopago',
+        'd_num_caja', 'd_num_terminal', 'id',
       ];
       
       final isDayMonthYearUnit = unit != null && unit != 'vcode';
@@ -141,7 +142,7 @@ class ReportTableBuilder {
                                  'resiva', 'casoesp', 'cretmp', 'ntiqrepetir', 'b_mercadopago'];
         keys.removeWhere((key) => vcodeOnlyFields.contains(key));
       } else {
-        // vcode unit
+        // vcode unit: vcodeColumns 순서 유지
         final commonKeysVcode = <String>{};
         for (var item in displayedList) {
           if (item is Map<String, dynamic>) {
@@ -152,7 +153,9 @@ class ReportTableBuilder {
             }
           }
         }
+        // vcodeColumns의 순서를 유지하면서 commonKeysVcode에 있는 키만 선택
         keys = vcodeColumns.where((key) => commonKeysVcode.contains(key)).toList();
+        print('📊 Ventas vcode columns 순서 (getDisplayedColumns): $keys');
       }
     } else if (reportType == ReportType.items || reportType == ReportType.ingresos) {
       // Items 및 Ingresos 보고서: start_date, end_date, startDate, endDate, sucursal 제외
@@ -205,11 +208,9 @@ class ReportTableBuilder {
     // Items 및 Ingresos report의 경우 start_date, end_date, sucursal 제외
     List<String> keys;
     if (reportType == ReportType.ventas) {
-      // vcode unit용 컬럼 목록
+      // vcode unit용 컬럼 목록 (응답 순서대로)
       final vcodeColumns = <String>[
-        'id',              // vcode_id as id
-        'vcode',           // right(vcode, 5) as vcode
-        'hora',
+        'vcode',
         'tpago',
         'cntropas',
         'clientenombre',
@@ -221,16 +222,18 @@ class ReportTableBuilder {
         'vendedor',
         'tipo',
         'dni',
+        'hora',
+        'fecha',
         'resiva',
         'casoesp',
         'nencargado',
         'cretmp',
-        'fecha',
         'sucursal',
         'ntiqrepetir',
         'b_mercadopago',
         'd_num_caja',
         'd_num_terminal',
+        'id',
       ];
       
       // unit 파라미터가 있으면 직접 사용, 없으면 데이터 구조로 판단
@@ -473,7 +476,7 @@ class ReportTableBuilder {
         );
         print('🔍 eventCount key (case-insensitive): "$eventCountKey", in allKeys: ${eventCountKey.isNotEmpty}, in commonKeys: ${commonKeys.any((k) => k.toLowerCase() == 'eventcount')}, in firstItem: ${firstItem.keys.any((k) => k.toLowerCase() == 'eventcount')}, value: ${eventCountKey.isNotEmpty ? firstItem[eventCountKey] : 'N/A'}');
       } else {
-        // vcode unit: 기존 로직 사용
+        // vcode unit: vcodeColumns 순서 유지
         final commonKeysVcode = <String>{};
         for (var item in displayedList) {
           if (item is Map<String, dynamic>) {
@@ -484,7 +487,9 @@ class ReportTableBuilder {
             }
           }
         }
+        // vcodeColumns의 순서를 유지하면서 commonKeysVcode에 있는 키만 선택
         keys = vcodeColumns.where((key) => commonKeysVcode.contains(key)).toList();
+        print('📊 Ventas vcode columns 순서: $keys');
       }
     } else if (reportType == ReportType.items || reportType == ReportType.ingresos) {
       // Items 및 Ingresos 보고서: start_date, end_date, startDate, endDate, sucursal 제외
@@ -496,18 +501,40 @@ class ReportTableBuilder {
               key != 'endDate' && 
               key != 'sucursal')
           .toList();
+    } else if (reportType == ReportType.alertas) {
+      // Alertas 보고서: alerta 컬럼 제외
+      keys = firstItem.keys
+          .where((key) => key != 'alerta')
+          .toList();
     } else {
       keys = firstItem.keys.toList();
     }
     // 컬럼별 기본 너비 설정 (헤더와 일치하도록)
     final columnWidths = <String, double>{
-      'codigo1': 120,
-      'desc1': 250,
-      'tprendas': 100,
-      'timporte': 120,
+      // Items 보고서
+      'codigo1': 150,
+      'desc1': 300,
+      'tprendas': 120,
+      'timporte': 150,
+      // Ingresos 보고서
+      'codigo': 150,
+      'descripcion': 300,
+      'tevent': 120,
+      'tcant': 150,
+      'tIngreso': 150,
+      'tingreso': 150,
+      'cntEvent': 120,
+      'cntevent': 120,
+      // Alertas 보고서
+      'fecha': 120,
+      'hora': 100,
+      'evento': 500, // 긴 텍스트를 위해 충분한 너비 할당
+      'progname': 150,
+      'alerta': 80,
+      'sucursal': 100,
+      // 기타
       'start_date': 120,
       'end_date': 120,
-      'sucursal': 100,
     };
     
     final columns = keys.asMap().entries.map((entry) {
@@ -517,7 +544,7 @@ class ReportTableBuilder {
       final isSortable = (reportType == ReportType.items || reportType == ReportType.ingresos) && 
           (key == 'codigo' || key == 'codigo1' || key == 'descripcion' || key == 'desc1' || 
            key == 'tprendas' || key == 'timporte' || key == 'tIngreso' || key == 'tingreso' ||
-           key == 'cntEvent' || key == 'cntevent') ||
+           key == 'tevent' || key == 'tcant' || key == 'cntEvent' || key == 'cntevent') ||
           reportType == ReportType.ventas; // ventas 보고서는 모든 컬럼 정렬 가능
       
       return DataColumn(
@@ -549,8 +576,137 @@ class ReportTableBuilder {
       );
     }).toList();
 
-    // Items 및 Ingresos 보고서의 경우 합계 행을 화면 하단에 고정하면서 수직 스크롤 가능
-    if (reportType == ReportType.items || reportType == ReportType.ingresos) {
+    // Items, Ingresos 및 Alertas 보고서의 경우 합계 행을 화면 하단에 고정하면서 수직 스크롤 가능
+    if (reportType == ReportType.items || reportType == ReportType.ingresos || reportType == ReportType.alertas) {
+      // Alertas 보고서의 경우 화면 너비에 맞춰 컬럼 너비 동적 계산
+      if (reportType == ReportType.alertas) {
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final screenWidth = constraints.maxWidth;
+            // 컬럼 간격 (8px) * (컬럼 수 - 1) + 좌우 패딩 (32px)
+            final totalSpacing = 8 * (keys.length - 1) + 32;
+            final availableWidth = screenWidth - totalSpacing;
+            
+            // Alertas 컬럼별 최소 너비 설정 (alerta 제외, 더 작게 조정)
+            final alertasMinWidths = <String, double>{
+              'fecha': 100,  // 120 -> 100
+              'hora': 80,    // 100 -> 80
+              'progname': 120, // 150 -> 120
+              'sucursal': 60,  // 100 -> 60
+            };
+            
+            // 최소 너비가 필요한 컬럼들의 총 너비 계산
+            double totalMinWidth = 0;
+            for (var key in keys) {
+              if (alertasMinWidths.containsKey(key)) {
+                totalMinWidth += alertasMinWidths[key]!;
+              }
+            }
+            
+            // evento 컬럼에 할당할 나머지 공간 계산
+            final eventoWidth = (availableWidth - totalMinWidth).clamp(200.0, double.infinity);
+            
+            // 동적 컬럼 너비 계산
+            final dynamicColumnWidths = <String, double>{};
+            for (var key in keys) {
+              if (key.toLowerCase() == 'evento') {
+                dynamicColumnWidths[key] = eventoWidth;
+              } else if (alertasMinWidths.containsKey(key)) {
+                dynamicColumnWidths[key] = alertasMinWidths[key]!;
+              } else {
+                dynamicColumnWidths[key] = columnWidths[key] ?? 150.0;
+              }
+            }
+            
+            // 헤더를 별도로 분리하여 수평 스크롤 동기화
+            final headerRow = _buildHeaderRow(keys, columns, color, sortColumn, sortAscending, onSort, columnWidths: dynamicColumnWidths);
+            
+            return Column(
+              children: [
+                // 헤더 (수평 스크롤 동기화)
+                headerRow,
+                Expanded(
+                  child: Scrollbar(
+                    controller: scrollController,
+                    thumbVisibility: true,
+                    child: SingleChildScrollView(
+                      controller: scrollController,
+                      scrollDirection: Axis.vertical,
+                      child: DataTable(
+                        columnSpacing: 8,
+                        dataRowMinHeight: 12, // 절반으로 더 줄임 (48 -> 24 -> 12)
+                        dataRowMaxHeight: 20, // 절반으로 더 줄임 (80 -> 40 -> 20)
+                        headingRowHeight: 0,
+                        headingRowColor: MaterialStateProperty.all(Colors.transparent),
+                        sortColumnIndex: sortColumn != null && keys.contains(sortColumn) 
+                            ? keys.indexOf(sortColumn) 
+                            : null,
+                        sortAscending: sortAscending,
+                        columns: columns.map((col) {
+                          final index = columns.indexOf(col);
+                          final key = keys[index];
+                          return DataColumn(
+                            label: SizedBox(
+                              width: dynamicColumnWidths[key] ?? 150.0,
+                              child: col.label,
+                            ),
+                            onSort: col.onSort,
+                          );
+                        }).toList(),
+                        rows: displayedList.map((item) {
+                          if (item is Map<String, dynamic>) {
+                            var cells = keys.map((key) {
+                              final value = item[key];
+                              
+                              final keyLower = key.toLowerCase();
+                              final isEventoColumn = keyLower == 'evento';
+                              
+                              // evento 컬럼은 formatValue에서 자르지 않음 (2줄 표시를 위해)
+                              String formattedValue;
+                              if (isEventoColumn && value is String) {
+                                formattedValue = value.replaceAll('\$', '').trim();
+                              } else {
+                                formattedValue = ReportUtils.formatValue(value);
+                              }
+                              
+                              final isAmountColumn = keyLower == 'sucursal';
+                              final isNumeric = ReportUtils.isNumeric(value) || isAmountColumn;
+                              
+                              final cellWidth = dynamicColumnWidths[key] ?? 150.0;
+                              
+                              return DataCell(
+                                SizedBox(
+                                  width: cellWidth,
+                                  child: Align(
+                                    alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+                                    child: Text(
+                                      formattedValue,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        height: isEventoColumn ? 1.1 : 0.9, // 줄 간격 더 줄임 (1.2->1.1, 1.0->0.9)
+                                      ),
+                                      maxLines: isEventoColumn ? 2 : 1, // evento는 최대 2줄
+                                      overflow: TextOverflow.ellipsis, // 2줄을 넘으면 ellipsis 표시
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }).toList();
+                            
+                            return DataRow(cells: cells);
+                          }
+                          return DataRow(cells: keys.map((key) => const DataCell(Text(''))).toList());
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      }
+      
       // 헤더를 별도로 분리하여 수평 스크롤 동기화
       final headerRow = _buildHeaderRow(keys, columns, color, sortColumn, sortAscending, onSort);
       
@@ -593,7 +749,7 @@ class ReportTableBuilder {
                     columnSpacing: 8,
                             dataRowMinHeight: 48, // 읽기 가능한 높이로 조정
                             dataRowMaxHeight: 56,
-                            headingRowHeight: 56, // 헤더 높이 설정
+                            headingRowHeight: 0, // 헤더는 _buildHeaderRow로 표시하므로 0으로 설정
                     headingRowColor: MaterialStateProperty.all(
                               Colors.transparent, // 헤더 배경을 투명하게
                     ),
@@ -601,17 +757,9 @@ class ReportTableBuilder {
                         ? keys.indexOf(sortColumn) 
                         : null,
                     sortAscending: sortAscending,
-                    columns: columns,
+                    columns: columns, // columns는 정렬 기능을 위해 필요하지만 headingRowHeight가 0이므로 표시되지 않음
                     rows: displayedList.map((item) {
                       if (item is Map<String, dynamic>) {
-                        // 컬럼별 고정 너비 설정 (헤더와 일치)
-                        final columnWidths = <String, double>{
-                          'codigo1': 150,
-                          'desc1': 300,
-                          'tprendas': 120,
-                          'timporte': 150,
-                        };
-                        
                         // keys의 각 키에 대해 셀 생성 (키가 없어도 셀은 생성)
                         var cells = keys.map((key) {
                           final value = item[key];
@@ -654,19 +802,42 @@ class ReportTableBuilder {
                             print('⚠️⚠️⚠️ year 필드가 포맷팅되지 않았습니다! key: $key, formattedValue: $formattedValue');
                           }
                           
+                          // 금액/숫자 관련 컬럼명 체크 (명시적으로 숫자로 처리)
+                          final isAmountColumn = keyLower.contains('costo') || 
+                                                 keyLower.contains('importe') || 
+                                                 keyLower.contains('ingreso') || 
+                                                 keyLower.contains('precio') ||
+                                                 keyLower.contains('pre') ||
+                                                 keyLower.contains('venta') ||
+                                                 keyLower.contains('cantidad') ||
+                                                 keyLower.contains('count') ||
+                                                 keyLower.contains('total') ||
+                                                 keyLower == 'sucursal' || // alertas 보고서의 sucursal 컬럼
+                                                 (keyLower.startsWith('t') && 
+                                                  (keyLower.contains('cant') || 
+                                                   keyLower.contains('event') ||
+                                                   keyLower.contains('prendas')));
+                          
                           final isNumeric = (key != 'codigo' && key != 'codigo1' && key != 'tcode' && key != 'id_codigo1' && key != 'vcode') 
-                              ? ReportUtils.isNumeric(value) 
+                              ? (ReportUtils.isNumeric(value) || isAmountColumn)
                               : false;
+                          
+                          // 헤더와 일치하는 고정 너비 적용
+                          final cellWidth = columnWidths[key] ?? 150.0;
+                          
                           return DataCell(
-                            Align(
-                              alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
-                              child: Text(
-                                formattedValue,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  height: 1.2, // 읽기 가능한 줄 높이로 조정
+                            SizedBox(
+                              width: cellWidth,
+                              child: Align(
+                                alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+                                child: Text(
+                                  formattedValue,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    height: 1.2, // 읽기 가능한 줄 높이로 조정
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           );
@@ -791,8 +962,25 @@ class ReportTableBuilder {
                                       ? (value?.toString() ?? 'N/A')
                                       : ReportUtils.formatValue(value);
                                 }
-                                final isNumeric = (key != 'codigo' && key != 'codigo1' && key != 'tcode' && key != 'id_codigo1' && key != 'vcode') 
-                                    ? ReportUtils.isNumeric(value) 
+                                
+                                // 금액/숫자 관련 컬럼명 체크 (명시적으로 숫자로 처리)
+                                final isAmountColumn = keyLower.contains('costo') ||
+                                                       keyLower.contains('importe') ||
+                                                       keyLower.contains('ingreso') ||
+                                                       keyLower.contains('precio') ||
+                                                       keyLower.contains('pre') ||
+                                                       keyLower.contains('venta') ||
+                                                       keyLower.contains('cantidad') ||
+                                                       keyLower.contains('count') ||
+                                                       keyLower.contains('total') ||
+                                                       keyLower == 'sucursal' || // alertas 보고서의 sucursal 컬럼
+                                                       (keyLower.startsWith('t') &&
+                                                        (keyLower.contains('cant') ||
+                                                         keyLower.contains('event') ||
+                                                         keyLower.contains('prendas')));
+                                
+                                final isNumeric = (key != 'codigo' && key != 'codigo1' && key != 'tcode' && key != 'id_codigo1' && key != 'vcode')
+                                    ? (ReportUtils.isNumeric(value) || isAmountColumn)
                                     : false;
                                 return DataCell(
                                   Align(
@@ -971,9 +1159,23 @@ class ReportTableBuilder {
                                       : ReportUtils.formatValue(value);
                                 }
                                 
+                                // 금액/숫자 관련 컬럼명 체크 (명시적으로 숫자로 처리)
+                                final isAmountColumn = keyLower.contains('costo') || 
+                                                       keyLower.contains('importe') || 
+                                                       keyLower.contains('ingreso') || 
+                                                       keyLower.contains('precio') ||
+                                                       keyLower.contains('pre') ||
+                                                       keyLower.contains('venta') ||
+                                                       keyLower.contains('cantidad') ||
+                                                       keyLower.contains('count') ||
+                                                       keyLower.contains('total') ||
+                                                       (keyLower.startsWith('t') && 
+                                                        (keyLower.contains('cant') || 
+                                                         keyLower.contains('event') ||
+                                                         keyLower.contains('prendas')));
                                 
                                 final isNumeric = (key != 'codigo' && key != 'codigo1' && key != 'tcode' && key != 'id_codigo1') 
-                                    ? ReportUtils.isNumeric(value) 
+                                    ? (ReportUtils.isNumeric(value) || isAmountColumn)
                                     : false;
                                 return DataCell(
                                   Align(
@@ -1088,12 +1290,29 @@ class ReportTableBuilder {
                                         ? (value?.toString() ?? 'N/A')
                                         : ReportUtils.formatValue(value);
                                   }
-                                  final isNumeric = (key != 'codigo' && key != 'codigo1' && key != 'tcode' && key != 'id_codigo1' && key != 'vcode') 
-                                      ? ReportUtils.isNumeric(value) 
-                                      : false;
-                                  return DataCell(
-                                    Align(
-                                      alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+                                
+                                // 금액/숫자 관련 컬럼명 체크 (명시적으로 숫자로 처리)
+                                final isAmountColumn = keyLower.contains('costo') ||
+                                                       keyLower.contains('importe') ||
+                                                       keyLower.contains('ingreso') ||
+                                                       keyLower.contains('precio') ||
+                                                       keyLower.contains('pre') ||
+                                                       keyLower.contains('venta') ||
+                                                       keyLower.contains('cantidad') ||
+                                                       keyLower.contains('count') ||
+                                                       keyLower.contains('total') ||
+                                                       keyLower == 'sucursal' || // alertas 보고서의 sucursal 컬럼
+                                                       (keyLower.startsWith('t') &&
+                                                        (keyLower.contains('cant') ||
+                                                         keyLower.contains('event') ||
+                                                         keyLower.contains('prendas')));
+                                
+                                final isNumeric = (key != 'codigo' && key != 'codigo1' && key != 'tcode' && key != 'id_codigo1' && key != 'vcode')
+                                    ? (ReportUtils.isNumeric(value) || isAmountColumn)
+                                    : false;
+                                return DataCell(
+                                  Align(
+                                    alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
                                       child: Text(
                                         formattedValue,
                                         style: TextStyle(
@@ -1213,10 +1432,20 @@ class ReportTableBuilder {
     
     // 컬럼별 고정 너비 설정 (헤더와 일치)
     final columnWidths = <String, double>{
+      // Items 보고서
       'codigo1': 150,
       'desc1': 300,
       'tprendas': 120,
       'timporte': 150,
+      // Ingresos 보고서
+      'codigo': 150,
+      'descripcion': 300,
+      'tevent': 120,
+      'tcant': 150,
+      'tIngreso': 150,
+      'tingreso': 150,
+      'cntEvent': 120,
+      'cntevent': 120,
     };
     
     return Container(
@@ -1289,12 +1518,40 @@ class ReportTableBuilder {
     Color reportColor,
     String? sortColumn,
     bool sortAscending,
-    Function(int columnIndex, bool ascending)? onSort,
-  ) {
+    Function(int columnIndex, bool ascending)? onSort, {
+    Map<String, double>? columnWidths,
+  }) {
+    // 컬럼별 고정 너비 설정 (DataTable과 일치)
+    final defaultColumnWidths = <String, double>{
+      // Items 보고서
+      'codigo1': 150,
+      'desc1': 300,
+      'tprendas': 120,
+      'timporte': 150,
+      // Ingresos 보고서
+      'codigo': 150,
+      'descripcion': 300,
+      'tevent': 120,
+      'tcant': 150,
+      'tIngreso': 150,
+      'tingreso': 150,
+      'cntEvent': 120,
+      'cntevent': 120,
+      // Alertas 보고서
+      'fecha': 120,
+      'hora': 100,
+      'evento': 500,
+      'progname': 150,
+      'alerta': 80,
+      'sucursal': 100,
+    };
+    
+    final finalColumnWidths = columnWidths ?? defaultColumnWidths;
+    
     // DataTable의 헤더와 동일한 스타일로 헤더 행 생성
     // DataTable의 columnSpacing(8)을 고려하여 각 컬럼에 동일한 간격 적용
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.zero, // padding 제거하여 DataTable과 정확히 일치
       decoration: BoxDecoration(
         color: reportColor.withOpacity(0.1),
         border: Border(
@@ -1306,20 +1563,13 @@ class ReportTableBuilder {
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
-        children: columns.asMap().entries.map((entry) {
+        children: columns.asMap().entries.expand((entry) {
           final index = entry.key;
           final column = entry.value;
           final key = keys[index];
           final isSorted = sortColumn == key;
           
-          // 컬럼별 고정 너비 설정 (DataTable과 일치)
-          final columnWidths = <String, double>{
-            'codigo1': 150,
-            'desc1': 300,
-            'tprendas': 120,
-            'timporte': 150,
-          };
-          final columnWidth = columnWidths[key] ?? 150.0;
+          final columnWidth = finalColumnWidths[key] ?? 150.0;
           
           // label에서 텍스트 추출
           String labelText = '';
@@ -1337,48 +1587,62 @@ class ReportTableBuilder {
             labelText = key.toString();
           }
           
-          // 고정 너비로 설정하여 DataTable과 정확히 일치 (columnSpacing 8px 고려)
-          return SizedBox(
-            width: columnWidth + (index < columns.length - 1 ? 8 : 0), // 마지막 컬럼 제외하고 8px 간격 추가
-            child: InkWell(
-              onTap: column.onSort != null
-                  ? () {
-                      if (isSorted) {
-                        column.onSort!(index, !sortAscending);
-                      } else {
-                        column.onSort!(index, false); // 첫 클릭 시 내림차순
+          // 고정 너비로 설정하여 DataTable과 정확히 일치
+          // DataTable의 columnSpacing(8)을 각 칼럼 사이에 추가
+          final isNumericHeader = (key == 'tevent' || key == 'tcant' || key == 'tprendas' || key == 'timporte' || 
+                                   key == 'tIngreso' || key == 'tingreso' || key == 'cntEvent' || key == 'cntevent' ||
+                                   key == 'sucursal');
+          
+          return [
+            SizedBox(
+              width: columnWidth,
+              child: InkWell(
+                onTap: column.onSort != null
+                    ? () {
+                        if (isSorted) {
+                          column.onSort!(index, !sortAscending);
+                        } else {
+                          column.onSort!(index, false); // 첫 클릭 시 내림차순
+                        }
                       }
-                    }
-                  : null,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        labelText,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                    : null,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16), // DataTable의 기본 padding과 일치
+                  child: Align(
+                    alignment: isNumericHeader ? Alignment.centerRight : Alignment.centerLeft,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: isNumericHeader ? MainAxisAlignment.end : MainAxisAlignment.start,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            labelText,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: isNumericHeader ? TextAlign.right : TextAlign.left,
+                          ),
                         ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                        if (isSorted && column.onSort != null)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 4),
+                            child: Icon(
+                              sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                              size: 16,
+                              color: reportColor,
+                            ),
+                          ),
+                      ],
                     ),
-                    if (isSorted && column.onSort != null)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 4),
-                        child: Icon(
-                          sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                          size: 16,
-                          color: reportColor,
-                        ),
-                      ),
-                  ],
+                  ),
                 ),
               ),
             ),
-          );
+            // 마지막 칼럼이 아니면 columnSpacing(8px) 추가
+            if (index < columns.length - 1) const SizedBox(width: 8),
+          ];
         }).toList(),
       ),
     );

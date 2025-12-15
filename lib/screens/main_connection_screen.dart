@@ -1207,6 +1207,20 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                 Icons.inventory_2,
                 Colors.green,
               ),
+              _buildReportMenuItem(
+                context,
+                'gastos',
+                'Gastos',
+                Icons.receipt_long,
+                Colors.red,
+              ),
+              _buildReportMenuItem(
+                context,
+                'alertas',
+                'Alertas',
+                Icons.notifications,
+                Colors.orange,
+              ),
               // 연결 끊기 버튼
               Padding(
                 padding: const EdgeInsets.all(8.0),
@@ -1256,6 +1270,12 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                 break;
               case 'items':
                 _selectedReportType = ReportType.items;
+                break;
+              case 'gastos':
+                _selectedReportType = ReportType.gastos;
+                break;
+              case 'alertas':
+                _selectedReportType = ReportType.alertas;
                 break;
               case 'ventas':
                 _selectedReportType = ReportType.ventas;

@@ -85,10 +85,15 @@ class ReportsApi {
 
   /// 지출 보고서 가져오기
   Future<Map<String, dynamic>> getGastosReport({
+    String? filteringWord,
     Map<String, dynamic>? filters,
   }) async {
     final endpoint = '/api/reporte/gastos';
     final queryParams = <String, String>{};
+    
+    if (filteringWord != null && filteringWord.isNotEmpty) {
+      queryParams['filtering_word'] = filteringWord;
+    }
     
     if (filters != null) {
       filters.forEach((key, value) {
@@ -195,10 +200,15 @@ class ReportsApi {
 
   /// 알림 보고서 가져오기
   Future<Map<String, dynamic>> getAlertasReport({
+    String? filteringWord,
     Map<String, dynamic>? filters,
   }) async {
     final endpoint = '/api/reporte/alertas';
     final queryParams = <String, String>{};
+    
+    if (filteringWord != null && filteringWord.isNotEmpty) {
+      queryParams['filtering_word'] = filteringWord;
+    }
     
     if (filters != null) {
       filters.forEach((key, value) {
