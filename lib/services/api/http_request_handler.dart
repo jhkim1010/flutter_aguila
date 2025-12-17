@@ -148,6 +148,16 @@ class HttpRequestHandler {
         String errorMessage = _extractErrorMessage(response);
         print('❌ HTTP 오류 (${response.statusCode}): $errorMessage');
         
+        // 에러 메시지가 이미 상태 코드를 포함하고 있으면 중복으로 감싸지 않음
+        final alreadyHasStatusCode = errorMessage.contains('(${response.statusCode})') ||
+                                     errorMessage.contains('HTTP ${response.statusCode}') ||
+                                     errorMessage.contains('${response.statusCode} 오류');
+        
+        if (alreadyHasStatusCode) {
+          // 이미 완전한 메시지이므로 그대로 사용
+          throw Exception(errorMessage);
+        }
+        
         // 클라이언트 측 에러 (4xx)와 서버 측 에러 (5xx) 구분
         if (response.statusCode >= 400 && response.statusCode < 500) {
           throw Exception('요청 오류 (${response.statusCode}): $errorMessage');
@@ -277,6 +287,16 @@ class HttpRequestHandler {
         String errorMessage = _extractErrorMessage(response);
         print('❌ HTTP 오류 (${response.statusCode}): $errorMessage');
         
+        // 에러 메시지가 이미 상태 코드를 포함하고 있으면 중복으로 감싸지 않음
+        final alreadyHasStatusCode = errorMessage.contains('(${response.statusCode})') ||
+                                     errorMessage.contains('HTTP ${response.statusCode}') ||
+                                     errorMessage.contains('${response.statusCode} 오류');
+        
+        if (alreadyHasStatusCode) {
+          // 이미 완전한 메시지이므로 그대로 사용
+          throw Exception(errorMessage);
+        }
+        
         // 클라이언트 측 에러 (4xx)와 서버 측 에러 (5xx) 구분
         if (response.statusCode >= 400 && response.statusCode < 500) {
           throw Exception('요청 오류 (${response.statusCode}): $errorMessage');
@@ -359,6 +379,16 @@ class HttpRequestHandler {
         String errorMessage = _extractErrorMessage(response);
         print('❌ HTTP 오류 (${response.statusCode}): $errorMessage');
         
+        // 에러 메시지가 이미 상태 코드를 포함하고 있으면 중복으로 감싸지 않음
+        final alreadyHasStatusCode = errorMessage.contains('(${response.statusCode})') ||
+                                     errorMessage.contains('HTTP ${response.statusCode}') ||
+                                     errorMessage.contains('${response.statusCode} 오류');
+        
+        if (alreadyHasStatusCode) {
+          // 이미 완전한 메시지이므로 그대로 사용
+          throw Exception(errorMessage);
+        }
+        
         // 클라이언트 측 에러 (4xx)와 서버 측 에러 (5xx) 구분
         if (response.statusCode >= 400 && response.statusCode < 500) {
           throw Exception('요청 오류 (${response.statusCode}): $errorMessage');
@@ -381,6 +411,20 @@ class HttpRequestHandler {
     if (response.body.isEmpty) {
       print('⚠️ 에러 응답 본문이 비어있습니다.');
       return errorMessage;
+    }
+    
+    // HTML 응답인지 먼저 확인 (시작 부분뿐만 아니라 내용도 확인)
+    final bodyTrimmed = response.body.trim();
+    final bodyLower = bodyTrimmed.toLowerCase();
+    if (bodyLower.startsWith('<html') || 
+        bodyLower.startsWith('<!doctype') ||
+        bodyLower.contains('</html>') ||
+        bodyLower.contains('<html>') ||
+        bodyLower.contains('<head>') ||
+        bodyLower.contains('<body>')) {
+      print('⚠️ HTML 응답 감지: ${bodyTrimmed.length} bytes');
+      print('   HTML 내용 미리보기: ${bodyTrimmed.length > 200 ? bodyTrimmed.substring(0, 200) + "..." : bodyTrimmed}');
+      return _extractMessageFromHtml(bodyTrimmed, response.statusCode);
     }
     
     try {
