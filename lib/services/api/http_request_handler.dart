@@ -288,6 +288,58 @@ class HttpRequestHandler {
       } else if (errorBody is Map && errorBody.containsKey('error')) {
         errorMessage = errorBody['error'].toString();
       }
+      
+      // 데이터베이스 함수 관련 에러 감지
+      if (errorMessage.toLowerCase().contains('function') && 
+          errorMessage.toLowerCase().contains('does not exist')) {
+        final functionMatch = RegExp(r'function\s+(\w+)\s*\(').firstMatch(errorMessage.toLowerCase());
+        if (functionMatch != null) {
+          final functionName = functionMatch.group(1);
+          return '데이터베이스 함수 오류: 함수 "$functionName"이(가) 존재하지 않습니다. 서버 관리자에게 문의하세요. (서버가 대체 방법으로 처리할 수 있습니다)';
+        }
+      }
+      
+      // DatabaseError 감지
+      if (errorBody is Map) {
+        final errorType = errorBody['Error type']?.toString() ?? 
+                         errorBody['error_type']?.toString() ?? 
+                         errorBody['type']?.toString();
+        if (errorType != null && errorType.toLowerCase().contains('database')) {
+          final originalError = errorBody['Original error']?.toString() ?? 
+                               errorBody['original_error']?.toString() ?? 
+                               errorBody['message']?.toString();
+          if (originalError != null) {
+            // 함수 존재하지 않음
+            if (originalError.toLowerCase().contains('function') &&
+                originalError.toLowerCase().contains('does not exist')) {
+              return '데이터베이스 함수 오류: 요청한 함수가 존재하지 않습니다. 서버가 대체 방법으로 처리할 수 있습니다.';
+            }
+            // 제약 조건 위반
+            if (originalError.toLowerCase().contains('unique constraint') ||
+                originalError.toLowerCase().contains('constraint violation')) {
+              return '데이터 중복 오류: 이미 존재하는 데이터입니다.';
+            }
+          }
+        }
+        
+        // Validation error 감지
+        final problemSource = errorBody['Problem Source']?.toString() ?? 
+                              errorBody['problem_source']?.toString();
+        if (problemSource != null && 
+            problemSource.toLowerCase().contains('constraint')) {
+          return '데이터 제약 조건 위반: 입력한 데이터가 데이터베이스 규칙을 위반했습니다.';
+        }
+        
+        // CLIENT_DATA validation error 감지
+        if (errorMessage.toLowerCase().contains('validation error') &&
+            errorBody.containsKey('Problem Source')) {
+          final problemSource = errorBody['Problem Source']?.toString() ?? '';
+          if (problemSource.toLowerCase().contains('constraint')) {
+            return '데이터 제약 조건 위반: 입력한 데이터가 데이터베이스 규칙을 위반했습니다.';
+          }
+          return '데이터 검증 오류: 입력한 데이터가 유효하지 않습니다.';
+        }
+      }
     } catch (e) {
       // JSON 파싱 실패 시 HTML 또는 일반 텍스트 응답 처리
       if (response.body.isNotEmpty) {
@@ -414,6 +466,78 @@ class HttpRequestHandler {
     
     // "서버 오류 (502): " 같은 패턴에서 상태 코드만 남기고 메시지 정제
     cleaned = cleaned.replaceAll(RegExp(r'서버 오류\s*\(\d{3}\):\s*'), '');
+    
+    // 데이터베이스 함수 관련 에러 감지 및 처리
+    if (cleaned.toLowerCase().contains('function') && 
+        cleaned.toLowerCase().contains('does not exist')) {
+      // 데이터베이스 함수가 존재하지 않는 경우
+      final functionMatch = RegExp(r'function\s+(\w+)\s*\(').firstMatch(cleaned.toLowerCase());
+      if (functionMatch != null) {
+        final functionName = functionMatch.group(1);
+        return '데이터베이스 함수 오류: 함수 "$functionName"이(가) 존재하지 않습니다. 서버 관리자에게 문의하세요. (서버가 대체 방법으로 처리할 수 있습니다)';
+      }
+      return '데이터베이스 함수 오류: 요청한 함수가 존재하지 않습니다. 서버 관리자에게 문의하세요.';
+    }
+    
+    // Validation error 감지
+    if (cleaned.toLowerCase().contains('validation error')) {
+      // 제약 조건 위반 정보 추출 시도
+      if (cleaned.toLowerCase().contains('unique constraint')) {
+        final constraintMatch = RegExp(r'unique constraint\s*\(([^)]+)\)').firstMatch(cleaned.toLowerCase());
+        if (constraintMatch != null) {
+          final constraintName = constraintMatch.group(1);
+          return '데이터 중복 오류: 이미 존재하는 데이터입니다. (제약 조건: $constraintName)';
+        }
+        return '데이터 중복 오류: 이미 존재하는 데이터입니다.';
+      }
+      if (cleaned.toLowerCase().contains('constraint violation')) {
+        return '데이터 제약 조건 위반: 입력한 데이터가 데이터베이스 규칙을 위반했습니다.';
+      }
+      return '데이터 검증 오류: 입력한 데이터가 유효하지 않습니다.';
+    }
+    
+    // Database constraint violation 감지
+    if (cleaned.toLowerCase().contains('constraint violation') ||
+        cleaned.toLowerCase().contains('constraint') && cleaned.toLowerCase().contains('violation')) {
+      if (cleaned.toLowerCase().contains('unique')) {
+        return '데이터 중복 오류: 이미 존재하는 데이터입니다.';
+      }
+      return '데이터 제약 조건 위반: 입력한 데이터가 데이터베이스 규칙을 위반했습니다.';
+    }
+    
+    // Unique constraint 감지
+    if (cleaned.toLowerCase().contains('unique constraint')) {
+      final constraintMatch = RegExp(r'unique constraint\s*\(([^)]+)\)').firstMatch(cleaned.toLowerCase());
+      if (constraintMatch != null) {
+        final constraintName = constraintMatch.group(1);
+        return '데이터 중복 오류: 이미 존재하는 데이터입니다. (제약 조건: $constraintName)';
+      }
+      return '데이터 중복 오류: 이미 존재하는 데이터입니다.';
+    }
+    
+    // INSERT/UPDATE 실패 감지
+    if ((cleaned.toLowerCase().contains('insert') || cleaned.toLowerCase().contains('update')) &&
+        cleaned.toLowerCase().contains('failed')) {
+      if (cleaned.toLowerCase().contains('validation')) {
+        return '데이터 저장 실패: 입력한 데이터가 유효하지 않습니다.';
+      }
+      if (cleaned.toLowerCase().contains('constraint')) {
+        return '데이터 저장 실패: 데이터 제약 조건을 위반했습니다.';
+      }
+      return '데이터 저장 실패: 데이터를 저장하는 중 문제가 발생했습니다.';
+    }
+    
+    // DatabaseError 감지
+    if (cleaned.toLowerCase().contains('databaseerror') ||
+        cleaned.toLowerCase().contains('database error')) {
+      // 데이터베이스 에러 코드 추출 시도
+      final errorCodeMatch = RegExp(r'code:\s*(\d+)').firstMatch(cleaned.toLowerCase());
+      if (errorCodeMatch != null) {
+        final errorCode = errorCodeMatch.group(1);
+        return '데이터베이스 오류 (코드: $errorCode): 데이터베이스 작업 중 문제가 발생했습니다. 서버 관리자에게 문의하세요.';
+      }
+      return '데이터베이스 오류: 데이터베이스 작업 중 문제가 발생했습니다. 서버 관리자에게 문의하세요.';
+    }
     
     // HTML 태그 제거
     if (cleaned.toLowerCase().contains('<html>') || 
