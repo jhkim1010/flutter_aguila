@@ -1,17 +1,47 @@
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
-import 'dart:io' show exit;
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, kDebugMode;
+import 'dart:io' show exit, Platform;
 import 'package:local_auth/local_auth.dart';
 
 /// 생체 인증 핸들러
 class BiometricAuthHandler {
   final LocalAuthentication _localAuth = LocalAuthentication();
 
+  /// 시뮬레이터 환경인지 확인
+  bool _isSimulator() {
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      // iOS 시뮬레이터 감지
+      try {
+        // 시뮬레이터에서는 특정 환경 변수가 설정되어 있음
+        final simulatorId = Platform.environment['SIMULATOR_DEVICE_NAME'];
+        if (simulatorId != null) {
+          return true;
+        }
+        // 또는 디버그 모드에서 시뮬레이터로 간주
+        if (kDebugMode) {
+          return true;
+        }
+      } catch (e) {
+        // 환경 변수 확인 실패 시 디버그 모드에서는 시뮬레이터로 간주
+        if (kDebugMode) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   /// 백그라운드에서 생체 인식 수행
   Future<bool> authenticateInBackground() async {
     // Windows 플랫폼에서는 생체 인식 생략
     if (defaultTargetPlatform == TargetPlatform.windows) {
       print('🪟 Windows 플랫폼: 생체 인식 생략');
+      return true;
+    }
+    
+    // 시뮬레이터에서는 생체 인식 생략
+    if (_isSimulator()) {
+      print('📱 시뮬레이터 환경: 생체 인식 생략');
       return true;
     }
     

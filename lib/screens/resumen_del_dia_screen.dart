@@ -684,12 +684,12 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       child: SizedBox(
         width: double.infinity,
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(12.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
@@ -697,31 +697,36 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                 child: Icon(
                   icon,
                   color: Theme.of(context).colorScheme.primary,
-                  size: 24,
+                  size: 20,
                 ),
               ),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       title,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 10,
                         color: Colors.grey[600],
                         fontWeight: FontWeight.w500,
                       ),
                       textAlign: TextAlign.right,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       _formatValue(value, isCurrency: isCurrency),
                       style: TextStyle(
-                        fontSize: 24,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: isCurrency ? Theme.of(context).colorScheme.primary : null,
                       ),
                       textAlign: TextAlign.right,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -788,7 +793,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                       physics: const NeverScrollableScrollPhysics(),
                       mainAxisSpacing: 12,
                       crossAxisSpacing: 12,
-                      childAspectRatio: 3.5,
+                      childAspectRatio: 2.8,
                       children: children,
                     );
                   },
@@ -2743,7 +2748,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                           Text(
                             'Sucursal $sucursal',
                             style: TextStyle(
-                              fontSize: 16,
+                              fontSize: 14,
                               fontWeight: FontWeight.bold,
                               color: Theme.of(context).colorScheme.primary,
                             ),
@@ -2888,20 +2893,20 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 10,
                   color: Colors.grey[600],
                 ),
                 textAlign: TextAlign.right,
               ),
               const SizedBox(width: 4),
-              Icon(icon, size: 16, color: Colors.grey[600]),
+              Icon(icon, size: 14, color: Colors.grey[600]),
             ],
           ),
           const SizedBox(height: 6),
           Text(
             value,
             style: const TextStyle(
-              fontSize: 24,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
             textAlign: TextAlign.right,

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
@@ -46,7 +47,8 @@ class DatabaseConnectionApi {
   }
 
   /// 기존 데이터베이스 연결 끊기
-  Future<void> disconnectDatabase() async {
+  /// 재시도 로직을 포함하여 서버에 확실히 전달되도록 보장
+  Future<void> disconnectDatabase({int maxRetries = 3}) async {
     try {
       final headers = await _httpHandler.getDatabaseHeaders();
       final databaseName = headers['x-db-name'] ?? '';
@@ -60,28 +62,64 @@ class DatabaseConnectionApi {
       print('URL: ${_httpHandler.serverUrl}/api/disconnect');
       print('Headers: $headers');
 
-      try {
-        final response = await _httpClient.post(
-          Uri.parse('${_httpHandler.serverUrl}/api/disconnect'),
-          headers: headers,
-        ).timeout(
-          const Duration(seconds: 5),
-          onTimeout: () {
-            print('⚠️ 연결 끊기 타임아웃 (무시하고 계속 진행)');
-            return http.Response('', 200);
-          },
-        );
+      bool success = false;
+      int attempt = 0;
 
-        if (response.statusCode == 200) {
-          print('✅ 기존 연결이 성공적으로 끊어졌습니다.');
-        } else {
-          print('⚠️ 연결 끊기 응답: HTTP ${response.statusCode} (무시하고 계속 진행)');
+      // 재시도 로직: 서버에 확실히 전달되도록 보장
+      while (attempt < maxRetries && !success) {
+        attempt++;
+        print('🔄 연결 끊기 시도 $attempt/$maxRetries');
+
+        try {
+          final response = await _httpClient.post(
+            Uri.parse('${_httpHandler.serverUrl}/api/disconnect'),
+            headers: headers,
+          ).timeout(
+            const Duration(seconds: 10), // 타임아웃 증가: 5초 → 10초
+            onTimeout: () {
+              print('⚠️ 연결 끊기 타임아웃 (시도 $attempt/$maxRetries)');
+              throw TimeoutException('Disconnect timeout', const Duration(seconds: 10));
+            },
+          );
+
+          if (response.statusCode == 200) {
+            print('✅ 기존 연결이 성공적으로 끊어졌습니다.');
+            success = true;
+          } else {
+            print('⚠️ 연결 끊기 응답: HTTP ${response.statusCode} (시도 $attempt/$maxRetries)');
+            if (attempt < maxRetries) {
+              await Future.delayed(const Duration(milliseconds: 500));
+            }
+          }
+        } catch (e) {
+          print('⚠️ 연결 끊기 실패 (시도 $attempt/$maxRetries): $e');
+          
+          // 네트워크 오류가 아닌 경우에만 재시도
+          final errorMessage = e.toString();
+          if (errorMessage.contains('SocketException') || 
+              errorMessage.contains('Failed host lookup') ||
+              errorMessage.contains('TimeoutException')) {
+            if (attempt < maxRetries) {
+              print('🔄 네트워크 오류로 재시도 중... (${attempt + 1}/$maxRetries)');
+              await Future.delayed(Duration(milliseconds: 500 * attempt)); // 지수 백오프
+            } else {
+              print('❌ 최대 재시도 횟수 초과. 서버에 연결 풀 정리 요청이 전달되지 않았을 수 있습니다.');
+            }
+          } else {
+            // 다른 종류의 오류는 재시도하지 않음
+            print('❌ 재시도 불가능한 오류: $e');
+            break;
+          }
         }
-      } catch (e) {
-        print('⚠️ 연결 끊기 실패 (무시하고 계속 진행): $e');
+      }
+
+      if (!success) {
+        print('⚠️ 경고: 연결 끊기 요청이 서버에 전달되지 않았을 수 있습니다.');
+        print('   → Node.js 서버에서 타임아웃 기반 자동 정리 기능을 확인하세요.');
       }
     } catch (e) {
-      print('⚠️ 연결 끊기 중 오류 발생 (무시하고 계속 진행): $e');
+      print('❌ 연결 끊기 중 치명적 오류 발생: $e');
+      print('   → 서버에 연결 풀 정리 요청이 전달되지 않았을 수 있습니다.');
     }
   }
 

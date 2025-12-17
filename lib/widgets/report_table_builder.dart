@@ -634,8 +634,8 @@ class ReportTableBuilder {
                       scrollDirection: Axis.vertical,
                       child: DataTable(
                         columnSpacing: 8,
-                        dataRowMinHeight: 12, // 절반으로 더 줄임 (48 -> 24 -> 12)
-                        dataRowMaxHeight: 20, // 절반으로 더 줄임 (80 -> 40 -> 20)
+                        dataRowMinHeight: reportType == ReportType.alertas ? null : 12, // Alertas는 자동 높이
+                        dataRowMaxHeight: reportType == ReportType.alertas ? null : 20, // Alertas는 자동 높이
                         headingRowHeight: 0,
                         headingRowColor: MaterialStateProperty.all(Colors.transparent),
                         sortColumnIndex: sortColumn != null && keys.contains(sortColumn) 
@@ -679,14 +679,18 @@ class ReportTableBuilder {
                                   width: cellWidth,
                                   child: Align(
                                     alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
-                                    child: Text(
-                                      formattedValue,
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        height: isEventoColumn ? 1.1 : 0.9, // 줄 간격 더 줄임 (1.2->1.1, 1.0->0.9)
-                                      ),
-                                      maxLines: isEventoColumn ? 2 : 1, // evento는 최대 2줄
-                                      overflow: TextOverflow.ellipsis, // 2줄을 넘으면 ellipsis 표시
+                                    child: Wrap(
+                                      children: [
+                                        Text(
+                                          formattedValue,
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            height: isEventoColumn ? 1.3 : 1.2,
+                                          ),
+                                          maxLines: null, // Alertas는 모든 줄 표시
+                                          overflow: TextOverflow.visible, // 내용에 맞게 자동 높이 조절
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ),
@@ -747,8 +751,8 @@ class ReportTableBuilder {
                   scrollDirection: Axis.horizontal,
                   child: DataTable(
                     columnSpacing: 8,
-                            dataRowMinHeight: 48, // 읽기 가능한 높이로 조정
-                            dataRowMaxHeight: 56,
+                            dataRowMinHeight: reportType == ReportType.alertas ? null : 48, // Alertas는 자동 높이
+                            dataRowMaxHeight: reportType == ReportType.alertas ? null : 56, // Alertas는 자동 높이
                             headingRowHeight: 0, // 헤더는 _buildHeaderRow로 표시하므로 0으로 설정
                     headingRowColor: MaterialStateProperty.all(
                               Colors.transparent, // 헤더 배경을 투명하게
@@ -825,19 +829,37 @@ class ReportTableBuilder {
                           // 헤더와 일치하는 고정 너비 적용
                           final cellWidth = columnWidths[key] ?? 150.0;
                           
+                          // Alertas 보고서는 내용에 맞게 자동 높이 조절
+                          final isAlertas = reportType == ReportType.alertas;
+                          final isEventoColumn = key.toLowerCase() == 'evento';
+                          
                           return DataCell(
                             SizedBox(
                               width: cellWidth,
                               child: Align(
                                 alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
-                                child: Text(
-                                  formattedValue,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    height: 1.2, // 읽기 가능한 줄 높이로 조정
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                                child: isAlertas
+                                    ? Wrap(
+                                        children: [
+                                          Text(
+                                            formattedValue,
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              height: isEventoColumn ? 1.3 : 1.2,
+                                            ),
+                                            maxLines: null, // 모든 줄 표시
+                                            overflow: TextOverflow.visible, // 내용에 맞게 자동 높이 조절
+                                          ),
+                                        ],
+                                      )
+                                    : Text(
+                                        formattedValue,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          height: 1.2, // 읽기 가능한 줄 높이로 조정
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                               ),
                             ),
                           );
@@ -914,8 +936,8 @@ class ReportTableBuilder {
                         )
                       : DataTable(
                           columnSpacing: 8,
-                          dataRowMinHeight: 48,
-                          dataRowMaxHeight: 56,
+                          dataRowMinHeight: reportType == ReportType.alertas ? 72 : 48, // Alertas는 1.5배 높이
+                          dataRowMaxHeight: reportType == ReportType.alertas ? 84 : 56, // Alertas는 1.5배 높이
                           headingRowHeight: reportType == ReportType.ventas ? 0 : 56, // ventas는 상단 헤더 사용
                           headingRowColor: MaterialStateProperty.all(
                             Colors.transparent,
@@ -1115,8 +1137,8 @@ class ReportTableBuilder {
                         scrollDirection: Axis.horizontal,
                         child: DataTable(
                           columnSpacing: 8,
-                          dataRowMinHeight: reportType == ReportType.ventas ? 32 : 48,
-                          dataRowMaxHeight: reportType == ReportType.ventas ? 40 : 56,
+                          dataRowMinHeight: reportType == ReportType.ventas ? 32 : (reportType == ReportType.alertas ? null : 48),
+                          dataRowMaxHeight: reportType == ReportType.ventas ? 40 : (reportType == ReportType.alertas ? null : 56),
                           headingRowHeight: reportType == ReportType.ventas ? 40 : 56,
                           headingRowColor: MaterialStateProperty.all(
                             Colors.transparent, // 헤더 배경을 투명하게
@@ -1177,16 +1199,34 @@ class ReportTableBuilder {
                                 final isNumeric = (key != 'codigo' && key != 'codigo1' && key != 'tcode' && key != 'id_codigo1') 
                                     ? (ReportUtils.isNumeric(value) || isAmountColumn)
                                     : false;
+                                // Alertas 보고서는 내용에 맞게 자동 높이 조절
+                                final isAlertas = reportType == ReportType.alertas;
+                                final isEventoColumn = keyLower == 'evento';
+                                
                                 return DataCell(
                                   Align(
                                     alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
-                                    child: Text(
-                                      formattedValue,
-                                      style: TextStyle(
-                                        fontSize: reportType == ReportType.ventas ? 12 : 14,
-                                        height: reportType == ReportType.ventas ? 1.0 : 1.2,
-                                      ),
-                                    ),
+                                    child: isAlertas
+                                        ? Wrap(
+                                            children: [
+                                              Text(
+                                                formattedValue,
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  height: isEventoColumn ? 1.3 : 1.2,
+                                                ),
+                                                maxLines: null, // 모든 줄 표시
+                                                overflow: TextOverflow.visible, // 내용에 맞게 자동 높이 조절
+                                              ),
+                                            ],
+                                          )
+                                        : Text(
+                                            formattedValue,
+                                            style: TextStyle(
+                                              fontSize: reportType == ReportType.ventas ? 12 : 14,
+                                              height: reportType == ReportType.ventas ? 1.0 : 1.2,
+                                            ),
+                                          ),
                                   ),
                                 );
                               }).toList();
@@ -1246,8 +1286,8 @@ class ReportTableBuilder {
                       )
                       : DataTable(
                           columnSpacing: 8,
-                          dataRowMinHeight: reportType == ReportType.ventas ? 32 : 48,
-                          dataRowMaxHeight: reportType == ReportType.ventas ? 40 : 56,
+                          dataRowMinHeight: reportType == ReportType.ventas ? 32 : (reportType == ReportType.alertas ? null : 48),
+                          dataRowMaxHeight: reportType == ReportType.ventas ? 40 : (reportType == ReportType.alertas ? null : 56),
                           headingRowHeight: reportType == ReportType.ventas ? 40 : 56,
                           headingRowColor: MaterialStateProperty.all(
                             Colors.transparent,
@@ -1310,16 +1350,34 @@ class ReportTableBuilder {
                                 final isNumeric = (key != 'codigo' && key != 'codigo1' && key != 'tcode' && key != 'id_codigo1' && key != 'vcode')
                                     ? (ReportUtils.isNumeric(value) || isAmountColumn)
                                     : false;
+                                // Alertas 보고서는 내용에 맞게 자동 높이 조절
+                                final isAlertas = reportType == ReportType.alertas;
+                                final isEventoColumn = keyLower == 'evento';
+                                
                                 return DataCell(
                                   Align(
                                     alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
-                                      child: Text(
-                                        formattedValue,
-                                        style: TextStyle(
-                                          fontSize: reportType == ReportType.ventas ? 12 : 14,
-                                          height: reportType == ReportType.ventas ? 1.0 : 1.2,
-                                        ),
-                                      ),
+                                    child: isAlertas
+                                        ? Wrap(
+                                            children: [
+                                              Text(
+                                                formattedValue,
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  height: isEventoColumn ? 1.3 : 1.2,
+                                                ),
+                                                maxLines: null, // 모든 줄 표시
+                                                overflow: TextOverflow.visible, // 내용에 맞게 자동 높이 조절
+                                              ),
+                                            ],
+                                          )
+                                        : Text(
+                                            formattedValue,
+                                            style: TextStyle(
+                                              fontSize: reportType == ReportType.ventas ? 12 : 14,
+                                              height: reportType == ReportType.ventas ? 1.0 : 1.2,
+                                            ),
+                                          ),
                                     ),
                                   );
                                 }).toList();
