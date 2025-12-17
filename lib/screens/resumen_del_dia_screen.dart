@@ -563,10 +563,22 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       print('  - Sucursal: ${sucursal ?? _selectedSucursal ?? '없음'}');
       
       // 날짜와 sucursal을 API 호출에 포함
-      final data = await _databaseService.getResumenDelDia(
-        date: dateToUse,
-        sucursal: sucursal ?? _selectedSucursal,
-      );
+      print('📡 getResumenDelDia 요청 시작...');
+      print('   - 날짜: $dateToUse');
+      print('   - Sucursal: ${sucursal ?? _selectedSucursal ?? "없음"}');
+      
+      Map<String, dynamic> data;
+      try {
+        data = await _databaseService.getResumenDelDia(
+          date: dateToUse,
+          sucursal: sucursal ?? _selectedSucursal,
+        );
+        print('✅ getResumenDelDia 성공');
+        print('   - 응답 키: ${data.keys.toList()}');
+      } catch (e) {
+        print('❌ getResumenDelDia 실패: $e');
+        rethrow; // 에러를 다시 던져서 catch 블록에서 처리하도록
+      }
       
       // 응답 데이터에 에러 메시지가 포함되어 있는지 확인
       if (data is Map<String, dynamic>) {
@@ -581,6 +593,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
               if (errorStr.contains('게이트웨이') || 
                   errorStr.contains('bad gateway') ||
                   errorStr.contains('서버 오류')) {
+                print('⚠️ 응답 데이터에 에러 메시지 포함: $errorValue');
                 throw Exception(errorValue.toString());
               }
             }

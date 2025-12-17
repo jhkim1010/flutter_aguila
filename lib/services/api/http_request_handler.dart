@@ -45,6 +45,8 @@ class HttpRequestHandler {
         'x-db-user': username,
         'x-db-password': password,
         'x-db-ssl': 'false',
+        // Keep-Alive 헤더 추가로 연결 재사용 최적화
+        'Connection': 'keep-alive',
       };
       
       return headers;
@@ -184,18 +186,30 @@ class HttpRequestHandler {
       print('URL: $serverUrl$endpoint');
       print('Headers: $headers');
       print('Timeout: ${timeoutSeconds}초');
+      print('Request Body Length: ${json.encode(body).length} bytes');
       
-      final response = await _httpClient.post(
-        Uri.parse('$serverUrl$endpoint'),
-        headers: headers,
-        body: json.encode(body),
-      ).timeout(
-        Duration(seconds: timeoutSeconds),
-        onTimeout: () {
-          print('❌ 요청 타임아웃 (${timeoutSeconds}초 초과)');
-          throw Exception('요청 타임아웃: 서버 응답이 ${timeoutSeconds}초를 초과했습니다. 서버가 실행 중인지 확인하세요.');
-        },
-      );
+      final requestStartTime = DateTime.now();
+      http.Response response;
+      try {
+        response = await _httpClient.post(
+          Uri.parse('$serverUrl$endpoint'),
+          headers: headers,
+          body: json.encode(body),
+        ).timeout(
+          Duration(seconds: timeoutSeconds),
+          onTimeout: () {
+            final elapsed = DateTime.now().difference(requestStartTime);
+            print('❌ 요청 타임아웃 (${timeoutSeconds}초 초과, 실제 경과: ${elapsed.inSeconds}초)');
+            throw Exception('요청 타임아웃: 서버 응답이 ${timeoutSeconds}초를 초과했습니다. 서버가 실행 중인지 확인하세요.');
+          },
+        );
+        final elapsed = DateTime.now().difference(requestStartTime);
+        print('⏱️ 요청 완료 시간: ${elapsed.inMilliseconds}ms');
+      } catch (e) {
+        final elapsed = DateTime.now().difference(requestStartTime);
+        print('❌ POST 요청 중 예외 발생 (경과: ${elapsed.inMilliseconds}ms): $e');
+        rethrow;
+      }
 
       print('=== 응답 정보 ===');
       print('Status Code: ${response.statusCode}');
