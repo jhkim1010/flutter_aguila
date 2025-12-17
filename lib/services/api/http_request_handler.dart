@@ -304,10 +304,11 @@ class HttpRequestHandler {
         if (response.statusCode == 502) {
           print('⚠️ 502 Bad Gateway 에러 발생, 재시도 시도...');
           
-          // 최대 2번 재시도 (총 3번 시도)
-          for (int retry = 1; retry <= 2; retry++) {
-            print('🔄 재시도 $retry/2... (${500 * retry}ms 대기 후)');
-            await Future.delayed(Duration(milliseconds: 500 * retry));
+          // 최대 3번 재시도 (총 4번 시도), 간격을 늘려서 서버 복구 시간 제공
+          for (int retry = 1; retry <= 3; retry++) {
+            final delaySeconds = retry; // 1초, 2초, 3초
+            print('🔄 재시도 $retry/3... (${delaySeconds}초 대기 후)');
+            await Future.delayed(Duration(seconds: delaySeconds));
             
             try {
               final retryResponse = await _httpClient.post(
@@ -364,7 +365,7 @@ class HttpRequestHandler {
                   print('❌ JSON 파싱 오류: $e');
                   throw Exception('JSON 파싱 오류: 서버 응답을 파싱할 수 없습니다.');
                 }
-              } else if (retryResponse.statusCode != 502 || retry == 2) {
+              } else if (retryResponse.statusCode != 502 || retry == 3) {
                 // 다른 에러이거나 마지막 재시도인 경우
                 response = retryResponse;
                 break;
@@ -372,7 +373,7 @@ class HttpRequestHandler {
               // 502 에러이고 재시도 횟수가 남아있으면 계속
             } catch (e) {
               print('❌ 재시도 $retry 실패: $e');
-              if (retry == 2) {
+              if (retry == 3) {
                 // 마지막 재시도 실패 - 원래 응답으로 처리
                 break;
               }
@@ -687,10 +688,11 @@ class HttpRequestHandler {
   /// HTML 응답에서 메시지 추출
   String _extractMessageFromHtml(String htmlBody, int statusCode) {
     // 502 Bad Gateway HTML 응답 처리
+    // 상태 코드를 포함하지 않고 반환 (호출하는 쪽에서 추가하므로 중복 방지)
     if (statusCode == 502) {
       if (htmlBody.toLowerCase().contains('502 bad gateway') ||
           htmlBody.toLowerCase().contains('bad gateway')) {
-        return '게이트웨이 오류 (502): 백엔드 서버에 연결할 수 없습니다. 서버가 실행 중인지 확인하거나 서버 관리자에게 문의해주세요.';
+        return '백엔드 서버에 연결할 수 없습니다. 서버가 실행 중인지 확인하거나 서버 관리자에게 문의해주세요.';
       }
     }
     
