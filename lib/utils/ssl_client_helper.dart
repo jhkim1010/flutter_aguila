@@ -19,11 +19,10 @@ class SslClientHelper {
         // 모든 인증서를 허용 (자체 서명 인증서 포함)
         return true;
       }
-      // 연결 타임아웃 설정 (연결 풀 재사용을 위해 충분히 길게 설정)
-      ..connectionTimeout = const Duration(seconds: 60)
-      // idleTimeout을 늘려서 연결 풀 재사용 최적화
-      // 30초는 너무 짧아서 연결이 빨리 닫혀서 502 에러가 발생할 수 있음
-      ..idleTimeout = const Duration(minutes: 5);
+      // 연결 타임아웃 설정
+      ..connectionTimeout = const Duration(seconds: 30)
+      // 읽기 타임아웃 설정
+      ..idleTimeout = const Duration(seconds: 30);
 
     return IOClient(httpClient);
   }

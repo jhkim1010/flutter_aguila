@@ -1806,10 +1806,13 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
           child: Builder(
                   builder: (context) {
                     debugPrint('   → 단일 sucursal 뷰 렌더링');
-                    final vcodesData = _data!['vcodes'];
-                    debugPrint('   - vcodes 데이터 타입: ${vcodesData.runtimeType}');
-                    if (vcodesData is List) {
-                      debugPrint('   - vcodes List 길이: ${vcodesData.length}');
+                    // 안전한 데이터 접근 (디버깅용)
+                    if (_data!.containsKey('vcodes')) {
+                      final vcodesData = _data!['vcodes'];
+                      debugPrint('   - vcodes 데이터 타입: ${vcodesData.runtimeType}');
+                      if (vcodesData is List) {
+                        debugPrint('   - vcodes List 길이: ${vcodesData.length}');
+                      }
                     }
                     
                     return SingleChildScrollView(
@@ -1878,7 +1881,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                             _buildStockResumenSection(
                               _data!.containsKey('stocks') 
                                 ? {'stocks': _data!['stocks']}
-                                : _data!['stock_resumen']
+                                : (_data!['stock_resumen'] ?? <String, dynamic>{})
                             ),
                             useGrid: false,
                             onTap: () {
@@ -3879,6 +3882,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
 
   @override
   void dispose() {
+    _databaseService.dispose(); // HTTP 클라이언트 연결 풀 정리
     _newProfileNameController.dispose();
     _newServerUrlController.dispose();
     _newDatabaseNameController.dispose();

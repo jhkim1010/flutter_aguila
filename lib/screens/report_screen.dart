@@ -281,6 +281,7 @@ class _ReportScreenState extends State<ReportScreen> {
 
   @override
   void dispose() {
+    _databaseService.dispose(); // HTTP 클라이언트 연결 풀 정리
     _filteringWordController.dispose();
     _scrollController.dispose();
     _horizontalScrollController.dispose(); // 수평 스크롤 컨트롤러 정리

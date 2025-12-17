@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../secure_storage_helper.dart';
 import 'http_request_handler.dart';
-import '../../utils/ssl_client_helper.dart';
 
 export 'http_request_handler.dart';
 
@@ -33,18 +32,19 @@ class DatabaseConnectionRequest {
 /// 데이터베이스 연결 관련 API
 class DatabaseConnectionApi {
   final HttpRequestHandler _httpHandler;
-  late final http.Client _httpClient;
 
   DatabaseConnectionApi({required HttpRequestHandler httpHandler})
       : _httpHandler = httpHandler {
-    // 자체 서명 인증서를 허용하는 커스텀 클라이언트 사용
-    _httpClient = SslClientHelper.createUnsafeClient();
+    // HttpRequestHandler의 클라이언트를 재사용하여 pool 낭비 방지
   }
 
-  /// 리소스 정리
+  /// 리소스 정리 (HttpRequestHandler가 관리하므로 여기서는 아무것도 하지 않음)
   void dispose() {
-    _httpClient.close();
+    // HttpRequestHandler의 클라이언트를 재사용하므로 여기서는 정리하지 않음
   }
+  
+  /// HttpRequestHandler의 클라이언트를 반환 (내부 사용)
+  http.Client get _httpClient => _httpHandler.httpClient;
 
   /// 기존 데이터베이스 연결 끊기
   /// 재시도 로직을 포함하여 서버에 확실히 전달되도록 보장

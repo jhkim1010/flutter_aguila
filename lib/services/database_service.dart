@@ -202,4 +202,10 @@ class DatabaseService {
     vcodeId: vcodeId,
     sucursal: sucursal,
   );
+
+  /// 리소스 정리 (HTTP 클라이언트 연결 풀 정리)
+  void dispose() {
+    _httpHandler.dispose();
+    _connectionApi.dispose();
+  }
 }

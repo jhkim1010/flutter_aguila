@@ -14,6 +14,9 @@ class HttpRequestHandler {
     _httpClient = SslClientHelper.createUnsafeClient();
   }
 
+  /// HTTP 클라이언트 접근 (내부 클라이언트 재사용을 위해)
+  http.Client get httpClient => _httpClient;
+
   /// 리소스 정리
   void dispose() {
     _httpClient.close();
@@ -297,6 +300,86 @@ class HttpRequestHandler {
           throw Exception('JSON 파싱 오류: 서버 응답을 파싱할 수 없습니다.');
         }
       } else {
+        // 502 Bad Gateway 에러인 경우 재시도 (일시적인 서버 문제일 수 있음)
+        if (response.statusCode == 502) {
+          print('⚠️ 502 Bad Gateway 에러 발생, 재시도 시도...');
+          
+          // 최대 2번 재시도 (총 3번 시도)
+          for (int retry = 1; retry <= 2; retry++) {
+            print('🔄 재시도 $retry/2... (${500 * retry}ms 대기 후)');
+            await Future.delayed(Duration(milliseconds: 500 * retry));
+            
+            try {
+              final retryResponse = await _httpClient.post(
+                Uri.parse('$serverUrl$endpoint'),
+                headers: headers,
+                body: json.encode(body),
+              ).timeout(
+                Duration(seconds: timeoutSeconds),
+              );
+              
+              print('=== 재시도 응답 정보 ===');
+              print('Status Code: ${retryResponse.statusCode}');
+              
+              if (retryResponse.statusCode == 200) {
+                print('✅ 재시도 성공!');
+                // 성공 응답 처리 (위의 200 처리 로직과 동일)
+                try {
+                  final decoded = json.decode(retryResponse.body);
+                  if (decoded is Map) {
+                    final filteredDecoded = Map<String, dynamic>.from(decoded);
+                    filteredDecoded.removeWhere((key, value) {
+                      final keyLower = key.toLowerCase();
+                      final valueStr = value.toString().toLowerCase();
+                      return keyLower.contains('postgresql') ||
+                             keyLower.contains('연결') ||
+                             keyLower.contains('connection') ||
+                             valueStr.contains('postgresql 연결') ||
+                             valueStr.contains('ventas 보고서 오류') ||
+                             (valueStr.contains('함수') && valueStr.contains('fallback')) ||
+                             keyLower.contains('error') ||
+                             keyLower.contains('오류') ||
+                             valueStr.contains('게이트웨이 오류') ||
+                             valueStr.contains('bad gateway') ||
+                             valueStr.contains('서버 오류');
+                    });
+                    int itemCount = 0;
+                    if (filteredDecoded.containsKey('data') && filteredDecoded['data'] is List) {
+                      itemCount = (filteredDecoded['data'] as List).length;
+                    } else if (filteredDecoded.containsKey('summary') && filteredDecoded['summary'] is Map) {
+                      itemCount = filteredDecoded['summary']['total_items'] ?? 0;
+                    } else {
+                      itemCount = filteredDecoded.length;
+                    }
+                    print('✅ 응답 성공: ${itemCount}개 항목');
+                    return filteredDecoded;
+                  } else if (decoded is List) {
+                    print('✅ 응답 성공: ${decoded.length}개 항목');
+                    return {'data': decoded};
+                  } else {
+                    print('✅ 응답 성공');
+                    return {'result': decoded};
+                  }
+                } catch (e) {
+                  print('❌ JSON 파싱 오류: $e');
+                  throw Exception('JSON 파싱 오류: 서버 응답을 파싱할 수 없습니다.');
+                }
+              } else if (retryResponse.statusCode != 502 || retry == 2) {
+                // 다른 에러이거나 마지막 재시도인 경우
+                response = retryResponse;
+                break;
+              }
+              // 502 에러이고 재시도 횟수가 남아있으면 계속
+            } catch (e) {
+              print('❌ 재시도 $retry 실패: $e');
+              if (retry == 2) {
+                // 마지막 재시도 실패 - 원래 응답으로 처리
+                break;
+              }
+            }
+          }
+        }
+        
         // 에러 응답 처리
         String errorMessage = _extractErrorMessage(response);
         print('❌ HTTP 오류 (${response.statusCode}): $errorMessage');
