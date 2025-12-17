@@ -1790,26 +1790,26 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                               _buildSection(
                                 l10n.salesStatistics,
                                 _buildVcodesSection(_getAggregatedVcodes()),
-                            onTap: () {
-                              if (_isLargeScreen(context)) {
-                                setState(() {
-                                  _selectedReportType = ReportType.ventas;
-                                  _currentReport = 'ventas';
-                                });
-                              } else {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => ReportScreen(
-                                      serverUrl: widget.serverUrl,
-                                      reportType: ReportType.ventas,
-                                      initialDate: _selectedDate,
-                                    ),
-                                  ),
-                                );
-                              }
-                            },
-                          ),
+                                onTap: () {
+                                  if (_isLargeScreen(context)) {
+                                    setState(() {
+                                      _selectedReportType = ReportType.ventas;
+                                      _currentReport = 'ventas';
+                                    });
+                                  } else {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => ReportScreen(
+                                          serverUrl: widget.serverUrl,
+                                          reportType: ReportType.ventas,
+                                          initialDate: _selectedDate,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
+                              ),
 
                         // 지출 통계 (gastos) - 여러 sucursal이 있으면 합산
                         if (_data!.containsKey('gastos'))
