@@ -106,6 +106,15 @@ class HttpRequestHandler {
 
       print('=== 응답 정보 ===');
       print('Status Code: ${response.statusCode}');
+      print('Response Body Length: ${response.body.length} bytes');
+      
+      // 응답 본문 로깅 (에러인 경우에만 상세히)
+      if (response.statusCode != 200 && response.body.isNotEmpty) {
+        final bodyPreview = response.body.length > 500 
+            ? '${response.body.substring(0, 500)}... (${response.body.length} bytes total)'
+            : response.body;
+        print('Response Body: $bodyPreview');
+      }
       
       if (response.statusCode == 200) {
         try {
@@ -131,12 +140,20 @@ class HttpRequestHandler {
           }
         } catch (e) {
           print('❌ JSON 파싱 오류: $e');
+          print('❌ 응답 본문: ${response.body}');
           throw Exception('JSON 파싱 오류: 서버 응답을 파싱할 수 없습니다.');
         }
       } else {
+        // 에러 응답 처리
         String errorMessage = _extractErrorMessage(response);
-        print('❌ HTTP 오류: $errorMessage');
-        throw Exception('서버 오류 (${response.statusCode}): $errorMessage');
+        print('❌ HTTP 오류 (${response.statusCode}): $errorMessage');
+        
+        // 클라이언트 측 에러 (4xx)와 서버 측 에러 (5xx) 구분
+        if (response.statusCode >= 400 && response.statusCode < 500) {
+          throw Exception('요청 오류 (${response.statusCode}): $errorMessage');
+        } else {
+          throw Exception('서버 오류 (${response.statusCode}): $errorMessage');
+        }
       }
     } catch (e) {
       print('❌ GET $endpoint 오류: $e');
@@ -172,6 +189,17 @@ class HttpRequestHandler {
 
       print('=== 응답 정보 ===');
       print('Status Code: ${response.statusCode}');
+      print('Response Body Length: ${response.body.length} bytes');
+      
+      // 응답 본문 로깅 (너무 길면 일부만)
+      if (response.body.isNotEmpty) {
+        final bodyPreview = response.body.length > 500 
+            ? '${response.body.substring(0, 500)}... (${response.body.length} bytes total)'
+            : response.body;
+        print('Response Body: $bodyPreview');
+      } else {
+        print('Response Body: (empty)');
+      }
 
       if (response.statusCode == 200) {
         try {
@@ -197,12 +225,20 @@ class HttpRequestHandler {
           }
         } catch (e) {
           print('❌ JSON 파싱 오류: $e');
+          print('❌ 응답 본문: ${response.body}');
           throw Exception('JSON 파싱 오류: 서버 응답을 파싱할 수 없습니다.');
         }
       } else {
+        // 에러 응답 처리
         String errorMessage = _extractErrorMessage(response);
-        print('❌ HTTP 오류: $errorMessage');
-        throw Exception('서버 오류 (${response.statusCode}): $errorMessage');
+        print('❌ HTTP 오류 (${response.statusCode}): $errorMessage');
+        
+        // 클라이언트 측 에러 (4xx)와 서버 측 에러 (5xx) 구분
+        if (response.statusCode >= 400 && response.statusCode < 500) {
+          throw Exception('요청 오류 (${response.statusCode}): $errorMessage');
+        } else {
+          throw Exception('서버 오류 (${response.statusCode}): $errorMessage');
+        }
       }
     } catch (e) {
       print('❌ POST $endpoint 오류: $e');
@@ -235,6 +271,15 @@ class HttpRequestHandler {
 
       print('=== 응답 정보 ===');
       print('Status Code: ${response.statusCode}');
+      print('Response Body Length: ${response.body.length} bytes');
+      
+      // 응답 본문 로깅 (에러인 경우에만 상세히)
+      if (response.statusCode != 200 && response.statusCode != 204 && response.body.isNotEmpty) {
+        final bodyPreview = response.body.length > 500 
+            ? '${response.body.substring(0, 500)}... (${response.body.length} bytes total)'
+            : response.body;
+        print('Response Body: $bodyPreview');
+      }
 
       if (response.statusCode == 200 || response.statusCode == 204) {
         try {
@@ -262,12 +307,20 @@ class HttpRequestHandler {
           }
         } catch (e) {
           print('❌ JSON 파싱 오류: $e');
+          print('❌ 응답 본문: ${response.body}');
           throw Exception('JSON 파싱 오류: 서버 응답을 파싱할 수 없습니다.');
         }
       } else {
+        // 에러 응답 처리
         String errorMessage = _extractErrorMessage(response);
-        print('❌ HTTP 오류: $errorMessage');
-        throw Exception('서버 오류 (${response.statusCode}): $errorMessage');
+        print('❌ HTTP 오류 (${response.statusCode}): $errorMessage');
+        
+        // 클라이언트 측 에러 (4xx)와 서버 측 에러 (5xx) 구분
+        if (response.statusCode >= 400 && response.statusCode < 500) {
+          throw Exception('요청 오류 (${response.statusCode}): $errorMessage');
+        } else {
+          throw Exception('서버 오류 (${response.statusCode}): $errorMessage');
+        }
       }
     } catch (e) {
       print('❌ PUT $endpoint 오류: $e');
@@ -280,13 +333,48 @@ class HttpRequestHandler {
     // HTTP 상태 코드에 따른 기본 메시지
     String errorMessage = _getDefaultErrorMessage(response.statusCode);
     
+    // 응답 본문이 비어있으면 기본 메시지 반환
+    if (response.body.isEmpty) {
+      print('⚠️ 에러 응답 본문이 비어있습니다.');
+      return errorMessage;
+    }
+    
     try {
       // JSON 응답인지 확인
       final errorBody = json.decode(response.body);
-      if (errorBody is Map && errorBody.containsKey('message')) {
-        errorMessage = errorBody['message'].toString();
-      } else if (errorBody is Map && errorBody.containsKey('error')) {
-        errorMessage = errorBody['error'].toString();
+      
+      // JSON 응답 구조 로깅 (디버깅용)
+      if (errorBody is Map) {
+        print('📋 에러 응답 JSON 구조:');
+        errorBody.forEach((key, value) {
+          if (value is String && value.length > 100) {
+            print('  $key: ${value.substring(0, 100)}... (${value.length} chars)');
+          } else {
+            print('  $key: $value');
+          }
+        });
+      }
+      
+      // 다양한 에러 필드명 확인 (우선순위 순)
+      if (errorBody is Map) {
+        if (errorBody.containsKey('message')) {
+          errorMessage = errorBody['message'].toString();
+        } else if (errorBody.containsKey('error')) {
+          errorMessage = errorBody['error'].toString();
+        } else if (errorBody.containsKey('detail')) {
+          errorMessage = errorBody['detail'].toString();
+        } else if (errorBody.containsKey('errors')) {
+          // errors가 배열인 경우
+          if (errorBody['errors'] is List && (errorBody['errors'] as List).isNotEmpty) {
+            errorMessage = (errorBody['errors'] as List).first.toString();
+          } else if (errorBody['errors'] is Map) {
+            errorMessage = errorBody['errors'].toString();
+          }
+        } else if (errorBody.containsKey('msg')) {
+          errorMessage = errorBody['msg'].toString();
+        } else if (errorBody.containsKey('errorMessage')) {
+          errorMessage = errorBody['errorMessage'].toString();
+        }
       }
       
       // 데이터베이스 함수 관련 에러 감지
@@ -363,13 +451,17 @@ class HttpRequestHandler {
   String _getDefaultErrorMessage(int statusCode) {
     switch (statusCode) {
       case 400:
-        return '잘못된 요청입니다. 요청 형식을 확인해주세요.';
+        return '잘못된 요청입니다. 요청 데이터 형식이나 필수 필드를 확인해주세요.';
       case 401:
         return '인증이 필요합니다. 로그인 정보를 확인해주세요.';
       case 403:
         return '접근 권한이 없습니다.';
       case 404:
         return '요청한 리소스를 찾을 수 없습니다.';
+      case 409:
+        return '데이터 충돌: 이미 존재하는 데이터이거나 충돌이 발생했습니다.';
+      case 422:
+        return '요청 데이터 검증 실패: 입력한 데이터가 유효하지 않습니다.';
       case 500:
         return '서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
       case 502:
@@ -379,6 +471,11 @@ class HttpRequestHandler {
       case 504:
         return '게이트웨이 타임아웃: 서버 응답 시간이 초과되었습니다.';
       default:
+        if (statusCode >= 400 && statusCode < 500) {
+          return '요청 오류 (HTTP $statusCode): 클라이언트 측 문제가 발생했습니다.';
+        } else if (statusCode >= 500) {
+          return '서버 오류 (HTTP $statusCode): 서버 측 문제가 발생했습니다.';
+        }
         return 'HTTP $statusCode 오류가 발생했습니다.';
     }
   }
