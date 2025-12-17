@@ -678,9 +678,14 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       if (mounted) {
         setState(() {
           _isLoading = false;
+          // 에러가 발생해도 이전 데이터가 있으면 유지 (사용자가 이전 데이터를 볼 수 있도록)
+          // _data는 null로 유지하지 않고, 에러 메시지만 설정
           _errorMessage = errorMessage;
+          // _data가 null이면 이전 데이터가 없으므로 null 유지
+          // _data가 있으면 이전 데이터 유지 (에러 메시지와 함께 표시)
         });
         print('❌ resumen_del_dia 오류: $errorMessage');
+        print('   - 이전 데이터 유지: ${_data != null ? "예 (${_data!.keys.length}개 키)" : "아니오"}');
       }
     }
   }
@@ -1735,8 +1740,9 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       );
     }
     
-    if (_errorMessage != null) {
-      debugPrint('   → 에러 상태 반환: $_errorMessage');
+    if (_errorMessage != null && _data == null) {
+      // 에러가 있고 데이터가 없을 때만 에러 화면 표시
+      debugPrint('   → 에러 상태 반환 (데이터 없음): $_errorMessage');
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1772,6 +1778,12 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
           ],
         ),
       );
+    }
+    
+    // 에러가 있지만 데이터도 있는 경우: 데이터를 표시하고 경고 메시지 추가
+    if (_errorMessage != null && _data != null && _data!.isNotEmpty) {
+      debugPrint('   → 에러 있지만 이전 데이터 표시: $_errorMessage');
+      // 아래에서 데이터를 표시하되, 상단에 경고 배너 추가
     }
     
     if (_data == null || _data!.isEmpty) {
@@ -1822,6 +1834,33 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
+                            // 에러가 있지만 데이터도 있는 경우 경고 배너 표시
+                            if (_errorMessage != null && _data != null && _data!.isNotEmpty)
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 16),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange[50],
+                                  border: Border.all(color: Colors.orange[300]!),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.warning_amber_rounded, color: Colors.orange[700], size: 20),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        '데이터를 새로고침하는 중 오류가 발생했습니다. 이전 데이터를 표시합니다.',
+                                        style: TextStyle(color: Colors.orange[900], fontSize: 12),
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: _loadData,
+                                      child: const Text('다시 시도', style: TextStyle(fontSize: 12)),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             // 날짜 표시
                             if (_data!.containsKey('fecha'))
                               _buildDateHeader(_data!['fecha']),
