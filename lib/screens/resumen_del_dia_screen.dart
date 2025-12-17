@@ -568,6 +568,31 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         sucursal: sucursal ?? _selectedSucursal,
       );
       
+      // 응답 데이터에 에러 메시지가 포함되어 있는지 확인
+      if (data is Map<String, dynamic>) {
+        // 에러 메시지 필드 확인
+        final errorFields = ['error', 'message', '오류', '에러'];
+        for (final field in errorFields) {
+          if (data.containsKey(field)) {
+            final errorValue = data[field];
+            if (errorValue != null && errorValue.toString().isNotEmpty) {
+              final errorStr = errorValue.toString().toLowerCase();
+              // 게이트웨이 오류나 서버 오류인 경우
+              if (errorStr.contains('게이트웨이') || 
+                  errorStr.contains('bad gateway') ||
+                  errorStr.contains('서버 오류')) {
+                throw Exception(errorValue.toString());
+              }
+            }
+          }
+        }
+        
+        // 데이터가 비어있거나 에러 메시지만 있는 경우 확인
+        if (data.isEmpty || (data.length == 1 && data.values.first.toString().toLowerCase().contains('오류'))) {
+          print('⚠️ 응답 데이터가 비어있거나 에러 메시지만 포함되어 있습니다.');
+        }
+      }
+      
       // Stock resumen도 함께 가져오기 (stocks GET 요청에서 resumen_del_dia 포함)
       try {
         print('📊 Stock resumen 요청 시작...');
