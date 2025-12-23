@@ -1502,7 +1502,7 @@ class _ReportScreenState extends State<ReportScreen> {
                   ),
                 ],
               )
-            : (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas)
+            : (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas || widget.reportType == ReportType.fventas)
                 ? LayoutBuilder(
                     builder: (context, constraints) {
                       final isLargeScreen = constraints.maxWidth >= 800;
@@ -1521,14 +1521,19 @@ class _ReportScreenState extends State<ReportScreen> {
                               width: 200,
                               child: ItemsDateRangeSelector(
                                 reportType: widget.reportType,
-                                startDate: _itemsStartDate,
-                                endDate: _itemsEndDate,
+                                startDate: widget.reportType == ReportType.fventas ? _ventasStartDate : _itemsStartDate,
+                                endDate: widget.reportType == ReportType.fventas ? _ventasEndDate : _itemsEndDate,
                                 onDateRangeChanged: (startDate, endDate) {
                                   setState(() {
-                                    _itemsStartDate = startDate;
-                                    _itemsEndDate = endDate;
+                                    if (widget.reportType == ReportType.fventas) {
+                                      _ventasStartDate = startDate;
+                                      _ventasEndDate = endDate;
+                                    } else {
+                                      _itemsStartDate = startDate;
+                                      _itemsEndDate = endDate;
+                                    }
                                   });
-                                  if (widget.onItemsDateRangeChanged != null) {
+                                  if (widget.onItemsDateRangeChanged != null && widget.reportType != ReportType.fventas) {
                                     widget.onItemsDateRangeChanged!(startDate, endDate);
                                   }
                                   _loadData();
@@ -1541,14 +1546,21 @@ class _ReportScreenState extends State<ReportScreen> {
                               width: isLargeScreen ? 150 : 90,
                               child: _buildSingleDateButton(
                                 label: 'Desde',
-                                date: _itemsStartDate,
+                                date: widget.reportType == ReportType.fventas ? _ventasStartDate : _itemsStartDate,
                                 reportColor: _getReportColor(),
                                 onDateSelected: (date) {
                                   setState(() {
-                                    _itemsStartDate = date;
+                                    if (widget.reportType == ReportType.fventas) {
+                                      _ventasStartDate = date;
+                                    } else {
+                                      _itemsStartDate = date;
+                                    }
                                   });
-                                  if (widget.onItemsDateRangeChanged != null) {
-                                    widget.onItemsDateRangeChanged!(_itemsStartDate!, _itemsEndDate ?? _itemsStartDate!);
+                                  if (widget.onItemsDateRangeChanged != null && widget.reportType != ReportType.fventas) {
+                                    widget.onItemsDateRangeChanged!(
+                                      widget.reportType == ReportType.fventas ? _ventasStartDate! : _itemsStartDate!,
+                                      widget.reportType == ReportType.fventas ? (_ventasEndDate ?? _ventasStartDate!) : (_itemsEndDate ?? _itemsStartDate!)
+                                    );
                                   }
                                   _loadData();
                                 },
@@ -1559,14 +1571,21 @@ class _ReportScreenState extends State<ReportScreen> {
                               width: isLargeScreen ? 150 : 90,
                               child: _buildSingleDateButton(
                                 label: 'Hasta',
-                                date: _itemsEndDate,
+                                date: widget.reportType == ReportType.fventas ? _ventasEndDate : _itemsEndDate,
                                 reportColor: _getReportColor(),
                                 onDateSelected: (date) {
                                   setState(() {
-                                    _itemsEndDate = date;
+                                    if (widget.reportType == ReportType.fventas) {
+                                      _ventasEndDate = date;
+                                    } else {
+                                      _itemsEndDate = date;
+                                    }
                                   });
-                                  if (widget.onItemsDateRangeChanged != null) {
-                                    widget.onItemsDateRangeChanged!(_itemsStartDate ?? _itemsEndDate!, _itemsEndDate!);
+                                  if (widget.onItemsDateRangeChanged != null && widget.reportType != ReportType.fventas) {
+                                    widget.onItemsDateRangeChanged!(
+                                      widget.reportType == ReportType.fventas ? (_ventasStartDate ?? _ventasEndDate!) : (_itemsStartDate ?? _itemsEndDate!),
+                                      widget.reportType == ReportType.fventas ? _ventasEndDate! : _itemsEndDate!
+                                    );
                                   }
                                   _loadData();
                                 },
