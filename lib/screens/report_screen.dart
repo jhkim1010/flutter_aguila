@@ -82,6 +82,7 @@ class _ReportScreenState extends State<ReportScreen> {
   Map<String, dynamic>? _selectedCodigo; // 선택된 codigo
   final Map<String, TextEditingController> _codigoEditControllers = {}; // 편집용 컨트롤러들
   bool _isEditingCodigo = false; // 편집 모드 여부
+  String? _editedCodigoIdentifier; // 편집된 codigo 식별자 (색상 표시용)
   bool _isLoadingMoreCodigos = false; // 추가 codigos 로딩 중 여부
   String? _codigosNextIdCodigo; // 다음 페이지의 id_codigo
   bool _codigosHasMore = false; // 더 많은 페이지가 있는지 여부
@@ -4985,6 +4986,7 @@ class _ReportScreenState extends State<ReportScreen> {
             columnKeys: columnKeys,
             columnWidths: columnWidths,
             headerWidget: headerWidget,
+            editedCodigoIdentifier: _editedCodigoIdentifier,
           ),
         ),
         // 오른쪽: 선택된 Codigo 편집 UI
@@ -5127,16 +5129,20 @@ class _ReportScreenState extends State<ReportScreen> {
         : ['codigo', 'descripcion', 'pre1', 'pre2', 'pre3', 'pre4', 'pre5', 'b_mostrar_vcontrol', 'borrado'];
 
     for (var field in editableFields) {
-      if (!_selectedCodigo!.containsKey(field)) continue;
-      
       if (!_codigoEditControllers.containsKey(field)) {
         _codigoEditControllers[field] = TextEditingController();
       }
       
+      // 필드가 없으면 기본값 사용
       final value = _selectedCodigo![field];
       // boolean 필드는 1/0으로 변환
-      if (field == 'b_mostrar_vcontrol') {
-        _codigoEditControllers[field]!.text = (value == 1 || value == true || value?.toString() == '1') ? '1' : '0';
+      if (field == 'b_mostrar_vcontrol' || field == 'borrado') {
+        // 필드가 없으면 기본값 0 (false)
+        if (value == null && !_selectedCodigo!.containsKey(field)) {
+          _codigoEditControllers[field]!.text = '0';
+        } else {
+          _codigoEditControllers[field]!.text = (value == 1 || value == true || value?.toString() == '1') ? '1' : '0';
+        }
       } else {
         _codigoEditControllers[field]!.text = value?.toString() ?? '';
       }
@@ -5163,6 +5169,17 @@ class _ReportScreenState extends State<ReportScreen> {
       buildEditField: (fieldKey, label) {
         if (!_codigoEditControllers.containsKey(fieldKey)) {
           _codigoEditControllers[fieldKey] = TextEditingController();
+          // 필드가 없으면 기본값 설정
+          if (fieldKey == 'b_mostrar_vcontrol' || fieldKey == 'borrado') {
+            final value = _selectedCodigo![fieldKey];
+            if (!_selectedCodigo!.containsKey(fieldKey) || value == null) {
+              _codigoEditControllers[fieldKey]!.text = '0';
+            } else {
+              _codigoEditControllers[fieldKey]!.text = (value == 1 || value == true || value?.toString() == '1') ? '1' : '0';
+            }
+          } else {
+            _codigoEditControllers[fieldKey]!.text = _selectedCodigo![fieldKey]?.toString() ?? '';
+          }
         }
         
         return CodigosBuilder.buildEditField(
@@ -5256,7 +5273,7 @@ class _ReportScreenState extends State<ReportScreen> {
           
           final value = entry.value.text.trim();
           
-          if (key.startsWith('pre') || key.startsWith('tpre') || key == 'borrado') {
+          if (key.startsWith('pre') || key.startsWith('tpre')) {
             final numValue = num.tryParse(value);
             if (numValue != null) {
               updatedData[key] = numValue;
@@ -5265,7 +5282,8 @@ class _ReportScreenState extends State<ReportScreen> {
             } else {
               updatedData[key] = value;
             }
-          } else if (key == 'b_mostrar_vcontrol') {
+          } else if (key == 'b_mostrar_vcontrol' || key == 'borrado') {
+            // boolean 필드는 1 또는 0으로 변환
             updatedData[key] = (value == '1' || value.toLowerCase() == 'true') ? 1 : 0;
           } else {
             updatedData[key] = value.isEmpty ? null : value;
@@ -5275,12 +5293,34 @@ class _ReportScreenState extends State<ReportScreen> {
         dataList[index] = {...dataList[index] as Map<String, dynamic>, ...updatedData};
         _selectedCodigo = Map<String, dynamic>.from(dataList[index] as Map<String, dynamic>);
         _initializeCodigoEditControllers();
+        
+        // 편집된 codigo 식별자 저장 (색상 표시용)
+        final editedIdentifier = widget.reportType == ReportType.todocodigos
+            ? _selectedCodigo!['tcodigo']?.toString()
+            : _selectedCodigo!['codigo']?.toString();
+        
+        setState(() {
+          _isLoading = false;
+          _isEditingCodigo = false;
+          _selectedCodigo = null; // 편집 패널 닫기
+          _editedCodigoIdentifier = editedIdentifier; // 편집된 항목 표시
+        });
+        
+        // 3초 후 색상 표시 제거
+        Future.delayed(const Duration(seconds: 3), () {
+          if (mounted) {
+            setState(() {
+              _editedCodigoIdentifier = null;
+            });
+          }
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
+          _isEditingCodigo = false;
+          _selectedCodigo = null; // 편집 패널 닫기
+        });
       }
-
-      setState(() {
-        _isLoading = false;
-        _isEditingCodigo = false;
-      });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

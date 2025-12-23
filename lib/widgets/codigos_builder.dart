@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../services/database_service.dart';
+import '../utils/device_info_helper.dart';
 import 'report_utils.dart';
 
 /// Codigos 보고서 UI 빌더
@@ -18,6 +19,7 @@ class CodigosBuilder {
     required List<String> columnKeys,
     required Map<String, double> columnWidths,
     required Widget headerWidget,
+    String? editedCodigoIdentifier, // 편집된 codigo 식별자
   }) {
     final dataList = data['data'] as List;
     if (dataList.isEmpty) {
@@ -105,8 +107,12 @@ class CodigosBuilder {
                                         itemCount: filteredDataList.length,
                                         itemBuilder: (context, index) {
                                           final codigo = filteredDataList[index] as Map<String, dynamic>;
+                                          final codigoId = codigo['codigo']?.toString() ?? codigo['tcodigo']?.toString();
                                           final isSelected = selectedCodigo != null && 
-                                              selectedCodigo!['codigo'] == codigo['codigo'];
+                                              (selectedCodigo!['codigo'] == codigo['codigo'] || 
+                                               selectedCodigo!['tcodigo'] == codigo['tcodigo']);
+                                          final isEdited = editedCodigoIdentifier != null && 
+                                              editedCodigoIdentifier == codigoId;
                                           
                                           return InkWell(
                                             onTap: () => onCodigoSelected(codigo),
@@ -114,7 +120,9 @@ class CodigosBuilder {
                                             child: Container(
                                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
                                               decoration: BoxDecoration(
-                                                color: isSelected ? Colors.teal.withOpacity(0.1) : Colors.transparent,
+                                                color: isEdited 
+                                                    ? Colors.green.withOpacity(0.2) // 편집된 항목: 연한 녹색
+                                                    : (isSelected ? Colors.teal.withOpacity(0.1) : Colors.transparent),
                                                 border: Border(
                                                   bottom: BorderSide(
                                                     color: Colors.grey[300]!,
@@ -157,8 +165,12 @@ class CodigosBuilder {
                                 itemCount: filteredDataList.length,
                                 itemBuilder: (context, index) {
                                   final codigo = filteredDataList[index] as Map<String, dynamic>;
+                                  final codigoId = codigo['codigo']?.toString() ?? codigo['tcodigo']?.toString();
                                   final isSelected = selectedCodigo != null && 
-                                      selectedCodigo!['codigo'] == codigo['codigo'];
+                                      (selectedCodigo!['codigo'] == codigo['codigo'] || 
+                                       selectedCodigo!['tcodigo'] == codigo['tcodigo']);
+                                  final isEdited = editedCodigoIdentifier != null && 
+                                      editedCodigoIdentifier == codigoId;
                                   
                                   return InkWell(
                                     onTap: () => onCodigoSelected(codigo),
@@ -166,7 +178,9 @@ class CodigosBuilder {
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
                                       decoration: BoxDecoration(
-                                        color: isSelected ? Colors.teal.withOpacity(0.1) : Colors.transparent,
+                                        color: isEdited 
+                                            ? Colors.green.withOpacity(0.2) // 편집된 항목: 연한 녹색
+                                            : (isSelected ? Colors.teal.withOpacity(0.1) : Colors.transparent),
                                         border: Border(
                                           bottom: BorderSide(
                                             color: Colors.grey[300]!,
@@ -488,7 +502,8 @@ class CodigosBuilder {
                         }).toList()
                       else
                         // Codigos: codigo, descripcion, pre1, pre2, pre3, pre4, pre5, b_mostrar_vcontrol, borrado
-                        ...(['codigo', 'descripcion', 'pre1', 'pre2', 'pre3', 'pre4', 'pre5', 'b_mostrar_vcontrol', 'borrado'] as List<String>).where((key) => selectedCodigo.containsKey(key)).map((key) {
+                        ...(['codigo', 'descripcion', 'pre1', 'pre2', 'pre3', 'pre4', 'pre5', 'b_mostrar_vcontrol', 'borrado'] as List<String>).map((key) {
+                          // 필드가 없어도 편집 가능한 필드는 표시 (기본값 사용)
                           final displayNames = {
                             'codigo': 'Codigo',
                             'descripcion': 'Descripción',
@@ -553,11 +568,11 @@ class CodigosBuilder {
     required TextEditingController controller,
     required Function(String) onChanged,
   }) {
-    // 숫자 필드 확인 (pre 또는 tpre로 시작하거나 borrado인 경우)
-    final isNumericField = fieldKey.startsWith('pre') || fieldKey.startsWith('tpre') || fieldKey == 'borrado';
+    // 숫자 필드 확인 (pre 또는 tpre로 시작하는 경우)
+    final isNumericField = fieldKey.startsWith('pre') || fieldKey.startsWith('tpre');
     
     // boolean 필드 확인
-    final isBooleanField = fieldKey == 'b_mostrar_vcontrol';
+    final isBooleanField = fieldKey == 'b_mostrar_vcontrol' || fieldKey == 'borrado';
     
     if (isBooleanField) {
       // boolean 필드는 체크박스로 표시
@@ -609,7 +624,7 @@ class CodigosBuilder {
       final value = entry.value.text.trim();
       
       // 숫자 필드는 숫자로 변환 시도
-      if (key.startsWith('pre') || key.startsWith('tpre') || key == 'borrado') {
+      if (key.startsWith('pre') || key.startsWith('tpre')) {
         final numValue = num.tryParse(value);
         if (numValue != null) {
           updatedData[key] = numValue;
@@ -618,7 +633,7 @@ class CodigosBuilder {
         } else {
           updatedData[key] = value;
         }
-      } else if (key == 'b_mostrar_vcontrol') {
+      } else if (key == 'b_mostrar_vcontrol' || key == 'borrado') {
         // boolean 필드는 1 또는 0으로 변환
         updatedData[key] = (value == '1' || value.toLowerCase() == 'true') ? 1 : 0;
       } else {
@@ -631,10 +646,26 @@ class CodigosBuilder {
       final idTodocodigo = selectedCodigo['id_todocodigo']?.toString();
       final tcodigo = selectedCodigo['tcodigo']?.toString() ?? '';
       
+      // MAC 주소 가져오기
+      final macAddress = await DeviceInfoHelper.getMacAddress();
+      if (macAddress != null && macAddress.isNotEmpty) {
+        updatedData['mac'] = macAddress;
+        print('📱 MAC 주소: $macAddress');
+      } else {
+        print('⚠️ MAC 주소를 가져올 수 없습니다.');
+      }
+      
+      // 플랫폼 정보 추가
+      final platform = await DeviceInfoHelper.getPlatform();
+      updatedData['platform'] = platform;
+      print('💻 플랫폼: $platform');
+      
       print('📤 TODOCODIGO 업데이트 요청');
       print('   - id_todocodigo: ${idTodocodigo ?? "없음"}');
       print('   - tcodigo: ${tcodigo.isNotEmpty ? tcodigo : "없음"}');
       print('   - 변경된 필드: ${updatedData.length}개');
+      print('   - MAC 주소: ${macAddress ?? "없음"}');
+      print('   - 플랫폼: $platform');
       
       final response = await databaseService.updateTodocodigo(
         idTodocodigo: idTodocodigo,
@@ -649,10 +680,26 @@ class CodigosBuilder {
       final idCodigo = selectedCodigo['id_codigo']?.toString();
       final codigo = selectedCodigo['codigo']?.toString() ?? '';
       
+      // MAC 주소 가져오기
+      final macAddress = await DeviceInfoHelper.getMacAddress();
+      if (macAddress != null && macAddress.isNotEmpty) {
+        updatedData['mac'] = macAddress;
+        print('📱 MAC 주소: $macAddress');
+      } else {
+        print('⚠️ MAC 주소를 가져올 수 없습니다.');
+      }
+      
+      // 플랫폼 정보 추가
+      final platform = await DeviceInfoHelper.getPlatform();
+      updatedData['platform'] = platform;
+      print('💻 플랫폼: $platform');
+      
       print('📤 CODIGO 업데이트 요청');
       print('   - id_codigo: ${idCodigo ?? "없음"}');
       print('   - codigo: ${codigo.isNotEmpty ? codigo : "없음"}');
       print('   - 변경된 필드: ${updatedData.length}개');
+      print('   - MAC 주소: ${macAddress ?? "없음"}');
+      print('   - 플랫폼: $platform');
       
       final response = await databaseService.updateCodigo(
         idCodigo: idCodigo,
