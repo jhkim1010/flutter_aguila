@@ -869,14 +869,42 @@ class ReportTableBuilder {
                         assert(cells.length == keys.length, 
                           'Row cells count (${cells.length}) must match keys count (${keys.length})');
                         
-                        // 첫 번째 셀에만 더블 탭 및 단일 탭 제스처 추가 (ventas 보고서만)
-                        if ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas && cells.isNotEmpty) {
+                        // ventas 보고서의 vcode 단위에서 더블 탭 및 단일 탭 제스처 추가
+                        if ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas && unit == 'vcode' && cells.isNotEmpty) {
+                          // vcode 컬럼의 인덱스 찾기
+                          final vcodeIndex = keys.indexOf('vcode');
+                          if (vcodeIndex >= 0 && vcodeIndex < cells.length) {
+                            final vcodeCell = cells[vcodeIndex];
+                            if (vcodeCell.child is SizedBox) {
+                              final sizedBox = vcodeCell.child as SizedBox;
+                              if (sizedBox.child is Align) {
+                                final align = sizedBox.child as Align;
+                                cells[vcodeIndex] = DataCell(
+                                  GestureDetector(
+                                    onTap: onRowTap != null ? () => onRowTap(item) : null,
+                                    onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
+                                    behavior: HitTestBehavior.opaque,
+                                    child: Container(
+                                      width: double.infinity,
+                                      height: double.infinity,
+                                      alignment: align.alignment,
+                                      child: align.child,
+                                    ),
+                                  ),
+                                );
+                              }
+                            }
+                          }
+                          // vcode 컬럼을 찾지 못한 경우 첫 번째 셀에 적용 (하위 호환성)
+                          else if (cells.isNotEmpty) {
                           final firstCell = cells[0];
-                          if (firstCell.child is Align) {
-                            final align = firstCell.child as Align;
+                            if (firstCell.child is SizedBox) {
+                              final sizedBox = firstCell.child as SizedBox;
+                              if (sizedBox.child is Align) {
+                                final align = sizedBox.child as Align;
                             cells[0] = DataCell(
                               GestureDetector(
-                                onTap: (onRowTap != null && unit == 'vcode') ? () => onRowTap(item) : null,
+                                    onTap: onRowTap != null ? () => onRowTap(item) : null,
                                 onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
                                 behavior: HitTestBehavior.opaque,
                                 child: Container(
@@ -887,6 +915,8 @@ class ReportTableBuilder {
                                 ),
                               ),
                             );
+                              }
+                            }
                           }
                         }
                         
@@ -907,26 +937,53 @@ class ReportTableBuilder {
                         );
                       });
                       
-                      // 첫 번째 셀에만 더블 탭 및 단일 탭 제스처 추가 (ventas 보고서만)
+                      // ventas 보고서의 경우 제스처 추가
+                      // year, month, day 단위: 모든 셀에 제스처 추가
+                      // vcode 단위: 첫 번째 셀에만 제스처 추가
                       if ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas && nonMapCells.isNotEmpty && item is Map<String, dynamic>) {
                         final updatedCells = List<DataCell>.from(nonMapCells);
-                        final firstCell = updatedCells[0];
-                        if (firstCell.child is Align) {
-                          final align = firstCell.child as Align;
-                          updatedCells[0] = DataCell(
-                            GestureDetector(
-                              onTap: (onRowTap != null && unit == 'vcode') ? () => onRowTap(item) : null,
-                              onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
-                              behavior: HitTestBehavior.opaque,
-                              child: Container(
-                                width: double.infinity,
-                                height: double.infinity,
-                                alignment: align.alignment,
-                                child: align.child,
+                        
+                        if (unit == 'year' || unit == 'month' || unit == 'day') {
+                          // year, month, day 단위: 모든 셀에 제스처 추가
+                          for (int i = 0; i < updatedCells.length; i++) {
+                            final cell = updatedCells[i];
+                            if (cell.child is Align) {
+                              final align = cell.child as Align;
+                              updatedCells[i] = DataCell(
+                                GestureDetector(
+                                  onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
+                                  behavior: HitTestBehavior.opaque,
+                                  child: Container(
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                    alignment: align.alignment,
+                                    child: align.child,
+                                  ),
+                                ),
+                              );
+                            }
+                          }
+                        } else {
+                          // vcode 단위: 첫 번째 셀에만 제스처 추가
+                          final firstCell = updatedCells[0];
+                          if (firstCell.child is Align) {
+                            final align = firstCell.child as Align;
+                            updatedCells[0] = DataCell(
+                              GestureDetector(
+                                onTap: (onRowTap != null && unit == 'vcode') ? () => onRowTap(item) : null,
+                                onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
+                                behavior: HitTestBehavior.opaque,
+                                child: Container(
+                                  width: double.infinity,
+                                  height: double.infinity,
+                                  alignment: align.alignment,
+                                  child: align.child,
+                                ),
                               ),
-                            ),
-                          );
+                            );
+                          }
                         }
+                        
                         return DataRow(cells: updatedCells);
                       }
                       
@@ -1016,16 +1073,39 @@ class ReportTableBuilder {
                               }).toList();
                               assert(cells.length == keys.length);
                               
-                              // 첫 번째 셀에만 더블 탭 및 단일 탭 제스처 추가 (ventas 보고서만)
-                              final finalCells = ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas && cells.isNotEmpty)
+                              // ventas 보고서의 vcode 단위에서 더블 탭 및 단일 탭 제스처 추가
+                              final finalCells = ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas && unit == 'vcode' && cells.isNotEmpty)
                                   ? (() {
                                       final updatedCells = List<DataCell>.from(cells);
+                                      // vcode 컬럼의 인덱스 찾기
+                                      final vcodeIndex = keys.indexOf('vcode');
+                                      if (vcodeIndex >= 0 && vcodeIndex < updatedCells.length) {
+                                        final vcodeCell = updatedCells[vcodeIndex];
+                                        if (vcodeCell.child is Align) {
+                                          final align = vcodeCell.child as Align;
+                                          updatedCells[vcodeIndex] = DataCell(
+                                            GestureDetector(
+                                              onTap: onRowTap != null ? () => onRowTap(item) : null,
+                                              onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
+                                              behavior: HitTestBehavior.opaque,
+                                              child: Container(
+                                                width: double.infinity,
+                                                height: double.infinity,
+                                                alignment: align.alignment,
+                                                child: align.child,
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      }
+                                      // vcode 컬럼을 찾지 못한 경우 첫 번째 셀에 적용 (하위 호환성)
+                                      else if (updatedCells.isNotEmpty) {
                                       final firstCell = updatedCells[0];
                                       if (firstCell.child is Align) {
                                         final align = firstCell.child as Align;
                                         updatedCells[0] = DataCell(
                                           GestureDetector(
-                                            onTap: (onRowTap != null && unit == 'vcode') ? () => onRowTap(item) : null,
+                                              onTap: onRowTap != null ? () => onRowTap(item) : null,
                                             onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
                                             behavior: HitTestBehavior.opaque,
                                             child: Container(
@@ -1036,6 +1116,7 @@ class ReportTableBuilder {
                                             ),
                                           ),
                                         );
+                                        }
                                       }
                                       return updatedCells;
                                     })()
@@ -1057,15 +1138,38 @@ class ReportTableBuilder {
                               );
                             });
                             
-                            // 첫 번째 셀에만 더블 탭 및 단일 탭 제스처 추가 (ventas 보고서만)
-                            if ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas && nonMapCells.isNotEmpty && item is Map<String, dynamic>) {
+                            // ventas 보고서의 vcode 단위에서 더블 탭 및 단일 탭 제스처 추가
+                            if ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas && unit == 'vcode' && nonMapCells.isNotEmpty && item is Map<String, dynamic>) {
                               final updatedCells = List<DataCell>.from(nonMapCells);
+                              // vcode 컬럼의 인덱스 찾기
+                              final vcodeIndex = keys.indexOf('vcode');
+                              if (vcodeIndex >= 0 && vcodeIndex < updatedCells.length) {
+                                final vcodeCell = updatedCells[vcodeIndex];
+                                if (vcodeCell.child is Align) {
+                                  final align = vcodeCell.child as Align;
+                                  updatedCells[vcodeIndex] = DataCell(
+                                    GestureDetector(
+                                      onTap: onRowTap != null ? () => onRowTap(item) : null,
+                                      onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
+                                      behavior: HitTestBehavior.opaque,
+                                      child: Container(
+                                        width: double.infinity,
+                                        height: double.infinity,
+                                        alignment: align.alignment,
+                                        child: align.child,
+                                      ),
+                                    ),
+                                  );
+                                }
+                              }
+                              // vcode 컬럼을 찾지 못한 경우 첫 번째 셀에 적용 (하위 호환성)
+                              else if (updatedCells.isNotEmpty) {
                               final firstCell = updatedCells[0];
                               if (firstCell.child is Align) {
                                 final align = firstCell.child as Align;
                                 updatedCells[0] = DataCell(
                                   GestureDetector(
-                                    onTap: (onRowTap != null && unit == 'vcode') ? () => onRowTap(item) : null,
+                                      onTap: onRowTap != null ? () => onRowTap(item) : null,
                                     onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
                                     behavior: HitTestBehavior.opaque,
                                     child: Container(
@@ -1076,6 +1180,7 @@ class ReportTableBuilder {
                                     ),
                                   ),
                                 );
+                                }
                               }
                               return DataRow(cells: updatedCells);
                             }
@@ -1235,26 +1340,29 @@ class ReportTableBuilder {
                               assert(cells.length == keys.length, 
                                 'Row cells count (${cells.length}) must match keys count (${keys.length})');
                               
-                              // 첫 번째 셀에만 더블 탭 및 단일 탭 제스처 추가 (ventas 보고서만)
-                              // 전체 행을 감지하도록 HitTestBehavior.opaque 사용
+                              // ventas 보고서의 경우 제스처 추가
+                              // 모든 단위: 모든 셀에 더블 클릭 제스처 추가
                               if ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas && cells.isNotEmpty) {
-                                final firstCell = cells[0];
-                                if (firstCell.child is Align) {
-                                  final align = firstCell.child as Align;
-                                  cells[0] = DataCell(
-                                    GestureDetector(
-                                      onTap: (onRowTap != null && unit == 'vcode') ? () => onRowTap(item) : null,
-                                      onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
-                                      behavior: HitTestBehavior.opaque,
-                                      child: Container(
-                                        width: double.infinity,
-                                        height: double.infinity,
-                                        alignment: align.alignment,
-                                        child: align.child,
+                                // 모든 셀에 더블 클릭 제스처 추가
+                                cells = cells.map((cell) {
+                                  if (cell.child is Align) {
+                                    final align = cell.child as Align;
+                                    return DataCell(
+                                      GestureDetector(
+                                        onTap: (onRowTap != null && unit == 'vcode') ? () => onRowTap(item) : null,
+                                        onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
+                                        behavior: HitTestBehavior.opaque,
+                                        child: Container(
+                                          width: double.infinity,
+                                          height: double.infinity,
+                                          alignment: align.alignment,
+                                          child: align.child,
+                                        ),
                                       ),
-                                    ),
-                                  );
-                                }
+                                    );
+                                  }
+                                  return cell;
+                                }).toList();
                               }
                               
                               return DataRow(cells: cells);
@@ -1383,7 +1491,9 @@ class ReportTableBuilder {
                                 }).toList();
                                 assert(cells.length == keys.length);
                                 
-                                // 모든 셀에 더블 탭 및 단일 탭 제스처 추가 (ventas 보고서만)
+                                // ventas 보고서의 경우 제스처 추가
+                                // year, month, day 단위: 모든 셀에 제스처 추가
+                                // vcode 단위: 모든 셀에 제스처 추가 (단일 탭은 vcode만)
                                 final finalCells = ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas)
                                     ? cells.map((cell) {
                                         if (cell.child is Align) {
@@ -1399,7 +1509,12 @@ class ReportTableBuilder {
                                                 onRowDoubleTap(item);
                                               } : null,
                                               behavior: HitTestBehavior.opaque,
-                                              child: align.child,
+                                              child: Container(
+                                                width: double.infinity,
+                                                height: double.infinity,
+                                                alignment: align.alignment,
+                                                child: align.child,
+                                              ),
                                             ),
                                           );
                                         } else {
@@ -1428,26 +1543,32 @@ class ReportTableBuilder {
                                 );
                               });
                               
-                              // 첫 번째 셀에만 더블 탭 및 단일 탭 제스처 추가 (ventas 보고서만)
+                              // ventas 보고서의 경우 제스처 추가
+                              // 모든 단위: 모든 셀에 더블 클릭 제스처 추가
                               if ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas && nonMapCells.isNotEmpty && item is Map<String, dynamic>) {
                                 final updatedCells = List<DataCell>.from(nonMapCells);
-                                final firstCell = updatedCells[0];
-                                if (firstCell.child is Align) {
-                                  final align = firstCell.child as Align;
-                                  updatedCells[0] = DataCell(
-                                    GestureDetector(
-                                      onTap: (onRowTap != null && unit == 'vcode') ? () => onRowTap(item) : null,
-                                      onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
-                                      behavior: HitTestBehavior.opaque,
-                                      child: Container(
-                                        width: double.infinity,
-                                        height: double.infinity,
-                                        alignment: align.alignment,
-                                        child: align.child,
+                                
+                                // 모든 셀에 더블 클릭 제스처 추가
+                                for (int i = 0; i < updatedCells.length; i++) {
+                                  final cell = updatedCells[i];
+                                  if (cell.child is Align) {
+                                    final align = cell.child as Align;
+                                    updatedCells[i] = DataCell(
+                                      GestureDetector(
+                                        onTap: (onRowTap != null && unit == 'vcode') ? () => onRowTap(item) : null,
+                                        onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
+                                        behavior: HitTestBehavior.opaque,
+                                        child: Container(
+                                          width: double.infinity,
+                                          height: double.infinity,
+                                          alignment: align.alignment,
+                                          child: align.child,
+                                        ),
                                       ),
-                                    ),
-                                  );
+                                    );
+                                  }
                                 }
+                                
                                 return DataRow(cells: updatedCells);
                               }
                               

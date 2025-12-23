@@ -176,6 +176,57 @@ class DatabaseService {
     filters: filters,
   );
 
+  /// FVentas 보고서 가져오기
+  Future<Map<String, dynamic>> getFVentasReport({
+    String? filteringWord,
+    String? currentDate,
+    String? unit, // 'vcode', 'day', 'month', 'year'
+    Map<String, dynamic>? filters,
+    String? lastIdFventa, // 페이지네이션용
+  }) => _reportsApi.getFVentasReport(
+    filteringWord: filteringWord,
+    currentDate: currentDate,
+    unit: unit,
+    filters: filters,
+    lastIdFventa: lastIdFventa,
+  );
+  
+  /// FVentas 특정 항목 조회
+  Future<Map<String, dynamic>> getFVentasItem({
+    required String tipofactura,
+    required String numfactura,
+  }) => _reportsApi.getFVentasItem(
+    tipofactura: tipofactura,
+    numfactura: numfactura,
+  );
+  
+  /// FVentas 배치 동기화
+  Future<Map<String, dynamic>> syncFVentasBatch({
+    required List<Map<String, dynamic>> data,
+  }) => _reportsApi.syncFVentasBatch(
+    data: data,
+  );
+  
+  /// FVentas 업데이트
+  Future<Map<String, dynamic>> updateFVentasItem({
+    required String tipofactura,
+    required String numfactura,
+    required Map<String, dynamic> data,
+  }) => _reportsApi.updateFVentasItem(
+    tipofactura: tipofactura,
+    numfactura: numfactura,
+    data: data,
+  );
+  
+  /// FVentas 삭제
+  Future<Map<String, dynamic>> deleteFVentasItem({
+    required String tipofactura,
+    required String numfactura,
+  }) => _reportsApi.deleteFVentasItem(
+    tipofactura: tipofactura,
+    numfactura: numfactura,
+  );
+
   /// 알림 보고서 가져오기
   Future<Map<String, dynamic>> getAlertasReport({
     String? filteringWord,

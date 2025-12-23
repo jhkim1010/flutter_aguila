@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, debugPrint;
 import 'package:intl/intl.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../l10n/app_localizations.dart';
@@ -9,6 +9,7 @@ import '../services/secure_storage_helper.dart';
 import '../services/config_service.dart';
 import '../models/connection_info.dart';
 import '../utils/platform_utils.dart';
+import '../widgets/report_utils.dart';
 import 'main_connection_screen.dart' show ServerType, MainConnectionScreen;
 import 'celebration_screen.dart';
 import 'connection_screen.dart' hide ServerType;
@@ -53,8 +54,9 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
   bool _isLoading = true;
   String? _errorMessage;
   DateTime? _selectedDate;
-  String? _selectedSucursal;
+  String? _selectedSucursal; // null = Total, "1" = Sucursal 1, "2" = Sucursal 2 등
   String? _databaseName;
+  List<String>? _availableSucursales; // 사용 가능한 sucursal 목록
   String _currentReport = 'resumen'; // 현재 선택된 보고서
   ReportType? _selectedReportType; // 큰 화면에서 오른쪽에 표시할 보고서 타입
   // 현재 보고서의 필터링 단어와 정렬 정보 (연결 변경 시 유지용)
@@ -120,6 +122,9 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
           break;
         case ReportType.ventas:
           _currentReport = 'ventas';
+          break;
+        case ReportType.fventas:
+          _currentReport = 'fventas';
           break;
         case ReportType.alertas:
           _currentReport = 'alertas';
@@ -563,7 +568,6 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       print('  - Sucursal: ${sucursal ?? _selectedSucursal ?? '없음'}');
       
       // 날짜와 sucursal을 API 호출에 포함
-      print('📡 getResumenDelDia 요청 시작...');
       print('   - 날짜: $dateToUse');
       print('   - Sucursal: ${sucursal ?? _selectedSucursal ?? "없음"}');
       
@@ -573,8 +577,29 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
           date: dateToUse,
           sucursal: sucursal ?? _selectedSucursal,
         );
-        print('✅ getResumenDelDia 성공');
         print('   - 응답 키: ${data.keys.toList()}');
+        print('   - 응답 데이터 상세:');
+        data.forEach((key, value) {
+          if (value is List) {
+            print('     - $key: List (${value.length}개 항목)');
+            if (value.isNotEmpty) {
+              print('       첫 번째 항목: ${value[0]}');
+            }
+          } else if (value is Map) {
+            print('     - $key: Map (${(value as Map).keys.toList()})');
+          } else {
+            print('     - $key: ${value.runtimeType} = $value');
+          }
+        });
+        
+        // resumen del dia 응답에 stocks 데이터가 직접 포함되어 있는지 확인
+        if (data.containsKey('stocks') && data['stocks'] is List) {
+          final stocksList = data['stocks'] as List;
+          // stock_resumen도 함께 설정
+          if (!data.containsKey('stock_resumen')) {
+            data['stock_resumen'] = {'stocks': stocksList};
+          }
+        }
       } catch (e) {
         print('❌ getResumenDelDia 실패: $e');
         rethrow; // 에러를 다시 던져서 catch 블록에서 처리하도록
@@ -608,7 +633,6 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       
       // Stock resumen도 함께 가져오기 (stocks GET 요청에서 resumen_del_dia 포함)
       try {
-        print('📊 Stock resumen 요청 시작...');
         final stockResumen = await _databaseService.getStocksReport(
           filters: {
             'date': dateToUse.toString().substring(0, 10), // YYYY-MM-DD 형식
@@ -619,42 +643,27 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         
         // Stock resumen 데이터를 resumen del dia 데이터에 추가
         if (stockResumen != null && stockResumen.isNotEmpty) {
-          print('📊 Stock resumen 응답 데이터 구조:');
-          print('   - 키 목록: ${stockResumen.keys.toList()}');
-          
           // 새로운 응답 형식: resumen_del_dia 배열이 stocks 응답에 포함됨
           if (stockResumen.containsKey('resumen_del_dia') && stockResumen['resumen_del_dia'] is List) {
             final resumenDelDia = stockResumen['resumen_del_dia'] as List;
-            print('   - resumen_del_dia 배열 길이: ${resumenDelDia.length}');
-            if (resumenDelDia.isNotEmpty) {
-              print('   - 첫 번째 항목: ${resumenDelDia[0]}');
-            }
             // 기존 코드와 호환성을 위해 stocks 키로 변환
             data['stocks'] = resumenDelDia;
             data['stock_resumen'] = {'stocks': resumenDelDia};
-            print('✅ Stock resumen 데이터 추가 완료 (resumen_del_dia에서 추출: ${resumenDelDia.length}개 항목)');
           } else if (stockResumen.containsKey('stocks') && stockResumen['stocks'] is List) {
             // 기존 형식 지원 (하위 호환성)
             final stocksList = stockResumen['stocks'] as List;
-            print('   - stocks 배열 길이: ${stocksList.length}');
-            if (stocksList.isNotEmpty) {
-              print('   - 첫 번째 항목: ${stocksList[0]}');
-            }
             data['stock_resumen'] = stockResumen;
             data['stocks'] = stocksList;
-            print('✅ Stock resumen 데이터 추가 완료 (기존 형식: ${stocksList.length}개 항목)');
           } else {
-            print('⚠️ Stock resumen에 stocks 또는 resumen_del_dia 배열이 없습니다.');
-            print('   - 전체 응답: $stockResumen');
             data['stock_resumen'] = stockResumen;
           }
-        } else {
-          print('⚠️ Stock resumen 응답이 비어있습니다.');
         }
       } catch (e) {
-        print('⚠️ Stock resumen 가져오기 실패 (무시하고 계속 진행): $e');
         // Stock resumen 가져오기 실패해도 resumen del dia는 계속 표시
       }
+      
+      // 사용 가능한 sucursal 목록 추출
+      final availableSucursales = _extractAvailableSucursales(data);
       
       setState(() {
         _data = data;
@@ -664,6 +673,12 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         _selectedDate = dateToUse;
         if (sucursal != null) {
           _selectedSucursal = sucursal;
+        }
+        // 사용 가능한 sucursal 목록 업데이트
+        _availableSucursales = availableSucursales;
+        // 여러 sucursal이 있고 아직 선택되지 않았으면 Total로 설정
+        if (_availableSucursales != null && _availableSucursales!.isNotEmpty && _selectedSucursal == null) {
+          _selectedSucursal = null; // Total (null = Total)
         }
       });
     } catch (e) {
@@ -782,10 +797,8 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
   }
 
   Widget _buildSection(String title, List<Widget> children, {VoidCallback? onTap, bool useGrid = true}) {
-    debugPrint('🔍 _buildSection 호출됨: $title, children: ${children.length}개');
     // 빈 리스트인 경우 섹션을 표시하지 않음
     if (children.isEmpty) {
-      debugPrint('   ⚠️ $title 섹션: children이 비어있어 숨김');
       return const SizedBox.shrink();
     }
     
@@ -1117,6 +1130,19 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                                   onSelected: (value) {
                                     if (value == 'connect' && !isCurrentConnection) {
                                       _switchConnection(connection);
+                                    } else if (value == 'edit') {
+                                      Navigator.push<ConnectionInfo>(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => ConnectionScreen(
+                                            connection: connection,
+                                          ),
+                                        ),
+                                      ).then((savedConnection) {
+                                        if (mounted) {
+                                          _loadSavedConnections();
+                                        }
+                                      });
                                     } else if (value == 'delete') {
                                       _deleteConnectionFromList(connection);
                                     }
@@ -1133,6 +1159,16 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                                           ],
                                         ),
                                       ),
+                                    PopupMenuItem(
+                                      value: 'edit',
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.edit, size: 16, color: Colors.blue),
+                                          const SizedBox(width: 8),
+                                          const Text('편집', style: TextStyle(fontSize: 11)),
+                                        ],
+                                      ),
+                                    ),
                                     PopupMenuItem(
                                       value: 'delete',
                                       child: Row(
@@ -1162,6 +1198,16 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                           onPressed: () {
                             setState(() {
                               _isAddingNewConnection = true;
+                              // 새 연결 폼 초기화
+                              _newProfileNameController.clear();
+                              _newServerUrlController.clear();
+                              _newDatabaseNameController.clear();
+                              _newUsernameController.clear();
+                              _newPasswordController.clear();
+                              _newLocalIpController.clear();
+                              _newSelectedServerType = ServerType.hostinger;
+                              // Hostinger 선택 시 URL 자동 설정
+                              _newServerUrlController.text = 'https://sync.coolsistema.com';
                             });
                           },
                           icon: const Icon(Icons.add, size: 14),
@@ -1526,6 +1572,15 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       Colors.purple,
     ));
     
+    // FVentas
+    items.add(_buildReportMenuItem(
+      context,
+      'fventas',
+      'FVentas',
+      Icons.receipt,
+      Colors.deepPurple,
+    ));
+    
     items.add(const Divider(height: 1));
     
     // Stocks
@@ -1606,45 +1661,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     
     return InkWell(
       onTap: () {
-        setState(() {
-          _currentReport = reportType;
-          if (reportType == 'resumen') {
-            _selectedReportType = null;
-          } else {
-            // ReportType으로 변환
-            switch (reportType) {
-              case 'stocks':
-                _selectedReportType = ReportType.stocks;
-                break;
-              case 'codigos':
-                _selectedReportType = ReportType.codigos;
-                break;
-              case 'todocodigos':
-                _selectedReportType = ReportType.todocodigos;
-                break;
-              case 'items':
-                _selectedReportType = ReportType.items;
-                break;
-              case 'ingresos':
-                _selectedReportType = ReportType.ingresos;
-                break;
-              case 'clientes':
-                _selectedReportType = ReportType.clientes;
-                break;
-              case 'gastos':
-                _selectedReportType = ReportType.gastos;
-                break;
-              case 'ventas':
-                _selectedReportType = ReportType.ventas;
-                break;
-              case 'alertas':
-                _selectedReportType = ReportType.alertas;
-                break;
-              default:
-                _selectedReportType = null;
-            }
-          }
-        });
+        _navigateToReport(reportType);
       },
       child: Container(
         color: isSelected ? color.withOpacity(0.1) : null,
@@ -1681,14 +1698,16 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
 
   // 보고서 내용 빌드 (오른쪽 영역)
   Widget _buildReportContent(BuildContext context) {
+    debugPrint('🔍 _buildReportContent 호출: _selectedReportType=$_selectedReportType, _currentReport=$_currentReport');
     if (_selectedReportType != null) {
+      debugPrint('   → ReportScreen 반환: reportType=$_selectedReportType');
       // 보고서 화면 표시
       // key를 reportType에 따라 설정하여 reportType 변경 시 새로운 위젯 인스턴스 생성
       return ReportScreen(
         key: ValueKey('report_${_selectedReportType.toString()}'),
         serverUrl: widget.serverUrl,
         reportType: _selectedReportType!,
-        initialDate: _selectedReportType == ReportType.ventas ? (_selectedDate ?? DateTime.now()) : null,
+        initialDate: (_selectedReportType == ReportType.ventas || _selectedReportType == ReportType.fventas) ? (_selectedDate ?? DateTime.now()) : null,
         initialFilteringWord: widget.initialFilteringWord ?? _currentFilteringWord,
         initialSortColumn: widget.initialSortColumn ?? _currentSortColumn,
         initialSortAscending: widget.initialSortAscending ?? _currentSortAscending,
@@ -1861,20 +1880,165 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                                   ],
                                 ),
                               ),
-                            // 날짜 표시
-                            if (_data!.containsKey('fecha'))
-                              _buildDateHeader(_data!['fecha']),
+                            // 날짜 표시는 AppBar에 있으므로 본문에서는 제거
 
                             // 판매 통계 (vcodes) - 여러 sucursal이 있으면 합산
-                            if (_data!.containsKey('vcodes'))
-                              _buildSection(
-                                l10n.salesStatistics,
-                                _buildVcodesSection(_getAggregatedVcodes()),
+                            if (_data!.containsKey('vcodes')) ...[
+                              Builder(
+                                builder: (context) {
+                                  final aggregatedVcodes = _getAggregatedVcodes();
+                                  final vcodesWidgets = _buildVcodesSection(aggregatedVcodes);
+                                  
+                                  if (vcodesWidgets.isNotEmpty) {
+                                    return _buildSection(
+                                      l10n.salesStatistics,
+                                      vcodesWidgets,
+                                      onTap: () {
+                                        if (_isLargeScreen(context)) {
+                                          setState(() {
+                                            _selectedReportType = ReportType.ventas;
+                                            _currentReport = 'ventas';
+                                          });
+                                        } else {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => ReportScreen(
+                                                serverUrl: widget.serverUrl,
+                                                reportType: ReportType.ventas,
+                                                initialDate: _selectedDate,
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      },
+                                    );
+                                  } else {
+                                    return const SizedBox.shrink();
+                                  }
+                                },
+                              ),
+                            ],
+
+                        // 지출 통계 (gastos) - 여러 sucursal이 있으면 합산
+                        if (_data!.containsKey('gastos')) ...[
+                          Builder(
+                            builder: (context) {
+                              final aggregatedGastos = _getAggregatedGastos();
+                              final gastosWidgets = _buildGastosSection(aggregatedGastos);
+                              
+                              if (gastosWidgets.isNotEmpty) {
+                                return _buildSection(
+                                  l10n.expenseStatistics,
+                                  gastosWidgets,
+                                );
+                              } else {
+                                return const SizedBox.shrink();
+                              }
+                            },
+                          ),
+                        ],
+
+                        // 할인 통계 (vdetalle) - 여러 sucursal이 있으면 합산
+                        if (_data!.containsKey('vdetalle')) ...[
+                          Builder(
+                            builder: (context) {
+                              final aggregatedVdetalle = _getAggregatedVdetalle();
+                              final vdetalleWidgets = _buildVdetalleSection(aggregatedVdetalle);
+                              
+                              if (vdetalleWidgets.isNotEmpty) {
+                                return _buildSection(
+                                  l10n.discountStatistics,
+                                  vdetalleWidgets,
+                                );
+                              } else {
+                                return const SizedBox.shrink();
+                              }
+                            },
+                          ),
+                        ],
+
+                        // 결제 통계 (vcodes_mpago) - 여러 sucursal이 있으면 합산
+                        if (_data!.containsKey('vcodes_mpago')) ...[
+                          Builder(
+                            builder: (context) {
+                              final aggregatedMpago = _getAggregatedMpago();
+                              final mpagoWidgets = _buildMpagoSection(aggregatedMpago);
+                              
+                              if (mpagoWidgets.isNotEmpty) {
+                                return _buildSection(
+                                  l10n.mercadoPagoStatistics,
+                                  mpagoWidgets,
+                                );
+                              } else {
+                                return const SizedBox.shrink();
+                              }
+                            },
+                          ),
+                        ],
+
+                        // FVentas 통계 - 여러 sucursal이 있으면 합산
+                        if (_data!.containsKey('fventas')) ...[
+                          Builder(
+                            builder: (context) {
+                              final aggregatedFventas = _getAggregatedFventas();
+                              final fventasWidgets = _buildFventasSection(aggregatedFventas);
+                              
+                              if (fventasWidgets.isNotEmpty) {
+                                return _buildSection(
+                                  'FVentas',
+                                  fventasWidgets,
+                                );
+                              } else {
+                                return const SizedBox.shrink();
+                              }
+                            },
+                          ),
+                        ],
+
+                        // Stock Resumen (stock_resumen 또는 stocks 키 확인)
+                        // useGrid: false로 설정하여 자체 GridView 사용 (중복 방지)
+                        // stocks 데이터가 있으면 항상 표시
+                        Builder(
+                          builder: (context) {
+                            debugPrint('🔍 Stock 섹션 체크: stock_resumen=${_data!.containsKey('stock_resumen')}, stocks=${_data!.containsKey('stocks')}');
+                            
+                            // stock_resumen 또는 stocks 키 확인
+                            final hasStockResumen = _data!.containsKey('stock_resumen') && _data!['stock_resumen'] != null;
+                            final hasStocks = _data!.containsKey('stocks') && _data!['stocks'] != null;
+                            
+                            debugPrint('   - hasStockResumen: $hasStockResumen');
+                            debugPrint('   - hasStocks: $hasStocks');
+                            
+                            if (!hasStockResumen && !hasStocks) {
+                              debugPrint('   → Stock 데이터 없음');
+                              return const SizedBox.shrink();
+                            }
+                            
+                            final stockData = hasStocks && _data!['stocks'] != null
+                                ? {'stocks': _data!['stocks']}
+                                : (hasStockResumen && _data!['stock_resumen'] != null
+                                    ? (_data!['stock_resumen'] is Map<String, dynamic>
+                                        ? _data!['stock_resumen'] as Map<String, dynamic>
+                                        : <String, dynamic>{})
+                                    : <String, dynamic>{});
+                            
+                            debugPrint('   - stockData 키: ${stockData.keys.toList()}');
+                            
+                            final stockWidgets = _buildStockResumenSection(stockData);
+                            
+                            debugPrint('   - stockWidgets 개수: ${stockWidgets.length}');
+                            
+                            if (stockWidgets.isNotEmpty) {
+                              return _buildSection(
+                                'Stock Resumen',
+                                stockWidgets,
+                                useGrid: false,
                                 onTap: () {
                                   if (_isLargeScreen(context)) {
                                     setState(() {
-                                      _selectedReportType = ReportType.ventas;
-                                      _currentReport = 'ventas';
+                                      _selectedReportType = ReportType.stocks;
+                                      _currentReport = 'stocks';
                                     });
                                   } else {
                                     Navigator.push(
@@ -1882,67 +2046,20 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                                       MaterialPageRoute(
                                         builder: (context) => ReportScreen(
                                           serverUrl: widget.serverUrl,
-                                          reportType: ReportType.ventas,
+                                          reportType: ReportType.stocks,
                                           initialDate: _selectedDate,
                                         ),
                                       ),
                                     );
                                   }
                                 },
-                              ),
-
-                        // 지출 통계 (gastos) - 여러 sucursal이 있으면 합산
-                        if (_data!.containsKey('gastos'))
-                          _buildSection(
-                            l10n.expenseStatistics,
-                            _buildGastosSection(_getAggregatedGastos()),
-                          ),
-
-                        // 할인 통계 (vdetalle) - 여러 sucursal이 있으면 합산
-                        if (_data!.containsKey('vdetalle'))
-                          _buildSection(
-                            l10n.discountStatistics,
-                            _buildVdetalleSection(_getAggregatedVdetalle()),
-                          ),
-
-                        // 결제 통계 (vcodes_mpago) - 여러 sucursal이 있으면 합산
-                        if (_data!.containsKey('vcodes_mpago'))
-                          _buildSection(
-                            l10n.mercadoPagoStatistics,
-                            _buildMpagoSection(_getAggregatedMpago()),
-                          ),
-
-                        // Stock Resumen (stock_resumen 또는 stocks 키 확인)
-                        // useGrid: false로 설정하여 자체 GridView 사용 (중복 방지)
-                        if (_data!.containsKey('stock_resumen') || _data!.containsKey('stocks'))
-                          _buildSection(
-                            'Stock Resumen',
-                            _buildStockResumenSection(
-                              _data!.containsKey('stocks') 
-                                ? {'stocks': _data!['stocks']}
-                                : (_data!['stock_resumen'] ?? <String, dynamic>{})
-                            ),
-                            useGrid: false,
-                            onTap: () {
-                              if (_isLargeScreen(context)) {
-                                setState(() {
-                                  _selectedReportType = ReportType.stocks;
-                                  _currentReport = 'stocks';
-                                });
-                              } else {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => ReportScreen(
-                                      serverUrl: widget.serverUrl,
-                                      reportType: ReportType.stocks,
-                                      initialDate: _selectedDate,
-                                    ),
-                                  ),
-                                );
-                              }
-                            },
-                          ),
+                              );
+                            } else {
+                              debugPrint('   → stockWidgets가 비어있음');
+                              return const SizedBox.shrink();
+                            }
+                          },
+                        ),
                           ],
                         ),
                       ),
@@ -2001,54 +2118,27 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
               Expanded(
                 child: Text(_getCurrentReportTitle()),
               ),
+              // Resumen del Día일 때만 날짜 선택기 표시
+              if (_currentReport == 'resumen') ...[
+                const SizedBox(width: 12),
+                _buildDateSelectorInAppBar(),
+              ],
+              // Sucursal 선택 콤보박스 (여러 개일 때만 표시)
+              if (_hasMultipleSucursales() && _availableSucursales != null && _availableSucursales!.isNotEmpty) ...[
+                const SizedBox(width: 12),
+                _buildSucursalSelector(),
+              ],
             ],
           ),
           actions: [
-            // 보고서 선택 드롭다운 메뉴
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.assessment),
-              tooltip: 'Reportes',
-              onSelected: (value) {
-                setState(() {
-                  _currentReport = value;
-                  if (value == 'resumen') {
-                    _selectedReportType = null;
-                  } else {
-                    // ReportType으로 변환
-                    switch (value) {
-                      case 'stocks':
-                        _selectedReportType = ReportType.stocks;
-                        break;
-                      case 'codigos':
-                        _selectedReportType = ReportType.codigos;
-                        break;
-                      case 'todocodigos':
-                        _selectedReportType = ReportType.todocodigos;
-                        break;
-                      case 'items':
-                        _selectedReportType = ReportType.items;
-                        break;
-                      case 'ingresos':
-                        _selectedReportType = ReportType.ingresos;
-                        break;
-                      case 'clientes':
-                        _selectedReportType = ReportType.clientes;
-                        break;
-                      case 'gastos':
-                        _selectedReportType = ReportType.gastos;
-                        break;
-                      case 'ventas':
-                        _selectedReportType = ReportType.ventas;
-                        break;
-                      case 'alertas':
-                        _selectedReportType = ReportType.alertas;
-                        break;
-                      default:
-                        _selectedReportType = null;
-                    }
-                  }
-                });
-              },
+            // 보고서 선택 드롭다운 메뉴 (Windows/Mac/iPad에서는 왼쪽 메뉴가 항상 표시되므로 숨김)
+            if (!PlatformUtils.hasPersistentMenu(context))
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.assessment),
+                tooltip: 'Reportes',
+                onSelected: (value) {
+                  _navigateToReport(value);
+                },
               itemBuilder: (BuildContext context) => _buildReportMenuItems(),
             ),
           ],
@@ -2145,21 +2235,29 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
             Expanded(
               child: Text(_getCurrentReportTitle()),
             ),
+            // Resumen del Día일 때만 날짜 선택기 표시
+            if (_currentReport == 'resumen') ...[
+              const SizedBox(width: 8),
+              _buildDateSelectorInAppBar(),
+            ],
+            // Sucursal 선택 콤보박스 (여러 개일 때만 표시)
+            if (_hasMultipleSucursales() && _availableSucursales != null && _availableSucursales!.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              _buildSucursalSelector(),
+            ],
           ],
         ),
         actions: [
-          // 보고서 선택 드롭다운 메뉴
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.assessment),
-            tooltip: 'Reportes',
-            onSelected: (value) {
-              setState(() {
-                _currentReport = value;
-              });
-              _navigateToReport(value);
-            },
-            itemBuilder: (BuildContext context) => _buildReportMenuItems(),
-          ),
+          // 보고서 선택 드롭다운 메뉴 (Windows/Mac/iPad에서는 왼쪽 메뉴가 항상 표시되므로 숨김)
+          if (!PlatformUtils.hasPersistentMenu(context))
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.assessment),
+              tooltip: 'Reportes',
+              onSelected: (value) {
+                _navigateToReport(value);
+              },
+              itemBuilder: (BuildContext context) => _buildReportMenuItems(),
+            ),
         ],
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
@@ -2269,9 +2367,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                                         child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.stretch,
                                       children: [
-                                        // 날짜 표시
-                                        if (_data!.containsKey('fecha'))
-                                          _buildDateHeader(_data!['fecha']),
+                                        // 날짜 표시는 AppBar에 있으므로 본문에서는 제거
 
                                         // 판매 통계 (vcodes) - 배열이면 첫 번째 항목 사용
                                         if (_data!.containsKey('vcodes'))
@@ -2424,15 +2520,30 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     );
   }
 
-  // 여러 sucursal의 vcodes 데이터를 합산
+  // 여러 sucursal의 vcodes 데이터를 합산 (선택된 sucursal에 따라 필터링)
   Map<String, dynamic> _getAggregatedVcodes() {
     if (_data == null || !_data!.containsKey('vcodes')) {
       return <String, dynamic>{};
     }
     
     final vcodes = _data!['vcodes'];
+    
     if (vcodes is! List || vcodes.isEmpty) {
       return vcodes is Map<String, dynamic> ? vcodes : <String, dynamic>{};
+    }
+    
+    // 선택된 sucursal에 따라 필터링
+    List<dynamic> filteredVcodes = vcodes;
+    if (_selectedSucursal != null && _selectedSucursal!.isNotEmpty) {
+      filteredVcodes = vcodes.where((item) {
+        if (item is Map<String, dynamic> && item.containsKey('sucursal')) {
+          final sucursal = item['sucursal'] is int 
+              ? item['sucursal'].toString()
+              : item['sucursal'].toString();
+          return sucursal == _selectedSucursal;
+        }
+        return false;
+      }).toList();
     }
     
     // 여러 sucursal의 데이터 합산
@@ -2447,7 +2558,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     };
     String? lastVentaHour;
     
-    for (var item in vcodes) {
+    for (var item in filteredVcodes) {
       if (item is Map<String, dynamic>) {
         aggregated['operation_count'] = (aggregated['operation_count'] as int) + 
             (item['operation_count'] as int? ?? 0);
@@ -2481,35 +2592,73 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     return aggregated;
   }
   
-  // 여러 sucursal의 gastos 데이터를 합산
+  // 여러 sucursal의 gastos 데이터를 합산 (선택된 sucursal에 따라 필터링)
   Map<String, dynamic> _getAggregatedGastos() {
     if (_data == null || !_data!.containsKey('gastos')) {
+      debugPrint('🔍 _getAggregatedGastos: gastos 키가 없음');
       return <String, dynamic>{};
     }
     
     final gastos = _data!['gastos'];
-    if (gastos is! List || gastos.isEmpty) {
-      return gastos is Map<String, dynamic> ? gastos : <String, dynamic>{};
+    debugPrint('🔍 _getAggregatedGastos: gastos 타입=${gastos.runtimeType}, 값=$gastos');
+    
+    // Map인 경우 그대로 반환
+    if (gastos is Map<String, dynamic>) {
+      debugPrint('   → Map 형태로 반환');
+      return gastos;
     }
     
-    final aggregated = <String, dynamic>{
-      'gasto_count': 0,
-      'total_gasto_day': 0.0,
-    };
-    
-    for (var item in gastos) {
-      if (item is Map<String, dynamic>) {
-        aggregated['gasto_count'] = (aggregated['gasto_count'] as int) + 
-            (item['gasto_count'] as int? ?? 0);
-        aggregated['total_gasto_day'] = (aggregated['total_gasto_day'] as double) + 
-            ((item['total_gasto_day'] as num?)?.toDouble() ?? 0.0);
+    // List인 경우 합산
+    if (gastos is List) {
+      if (gastos.isEmpty) {
+        debugPrint('   → List가 비어있음');
+        return <String, dynamic>{};
       }
+      
+      // 선택된 sucursal에 따라 필터링
+      List<dynamic> filteredGastos = gastos;
+      if (_selectedSucursal != null && _selectedSucursal!.isNotEmpty) {
+        filteredGastos = gastos.where((item) {
+          if (item is Map<String, dynamic> && item.containsKey('sucursal')) {
+            final sucursal = item['sucursal'] is int 
+                ? item['sucursal'].toString()
+                : item['sucursal'].toString();
+            return sucursal == _selectedSucursal;
+          }
+          return false;
+        }).toList();
+      }
+      
+      debugPrint('   → List 형태 (${filteredGastos.length}개 항목), 합산 시작');
+      final aggregated = <String, dynamic>{
+        'gasto_count': 0,
+        'total_gasto_day': 0.0,
+      };
+      
+      for (var item in filteredGastos) {
+        if (item is Map<String, dynamic>) {
+          final gastoCount = item['gasto_count'] as int? ?? item['count'] as int? ?? 0;
+          final totalGastoDay = (item['total_gasto_day'] as num?)?.toDouble() ?? 
+                               (item['total'] as num?)?.toDouble() ?? 0.0;
+          
+          aggregated['gasto_count'] = (aggregated['gasto_count'] as int) + gastoCount;
+          aggregated['total_gasto_day'] = (aggregated['total_gasto_day'] as double) + totalGastoDay;
+          
+          debugPrint('     - 항목: gasto_count=$gastoCount, total_gasto_day=$totalGastoDay');
+        } else {
+          debugPrint('     - 항목이 Map이 아님: ${item.runtimeType}');
+        }
+      }
+      
+      debugPrint('   → 합산 결과: gasto_count=${aggregated['gasto_count']}, total_gasto_day=${aggregated['total_gasto_day']}');
+      return aggregated;
     }
     
-    return aggregated;
+    debugPrint('   → 알 수 없는 형태, 빈 Map 반환');
+    return <String, dynamic>{};
   }
   
-  // 여러 sucursal의 vdetalle 데이터를 합산
+  // 여러 sucursal의 vdetalle 데이터를 합산 (선택된 sucursal에 따라 필터링)
   Map<String, dynamic> _getAggregatedVdetalle() {
     if (_data == null || !_data!.containsKey('vdetalle')) {
       return <String, dynamic>{};
@@ -2520,12 +2669,26 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       return vdetalle is Map<String, dynamic> ? vdetalle : <String, dynamic>{};
     }
     
+    // 선택된 sucursal에 따라 필터링
+    List<dynamic> filteredVdetalle = vdetalle;
+    if (_selectedSucursal != null && _selectedSucursal!.isNotEmpty) {
+      filteredVdetalle = vdetalle.where((item) {
+        if (item is Map<String, dynamic> && item.containsKey('sucursal')) {
+          final sucursal = item['sucursal'] is int 
+              ? item['sucursal'].toString()
+              : item['sucursal'].toString();
+          return sucursal == _selectedSucursal;
+        }
+        return false;
+      }).toList();
+    }
+    
     final aggregated = <String, dynamic>{
       'count_discount_event': 0,
       'total_discount_day': 0.0,
     };
     
-    for (var item in vdetalle) {
+    for (var item in filteredVdetalle) {
       if (item is Map<String, dynamic>) {
         aggregated['count_discount_event'] = (aggregated['count_discount_event'] as int) + 
             (item['count_discount_event'] as int? ?? 0);
@@ -2537,7 +2700,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     return aggregated;
   }
   
-  // 여러 sucursal의 mpago 데이터를 합산
+  // 여러 sucursal의 mpago 데이터를 합산 (선택된 sucursal에 따라 필터링)
   Map<String, dynamic> _getAggregatedMpago() {
     if (_data == null || !_data!.containsKey('vcodes_mpago')) {
       return <String, dynamic>{};
@@ -2548,12 +2711,26 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       return mpago is Map<String, dynamic> ? mpago : <String, dynamic>{};
     }
     
+    // 선택된 sucursal에 따라 필터링
+    List<dynamic> filteredMpago = mpago;
+    if (_selectedSucursal != null && _selectedSucursal!.isNotEmpty) {
+      filteredMpago = mpago.where((item) {
+        if (item is Map<String, dynamic> && item.containsKey('sucursal')) {
+          final sucursal = item['sucursal'] is int 
+              ? item['sucursal'].toString()
+              : item['sucursal'].toString();
+          return sucursal == _selectedSucursal;
+        }
+        return false;
+      }).toList();
+    }
+    
     final aggregated = <String, dynamic>{
       'count_mpago_total': 0,
       'total_mpago_day': 0.0,
     };
     
-    for (var item in mpago) {
+    for (var item in filteredMpago) {
       if (item is Map<String, dynamic>) {
         aggregated['count_mpago_total'] = (aggregated['count_mpago_total'] as int) + 
             (item['count_mpago_total'] as int? ?? 0);
@@ -2563,6 +2740,61 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     }
     
     return aggregated;
+  }
+  
+  // 여러 sucursal의 fventas 데이터를 합산 (선택된 sucursal에 따라 필터링)
+  Map<String, dynamic> _getAggregatedFventas() {
+    if (_data == null || !_data!.containsKey('fventas')) {
+      return <String, dynamic>{};
+    }
+    
+    final fventas = _data!['fventas'];
+    if (fventas is! List || fventas.isEmpty) {
+      return <String, dynamic>{};
+    }
+    
+    // 선택된 sucursal에 따라 필터링
+    List<dynamic> filteredFventas = fventas;
+    if (_selectedSucursal != null && _selectedSucursal!.isNotEmpty) {
+      filteredFventas = fventas.where((item) {
+        if (item is Map<String, dynamic> && item.containsKey('sucursal')) {
+          final sucursal = item['sucursal'] is int 
+              ? item['sucursal'].toString()
+              : item['sucursal'].toString();
+          return sucursal == _selectedSucursal;
+        }
+        return false;
+      }).toList();
+    }
+    
+    // tipofactura별로 그룹화하여 합산
+    final Map<String, Map<String, dynamic>> grouped = {};
+    
+    for (var item in filteredFventas) {
+      if (item is Map<String, dynamic>) {
+        final tipofactura = item['tipofactura']?.toString() ?? 'Unknown';
+        
+        if (!grouped.containsKey(tipofactura)) {
+          grouped[tipofactura] = {
+            'tipofactura': tipofactura,
+            'count': 0,
+            'sum_monto': 0.0,
+          };
+        }
+        
+        grouped[tipofactura]!['count'] = (grouped[tipofactura]!['count'] as int) + 
+            (item['count'] as int? ?? 0);
+        grouped[tipofactura]!['sum_monto'] = (grouped[tipofactura]!['sum_monto'] as double) + 
+            ((item['sum_monto'] as num?)?.toDouble() ?? 0.0);
+      }
+    }
+    
+    // 리스트로 변환
+    return {
+      'items': grouped.values.toList(),
+      'total_count': grouped.values.fold<int>(0, (sum, item) => sum + (item['count'] as int? ?? 0)),
+      'total_sum_monto': grouped.values.fold<double>(0.0, (sum, item) => sum + ((item['sum_monto'] as num?)?.toDouble() ?? 0.0)),
+    };
   }
 
   List<Widget> _buildVcodesSection(Map<String, dynamic> vcodes) {
@@ -2683,33 +2915,225 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
 
   List<Widget> _buildGastosSection(Map<String, dynamic> gastos) {
     try {
+      debugPrint('🔍 _buildGastosSection 호출: gastos=$gastos');
       final cards = <Widget>[];
       
       // 빈 Map인 경우 빈 리스트 반환
       if (gastos.isEmpty) {
+        debugPrint('   → gastos가 비어있음');
         return cards;
       }
       
-      if (gastos.containsKey('gasto_count')) {
-      cards.add(_buildDataCard(
-        'Evento de Gastos',
-        gastos['gasto_count'],
-        Icons.receipt_long,
-      ));
+      // gasto_count 또는 count 필드 확인
+      final gastoCount = gastos['gasto_count'] ?? gastos['count'];
+      if (gastoCount != null && (gastoCount is int || gastoCount is num) && (gastoCount as num) > 0) {
+        debugPrint('   → gasto_count 카드 추가: $gastoCount');
+        cards.add(_buildDataCard(
+          'Evento de Gastos',
+          gastoCount,
+          Icons.receipt_long,
+        ));
+      }
+      
+      // total_gasto_day 또는 total 필드 확인
+      final totalGastoDay = gastos['total_gasto_day'] ?? gastos['total'];
+      if (totalGastoDay != null && (totalGastoDay is num) && (totalGastoDay as num) > 0) {
+        debugPrint('   → total_gasto_day 카드 추가: $totalGastoDay');
+        cards.add(_buildDataCard(
+          'Total de Gastos',
+          totalGastoDay,
+          Icons.payments,
+          isCurrency: true,
+        ));
+      }
+      
+      debugPrint('   → 총 ${cards.length}개 카드 생성');
+      return cards;
+    } catch (e) {
+      debugPrint('❌ Error building Gastos section: $e');
+      debugPrint('   Stack trace: ${StackTrace.current}');
+      return [];
     }
-    
-    if (gastos.containsKey('total_gasto_day')) {
-      cards.add(_buildDataCard(
-        'Total de Gastos',
-        gastos['total_gasto_day'],
-        Icons.payments,
-        isCurrency: true,
-      ));
+  }
+
+  List<Widget> _buildFventasSection(Map<String, dynamic> fventas) {
+    try {
+      final cards = <Widget>[];
+      
+      // 빈 Map인 경우 빈 리스트 반환
+      if (fventas.isEmpty) {
+        return cards;
+      }
+      
+      // tipofactura별 항목들 표시
+      if (fventas.containsKey('items') && fventas['items'] is List) {
+        final items = fventas['items'] as List;
+        
+        for (var item in items) {
+          if (item is Map<String, dynamic>) {
+            final tipofactura = item['tipofactura']?.toString() ?? 'Unknown';
+            final count = item['count'] as int? ?? 0;
+            final sumMonto = item['sum_monto'] as num? ?? 0.0;
+            
+            // tipofactura별 카드 추가
+            cards.add(
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.receipt, color: Colors.deepPurple),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Factura Tipo $tipofactura',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Cantidad',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                count.toString(),
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              const Text(
+                                'Total Monto',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _formatValue(sumMonto.toDouble(), isCurrency: true),
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.deepPurple,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }
+        }
+      }
+      
+      // 전체 합계 카드 추가
+      if (fventas.containsKey('total_count') || fventas.containsKey('total_sum_monto')) {
+        final totalCount = fventas['total_count'] as int? ?? 0;
+        final totalSumMonto = (fventas['total_sum_monto'] as num?)?.toDouble() ?? 0.0;
+        
+        cards.add(
+          Card(
+            color: Colors.deepPurple.withOpacity(0.1),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.receipt_long, color: Colors.deepPurple),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Total FVentas',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          const Text(
+                            'Cantidad Total',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            totalCount.toString(),
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 24),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          const Text(
+                            'Monto Total',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _formatValue(totalSumMonto, isCurrency: true),
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.deepPurple,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
       }
 
       return cards;
     } catch (e) {
-      debugPrint('Error building Gastos section: $e');
+      debugPrint('Error building FVentas section: $e');
       return [];
     }
   }
@@ -2749,28 +3173,67 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
 
   List<Widget> _buildStockResumenSection(Map<String, dynamic> stockResumen) {
     try {
-      final cards = <Widget>[];
-      
       // 빈 Map인 경우 빈 리스트 반환
       if (stockResumen.isEmpty) {
-        return cards;
+        return [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                'Stock resumen 데이터가 없습니다.',
+                style: TextStyle(color: Colors.grey[600]),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+        ];
       }
       
       // Stocks 배열이 있는 경우 (resumen del dia 응답의 stocks 배열)
       if (stockResumen.containsKey('stocks') && stockResumen['stocks'] is List) {
-      final stocksList = stockResumen['stocks'] as List;
-      
-      print('📊 Stock Resumen 데이터 분석 시작...');
-      print('   - stocks 배열 길이: ${stocksList.length}');
-      
-      if (stocksList.isNotEmpty) {
-        // 각 sucursal별로 카드 생성
-        for (var stock in stocksList) {
+        final stocksList = stockResumen['stocks'] as List;
+        
+        if (stocksList.isEmpty) {
+          return [
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  'Stock resumen 데이터가 없습니다.',
+                  style: TextStyle(color: Colors.grey[600]),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          ];
+        }
+        
+        // 선택된 sucursal에 따라 필터링
+        List<dynamic> filteredStocksList = stocksList;
+        if (_selectedSucursal != null && _selectedSucursal!.isNotEmpty) {
+          filteredStocksList = stocksList.where((item) {
+            if (item is Map<String, dynamic> && item.containsKey('sucursal')) {
+              final sucursal = item['sucursal'] is int 
+                  ? item['sucursal'].toString()
+                  : item['sucursal'].toString();
+              return sucursal == _selectedSucursal;
+            }
+            return false;
+          }).toList();
+        }
+        
+        // 데이터 파싱 및 합계 계산
+        final List<Map<String, dynamic>> parsedStocks = [];
+        double totalItemCount = 0;
+        double totalTVentas = 0;
+        double totalTIngresos = 0;
+        double totalTOffset = 0;
+        double totalHVentas = 0;
+        double totalHIngresos = 0;
+        double totalFinalStock = 0;
+        
+        for (var stock in filteredStocksList) {
           if (stock is Map<String, dynamic>) {
-            // 디버깅: 실제 받은 데이터 출력
-            print('   - Stock 항목 키: ${stock.keys.toList()}');
-            print('   - Stock 항목 값: $stock');
-            
             final sucursalValue = stock['sucursal'];
             final sucursal = sucursalValue?.toString() ?? 'N/A';
             
@@ -2790,129 +3253,148 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
             
             // 다양한 필드명 시도 (대소문자, 언더스코어 등)
             final itemCount = _getValue(stock, ['item_count', 'itemCount', 'itemcount']) ?? 0;
-            final tVentas = _getDoubleValue(stock, ['tVentas', 't_ventas', 'total_ventas', 'totalVentas']) ?? 0.0;
-            final tIngresos = _getDoubleValue(stock, ['tIngresos', 't_ingresos', 'total_ingresos', 'totalIngresos']) ?? 0.0;
-            final tOffset = _getDoubleValue(stock, ['tOffset', 't_offset', 'total_offset', 'totalOffset']) ?? 0.0;
-            final hVentas = _getDoubleValue(stock, ['hVentas', 'h_ventas', 'hoy_ventas', 'hoyVentas']) ?? 0.0;
-            final hIngresos = _getDoubleValue(stock, ['hIngresos', 'h_ingresos', 'hoy_ingresos', 'hoyIngresos']) ?? 0.0;
-            final finalStock = _getDoubleValue(stock, ['finalStock', 'final_stock', 'finalstock']) ?? 0.0;
+            final tVentas = _getDoubleValue(stock, ['tventas', 'tVentas', 't_ventas', 'total_ventas', 'totalVentas']) ?? 0.0;
+            final tIngresos = _getDoubleValue(stock, ['tingresos', 'tIngresos', 't_ingresos', 'total_ingresos', 'totalIngresos']) ?? 0.0;
+            final tOffset = _getDoubleValue(stock, ['toffset', 'tOffset', 't_offset', 'total_offset', 'totalOffset']) ?? 0.0;
+            final hVentas = _getDoubleValue(stock, ['hventas', 'hVentas', 'h_ventas', 'hoy_ventas', 'hoyVentas']) ?? 0.0;
+            final hIngresos = _getDoubleValue(stock, ['hingresos', 'hIngresos', 'h_ingresos', 'hoy_ingresos', 'hoyIngresos']) ?? 0.0;
+            final finalStock = _getDoubleValue(stock, ['finalstock', 'finalStock', 'final_stock']) ?? 0.0;
             
-            // 디버깅: 파싱된 값 출력
-            print('   - Sucursal $sucursal 파싱 결과:');
-            print('     itemCount: $itemCount');
-            print('     tVentas: $tVentas');
-            print('     tIngresos: $tIngresos');
-            print('     tOffset: $tOffset');
-            print('     hVentas: $hVentas');
-            print('     hIngresos: $hIngresos');
-            print('     finalStock: $finalStock');
+            parsedStocks.add({
+              'sucursal': sucursal,
+              'itemCount': itemCount,
+              'tVentas': tVentas,
+              'tIngresos': tIngresos,
+              'tOffset': tOffset,
+              'hVentas': hVentas,
+              'hIngresos': hIngresos,
+              'finalStock': finalStock,
+            });
             
-            cards.add(
-              Card(
-                elevation: 2,
-                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                child: Padding(
-                  padding: const EdgeInsets.all(18.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Sucursal 헤더
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.store,
-                            color: Theme.of(context).colorScheme.primary,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Sucursal $sucursal',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      // 데이터 그리드 (수평으로 적당히 나눠서 표시)
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          // 화면 크기에 따라 열 개수 결정 (작은 화면: 1개, 중간: 2개, 큰 화면: 3-4개)
-                          final crossAxisCount = constraints.maxWidth > 800 
-                              ? 4 
-                              : constraints.maxWidth > 600 
-                                  ? 3 
-                                  : constraints.maxWidth > 400
-                                      ? 2
-                                      : 1; // 핸드폰처럼 좁은 경우 1개 (전체 폭 차지)
-                          
-                          return GridView.count(
-                            crossAxisCount: crossAxisCount,
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            mainAxisSpacing: 12,
-                            crossAxisSpacing: 12,
-                            childAspectRatio: crossAxisCount == 1 ? 3.5 : 3.0, // 높이를 키우기 위해 값 감소
-                            children: [
-                              _buildStockDataItem('Item Count', itemCount.toString(), Icons.inventory_2),
-                              _buildStockDataItem('Total Ventas', _formatValue(tVentas, isCurrency: true), Icons.shopping_cart),
-                              _buildStockDataItem('Total Ingresos', _formatValue(tIngresos, isCurrency: true), Icons.trending_up),
-                              _buildStockDataItem('Total Offset', _formatValue(tOffset, isCurrency: true), Icons.swap_horiz),
-                              _buildStockDataItem('Hoy Ventas', _formatValue(hVentas, isCurrency: true), Icons.today),
-                              _buildStockDataItem('Hoy Ingresos', _formatValue(hIngresos, isCurrency: true), Icons.arrow_upward),
-                              _buildStockDataItem('Final Stock', _formatValue(finalStock), Icons.warehouse),
-                            ],
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
+            // 합계 계산
+            totalItemCount += (itemCount is num ? itemCount.toDouble() : (itemCount is String ? double.tryParse(itemCount) ?? 0.0 : 0.0));
+            totalTVentas += tVentas;
+            totalTIngresos += tIngresos;
+            totalTOffset += tOffset;
+            totalHVentas += hVentas;
+            totalHIngresos += hIngresos;
+            totalFinalStock += finalStock;
           }
         }
-      }
-    }
-    
-    // Stock resumen 데이터 구조에 따라 표시 (기존 로직)
-    if (stockResumen.containsKey('summary')) {
-      final summary = stockResumen['summary'];
-      if (summary is Map<String, dynamic>) {
-        // 총 아이템 수
-        if (summary.containsKey('total_items')) {
-          cards.add(_buildDataCard(
-            'Total Items',
-            summary['total_items'].toString(),
-            Icons.inventory_2,
-          ));
+        
+        if (parsedStocks.isEmpty) {
+          return [
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  'Stock resumen 데이터가 없습니다.',
+                  style: TextStyle(color: Colors.grey[600]),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          ];
         }
         
-        // 총 재고량
-        if (summary.containsKey('total_stock')) {
-          cards.add(_buildDataCard(
-            'Total Stock',
-            _formatValue(summary['total_stock']),
-            Icons.warehouse,
-          ));
-        }
-        
-        // 총 판매량
-        if (summary.containsKey('total_venta')) {
-          cards.add(_buildDataCard(
-            'Total Venta',
-            _formatValue(summary['total_venta']),
-            Icons.shopping_cart,
-          ));
+        // 테이블 생성
+        return [
+          Card(
+            elevation: 2,
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                columnSpacing: 20,
+                headingRowColor: MaterialStateProperty.all(
+                  Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                ),
+                columns: const [
+                  DataColumn(label: Text('Sucursal', style: TextStyle(fontWeight: FontWeight.bold))),
+                  DataColumn(label: Text('Item Count', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+                  DataColumn(label: Text('Total Ventas', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+                  DataColumn(label: Text('Total Ingresos', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+                  DataColumn(label: Text('Total Offset', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+                  DataColumn(label: Text('Hoy Ventas', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+                  DataColumn(label: Text('Hoy Ingresos', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+                  DataColumn(label: Text('Final Stock', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+                ],
+                rows: [
+                  // 데이터 행
+                  ...parsedStocks.map((stock) => DataRow(
+                    cells: [
+                      DataCell(Text(stock['sucursal'].toString())),
+                      DataCell(Text(stock['itemCount'].toString())),
+                      DataCell(Text(_formatValue(stock['tVentas'], isCurrency: true))),
+                      DataCell(Text(_formatValue(stock['tIngresos'], isCurrency: true))),
+                      DataCell(Text(_formatValue(stock['tOffset'], isCurrency: true))),
+                      DataCell(Text(_formatValue(stock['hVentas'], isCurrency: true))),
+                      DataCell(Text(_formatValue(stock['hIngresos'], isCurrency: true))),
+                      DataCell(Text(_formatValue(stock['finalStock']))),
+                    ],
+                  )),
+                  // 합계 행
+                  DataRow(
+                    color: MaterialStateProperty.all(
+                      Theme.of(context).colorScheme.primary.withOpacity(0.05),
+                    ),
+                    cells: [
+                      const DataCell(Text('Total', style: TextStyle(fontWeight: FontWeight.bold))),
+                      DataCell(Text(totalItemCount.toStringAsFixed(0), style: const TextStyle(fontWeight: FontWeight.bold))),
+                      DataCell(Text(_formatValue(totalTVentas, isCurrency: true), style: const TextStyle(fontWeight: FontWeight.bold))),
+                      DataCell(Text(_formatValue(totalTIngresos, isCurrency: true), style: const TextStyle(fontWeight: FontWeight.bold))),
+                      DataCell(Text(_formatValue(totalTOffset, isCurrency: true), style: const TextStyle(fontWeight: FontWeight.bold))),
+                      DataCell(Text(_formatValue(totalHVentas, isCurrency: true), style: const TextStyle(fontWeight: FontWeight.bold))),
+                      DataCell(Text(_formatValue(totalHIngresos, isCurrency: true), style: const TextStyle(fontWeight: FontWeight.bold))),
+                      DataCell(Text(_formatValue(totalFinalStock), style: const TextStyle(fontWeight: FontWeight.bold))),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ];
+      }
+      
+      // Stock resumen 데이터 구조에 따라 표시 (기존 로직)
+      if (stockResumen.containsKey('summary')) {
+        final summary = stockResumen['summary'];
+        if (summary is Map<String, dynamic>) {
+          final cards = <Widget>[];
+          
+          // 총 아이템 수
+          if (summary.containsKey('total_items')) {
+            cards.add(_buildDataCard(
+              'Total Items',
+              summary['total_items'].toString(),
+              Icons.inventory_2,
+            ));
+          }
+          
+          // 총 재고량
+          if (summary.containsKey('total_stock')) {
+            cards.add(_buildDataCard(
+              'Total Stock',
+              _formatValue(summary['total_stock']),
+              Icons.warehouse,
+            ));
+          }
+          
+          // 총 판매량
+          if (summary.containsKey('total_venta')) {
+            cards.add(_buildDataCard(
+              'Total Venta',
+              _formatValue(summary['total_venta']),
+              Icons.shopping_cart,
+            ));
+          }
+          
+          return cards;
         }
       }
-    }
-    
-    // 데이터가 없으면 기본 메시지 표시
-    if (cards.isEmpty) {
-      cards.add(
+      
+      // 데이터가 없으면 기본 메시지 표시
+      return [
         Card(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
@@ -2923,13 +3405,21 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
             ),
           ),
         ),
-      );
-    }
-    
-      return cards;
+      ];
     } catch (e) {
       debugPrint('Error building Stock Resumen section: $e');
-      return [];
+      return [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text(
+              'Stock resumen 데이터를 표시하는 중 오류가 발생했습니다: $e',
+              style: TextStyle(color: Colors.red[600]),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ];
     }
   }
 
@@ -3087,6 +3577,193 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     }
 
     return cards;
+  }
+
+  // 사용 가능한 sucursal 목록 추출
+  List<String>? _extractAvailableSucursales(Map<String, dynamic> data) {
+    final sucursales = <String>{};
+    
+    // vcodes에서 추출
+    if (data.containsKey('vcodes') && data['vcodes'] is List) {
+      final vcodesList = data['vcodes'] as List;
+      for (var item in vcodesList) {
+        if (item is Map && item.containsKey('sucursal')) {
+          final sucursal = item['sucursal'] is int 
+              ? item['sucursal'].toString()
+              : item['sucursal'].toString();
+          if (sucursal.isNotEmpty) {
+            sucursales.add(sucursal);
+          }
+        }
+      }
+    }
+    
+    // gastos에서 추출
+    if (data.containsKey('gastos') && data['gastos'] is List) {
+      final gastosList = data['gastos'] as List;
+      for (var item in gastosList) {
+        if (item is Map && item.containsKey('sucursal')) {
+          final sucursal = item['sucursal'] is int 
+              ? item['sucursal'].toString()
+              : item['sucursal'].toString();
+          if (sucursal.isNotEmpty) {
+            sucursales.add(sucursal);
+          }
+        }
+      }
+    }
+    
+    // vdetalle에서 추출
+    if (data.containsKey('vdetalle') && data['vdetalle'] is List) {
+      final vdetalleList = data['vdetalle'] as List;
+      for (var item in vdetalleList) {
+        if (item is Map && item.containsKey('sucursal')) {
+          final sucursal = item['sucursal'] is int 
+              ? item['sucursal'].toString()
+              : item['sucursal'].toString();
+          if (sucursal.isNotEmpty) {
+            sucursales.add(sucursal);
+          }
+        }
+      }
+    }
+    
+    // vcodes_mpago에서 추출
+    if (data.containsKey('vcodes_mpago') && data['vcodes_mpago'] is List) {
+      final mpagoList = data['vcodes_mpago'] as List;
+      for (var item in mpagoList) {
+        if (item is Map && item.containsKey('sucursal')) {
+          final sucursal = item['sucursal'] is int 
+              ? item['sucursal'].toString()
+              : item['sucursal'].toString();
+          if (sucursal.isNotEmpty) {
+            sucursales.add(sucursal);
+          }
+        }
+      }
+    }
+    
+    // stocks에서 추출
+    if (data.containsKey('stocks') && data['stocks'] is List) {
+      final stocksList = data['stocks'] as List;
+      for (var item in stocksList) {
+        if (item is Map && item.containsKey('sucursal')) {
+          final sucursal = item['sucursal'] is int 
+              ? item['sucursal'].toString()
+              : item['sucursal'].toString();
+          if (sucursal.isNotEmpty) {
+            sucursales.add(sucursal);
+          }
+        }
+      }
+    }
+    
+    if (sucursales.isEmpty) {
+      return null;
+    }
+    
+    // 숫자 순서로 정렬
+    final sortedSucursales = sucursales.toList()..sort((a, b) {
+      final aNum = int.tryParse(a) ?? 0;
+      final bNum = int.tryParse(b) ?? 0;
+      return aNum.compareTo(bNum);
+    });
+    
+    return sortedSucursales;
+  }
+
+  /// AppBar에 표시할 날짜 선택기 (Resumen del Día용)
+  Widget _buildDateSelectorInAppBar() {
+    final dateText = _selectedDate != null
+        ? DateFormat('yyyy-MM-dd').format(_selectedDate!)
+        : 'Seleccionar';
+    
+    return SizedBox(
+      width: 150, // 명시적 너비 설정
+      child: InkWell(
+        onTap: _selectDate,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.calendar_today,
+                color: Colors.white,
+                size: 16,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  dateText,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Sucursal 선택 콤보박스 빌드
+  Widget _buildSucursalSelector() {
+    return SizedBox(
+      width: 140, // 명시적 너비 설정
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        child: DropdownButton<String?>(
+          value: _selectedSucursal,
+          hint: const Text('Total', style: TextStyle(fontSize: 12, color: Colors.white)),
+          underline: const SizedBox(),
+          isDense: true,
+          isExpanded: false, // AppBar의 Row 안에서는 false로 설정
+          dropdownColor: Theme.of(context).colorScheme.inversePrimary,
+          icon: const Icon(Icons.arrow_drop_down, color: Colors.white, size: 20),
+          style: const TextStyle(fontSize: 12, color: Colors.white),
+          items: [
+            const DropdownMenuItem<String?>(
+              value: null,
+              child: Text('Total', style: TextStyle(fontSize: 12, color: Colors.white)),
+            ),
+            if (_availableSucursales != null)
+              ..._availableSucursales!.map((sucursal) {
+                return DropdownMenuItem<String?>(
+                  value: sucursal,
+                  child: Text('Sucursal $sucursal', style: const TextStyle(fontSize: 12, color: Colors.white)),
+                );
+              }).toList(),
+          ],
+          onChanged: (String? value) {
+            setState(() {
+              _selectedSucursal = value;
+            });
+          },
+        ),
+      ),
+    );
   }
 
   // 여러 sucursal 데이터가 있는지 확인 (실제로 2개 이상일 때만 비교 테이블 표시)
@@ -3610,8 +4287,12 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         return 'Gastos';
       case 'ventas':
         return 'Ventas';
+      case 'fventas':
+        return 'FVentas';
       case 'alertas':
         return 'Alertas';
+      case 'ingresos':
+        return 'Ingresos';
       default:
         return 'Resumen del Día';
     }
@@ -3662,6 +4343,29 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
             if (_currentReport == 'ventas') ...[
               const Spacer(),
               const Icon(Icons.check, color: Colors.purple, size: 18),
+            ],
+          ],
+        ),
+      ),
+      PopupMenuItem<String>(
+        value: 'fventas',
+        child: Row(
+          children: [
+            Icon(
+              Icons.receipt,
+              color: _currentReport == 'fventas' ? Colors.deepPurple : Colors.grey,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'FVentas',
+              style: TextStyle(
+                fontWeight: _currentReport == 'fventas' ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+            if (_currentReport == 'fventas') ...[
+              const Spacer(),
+              const Icon(Icons.check, color: Colors.deepPurple, size: 18),
             ],
           ],
         ),
@@ -3850,10 +4554,14 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
 
   // 보고서로 이동하는 메서드
   void _navigateToReport(String reportType) {
+    debugPrint('🔍 _navigateToReport 호출: reportType=$reportType, 현재 _currentReport=$_currentReport, _selectedReportType=$_selectedReportType');
+    
     // 현재 보고서는 아무것도 하지 않음
     if (reportType == 'resumen') {
       if (_isLargeScreen(context)) {
+        debugPrint('   → resumen으로 변경, _selectedReportType을 null로 설정');
         setState(() {
+          _currentReport = 'resumen';
           _selectedReportType = null;
         });
       }
@@ -3878,6 +4586,9 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       case 'ventas':
         reportTypeEnum = ReportType.ventas;
         break;
+      case 'fventas':
+        reportTypeEnum = ReportType.fventas;
+        break;
       case 'alertas':
         reportTypeEnum = ReportType.alertas;
         break;
@@ -3887,15 +4598,24 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       case 'todocodigos':
         reportTypeEnum = ReportType.todocodigos;
         break;
+      case 'ingresos':
+        reportTypeEnum = ReportType.ingresos;
+        break;
       default:
+        debugPrint('   → 알 수 없는 reportType, return');
         return;
     }
 
+    debugPrint('   → reportTypeEnum=$reportTypeEnum, _isLargeScreen=${_isLargeScreen(context)}');
+
     // 큰 화면인 경우 오른쪽 패널에 보고서 표시
     if (_isLargeScreen(context)) {
+      debugPrint('   → 큰 화면: setState로 _currentReport=$reportType, _selectedReportType=$reportTypeEnum 설정');
       setState(() {
+        _currentReport = reportType;
         _selectedReportType = reportTypeEnum;
       });
+      debugPrint('   → setState 완료 후: _currentReport=$_currentReport, _selectedReportType=$_selectedReportType');
     } else {
       // 핸드폰: 기존 방식 (Navigator.push)
       // ventas 보고서의 경우 initialDate 전달
@@ -3905,7 +4625,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
           builder: (context) => ReportScreen(
             serverUrl: widget.serverUrl,
             reportType: reportTypeEnum,
-            initialDate: reportTypeEnum == ReportType.ventas ? (_selectedDate ?? DateTime.now()) : null,
+            initialDate: (reportTypeEnum == ReportType.ventas || reportTypeEnum == ReportType.fventas) ? (_selectedDate ?? DateTime.now()) : null,
           ),
         ),
       ).then((_) {

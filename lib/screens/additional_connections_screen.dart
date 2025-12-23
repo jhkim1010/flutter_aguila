@@ -272,17 +272,11 @@ class _AdditionalConnectionsScreenState extends State<AdditionalConnectionsScree
                             Text(l10n.port(connection.port?.toString() ?? "N/A")),
                           ],
                         ),
-                        trailing: PopupMenuButton(
-                          itemBuilder: (context) => [
-                            PopupMenuItem(
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.edit, size: 20),
-                                  const SizedBox(width: 8),
-                                  Text(l10n.edit),
-                                ],
-                              ),
-                              onTap: () {
+                        trailing: PopupMenuButton<String>(
+                          onSelected: (value) {
+                            if (value == 'connect') {
+                              _connectToDatabase(connection);
+                            } else if (value == 'edit') {
                                 Future.delayed(
                                   const Duration(milliseconds: 100),
                                   () {
@@ -306,9 +300,36 @@ class _AdditionalConnectionsScreenState extends State<AdditionalConnectionsScree
                                     });
                                   },
                                 );
-                              },
+                            } else if (value == 'delete') {
+                              Future.delayed(
+                                const Duration(milliseconds: 100),
+                                () => _deleteConnection(connection),
+                              );
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: 'connect',
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.play_arrow, size: 20, color: Colors.green),
+                                  const SizedBox(width: 8),
+                                  Text(l10n.connect),
+                                ],
+                              ),
                             ),
                             PopupMenuItem(
+                              value: 'edit',
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.edit, size: 20),
+                                  const SizedBox(width: 8),
+                                  Text(l10n.edit),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'delete',
                               child: Row(
                                 children: [
                                   const Icon(Icons.delete, size: 20, color: Colors.red),
@@ -316,12 +337,6 @@ class _AdditionalConnectionsScreenState extends State<AdditionalConnectionsScree
                                   Text(l10n.delete, style: const TextStyle(color: Colors.red)),
                                 ],
                               ),
-                              onTap: () {
-                                Future.delayed(
-                                  const Duration(milliseconds: 100),
-                                  () => _deleteConnection(connection),
-                                );
-                              },
                             ),
                           ],
                         ),

@@ -232,28 +232,55 @@ class HttpRequestHandler {
         try {
           final decoded = json.decode(response.body);
           
+          // resumen_del_dia 엔드포인트인 경우 원본 데이터 로깅
+          if (endpoint.contains('resumen_del_dia')) {
+            print('📋 resumen_del_dia 원본 응답 데이터:');
+            if (decoded is Map) {
+              decoded.forEach((key, value) {
+                if (value is List) {
+                  print('  - $key: List (${value.length}개 항목)');
+                } else if (value is Map) {
+                  print('  - $key: Map (${value.keys.toList()})');
+                } else {
+                  print('  - $key: ${value.runtimeType} = $value');
+                }
+              });
+            }
+          }
+          
           // 서버 로그 메시지가 포함되어 있는지 확인하고 필터링
           if (decoded is Map) {
             // 서버 로그 메시지 필드 제거 (사용자에게 표시하지 않음)
             final filteredDecoded = Map<String, dynamic>.from(decoded);
+            final removedKeys = <String>[];
             filteredDecoded.removeWhere((key, value) {
               final keyLower = key.toLowerCase();
               final valueStr = value.toString().toLowerCase();
               
               // PostgreSQL 연결 정보나 서버 로그 메시지 필터링
-              return keyLower.contains('postgresql') ||
+              final shouldRemove = keyLower.contains('postgresql') ||
                      keyLower.contains('연결') ||
                      keyLower.contains('connection') ||
                      valueStr.contains('postgresql 연결') ||
                      valueStr.contains('ventas 보고서 오류') ||
                      (valueStr.contains('함수') && valueStr.contains('fallback')) ||
-                     // 에러 메시지 필드도 필터링
-                     keyLower.contains('error') ||
-                     keyLower.contains('오류') ||
+                     // 에러 메시지 필드도 필터링 (하지만 실제 데이터 키는 제외)
+                     (keyLower.contains('error') && !keyLower.contains('vcodes') && !keyLower.contains('gastos')) ||
+                     (keyLower.contains('오류') && !keyLower.contains('vcodes') && !keyLower.contains('gastos')) ||
                      valueStr.contains('게이트웨이 오류') ||
                      valueStr.contains('bad gateway') ||
                      valueStr.contains('서버 오류');
+              
+              if (shouldRemove) {
+                removedKeys.add(key);
+              }
+              return shouldRemove;
             });
+            
+            // 필터링된 키 로깅
+            if (removedKeys.isNotEmpty && endpoint.contains('resumen_del_dia')) {
+              print('⚠️ 필터링된 키: $removedKeys');
+            }
             
             // 응답 데이터에 에러 메시지가 포함되어 있는지 확인
             // 만약 에러 메시지만 있고 실제 데이터가 없으면 예외 발생
@@ -496,6 +523,79 @@ class HttpRequestHandler {
       }
     } catch (e) {
       print('❌ PUT $endpoint 오류: $e');
+      return _handleError(e);
+    }
+  }
+
+  /// 공통 DELETE 요청 메서드 (오류 처리 포함)
+  Future<Map<String, dynamic>> performDeleteRequest(
+    String endpoint,
+  ) async {
+    try {
+      final headers = await getDatabaseHeaders();
+      
+      print('=== DELETE $endpoint 요청 ===');
+      print('URL: $serverUrl$endpoint');
+      
+      final response = await _httpClient.delete(
+        Uri.parse('$serverUrl$endpoint'),
+        headers: headers,
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print('❌ 요청 타임아웃 (10초 초과)');
+          throw Exception('요청 타임아웃: 서버 응답이 10초를 초과했습니다. 서버가 실행 중인지 확인하세요.');
+        },
+      );
+
+      print('=== 응답 정보 ===');
+      print('Status Code: ${response.statusCode}');
+      print('Response Body Length: ${response.body.length} bytes');
+      
+      // 응답 본문 로깅 (에러인 경우에만 상세히)
+      if (response.statusCode != 200 && response.statusCode != 204 && response.body.isNotEmpty) {
+        final bodyPreview = response.body.length > 500 
+            ? '${response.body.substring(0, 500)}... (${response.body.length} bytes total)'
+            : response.body;
+        print('Response Body: $bodyPreview');
+      }
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        // 성공 응답 처리
+        if (response.body.isEmpty) {
+          return {'success': true};
+        }
+        
+        try {
+          return json.decode(response.body) as Map<String, dynamic>;
+        } catch (e) {
+          print('⚠️ JSON 파싱 실패: $e');
+          throw Exception('JSON 파싱 오류: 서버 응답을 파싱할 수 없습니다.');
+        }
+      } else {
+        // 에러 응답 처리
+        String errorMessage = _extractErrorMessage(response);
+        print('❌ HTTP 오류 (${response.statusCode}): $errorMessage');
+        
+        // 에러 메시지가 이미 상태 코드를 포함하고 있으면 중복으로 감싸지 않음
+        final alreadyHasStatusCode = errorMessage.contains('(${response.statusCode})') ||
+                                     errorMessage.contains('HTTP ${response.statusCode}') ||
+                                     errorMessage.contains('${response.statusCode} 오류');
+        
+        if (alreadyHasStatusCode) {
+          // 이미 완전한 메시지이므로 그대로 사용
+          throw Exception(errorMessage);
+        }
+        
+        // 클라이언트 측 에러 (4xx)와 서버 측 에러 (5xx) 구분
+        if (response.statusCode >= 400 && response.statusCode < 500) {
+          throw Exception('요청 오류 (${response.statusCode}): $errorMessage');
+        } else {
+          throw Exception('서버 오류 (${response.statusCode}): $errorMessage');
+        }
+      }
+    } catch (e) {
+      print('❌ DELETE $endpoint 오류: $e');
       return _handleError(e);
     }
   }

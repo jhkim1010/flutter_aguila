@@ -75,6 +75,19 @@ class PlatformUtils {
     return size.width < 800 || size.height < 600;
   }
   
+  /// Windows, Mac, 또는 iPad인지 확인 (왼쪽 메뉴가 항상 표시되는 플랫폼)
+  static bool hasPersistentMenu(BuildContext context) {
+    // Windows 또는 Mac
+    if (isDesktop()) {
+      return true;
+    }
+    // iPad
+    if (isIPad(context)) {
+      return true;
+    }
+    return false;
+  }
+  
   /// 플랫폼별 최대 너비 반환
   static double getMaxWidth(BuildContext context, {
     double? mobileMaxWidth,

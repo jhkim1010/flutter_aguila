@@ -770,11 +770,47 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                           trailing: PopupMenuButton<String>(
                             icon: const Icon(Icons.more_vert, size: 16),
                             onSelected: (value) {
-                              if (value == 'delete') {
+                              if (value == 'connect' && !isCurrentConnection) {
+                                _connectWithSavedConnection(connection);
+                              } else if (value == 'edit') {
+                                Navigator.push<ConnectionInfo>(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ConnectionScreen(
+                                      connection: connection,
+                                    ),
+                                  ),
+                                ).then((savedConnection) {
+                                  if (mounted) {
+                                    _loadSavedConnections();
+                                  }
+                                });
+                              } else if (value == 'delete') {
                                 _deleteConnection(connection);
                               }
                             },
                             itemBuilder: (context) => [
+                              if (!isCurrentConnection)
+                                PopupMenuItem(
+                                  value: 'connect',
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.play_arrow, size: 16, color: Colors.green),
+                                      const SizedBox(width: 8),
+                                      Text(l10n.connect, style: const TextStyle(fontSize: 12)),
+                                    ],
+                                  ),
+                                ),
+                              PopupMenuItem(
+                                value: 'edit',
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.edit, size: 16, color: Colors.blue),
+                                    const SizedBox(width: 8),
+                                    Text(l10n.edit, style: const TextStyle(fontSize: 12)),
+                                  ],
+                                ),
+                              ),
                               PopupMenuItem(
                                 value: 'delete',
                                 child: Row(
@@ -1178,6 +1214,13 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                 Icons.shopping_cart,
                 Colors.purple,
               ),
+              _buildReportMenuItem(
+                context,
+                'fventas',
+                'FVentas',
+                Icons.receipt,
+                Colors.deepPurple,
+              ),
               const Divider(height: 1),
               _buildReportMenuItem(
                 context,
@@ -1279,6 +1322,9 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                 break;
               case 'ventas':
                 _selectedReportType = ReportType.ventas;
+                break;
+              case 'fventas':
+                _selectedReportType = ReportType.fventas;
                 break;
               default:
                 _selectedReportType = null;

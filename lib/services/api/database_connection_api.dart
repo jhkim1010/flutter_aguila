@@ -151,6 +151,7 @@ class DatabaseConnectionApi {
     
     print('=== 연결 시도 ===');
     print('URL: $url');
+    print('Request Body: $requestBody');
     print('Headers: Content-Type: application/json');
     
     try {
@@ -177,8 +178,20 @@ class DatabaseConnectionApi {
         return true;
       } else {
         print('❌ 연결 실패: HTTP ${response.statusCode}');
+        final errorBody = response.body.isNotEmpty ? response.body : '서버에서 오류 응답을 받았습니다';
+        
+        // 서버 측 설정 오류인 경우 더 명확한 메시지 제공
+        if (errorBody.contains('dbHost is not defined') || 
+            errorBody.contains('dbHost') && errorBody.contains('not defined')) {
+          throw Exception(
+            '서버 설정 오류: 데이터베이스 호스트(dbHost)가 서버에 설정되지 않았습니다.\n'
+            '서버 관리자에게 문의하여 서버의 환경 변수나 설정 파일에 DB_HOST를 설정해달라고 요청하세요.\n'
+            '원본 오류: HTTP ${response.statusCode}: $errorBody'
+          );
+        }
+        
         throw Exception(
-          'HTTP ${response.statusCode}: ${response.body.isNotEmpty ? response.body : "서버에서 오류 응답을 받았습니다"}'
+          'HTTP ${response.statusCode}: $errorBody'
         );
       }
     } catch (e) {

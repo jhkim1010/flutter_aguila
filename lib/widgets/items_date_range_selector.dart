@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:intl/intl.dart';
 import 'report_utils.dart';
+import '../utils/platform_utils.dart';
 
 class ItemsDateRangeSelector extends StatefulWidget {
   final ReportType reportType;
@@ -53,35 +55,64 @@ class _ItemsDateRangeSelectorState extends State<ItemsDateRangeSelector> {
       // 월 범위 선택 (이전 방식)
       await _selectMonthRange();
     } else {
-      // 일반 날짜 범위 선택 (vcode, day) - showDateRangePicker 사용
+      // 일반 날짜 범위 선택 (vcode, day)
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
       
       // 기본값: 기존 범위가 있으면 사용, 없으면 오늘~오늘
-      final defaultRange = _startDate != null && _endDate != null
-          ? DateTimeRange(start: _startDate!, end: _endDate!)
-          : DateTimeRange(start: today, end: today);
+      final defaultStartDate = _startDate ?? today;
+      final defaultEndDate = _endDate ?? today;
       
-      final DateTimeRange? picked = await showDateRangePicker(
-        context: context,
-        initialDateRange: defaultRange,
-        firstDate: DateTime(2000),
-        lastDate: today,
-        locale: const Locale('es', 'ES'),
-        builder: (context, child) {
-          return Theme(
-            data: Theme.of(context).copyWith(
-              colorScheme: ColorScheme.light(
-                primary: ReportUtils.getReportColor(widget.reportType),
-                onPrimary: Colors.white,
-                surface: Colors.white,
-                onSurface: Colors.black,
+      // 큰 화면인지 확인 (Mac, Windows, iPad, 핸드폰 수평 모드)
+      final size = MediaQuery.of(context).size;
+      final orientation = MediaQuery.of(context).orientation;
+      final isDesktop = PlatformUtils.isDesktop();
+      final isIPad = PlatformUtils.isIPad(context);
+      final isLandscape = orientation == Orientation.landscape;
+      final isLargeScreen = isDesktop || isIPad || (isLandscape && size.width >= 600);
+      
+      debugPrint('🔍 ItemsDateRangeSelector - 큰 화면 체크: isDesktop=$isDesktop, isIPad=$isIPad, isLandscape=$isLandscape, size=$size, isLargeScreen=$isLargeScreen');
+      
+      final reportColor = ReportUtils.getReportColor(widget.reportType);
+      
+      DateTimeRange? picked;
+      
+      if (isLargeScreen) {
+        debugPrint('   → 큰 화면: 두 개의 달력을 나란히 표시');
+        // 큰 화면: 두 개의 달력을 나란히 표시
+        picked = await _showDualCalendarPicker(
+          context: context,
+          startDate: defaultStartDate,
+          endDate: defaultEndDate,
+          reportColor: reportColor,
+          today: today,
+        );
+      } else {
+        debugPrint('   → 작은 화면: 기존 showDateRangePicker 사용');
+        // 작은 화면: 기존 showDateRangePicker 사용
+        final defaultRange = DateTimeRange(start: defaultStartDate, end: defaultEndDate);
+        
+        picked = await showDateRangePicker(
+          context: context,
+          initialDateRange: defaultRange,
+          firstDate: DateTime(2000),
+          lastDate: today,
+          locale: const Locale('es', 'ES'),
+          builder: (context, child) {
+            return Theme(
+              data: Theme.of(context).copyWith(
+                colorScheme: ColorScheme.light(
+                  primary: reportColor,
+                  onPrimary: Colors.white,
+                  surface: Colors.white,
+                  onSurface: Colors.black,
+                ),
               ),
-            ),
-            child: child!,
-          );
-        },
-      );
+              child: child!,
+            );
+          },
+        );
+      }
 
       if (picked != null) {
         // 선택한 범위 적용
@@ -419,6 +450,219 @@ class _ItemsDateRangeSelectorState extends State<ItemsDateRangeSelector> {
       'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
     ];
     return months[month - 1];
+  }
+
+  /// 큰 화면에서 두 개의 달력을 나란히 표시하는 다이얼로그
+  Future<DateTimeRange?> _showDualCalendarPicker({
+    required BuildContext context,
+    required DateTime startDate,
+    required DateTime endDate,
+    required Color reportColor,
+    required DateTime today,
+  }) async {
+    DateTime? selectedStartDate = startDate;
+    DateTime? selectedEndDate = endDate;
+
+    debugPrint('🔍 _showDualCalendarPicker 호출: startDate=$startDate, endDate=$endDate');
+
+    return showDialog<DateTimeRange>(
+      context: context,
+      builder: (dialogContext) {
+        debugPrint('   → 다이얼로그 빌더 호출');
+        return Dialog(
+          child: Container(
+            width: 750,
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 제목
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16.0),
+                  child: Text(
+                    'Seleccionar Rango de Fechas',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: reportColor,
+                    ),
+                  ),
+                ),
+                // 두 개의 달력
+                StatefulBuilder(
+                  builder: (context, setState) {
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                    // 시작일 달력
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8.0),
+                            child: Text(
+                              'Desde',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: reportColor,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: reportColor.withOpacity(0.3),
+                                width: 2,
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Theme(
+                              data: Theme.of(context).copyWith(
+                                colorScheme: ColorScheme.light(
+                                  primary: reportColor,
+                                  onPrimary: Colors.white,
+                                  surface: Colors.white,
+                                  onSurface: Colors.black,
+                                ),
+                              ),
+                              child: CalendarDatePicker(
+                                initialDate: selectedStartDate,
+                                firstDate: DateTime(2000),
+                                lastDate: today,
+                                onDateChanged: (date) {
+                                  setState(() {
+                                    selectedStartDate = date;
+                                    // 시작일이 종료일보다 늦으면 종료일도 업데이트
+                                    if (selectedEndDate != null && date.isAfter(selectedEndDate!)) {
+                                      selectedEndDate = date;
+                                    }
+                                  });
+                                },
+                              ),
+                            ),
+                          ),
+                          if (selectedStartDate != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: Text(
+                                DateFormat('yyyy-MM-dd').format(selectedStartDate!),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                        const SizedBox(width: 16),
+                        // 종료일 달력
+                        Expanded(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8.0),
+                                child: Text(
+                                  'Hasta',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: reportColor,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: reportColor.withOpacity(0.3),
+                                    width: 2,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Theme(
+                                  data: Theme.of(context).copyWith(
+                                    colorScheme: ColorScheme.light(
+                                      primary: reportColor,
+                                      onPrimary: Colors.white,
+                                      surface: Colors.white,
+                                      onSurface: Colors.black,
+                                    ),
+                                  ),
+                                  child: CalendarDatePicker(
+                                    initialDate: selectedEndDate,
+                                    firstDate: selectedStartDate ?? DateTime(2000),
+                                    lastDate: today,
+                                    onDateChanged: (date) {
+                                      setState(() {
+                                        selectedEndDate = date;
+                                        // 종료일이 시작일보다 이전이면 시작일도 업데이트
+                                        if (selectedStartDate != null && date.isBefore(selectedStartDate!)) {
+                                          selectedStartDate = date;
+                                        }
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ),
+                              if (selectedEndDate != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: Text(
+                                    DateFormat('yyyy-MM-dd').format(selectedEndDate!),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+                // 버튼
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: const Text('Cancelar'),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: selectedStartDate != null && selectedEndDate != null
+                          ? () {
+                              debugPrint('   → 확인 버튼 클릭: startDate=$selectedStartDate, endDate=$selectedEndDate');
+                              Navigator.pop(
+                                dialogContext,
+                                DateTimeRange(
+                                  start: selectedStartDate!,
+                                  end: selectedEndDate!,
+                                ),
+                              );
+                            }
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: reportColor,
+                        foregroundColor: Colors.white,
+                      ),
+                      child: const Text('Confirmar'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
