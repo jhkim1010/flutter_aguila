@@ -78,4 +78,27 @@ class TodocodigosApi {
     );
     return TodocodigosResponse.fromMap(response);
   }
+
+  /// Todocodigo 업데이트하기
+  Future<Map<String, dynamic>> updateTodocodigo({
+    String? idTodocodigo,
+    String? tcodigo,
+    required Map<String, dynamic> updatedData,
+  }) async {
+    final identifier = idTodocodigo ?? tcodigo;
+    if (identifier == null || identifier.isEmpty) {
+      throw Exception('id_todocodigo 또는 tcodigo가 필요합니다.');
+    }
+    
+    final endpoint = idTodocodigo != null 
+        ? '/api/todocodigos/id/$idTodocodigo'
+        : '/api/todocodigos/$tcodigo';
+    
+    print('=== Todocodigo 업데이트 ===');
+    print('id_todocodigo: $idTodocodigo');
+    print('tcodigo: $tcodigo');
+    print('endpoint: $endpoint');
+    
+    return await _httpHandler.performPutRequest(endpoint, updatedData);
+  }
 }

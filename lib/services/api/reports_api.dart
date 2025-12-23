@@ -355,12 +355,55 @@ class ReportsApi {
         throw Exception('필수 헤더 정보가 없습니다: x-db-user, x-db-password, x-db-name');
       }
       
+      // URL 구성
+      final uri = Uri.parse('${_httpHandler.serverUrl}$endpoint');
+      final uriWithQuery = queryParams.isNotEmpty
+          ? uri.replace(queryParameters: queryParams)
+          : uri;
+      
+      print('\n═══════════════════════════════════════════════════════════');
+      print('═══════════════════════════════════════════════════════════');
+      print('=== FVentas 요청 ===');
+      print('URL: $uriWithQuery');
+      print('Headers:');
+      fventasHeaders.forEach((key, value) {
+        // 비밀번호는 마스킹 처리
+        if (key.toLowerCase().contains('password')) {
+          print('  $key: ${'*' * (value.length > 0 ? value.length : 8)}');
+        } else {
+          print('  $key: $value');
+        }
+      });
+      if (queryParams.isNotEmpty) {
+        print('Query Parameters:');
+        queryParams.forEach((key, value) {
+          print('  $key: $value');
+        });
+      }
+      print('═══════════════════════════════════════════════════════════');
+      
       // 필터링된 헤더로 직접 GET 요청 수행
-      return await _httpHandler.performGetRequestWithHeaders(
+      final response = await _httpHandler.performGetRequestWithHeaders(
         endpoint,
         headers: fventasHeaders,
         queryParameters: queryParams.isNotEmpty ? queryParams : null,
       );
+      
+      print('=== FVentas 응답 바디 ===');
+      try {
+        final responseJson = json.encode(response);
+        if (responseJson.length > 2000) {
+          print('${responseJson.substring(0, 2000)}... (${responseJson.length} bytes total)');
+        } else {
+          print(responseJson);
+        }
+      } catch (e) {
+        print('응답 바디 직렬화 오류: $e');
+        print('응답: $response');
+      }
+      print('═══════════════════════════════════════════════════════════\n');
+      
+      return response;
     } catch (e) {
       print('⚠️ 헤더 가져오기 실패: $e');
       rethrow;

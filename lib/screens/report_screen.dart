@@ -3989,63 +3989,73 @@ class _ReportScreenState extends State<ReportScreen> {
   void _showVdetalleDialog(Map<String, dynamic> vdetalleData, Map<String, dynamic> rowData) {
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        insetPadding: const EdgeInsets.all(16),
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 1200, maxHeight: 700),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 헤더
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.purple,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(8),
-                    topRight: Radius.circular(8),
+      builder: (context) {
+        final screenWidth = MediaQuery.of(context).size.width;
+        final dialogWidth = screenWidth * 2 / 3;
+        final isWideScreen = screenWidth >= 800;
+        
+        return Dialog(
+          insetPadding: const EdgeInsets.all(16),
+          child: Container(
+            constraints: BoxConstraints(
+              maxWidth: dialogWidth,
+              maxHeight: 700,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 헤더
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.purple,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(8),
+                      topRight: Radius.circular(8),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Detalle de Venta',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ],
                   ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Detalle de Venta',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                  ],
+                // 내용
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: _buildVdetalleCards(vdetalleData, rowData, isWideScreen),
+                  ),
                 ),
-              ),
-              // 내용
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: _buildVdetalleCards(vdetalleData, rowData),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   /// vdetalle 데이터를 카드 형태로 구성
-  Widget _buildVdetalleCards(Map<String, dynamic> vdetalleData, Map<String, dynamic> rowData) {
-    final cards = <Widget>[];
+  Widget _buildVdetalleCards(Map<String, dynamic> vdetalleData, Map<String, dynamic> rowData, bool isWideScreen) {
+    final infoCards = <Widget>[];
+    final tableCards = <Widget>[];
     
     // Vcodes 정보 카드 (결제 정보 및 기타 정보)
     if (vdetalleData.containsKey('vcodes') && vdetalleData['vcodes'] is Map) {
       final vcodes = vdetalleData['vcodes'] as Map<String, dynamic>;
-      cards.add(_buildInfoCard('Información de Pago', {
+      infoCards.add(_buildInfoCard('Información de Pago', {
         'Total Pago': ReportUtils.formatValue(vcodes['tpago']),
         'Efectivo': ReportUtils.formatValue(vcodes['tefectivo']),
         'Crédito': ReportUtils.formatValue(vcodes['tcredito']),
@@ -4060,7 +4070,7 @@ class _ReportScreenState extends State<ReportScreen> {
     // Cliente 정보 카드
     if (vdetalleData.containsKey('cliente') && vdetalleData['cliente'] is Map) {
       final cliente = vdetalleData['cliente'] as Map<String, dynamic>;
-      cards.add(_buildInfoCard('Información del Cliente', {
+      infoCards.add(_buildInfoCard('Información del Cliente', {
         'DNI': cliente['dni']?.toString() ?? 'N/A',
         'Nombre': cliente['nombre']?.toString() ?? 'N/A',
         'Dirección': cliente['direccion']?.toString() ?? 'N/A',
@@ -4074,7 +4084,7 @@ class _ReportScreenState extends State<ReportScreen> {
     if (vdetalleData.containsKey('detalles') && vdetalleData['detalles'] is List) {
       final detalles = vdetalleData['detalles'] as List;
       if (detalles.isNotEmpty) {
-        cards.add(_buildDetallesCard(detalles));
+        tableCards.add(_buildDetallesCard(detalles));
       }
     }
     
@@ -4082,7 +4092,7 @@ class _ReportScreenState extends State<ReportScreen> {
     if (vdetalleData.containsKey('vtags') && vdetalleData['vtags'] is List) {
       final vtags = vdetalleData['vtags'] as List;
       if (vtags.isNotEmpty) {
-        cards.add(_buildVtagsCard(vtags));
+        tableCards.add(_buildVtagsCard(vtags));
       }
     }
     
@@ -4090,7 +4100,7 @@ class _ReportScreenState extends State<ReportScreen> {
     if (vdetalleData.containsKey('cheque') && vdetalleData['cheque'] is List) {
       final cheques = vdetalleData['cheque'] as List;
       if (cheques.isNotEmpty) {
-        cards.add(_buildChequesCard(cheques));
+        tableCards.add(_buildChequesCard(cheques));
       }
     }
     
@@ -4098,13 +4108,30 @@ class _ReportScreenState extends State<ReportScreen> {
     if (vdetalleData.containsKey('online_ventas') && vdetalleData['online_ventas'] is List) {
       final onlineVentas = vdetalleData['online_ventas'] as List;
       if (onlineVentas.isNotEmpty) {
-        cards.add(_buildOnlineVentasCard(onlineVentas));
+        tableCards.add(_buildOnlineVentasCard(onlineVentas));
       }
     }
     
+    // 넓은 화면: 모든 카드를 수평으로 배치
+    if (isWideScreen) {
+      final allCards = <Widget>[...infoCards, ...tableCards];
+      
+      // 카드가 2개 이상이면 수평으로 배치
+      if (allCards.length > 1) {
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: allCards.map((card) => Expanded(child: card)).toList(),
+        );
+      }
+    }
+    
+    // 작은 화면 또는 카드가 1개: 수직 배치
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: cards,
+      children: [
+        ...infoCards,
+        ...tableCards,
+      ],
     );
   }
   
@@ -4946,6 +4973,13 @@ class _ReportScreenState extends State<ReportScreen> {
                 _initializeCodigoEditControllers();
               });
             },
+            onCodigoDoubleTap: (codigo) {
+              setState(() {
+                _selectedCodigo = Map<String, dynamic>.from(codigo);
+                _isEditingCodigo = false;
+                _initializeCodigoEditControllers();
+              });
+            },
             isLoadingMore: _isLoadingMoreCodigos,
             reportColor: _getReportColor(),
             columnKeys: columnKeys,
@@ -5087,16 +5121,25 @@ class _ReportScreenState extends State<ReportScreen> {
   void _initializeCodigoEditControllers() {
     if (_selectedCodigo == null) return;
 
-    // 선택된 codigo의 모든 키를 사용 (id_codigo 제외)
-    final fields = _selectedCodigo!.keys.where((key) => key != 'id_codigo').toList();
+    // 편집 가능한 필드만 초기화
+    final editableFields = widget.reportType == ReportType.todocodigos
+        ? ['tcodigo', 'tdesc', 'tpre1', 'tpre2', 'tpre3', 'tpre4', 'tpre5', 'borrado']
+        : ['codigo', 'descripcion', 'pre1', 'pre2', 'pre3', 'pre4', 'pre5', 'b_mostrar_vcontrol', 'borrado'];
 
-    for (var field in fields) {
+    for (var field in editableFields) {
+      if (!_selectedCodigo!.containsKey(field)) continue;
+      
       if (!_codigoEditControllers.containsKey(field)) {
         _codigoEditControllers[field] = TextEditingController();
       }
       
       final value = _selectedCodigo![field];
-      _codigoEditControllers[field]!.text = value?.toString() ?? '';
+      // boolean 필드는 1/0으로 변환
+      if (field == 'b_mostrar_vcontrol') {
+        _codigoEditControllers[field]!.text = (value == 1 || value == true || value?.toString() == '1') ? '1' : '0';
+      } else {
+        _codigoEditControllers[field]!.text = value?.toString() ?? '';
+      }
     }
   }
 
@@ -5116,6 +5159,7 @@ class _ReportScreenState extends State<ReportScreen> {
       },
       onSave: _saveCodigoChanges,
       reportColor: _getReportColor(),
+      reportType: widget.reportType,
       buildEditField: (fieldKey, label) {
         if (!_codigoEditControllers.containsKey(fieldKey)) {
           _codigoEditControllers[fieldKey] = TextEditingController();
@@ -5177,6 +5221,7 @@ class _ReportScreenState extends State<ReportScreen> {
         databaseService: _databaseService,
         selectedCodigo: _selectedCodigo!,
         editControllers: _codigoEditControllers,
+        reportType: widget.reportType,
       );
 
       // 서버 응답 확인
@@ -5186,18 +5231,32 @@ class _ReportScreenState extends State<ReportScreen> {
 
       // 로컬 데이터 업데이트
       final dataList = _data!['data'] as List;
-      final index = dataList.indexWhere((item) => 
-          item is Map<String, dynamic> && 
-          item['codigo'] == _selectedCodigo!['codigo']);
+      final index = widget.reportType == ReportType.todocodigos
+          ? dataList.indexWhere((item) => 
+              item is Map<String, dynamic> && 
+              item['tcodigo'] == _selectedCodigo!['tcodigo'])
+          : dataList.indexWhere((item) => 
+              item is Map<String, dynamic> && 
+              item['codigo'] == _selectedCodigo!['codigo']);
       
       if (index != -1) {
-        // 편집된 값들 수집
+        // 편집된 값들 수집 (편집 가능한 필드만)
+        final editableFields = widget.reportType == ReportType.todocodigos
+            ? ['tcodigo', 'tdesc', 'tpre1', 'tpre2', 'tpre3', 'tpre4', 'tpre5', 'borrado']
+            : ['codigo', 'descripcion', 'pre1', 'pre2', 'pre3', 'pre4', 'pre5', 'b_mostrar_vcontrol', 'borrado'];
+        
         final updatedData = <String, dynamic>{};
         for (var entry in _codigoEditControllers.entries) {
           final key = entry.key;
+          
+          // 편집 가능한 필드만 포함
+          if (!editableFields.contains(key)) {
+            continue;
+          }
+          
           final value = entry.value.text.trim();
           
-          if (key.startsWith('pre') || key == 'borrado' || key.startsWith('id_')) {
+          if (key.startsWith('pre') || key.startsWith('tpre') || key == 'borrado') {
             final numValue = num.tryParse(value);
             if (numValue != null) {
               updatedData[key] = numValue;
@@ -5206,11 +5265,12 @@ class _ReportScreenState extends State<ReportScreen> {
             } else {
               updatedData[key] = value;
             }
+          } else if (key == 'b_mostrar_vcontrol') {
+            updatedData[key] = (value == '1' || value.toLowerCase() == 'true') ? 1 : 0;
           } else {
             updatedData[key] = value.isEmpty ? null : value;
           }
         }
-
 
         dataList[index] = {...dataList[index] as Map<String, dynamic>, ...updatedData};
         _selectedCodigo = Map<String, dynamic>.from(dataList[index] as Map<String, dynamic>);
@@ -5251,4 +5311,5 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
 }
+
 

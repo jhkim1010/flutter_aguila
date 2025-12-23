@@ -103,6 +103,17 @@ class DatabaseService {
 
   // ========== Todocodigos API ==========
   
+  /// Todocodigo 업데이트하기
+  Future<Map<String, dynamic>> updateTodocodigo({
+    String? idTodocodigo,
+    String? tcodigo,
+    required Map<String, dynamic> updatedData,
+  }) => _todocodigosApi.updateTodocodigo(
+    idTodocodigo: idTodocodigo,
+    tcodigo: tcodigo,
+    updatedData: updatedData,
+  );
+  
   /// Todocodigos 리스트 가져오기
   Future<Map<String, dynamic>> getTodocodigos({
     String? idTodocodigo,
