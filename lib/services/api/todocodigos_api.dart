@@ -1,3 +1,4 @@
+import 'dart:convert';
 import '../../models/todocodigos_response.dart';
 import 'http_request_handler.dart';
 
@@ -85,19 +86,43 @@ class TodocodigosApi {
     String? tcodigo,
     required Map<String, dynamic> updatedData,
   }) async {
-    final identifier = idTodocodigo ?? tcodigo;
-    if (identifier == null || identifier.isEmpty) {
-      throw Exception('id_todocodigo 또는 tcodigo가 필요합니다.');
+    // id_todocodigo가 필수
+    if (idTodocodigo == null || idTodocodigo.isEmpty) {
+      throw Exception('id_todocodigo가 필요합니다.');
     }
     
-    final endpoint = idTodocodigo != null 
-        ? '/api/todocodigos/id/$idTodocodigo'
-        : '/api/todocodigos/$tcodigo';
+    final endpoint = '/api/todocodigos/id/$idTodocodigo';
     
-    print('=== Todocodigo 업데이트 ===');
-    print('id_todocodigo: $idTodocodigo');
-    print('tcodigo: $tcodigo');
-    print('endpoint: $endpoint');
+    // 헤더 가져오기
+    final headers = await _httpHandler.getDatabaseHeaders();
+    
+    // 요청 URL 생성
+    final uri = Uri.parse('${_httpHandler.serverUrl}$endpoint');
+    
+    // 요청 바디 JSON 인코딩
+    final bodyJson = json.encode(updatedData);
+    
+    print('\n');
+    print('═══════════════════════════════════════════════════════════');
+    print('═══════════════════════════════════════════════════════════');
+    print('📤 TODOCODIGO 업데이트 요청');
+    print('═══════════════════════════════════════════════════════════');
+    print('🌐 URL: $uri');
+    print('');
+    print('📋 Headers:');
+    headers.forEach((key, value) {
+      final displayValue = key == 'x-db-password' ? '***' : value;
+      print('   $key: $displayValue');
+    });
+    print('');
+    print('📦 Body:');
+    final bodyPreview = bodyJson.length > 1000 
+        ? '${bodyJson.substring(0, 1000)}... (${bodyJson.length} bytes total)'
+        : bodyJson;
+    print('   $bodyPreview');
+    print('═══════════════════════════════════════════════════════════');
+    print('═══════════════════════════════════════════════════════════');
+    print('\n');
     
     return await _httpHandler.performPutRequest(endpoint, updatedData);
   }

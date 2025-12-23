@@ -81,6 +81,7 @@ class _ReportScreenState extends State<ReportScreen> {
   // Codigos 보고서용 상태
   Map<String, dynamic>? _selectedCodigo; // 선택된 codigo
   final Map<String, TextEditingController> _codigoEditControllers = {}; // 편집용 컨트롤러들
+  final Map<String, FocusNode> _codigoFocusNodes = {}; // 편집용 포커스 노드들
   bool _isEditingCodigo = false; // 편집 모드 여부
   String? _editedCodigoIdentifier; // 편집된 codigo 식별자 (색상 표시용)
   bool _isLoadingMoreCodigos = false; // 추가 codigos 로딩 중 여부
@@ -4968,6 +4969,21 @@ class _ReportScreenState extends State<ReportScreen> {
             scrollController: _scrollController,
             selectedCodigo: _selectedCodigo,
             onCodigoSelected: (codigo) {
+              // todocodigos인 경우 id_todocodigo가 없으면 편집 불가
+              if (widget.reportType == ReportType.todocodigos) {
+                final idTodocodigo = codigo['id_todocodigo']?.toString();
+                if (idTodocodigo == null || idTodocodigo.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('id_todocodigo가 없어서 편집할 수 없습니다.'),
+                      backgroundColor: Colors.red,
+                      duration: const Duration(seconds: 3),
+                    ),
+                  );
+                  return;
+                }
+              }
+              
               setState(() {
                 _selectedCodigo = Map<String, dynamic>.from(codigo);
                 _isEditingCodigo = false;
@@ -4975,6 +4991,21 @@ class _ReportScreenState extends State<ReportScreen> {
               });
             },
             onCodigoDoubleTap: (codigo) {
+              // todocodigos인 경우 id_todocodigo가 없으면 편집 불가
+              if (widget.reportType == ReportType.todocodigos) {
+                final idTodocodigo = codigo['id_todocodigo']?.toString();
+                if (idTodocodigo == null || idTodocodigo.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('id_todocodigo가 없어서 편집할 수 없습니다.'),
+                      backgroundColor: Colors.red,
+                      duration: const Duration(seconds: 3),
+                    ),
+                  );
+                  return;
+                }
+              }
+              
               setState(() {
                 _selectedCodigo = Map<String, dynamic>.from(codigo);
                 _isEditingCodigo = false;
@@ -4987,6 +5018,7 @@ class _ReportScreenState extends State<ReportScreen> {
             columnWidths: columnWidths,
             headerWidget: headerWidget,
             editedCodigoIdentifier: _editedCodigoIdentifier,
+            reportType: widget.reportType,
           ),
         ),
         // 오른쪽: 선택된 Codigo 편집 UI
@@ -5133,6 +5165,11 @@ class _ReportScreenState extends State<ReportScreen> {
         _codigoEditControllers[field] = TextEditingController();
       }
       
+      // FocusNode 초기화
+      if (!_codigoFocusNodes.containsKey(field)) {
+        _codigoFocusNodes[field] = FocusNode();
+      }
+      
       // 필드가 없으면 기본값 사용
       final value = _selectedCodigo![field];
       // boolean 필드는 1/0으로 변환
@@ -5147,6 +5184,19 @@ class _ReportScreenState extends State<ReportScreen> {
         _codigoEditControllers[field]!.text = value?.toString() ?? '';
       }
     }
+  }
+  
+  // Codigo 편집 리소스 정리
+  void _disposeCodigoEditResources() {
+    for (var controller in _codigoEditControllers.values) {
+      controller.dispose();
+    }
+    _codigoEditControllers.clear();
+    
+    for (var focusNode in _codigoFocusNodes.values) {
+      focusNode.dispose();
+    }
+    _codigoFocusNodes.clear();
   }
 
   // Codigo 편집 패널 빌드
@@ -5166,7 +5216,7 @@ class _ReportScreenState extends State<ReportScreen> {
       onSave: _saveCodigoChanges,
       reportColor: _getReportColor(),
       reportType: widget.reportType,
-      buildEditField: (fieldKey, label) {
+      buildEditField: (fieldKey, label, order) {
         if (!_codigoEditControllers.containsKey(fieldKey)) {
           _codigoEditControllers[fieldKey] = TextEditingController();
           // 필드가 없으면 기본값 설정
@@ -5182,10 +5232,17 @@ class _ReportScreenState extends State<ReportScreen> {
           }
         }
         
+        // FocusNode 초기화
+        if (!_codigoFocusNodes.containsKey(fieldKey)) {
+          _codigoFocusNodes[fieldKey] = FocusNode();
+        }
+        
         return CodigosBuilder.buildEditField(
           fieldKey: fieldKey,
           label: label,
           controller: _codigoEditControllers[fieldKey]!,
+          focusNode: _codigoFocusNodes[fieldKey]!,
+          order: order,
           onChanged: (value) {
             setState(() {
               _isEditingCodigo = true;

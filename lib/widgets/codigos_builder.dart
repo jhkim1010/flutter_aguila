@@ -20,6 +20,7 @@ class CodigosBuilder {
     required Map<String, double> columnWidths,
     required Widget headerWidget,
     String? editedCodigoIdentifier, // 편집된 codigo 식별자
+    ReportType? reportType, // 보고서 타입 추가
   }) {
     final dataList = data['data'] as List;
     if (dataList.isEmpty) {
@@ -107,10 +108,13 @@ class CodigosBuilder {
                                         itemCount: filteredDataList.length,
                                         itemBuilder: (context, index) {
                                           final codigo = filteredDataList[index] as Map<String, dynamic>;
-                                          final codigoId = codigo['codigo']?.toString() ?? codigo['tcodigo']?.toString();
+                                          final codigoId = reportType == ReportType.todocodigos
+                                              ? codigo['tcodigo']?.toString()
+                                              : codigo['codigo']?.toString();
                                           final isSelected = selectedCodigo != null && 
-                                              (selectedCodigo!['codigo'] == codigo['codigo'] || 
-                                               selectedCodigo!['tcodigo'] == codigo['tcodigo']);
+                                              (reportType == ReportType.todocodigos
+                                                  ? selectedCodigo!['tcodigo'] == codigo['tcodigo']
+                                                  : selectedCodigo!['codigo'] == codigo['codigo']);
                                           final isEdited = editedCodigoIdentifier != null && 
                                               editedCodigoIdentifier == codigoId;
                                           
@@ -136,6 +140,8 @@ class CodigosBuilder {
                                                 columnWidths: columnWidths,
                                                 isSelected: isSelected,
                                                 reportColor: reportColor,
+                                                editedCodigoIdentifier: editedCodigoIdentifier,
+                                                reportType: reportType,
                                               ),
                                             ),
                                           );
@@ -188,13 +194,15 @@ class CodigosBuilder {
                                           ),
                                         ),
                                       ),
-                                      child: _buildCodigoRow(
-                                        codigo: codigo,
-                                        columnKeys: columnKeys,
-                                        columnWidths: columnWidths,
-                                        isSelected: isSelected,
-                                        reportColor: reportColor,
-                                      ),
+                                              child: _buildCodigoRow(
+                                                codigo: codigo,
+                                                columnKeys: columnKeys,
+                                                columnWidths: columnWidths,
+                                                isSelected: isSelected,
+                                                reportColor: reportColor,
+                                                editedCodigoIdentifier: editedCodigoIdentifier,
+                                                reportType: reportType,
+                                              ),
                                     ),
                                   );
                                 },
@@ -309,6 +317,8 @@ class CodigosBuilder {
     required Map<String, double> columnWidths,
     required bool isSelected,
     required Color reportColor,
+    String? editedCodigoIdentifier, // 편집된 codigo 식별자
+    ReportType? reportType, // 보고서 타입
   }) {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -326,6 +336,12 @@ class CodigosBuilder {
             ? (value?.toString() ?? 'N/A')
             : ReportUtils.formatValue(value);
         
+        final currentCodigoIdentifier = reportType == ReportType.todocodigos
+            ? codigo['tcodigo']?.toString()
+            : codigo['codigo']?.toString();
+        final isEdited = editedCodigoIdentifier != null && currentCodigoIdentifier == editedCodigoIdentifier;
+        final isCodeKey = key == 'codigo' || key == 'tcodigo';
+        
         return Padding(
           padding: const EdgeInsets.only(right: 12),
           child: SizedBox(
@@ -333,11 +349,13 @@ class CodigosBuilder {
             child: Text(
               displayValue,
               style: TextStyle(
-                fontWeight: key == 'codigo' ? FontWeight.bold : FontWeight.normal,
-                fontSize: key == 'codigo' ? 14 : 12,
-                color: isSelected && key == 'codigo' 
-                    ? Colors.teal[700] 
-                    : (key == 'codigo' ? Colors.black87 : Colors.grey[700]),
+                fontWeight: isCodeKey ? FontWeight.bold : FontWeight.normal,
+                fontSize: isCodeKey ? 14 : 12,
+                color: isEdited
+                    ? Colors.green[700] // 편집된 항목은 녹색
+                    : (isSelected && isCodeKey
+                        ? Colors.teal[700]
+                        : (isCodeKey ? Colors.black87 : Colors.grey[700])),
               ),
               textAlign: isNumeric ? TextAlign.right : TextAlign.left,
               maxLines: 1,
@@ -357,7 +375,7 @@ class CodigosBuilder {
     required Function() onClose,
     required Function() onSave,
     required Color reportColor,
-    required Function(String, String) buildEditField,
+    required Function(String, String, int) buildEditField,
     ReportType? reportType,
   }) {
     return Container(
@@ -392,9 +410,10 @@ class CodigosBuilder {
               const Divider(height: 24),
               Expanded(
                 child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
+                  child: FocusTraversalGroup(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
                       // id_codigo 또는 id_todocodigo 표시
                       if (reportType == ReportType.todocodigos && selectedCodigo['id_todocodigo'] != null)
                         Container(
@@ -478,7 +497,9 @@ class CodigosBuilder {
                       // 편집 가능한 필드만 표시
                       if (reportType == ReportType.todocodigos)
                         // Todocodigos: tcodigo, tdesc, tpre1, tpre2, tpre3, tpre4, tpre5, borrado
-                        ...(['tcodigo', 'tdesc', 'tpre1', 'tpre2', 'tpre3', 'tpre4', 'tpre5', 'borrado'] as List<String>).where((key) => selectedCodigo.containsKey(key)).map((key) {
+                        ...(['tcodigo', 'tdesc', 'tpre1', 'tpre2', 'tpre3', 'tpre4', 'tpre5', 'borrado'] as List<String>).where((key) => selectedCodigo.containsKey(key)).toList().asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final key = entry.value;
                           final displayNames = {
                             'tcodigo': 'T Codigo',
                             'tdesc': 'T Desc',
@@ -495,14 +516,16 @@ class CodigosBuilder {
                           
                           return Column(
                             children: [
-                              buildEditField(fieldKey, displayName),
+                              buildEditField(fieldKey, displayName, index),
                               const SizedBox(height: 16),
                             ],
                           );
                         }).toList()
                       else
                         // Codigos: codigo, descripcion, pre1, pre2, pre3, pre4, pre5, b_mostrar_vcontrol, borrado
-                        ...(['codigo', 'descripcion', 'pre1', 'pre2', 'pre3', 'pre4', 'pre5', 'b_mostrar_vcontrol', 'borrado'] as List<String>).map((key) {
+                        ...(['codigo', 'descripcion', 'pre1', 'pre2', 'pre3', 'pre4', 'pre5', 'b_mostrar_vcontrol', 'borrado'] as List<String>).asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final key = entry.value;
                           // 필드가 없어도 편집 가능한 필드는 표시 (기본값 사용)
                           final displayNames = {
                             'codigo': 'Codigo',
@@ -521,14 +544,16 @@ class CodigosBuilder {
                           
                           return Column(
                             children: [
-                              buildEditField(fieldKey, displayName),
+                              buildEditField(fieldKey, displayName, index),
                               const SizedBox(height: 16),
                             ],
                           );
                         }).toList(),
                       const SizedBox(height: 8),
-                      ElevatedButton.icon(
-                        onPressed: isLoading ? null : onSave,
+                      FocusTraversalOrder(
+                        order: const NumericFocusOrder(999), // 마지막 순서
+                        child: ElevatedButton.icon(
+                          onPressed: isLoading ? null : onSave,
                         icon: isLoading 
                             ? const SizedBox(
                                 width: 20,
@@ -549,8 +574,10 @@ class CodigosBuilder {
                           ),
                           disabledBackgroundColor: Colors.grey,
                         ),
+                        ),
                       ),
                     ],
+                  ),
                   ),
                 ),
               ),
@@ -566,6 +593,8 @@ class CodigosBuilder {
     required String fieldKey,
     required String label,
     required TextEditingController controller,
+    required FocusNode focusNode,
+    required int order,
     required Function(String) onChanged,
   }) {
     // 숫자 필드 확인 (pre 또는 tpre로 시작하는 경우)
@@ -574,10 +603,12 @@ class CodigosBuilder {
     // boolean 필드 확인
     final isBooleanField = fieldKey == 'b_mostrar_vcontrol' || fieldKey == 'borrado';
     
+    Widget fieldWidget;
+    
     if (isBooleanField) {
       // boolean 필드는 체크박스로 표시
       final boolValue = controller.text.toLowerCase() == 'true' || controller.text == '1';
-      return CheckboxListTile(
+      fieldWidget = CheckboxListTile(
         title: Text(label),
         value: boolValue,
         onChanged: (value) {
@@ -586,17 +617,31 @@ class CodigosBuilder {
         },
         controlAffinity: ListTileControlAffinity.leading,
       );
+    } else {
+      fieldWidget = TextField(
+        controller: controller,
+        focusNode: focusNode,
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+          enabled: true,
+        ),
+        keyboardType: isNumericField ? TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
+        textInputAction: TextInputAction.next,
+        onChanged: onChanged,
+        onSubmitted: (_) {
+          // Enter 키로 다음 필드로 이동
+          if (focusNode.context != null) {
+            FocusScope.of(focusNode.context!).nextFocus();
+          }
+        },
+      );
     }
     
-    return TextField(
-      controller: controller,
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-        enabled: true,
-      ),
-      keyboardType: isNumericField ? TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
-      onChanged: onChanged,
+    // Tab 순서 지정
+    return FocusTraversalOrder(
+      order: NumericFocusOrder(order.toDouble()),
+      child: fieldWidget,
     );
   }
 
@@ -644,6 +689,12 @@ class CodigosBuilder {
     if (reportType == ReportType.todocodigos) {
       // Todocodigo 업데이트 요청
       final idTodocodigo = selectedCodigo['id_todocodigo']?.toString();
+      
+      // id_todocodigo가 없으면 편집 불가
+      if (idTodocodigo == null || idTodocodigo.isEmpty) {
+        throw Exception('id_todocodigo가 없어서 편집할 수 없습니다.');
+      }
+      
       final tcodigo = selectedCodigo['tcodigo']?.toString() ?? '';
       
       // MAC 주소 가져오기
@@ -661,7 +712,7 @@ class CodigosBuilder {
       print('💻 플랫폼: $platform');
       
       print('📤 TODOCODIGO 업데이트 요청');
-      print('   - id_todocodigo: ${idTodocodigo ?? "없음"}');
+      print('   - id_todocodigo: $idTodocodigo');
       print('   - tcodigo: ${tcodigo.isNotEmpty ? tcodigo : "없음"}');
       print('   - 변경된 필드: ${updatedData.length}개');
       print('   - MAC 주소: ${macAddress ?? "없음"}');
@@ -669,7 +720,7 @@ class CodigosBuilder {
       
       final response = await databaseService.updateTodocodigo(
         idTodocodigo: idTodocodigo,
-        tcodigo: tcodigo.isNotEmpty ? tcodigo : null,
+        tcodigo: null, // id_todocodigo가 있으면 tcodigo는 사용하지 않음
         updatedData: updatedData,
       );
       
