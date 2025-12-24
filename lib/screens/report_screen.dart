@@ -1503,10 +1503,22 @@ class _ReportScreenState extends State<ReportScreen> {
         );
         
         return Scaffold(
-          appBar: AppBar(
-            automaticallyImplyLeading: false,
-            toolbarHeight: needsTwoLineAppBar ? kToolbarHeight * 2 : null,
-            title: widget.reportType == ReportType.stocks
+          appBar: null,
+          body: Column(
+            children: [
+              // AppBar 내용을 body 상단에 배치
+              Container(
+                color: _getReportColor(),
+                padding: EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: needsTwoLineAppBar ? 8 : 12,
+                ),
+                child: SafeArea(
+                  bottom: false,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: widget.reportType == ReportType.stocks
             ? Row(
                 children: [
                   Icon(reportIcon, color: Colors.white),
@@ -1653,6 +1665,41 @@ class _ReportScreenState extends State<ReportScreen> {
                           Expanded(
                             child: _buildFilteringWordFieldInAppBar(),
                           ),
+                          // Actions 버튼들
+                          PopupMenuButton<ReportType>(
+                            icon: const Icon(Icons.assessment, color: Colors.white),
+                            tooltip: 'Reportes',
+                            onSelected: (ReportType reportType) {
+                              if (reportType != widget.reportType) {
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ReportScreen(
+                                      serverUrl: widget.serverUrl,
+                                      reportType: reportType,
+                                      initialDate: widget.initialDate,
+                                      initialItemsStartDate: widget.initialItemsStartDate,
+                                      initialItemsEndDate: widget.initialItemsEndDate,
+                                      initialFilteringWord: widget.initialFilteringWord,
+                                      initialSortColumn: widget.initialSortColumn,
+                                      initialSortAscending: widget.initialSortAscending,
+                                      onStateChanged: widget.onStateChanged,
+                                      onItemsDateRangeChanged: widget.onItemsDateRangeChanged,
+                                      useFullWidth: widget.useFullWidth,
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                            itemBuilder: (BuildContext context) => _buildReportMenuItems(),
+                          ),
+                          // PDF 공유 버튼
+                          if (_data != null)
+                            IconButton(
+                              icon: const Icon(Icons.share, color: Colors.white),
+                              tooltip: 'Compartir como PDF',
+                              onPressed: () => _shareAsPdf(),
+                            ),
                         ],
                       );
                     },
@@ -1670,23 +1717,9 @@ class _ReportScreenState extends State<ReportScreen> {
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // 첫 번째 줄: 아이콘, 제목, Unit 버튼들
+                                // 첫 번째 줄: Unit 버튼들
                                 Row(
                                   children: [
-                                    Icon(reportIcon, color: Colors.white),
-                                    const SizedBox(width: 8),
-                                    Flexible(
-                                      child: Text(
-                                        reportTitle,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
                                     Flexible(
                                       child: _buildVentasUnitButtonsInAppBar(),
                                     ),
@@ -1753,24 +1786,14 @@ class _ReportScreenState extends State<ReportScreen> {
                           // 넓은 화면: 1줄로 배치
                           return Row(
                             children: [
-                              Icon(reportIcon, color: Colors.white),
-                              const SizedBox(width: 8),
-                              Text(
-                                reportTitle,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(width: 16),
                               // Unit 버튼들
                               _buildVentasUnitButtonsInAppBar(),
-                              const SizedBox(width: 16),
-                              // 큰 화면 또는 수평 모드: 시작일과 종료일 선택기 2개
+                              const SizedBox(width: 12),
+                              // 큰 화면 또는 수평 모드: 시작일과 종료일 선택기 2개 (하나의 Row로 묶어서 간격 정확히 제어)
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
+                                  // 첫 번째 달력
                                   SizedBox(
                                     width: isLargeScreen ? 150 : 90,
                                     child: _buildSingleDateButton(
@@ -1790,27 +1813,9 @@ class _ReportScreenState extends State<ReportScreen> {
                                   },
                                     ),
                                   ),
-                                  // Day 단위일 때만 "오늘" 버튼 표시
-                                  if (_ventasUnit == 'day' || _ventasUnit == 'vcode') ...[
-                                    const SizedBox(width: 4),
-                                    _buildTodayButton(
-                                      reportColor: _getReportColor(),
-                                      onTodaySelected: () {
-                                        final today = DateTime.now();
-                                        setState(() {
-                                          _ventasStartDate = today;
-                                        });
-                                        _loadData();
-                                      },
-                                    ),
-                                  ],
-                                ],
-                              ),
-                              // 큰 화면: 달력 간격을 unit 버튼 간격과 비슷하게 (4px)
-                              const SizedBox(width: 4),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
+                                  // 두 달력 사이 간격: 정확히 4px
+                                  const SizedBox(width: 4),
+                                  // 두 번째 달력
                                   SizedBox(
                                     width: isLargeScreen ? 150 : 90,
                                     child: _buildSingleDateButton(
@@ -1830,20 +1835,6 @@ class _ReportScreenState extends State<ReportScreen> {
                                   },
                                     ),
                                   ),
-                                  // Day 단위일 때만 "오늘" 버튼 표시
-                                  if (_ventasUnit == 'day' || _ventasUnit == 'vcode') ...[
-                                    const SizedBox(width: 4),
-                                    _buildTodayButton(
-                                      reportColor: _getReportColor(),
-                                      onTodaySelected: () {
-                                        final today = DateTime.now();
-                                        setState(() {
-                                          _ventasEndDate = today;
-                                        });
-                                        _loadData();
-                                      },
-                                    ),
-                                  ],
                                 ],
                               ),
                               // 큰 화면: descontado 체크박스 추가
@@ -1892,6 +1883,41 @@ class _ReportScreenState extends State<ReportScreen> {
                               Expanded(
                                 child: _buildFilteringWordFieldInAppBar(),
                               ),
+                              // Actions 버튼들
+                              PopupMenuButton<ReportType>(
+                                icon: const Icon(Icons.assessment, color: Colors.white),
+                                tooltip: 'Reportes',
+                                onSelected: (ReportType reportType) {
+                                  if (reportType != widget.reportType) {
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => ReportScreen(
+                                          serverUrl: widget.serverUrl,
+                                          reportType: reportType,
+                                          initialDate: widget.initialDate,
+                                          initialItemsStartDate: widget.initialItemsStartDate,
+                                          initialItemsEndDate: widget.initialItemsEndDate,
+                                          initialFilteringWord: widget.initialFilteringWord,
+                                          initialSortColumn: widget.initialSortColumn,
+                                          initialSortAscending: widget.initialSortAscending,
+                                          onStateChanged: widget.onStateChanged,
+                                          onItemsDateRangeChanged: widget.onItemsDateRangeChanged,
+                                          useFullWidth: widget.useFullWidth,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
+                                itemBuilder: (BuildContext context) => _buildReportMenuItems(),
+                              ),
+                              // PDF 공유 버튼
+                              if (_data != null)
+                                IconButton(
+                                  icon: const Icon(Icons.share, color: Colors.white),
+                                  tooltip: 'Compartir como PDF',
+                                  onPressed: () => _shareAsPdf(),
+                                ),
                             ],
                           );
                         },
@@ -1906,6 +1932,41 @@ class _ReportScreenState extends State<ReportScreen> {
                           Expanded(
                             child: _buildFilteringWordFieldInAppBar(),
                           ),
+                          // Actions 버튼들
+                          PopupMenuButton<ReportType>(
+                            icon: const Icon(Icons.assessment, color: Colors.white),
+                            tooltip: 'Reportes',
+                            onSelected: (ReportType reportType) {
+                              if (reportType != widget.reportType) {
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ReportScreen(
+                                      serverUrl: widget.serverUrl,
+                                      reportType: reportType,
+                                      initialDate: widget.initialDate,
+                                      initialItemsStartDate: widget.initialItemsStartDate,
+                                      initialItemsEndDate: widget.initialItemsEndDate,
+                                      initialFilteringWord: widget.initialFilteringWord,
+                                      initialSortColumn: widget.initialSortColumn,
+                                      initialSortAscending: widget.initialSortAscending,
+                                      onStateChanged: widget.onStateChanged,
+                                      onItemsDateRangeChanged: widget.onItemsDateRangeChanged,
+                                      useFullWidth: widget.useFullWidth,
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                            itemBuilder: (BuildContext context) => _buildReportMenuItems(),
+                          ),
+                          // PDF 공유 버튼
+                          if (_data != null)
+                            IconButton(
+                              icon: const Icon(Icons.share, color: Colors.white),
+                              tooltip: 'Compartir como PDF',
+                              onPressed: () => _shareAsPdf(),
+                            ),
                         ],
                       )
                     : widget.reportType == ReportType.stocks
@@ -1929,6 +1990,41 @@ class _ReportScreenState extends State<ReportScreen> {
                                   Expanded(
                                     child: _buildFilteringWordFieldInAppBar(),
                                   ),
+                                  // Actions 버튼들
+                                  PopupMenuButton<ReportType>(
+                                    icon: const Icon(Icons.assessment, color: Colors.white),
+                                    tooltip: 'Reportes',
+                                    onSelected: (ReportType reportType) {
+                                      if (reportType != widget.reportType) {
+                                        Navigator.pushReplacement(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => ReportScreen(
+                                              serverUrl: widget.serverUrl,
+                                              reportType: reportType,
+                                              initialDate: widget.initialDate,
+                                              initialItemsStartDate: widget.initialItemsStartDate,
+                                              initialItemsEndDate: widget.initialItemsEndDate,
+                                              initialFilteringWord: widget.initialFilteringWord,
+                                              initialSortColumn: widget.initialSortColumn,
+                                              initialSortAscending: widget.initialSortAscending,
+                                              onStateChanged: widget.onStateChanged,
+                                              onItemsDateRangeChanged: widget.onItemsDateRangeChanged,
+                                              useFullWidth: widget.useFullWidth,
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                    itemBuilder: (BuildContext context) => _buildReportMenuItems(),
+                                  ),
+                                  // PDF 공유 버튼
+                                  if (_data != null)
+                                    IconButton(
+                                      icon: const Icon(Icons.share, color: Colors.white),
+                                      tooltip: 'Compartir como PDF',
+                                      onPressed: () => _shareAsPdf(),
+                                    ),
                                 ],
                               );
                             },
@@ -1950,48 +2046,49 @@ class _ReportScreenState extends State<ReportScreen> {
                                   ],
                                 ),
                               ),
+                              // Actions 버튼들
+                              PopupMenuButton<ReportType>(
+                                icon: const Icon(Icons.assessment, color: Colors.white),
+                                tooltip: 'Reportes',
+                                onSelected: (ReportType reportType) {
+                                  if (reportType != widget.reportType) {
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => ReportScreen(
+                                          serverUrl: widget.serverUrl,
+                                          reportType: reportType,
+                                          initialDate: widget.initialDate,
+                                          initialItemsStartDate: widget.initialItemsStartDate,
+                                          initialItemsEndDate: widget.initialItemsEndDate,
+                                          initialFilteringWord: widget.initialFilteringWord,
+                                          initialSortColumn: widget.initialSortColumn,
+                                          initialSortAscending: widget.initialSortAscending,
+                                          onStateChanged: widget.onStateChanged,
+                                          onItemsDateRangeChanged: widget.onItemsDateRangeChanged,
+                                          useFullWidth: widget.useFullWidth,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
+                                itemBuilder: (BuildContext context) => _buildReportMenuItems(),
+                              ),
+                              // PDF 공유 버튼
+                              if (_data != null)
+                                IconButton(
+                                  icon: const Icon(Icons.share, color: Colors.white),
+                                  tooltip: 'Compartir como PDF',
+                                  onPressed: () => _shareAsPdf(),
+                                ),
                             ],
                           ),
-        backgroundColor: reportColor,
-        actions: [
-          // 보고서 선택 드롭다운 메뉴
-          PopupMenuButton<ReportType>(
-            icon: const Icon(Icons.assessment, color: Colors.white),
-            tooltip: 'Reportes',
-            onSelected: (ReportType reportType) {
-              if (reportType != widget.reportType) {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ReportScreen(
-                      serverUrl: widget.serverUrl,
-                      reportType: reportType,
-                      initialDate: widget.initialDate,
-                      initialItemsStartDate: widget.initialItemsStartDate,
-                      initialItemsEndDate: widget.initialItemsEndDate,
-                      initialFilteringWord: widget.initialFilteringWord,
-                      initialSortColumn: widget.initialSortColumn,
-                      initialSortAscending: widget.initialSortAscending,
-                      onStateChanged: widget.onStateChanged,
-                      onItemsDateRangeChanged: widget.onItemsDateRangeChanged,
-                      useFullWidth: widget.useFullWidth,
-                    ),
-                  ),
-                );
-              }
-            },
-            itemBuilder: (BuildContext context) => _buildReportMenuItems(),
-          ),
-          // PDF 공유 버튼
-          if (_data != null)
-            IconButton(
-              icon: const Icon(Icons.share, color: Colors.white),
-              tooltip: 'Compartir como PDF',
-              onPressed: () => _shareAsPdf(),
+                ],
+              ),
             ),
-        ],
-      ),
-      body: _isLoading
+          ),
+              Expanded(
+                child: _isLoading
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
