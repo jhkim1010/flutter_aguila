@@ -2087,9 +2087,19 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     
     // 큰 화면인 경우 분할 레이아웃
     if (isLargeScreen) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Row(
+      return Row(
+        children: [
+          // 왼쪽: 연결 관리 + 보고서 종류 패널 (300px 고정)
+          _buildLeftPanel(context),
+          // 오른쪽: 항상 결과 표시
+          Expanded(
+            child: Column(
+              children: [
+                // 필터 바 (AppBar 대신)
+                Container(
+                  color: Theme.of(context).colorScheme.inversePrimary,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
             children: [
               if (_databaseName != null && _databaseName!.isNotEmpty)
                 Container(
@@ -2125,52 +2135,63 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
               if (_databaseName != null && _databaseName!.isNotEmpty)
                 const SizedBox(width: 12),
               Expanded(
-                child: Text(_getCurrentReportTitle()),
-              ),
-              // Resumen del Día일 때만 날짜 선택기 표시
-              if (_currentReport == 'resumen') ...[
-                const SizedBox(width: 12),
-                _buildDateSelectorInAppBar(),
-              ],
-              // Sucursal 선택 콤보박스 (여러 개일 때만 표시)
-              if (_hasMultipleSucursales() && _availableSucursales != null && _availableSucursales!.isNotEmpty) ...[
-                const SizedBox(width: 12),
-                _buildSucursalSelector(),
-              ],
-            ],
-          ),
-          actions: [
-            // 보고서 선택 드롭다운 메뉴 (Windows/Mac/iPad에서는 왼쪽 메뉴가 항상 표시되므로 숨김)
-            if (!PlatformUtils.hasPersistentMenu(context))
+                            child: Text(
+                              _getCurrentReportTitle(),
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          ),
+                          // Resumen del Día일 때만 날짜 선택기 표시
+                          if (_currentReport == 'resumen') ...[
+                            const SizedBox(width: 12),
+                            _buildDateSelectorInAppBar(),
+                          ],
+                          // Sucursal 선택 콤보박스 (여러 개일 때만 표시)
+                          if (_hasMultipleSucursales() && _availableSucursales != null && _availableSucursales!.isNotEmpty) ...[
+                            const SizedBox(width: 12),
+                            _buildSucursalSelector(),
+                          ],
+                          // 보고서 선택 드롭다운 메뉴 (Windows/Mac/iPad에서는 왼쪽 메뉴가 항상 표시되므로 숨김)
+                          if (!PlatformUtils.hasPersistentMenu(context)) ...[
+                            const SizedBox(width: 8),
             PopupMenuButton<String>(
-              icon: const Icon(Icons.assessment),
+                              icon: const Icon(Icons.assessment, color: Colors.white),
               tooltip: 'Reportes',
               onSelected: (value) {
-                  _navigateToReport(value);
+                                _navigateToReport(value);
               },
               itemBuilder: (BuildContext context) => _buildReportMenuItems(),
             ),
           ],
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        ),
-        body: Row(
-          children: [
-            // 왼쪽: 연결 관리 + 보고서 종류 패널 (300px 고정)
-            _buildLeftPanel(context),
-            // 오른쪽: 항상 결과 표시
+                        ],
+                      ),
+                    ),
+                // 데이터 콘텐츠
             Expanded(
               child: _buildReportContent(context),
             ),
           ],
         ),
+          ),
+        ],
       );
     }
     
-    // 핸드폰: 기존 방식 유지
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.menu),
+    // 핸드폰: AppBar 제거하고 필터 바를 메인 콘텐츠 상단으로 이동
+    return Column(
+      children: [
+        // 필터 바 (AppBar 대신)
+        Container(
+          color: Theme.of(context).colorScheme.inversePrimary,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 첫 번째 줄: 메뉴 버튼, 데이터베이스 이름, 보고서 제목, Actions
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.menu, color: Colors.white),
           onPressed: () {
             showModalBottomSheet(
               context: context,
@@ -2193,19 +2214,12 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
             );
           },
         ),
-        title: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 첫 번째 줄: 데이터베이스 이름과 보고서 제목
-            Row(
-          children: [
             if (_databaseName != null && _databaseName!.isNotEmpty)
-                  Flexible(
-                    child: GestureDetector(
+                        Flexible(
+                          child: GestureDetector(
                 onTap: _showConnectionListDialog,
                 child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(16),
@@ -2217,77 +2231,41 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
-                        Icons.storage,
-                        color: Colors.white,
-                        size: 14,
-                      ),
-                            const SizedBox(width: 4),
+                                  const Icon(Icons.storage, color: Colors.white, size: 14),
+                                  const SizedBox(width: 4),
                       Flexible(
                         child: Text(
                           _databaseName!,
                           style: const TextStyle(
                             color: Colors.white,
-                                  fontSize: 11,
+                                        fontSize: 11,
                             fontWeight: FontWeight.w500,
                           ),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
                         ),
                       ),
-                            const SizedBox(width: 2),
-                      const Icon(
-                        Icons.arrow_drop_down,
-                        color: Colors.white,
-                              size: 14,
-                      ),
-                    ],
-                        ),
+                                  const SizedBox(width: 2),
+                                  const Icon(Icons.arrow_drop_down, color: Colors.white, size: 14),
+                                ],
+                              ),
                   ),
                 ),
               ),
             if (_databaseName != null && _databaseName!.isNotEmpty)
-                  const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    _getCurrentReportTitle(),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                ),
-              ],
-            ),
-            // 두 번째 줄: 날짜 선택기와 Sucursal 선택기
-            if (_currentReport == 'resumen' || 
-                (_hasMultipleSucursales() && _availableSucursales != null && _availableSucursales!.isNotEmpty))
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Row(
-                  children: [
-                    // Resumen del Día일 때만 날짜 선택기 표시
-                    if (_currentReport == 'resumen')
-                      Flexible(
-                        child: _buildDateSelectorInAppBar(),
-                      ),
-                    // Sucursal 선택 콤보박스 (여러 개일 때만 표시)
-                    if (_hasMultipleSucursales() && _availableSucursales != null && _availableSucursales!.isNotEmpty) ...[
-                      if (_currentReport == 'resumen')
                         const SizedBox(width: 8),
                       Flexible(
-                        child: _buildSucursalSelector(),
+                        child: Text(
+                          _getCurrentReportTitle(),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                          style: const TextStyle(fontSize: 16, color: Colors.white),
+                        ),
                       ),
-                    ],
-                  ],
-                ),
-            ),
-          ],
-        ),
-        actions: [
-          // 보고서 선택 드롭다운 메뉴 (Windows/Mac/iPad에서는 왼쪽 메뉴가 항상 표시되므로 숨김)
-          if (!PlatformUtils.hasPersistentMenu(context))
+                      if (!PlatformUtils.hasPersistentMenu(context)) ...[
+                        const SizedBox(width: 8),
           PopupMenuButton<String>(
-            icon: const Icon(Icons.assessment),
+                          icon: const Icon(Icons.assessment, color: Colors.white),
             tooltip: 'Reportes',
             onSelected: (value) {
               _navigateToReport(value);
@@ -2295,9 +2273,36 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
             itemBuilder: (BuildContext context) => _buildReportMenuItems(),
           ),
         ],
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: _isLoading
+                    ],
+                  ),
+                  // 두 번째 줄: 날짜 선택기와 Sucursal 선택기
+                  if (_currentReport == 'resumen' || 
+                      (_hasMultipleSucursales() && _availableSucursales != null && _availableSucursales!.isNotEmpty))
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Row(
+                        children: [
+                          if (_currentReport == 'resumen')
+                            Flexible(
+                              child: _buildDateSelectorInAppBar(),
+                            ),
+                          if (_hasMultipleSucursales() && _availableSucursales != null && _availableSucursales!.isNotEmpty) ...[
+                            if (_currentReport == 'resumen')
+                              const SizedBox(width: 8),
+                            Flexible(
+                              child: _buildSucursalSelector(),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        // 데이터 콘텐츠
+        Expanded(
+          child: _isLoading
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -2330,36 +2335,14 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 32),
-                            child: Text(
+                                Text(
                               _errorMessage!,
                               textAlign: TextAlign.center,
-                              style: TextStyle(color: Colors.grey[600]),
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          ElevatedButton.icon(
-                            onPressed: _loadData,
-                            icon: const Icon(Icons.refresh),
-                            label: Text(l10n.retry),
-                          ),
-                          const SizedBox(height: 12),
-                          OutlinedButton.icon(
-                            onPressed: () {
-                              Navigator.pushAndRemoveUntil(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const MainConnectionScreen(
-                                    skipAutoConnect: true,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[700],
                                   ),
                                 ),
-                                (route) => false,
-                              );
-                            },
-                            icon: const Icon(Icons.settings_backup_restore),
-                            label: Text(l10n.goBackToConnection),
-                          ),
                         ],
                       ),
                     );
@@ -2514,6 +2497,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                         );
                       },
                     ),
+      ],
     );
   }
 
