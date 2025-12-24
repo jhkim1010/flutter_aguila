@@ -735,8 +735,8 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     );
   }
 
-  Widget _buildDataCard(String title, dynamic value, IconData icon, {bool isCurrency = false}) {
-    return Card(
+  Widget _buildDataCard(String title, dynamic value, IconData icon, {bool isCurrency = false, VoidCallback? onTap}) {
+    Widget cardContent = Card(
       elevation: 2,
       margin: EdgeInsets.zero,
       child: SizedBox(
@@ -794,6 +794,15 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         ),
       ),
     );
+    
+    if (onTap != null) {
+      return InkWell(
+        onTap: onTap,
+        child: cardContent,
+      );
+    }
+    
+    return cardContent;
   }
 
   Widget _buildSection(String title, List<Widget> children, {VoidCallback? onTap, bool useGrid = true}) {
@@ -1166,9 +1175,9 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                                           const Icon(Icons.edit, size: 16, color: Colors.blue),
                                           const SizedBox(width: 8),
                                           const Text('편집', style: TextStyle(fontSize: 11)),
-                                        ],
+                                          ],
+                                        ),
                                       ),
-                                    ),
                                     PopupMenuItem(
                                       value: 'delete',
                                       child: Row(
@@ -1999,8 +2008,8 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                         // Stock Resumen (stock_resumen 또는 stocks 키 확인)
                         // useGrid: false로 설정하여 자체 GridView 사용 (중복 방지)
                         // stocks 데이터가 있으면 항상 표시
-                        Builder(
-                          builder: (context) {
+                          Builder(
+                            builder: (context) {
                             debugPrint('🔍 Stock 섹션 체크: stock_resumen=${_data!.containsKey('stock_resumen')}, stocks=${_data!.containsKey('stocks')}');
                             
                             // stock_resumen 또는 stocks 키 확인
@@ -2016,50 +2025,50 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                             }
                             
                             final stockData = hasStocks && _data!['stocks'] != null
-                                ? {'stocks': _data!['stocks']}
+                                  ? {'stocks': _data!['stocks']}
                                 : (hasStockResumen && _data!['stock_resumen'] != null
                                     ? (_data!['stock_resumen'] is Map<String, dynamic>
                                         ? _data!['stock_resumen'] as Map<String, dynamic>
                                         : <String, dynamic>{})
-                                    : <String, dynamic>{});
+                                      : <String, dynamic>{});
                             
                             debugPrint('   - stockData 키: ${stockData.keys.toList()}');
-                            
-                            final stockWidgets = _buildStockResumenSection(stockData);
+                              
+                              final stockWidgets = _buildStockResumenSection(stockData);
                             
                             debugPrint('   - stockWidgets 개수: ${stockWidgets.length}');
-                            
-                            if (stockWidgets.isNotEmpty) {
-                              return _buildSection(
-                                'Stock Resumen',
-                                stockWidgets,
-                                useGrid: false,
-                                onTap: () {
-                                  if (_isLargeScreen(context)) {
-                                    setState(() {
-                                      _selectedReportType = ReportType.stocks;
-                                      _currentReport = 'stocks';
-                                    });
-                                  } else {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => ReportScreen(
-                                          serverUrl: widget.serverUrl,
-                                          reportType: ReportType.stocks,
-                                          initialDate: _selectedDate,
+                              
+                              if (stockWidgets.isNotEmpty) {
+                                return _buildSection(
+                                  'Stock Resumen',
+                                  stockWidgets,
+                                  useGrid: false,
+                                  onTap: () {
+                                    if (_isLargeScreen(context)) {
+                                      setState(() {
+                                        _selectedReportType = ReportType.stocks;
+                                        _currentReport = 'stocks';
+                                      });
+                                    } else {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => ReportScreen(
+                                            serverUrl: widget.serverUrl,
+                                            reportType: ReportType.stocks,
+                                            initialDate: _selectedDate,
+                                          ),
                                         ),
-                                      ),
-                                    );
-                                  }
-                                },
-                              );
-                            } else {
+                                      );
+                                    }
+                                  },
+                                );
+                              } else {
                               debugPrint('   → stockWidgets가 비어있음');
-                              return const SizedBox.shrink();
-                            }
-                          },
-                        ),
+                                return const SizedBox.shrink();
+                              }
+                            },
+                          ),
                           ],
                         ),
                       ),
@@ -2133,12 +2142,12 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
           actions: [
             // 보고서 선택 드롭다운 메뉴 (Windows/Mac/iPad에서는 왼쪽 메뉴가 항상 표시되므로 숨김)
             if (!PlatformUtils.hasPersistentMenu(context))
-              PopupMenuButton<String>(
-                icon: const Icon(Icons.assessment),
-                tooltip: 'Reportes',
-                onSelected: (value) {
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.assessment),
+              tooltip: 'Reportes',
+              onSelected: (value) {
                   _navigateToReport(value);
-                },
+              },
               itemBuilder: (BuildContext context) => _buildReportMenuItems(),
             ),
           ],
@@ -2184,13 +2193,19 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
             );
           },
         ),
-        title: Row(
+        title: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 첫 번째 줄: 데이터베이스 이름과 보고서 제목
+            Row(
           children: [
             if (_databaseName != null && _databaseName!.isNotEmpty)
-              GestureDetector(
+                  Flexible(
+                    child: GestureDetector(
                 onTap: _showConnectionListDialog,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(16),
@@ -2207,57 +2222,78 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                         color: Colors.white,
                         size: 14,
                       ),
-                      const SizedBox(width: 6),
+                            const SizedBox(width: 4),
                       Flexible(
                         child: Text(
                           _databaseName!,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 12,
+                                  fontSize: 11,
                             fontWeight: FontWeight.w500,
                           ),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
                         ),
                       ),
-                      const SizedBox(width: 4),
+                            const SizedBox(width: 2),
                       const Icon(
                         Icons.arrow_drop_down,
                         color: Colors.white,
-                        size: 16,
+                              size: 14,
                       ),
                     ],
+                        ),
                   ),
                 ),
               ),
             if (_databaseName != null && _databaseName!.isNotEmpty)
-              const SizedBox(width: 12),
-            Expanded(
-              child: Text(_getCurrentReportTitle()),
+                  const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    _getCurrentReportTitle(),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                ),
+              ],
             ),
-            // Resumen del Día일 때만 날짜 선택기 표시
-            if (_currentReport == 'resumen') ...[
-              const SizedBox(width: 8),
-              _buildDateSelectorInAppBar(),
-            ],
-            // Sucursal 선택 콤보박스 (여러 개일 때만 표시)
-            if (_hasMultipleSucursales() && _availableSucursales != null && _availableSucursales!.isNotEmpty) ...[
-              const SizedBox(width: 8),
-              _buildSucursalSelector(),
-            ],
+            // 두 번째 줄: 날짜 선택기와 Sucursal 선택기
+            if (_currentReport == 'resumen' || 
+                (_hasMultipleSucursales() && _availableSucursales != null && _availableSucursales!.isNotEmpty))
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Row(
+                  children: [
+                    // Resumen del Día일 때만 날짜 선택기 표시
+                    if (_currentReport == 'resumen')
+                      Flexible(
+                        child: _buildDateSelectorInAppBar(),
+                      ),
+                    // Sucursal 선택 콤보박스 (여러 개일 때만 표시)
+                    if (_hasMultipleSucursales() && _availableSucursales != null && _availableSucursales!.isNotEmpty) ...[
+                      if (_currentReport == 'resumen')
+                        const SizedBox(width: 8),
+                      Flexible(
+                        child: _buildSucursalSelector(),
+                      ),
+                    ],
+                  ],
+                ),
+            ),
           ],
         ),
         actions: [
           // 보고서 선택 드롭다운 메뉴 (Windows/Mac/iPad에서는 왼쪽 메뉴가 항상 표시되므로 숨김)
           if (!PlatformUtils.hasPersistentMenu(context))
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.assessment),
-              tooltip: 'Reportes',
-              onSelected: (value) {
-                _navigateToReport(value);
-              },
-              itemBuilder: (BuildContext context) => _buildReportMenuItems(),
-            ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.assessment),
+            tooltip: 'Reportes',
+            onSelected: (value) {
+              _navigateToReport(value);
+            },
+            itemBuilder: (BuildContext context) => _buildReportMenuItems(),
+          ),
         ],
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
@@ -2630,13 +2666,13 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       }
       
       debugPrint('   → List 형태 (${filteredGastos.length}개 항목), 합산 시작');
-      final aggregated = <String, dynamic>{
-        'gasto_count': 0,
-        'total_gasto_day': 0.0,
-      };
-      
+    final aggregated = <String, dynamic>{
+      'gasto_count': 0,
+      'total_gasto_day': 0.0,
+    };
+    
       for (var item in filteredGastos) {
-        if (item is Map<String, dynamic>) {
+      if (item is Map<String, dynamic>) {
           final gastoCount = item['gasto_count'] as int? ?? item['count'] as int? ?? 0;
           final totalGastoDay = (item['total_gasto_day'] as num?)?.toDouble() ?? 
                                (item['total'] as num?)?.toDouble() ?? 0.0;
@@ -2651,9 +2687,9 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       }
       
       debugPrint('   → 합산 결과: gasto_count=${aggregated['gasto_count']}, total_gasto_day=${aggregated['total_gasto_day']}');
-      return aggregated;
-    }
-    
+    return aggregated;
+  }
+  
     debugPrint('   → 알 수 없는 형태, 빈 Map 반환');
     return <String, dynamic>{};
   }
@@ -2816,6 +2852,26 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         'Evento de Venta',
         vcodes['operation_count'],
         Icons.shopping_cart,
+        onTap: () {
+          // 해당 날짜의 ventas 보고서로 이동
+          if (_isLargeScreen(context)) {
+            setState(() {
+              _selectedReportType = ReportType.ventas;
+              _currentReport = 'ventas';
+            });
+          } else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ReportScreen(
+                  serverUrl: widget.serverUrl,
+                  reportType: ReportType.ventas,
+                  initialDate: _selectedDate,
+                ),
+              ),
+            );
+          }
+        },
       ));
     }
     
@@ -2928,25 +2984,46 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       final gastoCount = gastos['gasto_count'] ?? gastos['count'];
       if (gastoCount != null && (gastoCount is int || gastoCount is num) && (gastoCount as num) > 0) {
         debugPrint('   → gasto_count 카드 추가: $gastoCount');
-        cards.add(_buildDataCard(
-          'Evento de Gastos',
+      cards.add(_buildDataCard(
+        'Evento de Gastos',
           gastoCount,
-          Icons.receipt_long,
-        ));
-      }
-      
+        Icons.receipt_long,
+        onTap: () {
+          // 해당 날짜의 gastos 보고서로 이동
+          if (_isLargeScreen(context)) {
+            setState(() {
+              _selectedReportType = ReportType.gastos;
+              _currentReport = 'gastos';
+            });
+          } else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ReportScreen(
+                  serverUrl: widget.serverUrl,
+                  reportType: ReportType.gastos,
+                  initialItemsStartDate: _selectedDate,
+                  initialItemsEndDate: _selectedDate,
+                ),
+              ),
+            );
+          }
+        },
+      ));
+    }
+    
       // total_gasto_day 또는 total 필드 확인
       final totalGastoDay = gastos['total_gasto_day'] ?? gastos['total'];
       if (totalGastoDay != null && (totalGastoDay is num) && (totalGastoDay as num) > 0) {
         debugPrint('   → total_gasto_day 카드 추가: $totalGastoDay');
-        cards.add(_buildDataCard(
-          'Total de Gastos',
+      cards.add(_buildDataCard(
+        'Total de Gastos',
           totalGastoDay,
-          Icons.payments,
-          isCurrency: true,
-        ));
+        Icons.payments,
+        isCurrency: true,
+      ));
       }
-      
+
       debugPrint('   → 총 ${cards.length}개 카드 생성');
       return cards;
     } catch (e) {
@@ -2977,73 +3054,113 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
             
             // tipofactura별 카드 추가
             cards.add(
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.receipt, color: Colors.deepPurple),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Factura Tipo $tipofactura',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+              InkWell(
+                onTap: () {
+                  // 해당 날짜의 fventas 보고서로 이동
+                  if (_isLargeScreen(context)) {
+                    setState(() {
+                      _selectedReportType = ReportType.fventas;
+                      _currentReport = 'fventas';
+                    });
+                  } else {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ReportScreen(
+                          serverUrl: widget.serverUrl,
+                          reportType: ReportType.fventas,
+                          initialDate: _selectedDate,
+                          initialItemsStartDate: _selectedDate,
+                          initialItemsEndDate: _selectedDate,
+                        ),
+                      ),
+                    );
+                  }
+                },
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.receipt, color: Colors.deepPurple, size: 20),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                'Factura Tipo $tipofactura',
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Cantidad',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey,
-                                ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text(
+                                    'Cantidad',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    count.toString(),
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                count.toString(),
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text(
+                                    'Total Monto',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Flexible(
+                                    child: Text(
+                                      _formatValue(sumMonto.toDouble(), isCurrency: true),
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.deepPurple,
+                                      ),
+                                      textAlign: TextAlign.end,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              const Text(
-                                'Total Monto',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _formatValue(sumMonto.toDouble(), isCurrency: true),
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.deepPurple,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -3058,75 +3175,120 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         final totalSumMonto = (fventas['total_sum_monto'] as num?)?.toDouble() ?? 0.0;
         
         cards.add(
-          Card(
-            color: Colors.deepPurple.withOpacity(0.1),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
+          InkWell(
+            onTap: () {
+              // 해당 날짜의 fventas 보고서로 이동
+              if (_isLargeScreen(context)) {
+                setState(() {
+                  _selectedReportType = ReportType.fventas;
+                  _currentReport = 'fventas';
+                });
+              } else {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ReportScreen(
+                      serverUrl: widget.serverUrl,
+                      reportType: ReportType.fventas,
+                      initialDate: _selectedDate,
+                      initialItemsStartDate: _selectedDate,
+                      initialItemsEndDate: _selectedDate,
+                    ),
+                  ),
+                );
+              }
+            },
+            child: Card(
+              color: Colors.deepPurple.withOpacity(0.1),
+              child: Padding(
+              padding: const EdgeInsets.all(12.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Icon(Icons.receipt_long, color: Colors.deepPurple),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Total FVentas',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                  Flexible(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.receipt_long, color: Colors.deepPurple, size: 20),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            'Total FVentas',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                  Row(
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          const Text(
-                            'Cantidad Total',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
+                  const SizedBox(width: 12),
+                  Flexible(
+                    flex: 2,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              'Cantidad',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            totalCount.toString(),
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                            const SizedBox(height: 4),
+                            Text(
+                              totalCount.toString(),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
+                          ],
+                        ),
+                        const SizedBox(width: 16),
+                            Flexible(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text(
+                                    'Monto Total',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                              const SizedBox(height: 4),
+                              Flexible(
+                                child: Text(
+                                  _formatValue(totalSumMonto, isCurrency: true),
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.deepPurple,
+                                  ),
+                                  textAlign: TextAlign.end,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      const SizedBox(width: 24),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          const Text(
-                            'Monto Total',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _formatValue(totalSumMonto, isCurrency: true),
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.deepPurple,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
+          ),
           ),
         );
       }
@@ -3284,8 +3446,8 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         
         if (parsedStocks.isEmpty) {
           return [
-            Card(
-              child: Padding(
+              Card(
+                child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Text(
                   'Stock resumen 데이터가 없습니다.',
@@ -3348,52 +3510,52 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                       DataCell(Text(_formatValue(totalHIngresos, isCurrency: true), style: const TextStyle(fontWeight: FontWeight.bold))),
                       DataCell(Text(_formatValue(totalFinalStock), style: const TextStyle(fontWeight: FontWeight.bold))),
                     ],
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
         ];
-      }
-      
-      // Stock resumen 데이터 구조에 따라 표시 (기존 로직)
-      if (stockResumen.containsKey('summary')) {
-        final summary = stockResumen['summary'];
-        if (summary is Map<String, dynamic>) {
+    }
+    
+    // Stock resumen 데이터 구조에 따라 표시 (기존 로직)
+    if (stockResumen.containsKey('summary')) {
+      final summary = stockResumen['summary'];
+      if (summary is Map<String, dynamic>) {
           final cards = <Widget>[];
           
-          // 총 아이템 수
-          if (summary.containsKey('total_items')) {
-            cards.add(_buildDataCard(
-              'Total Items',
-              summary['total_items'].toString(),
-              Icons.inventory_2,
-            ));
-          }
-          
-          // 총 재고량
-          if (summary.containsKey('total_stock')) {
-            cards.add(_buildDataCard(
-              'Total Stock',
-              _formatValue(summary['total_stock']),
-              Icons.warehouse,
-            ));
-          }
-          
-          // 총 판매량
-          if (summary.containsKey('total_venta')) {
-            cards.add(_buildDataCard(
-              'Total Venta',
-              _formatValue(summary['total_venta']),
-              Icons.shopping_cart,
-            ));
-          }
+        // 총 아이템 수
+        if (summary.containsKey('total_items')) {
+          cards.add(_buildDataCard(
+            'Total Items',
+            summary['total_items'].toString(),
+            Icons.inventory_2,
+          ));
+        }
+        
+        // 총 재고량
+        if (summary.containsKey('total_stock')) {
+          cards.add(_buildDataCard(
+            'Total Stock',
+            _formatValue(summary['total_stock']),
+            Icons.warehouse,
+          ));
+        }
+        
+        // 총 판매량
+        if (summary.containsKey('total_venta')) {
+          cards.add(_buildDataCard(
+            'Total Venta',
+            _formatValue(summary['total_venta']),
+            Icons.shopping_cart,
+          ));
+        }
           
           return cards;
-        }
       }
-      
-      // 데이터가 없으면 기본 메시지 표시
+    }
+    
+    // 데이터가 없으면 기본 메시지 표시
       return [
         Card(
           child: Padding(
@@ -3678,52 +3840,9 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         ? DateFormat('yyyy-MM-dd').format(_selectedDate!)
         : 'Seleccionar';
     
-    return SizedBox(
-      width: 150, // 명시적 너비 설정
-      child: InkWell(
-        onTap: _selectDate,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.3),
-              width: 1,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.calendar_today,
-                color: Colors.white,
-                size: 16,
-              ),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  dateText,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Sucursal 선택 콤보박스 빌드
-  Widget _buildSucursalSelector() {
-    return SizedBox(
-      width: 140, // 명시적 너비 설정
+    return InkWell(
+      onTap: _selectDate,
+      borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
@@ -3734,34 +3853,71 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
             width: 1,
           ),
         ),
-        child: DropdownButton<String?>(
-          value: _selectedSucursal,
-          hint: const Text('Total', style: TextStyle(fontSize: 12, color: Colors.white)),
-          underline: const SizedBox(),
-          isDense: true,
-          isExpanded: false, // AppBar의 Row 안에서는 false로 설정
-          dropdownColor: Theme.of(context).colorScheme.inversePrimary,
-          icon: const Icon(Icons.arrow_drop_down, color: Colors.white, size: 20),
-          style: const TextStyle(fontSize: 12, color: Colors.white),
-          items: [
-            const DropdownMenuItem<String?>(
-              value: null,
-              child: Text('Total', style: TextStyle(fontSize: 12, color: Colors.white)),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.calendar_today,
+              color: Colors.white,
+              size: 16,
             ),
-            if (_availableSucursales != null)
-              ..._availableSucursales!.map((sucursal) {
-                return DropdownMenuItem<String?>(
-                  value: sucursal,
-                  child: Text('Sucursal $sucursal', style: const TextStyle(fontSize: 12, color: Colors.white)),
-                );
-              }).toList(),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                dateText,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
-          onChanged: (String? value) {
-            setState(() {
-              _selectedSucursal = value;
-            });
-          },
         ),
+      ),
+    );
+  }
+
+  // Sucursal 선택 콤보박스 빌드
+  Widget _buildSucursalSelector() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: DropdownButton<String?>(
+        value: _selectedSucursal,
+        hint: const Text('Total', style: TextStyle(fontSize: 12, color: Colors.white)),
+        underline: const SizedBox(),
+        isDense: true,
+        isExpanded: false, // AppBar의 Row 안에서는 false로 설정
+        dropdownColor: Theme.of(context).colorScheme.inversePrimary,
+        icon: const Icon(Icons.arrow_drop_down, color: Colors.white, size: 20),
+        style: const TextStyle(fontSize: 12, color: Colors.white),
+        items: [
+          const DropdownMenuItem<String?>(
+            value: null,
+            child: Text('Total', style: TextStyle(fontSize: 12, color: Colors.white)),
+          ),
+          if (_availableSucursales != null)
+            ..._availableSucursales!.map((sucursal) {
+              return DropdownMenuItem<String?>(
+                value: sucursal,
+                child: Text('Sucursal $sucursal', style: const TextStyle(fontSize: 12, color: Colors.white)),
+              );
+            }).toList(),
+        ],
+        onChanged: (String? value) {
+          setState(() {
+            _selectedSucursal = value;
+          });
+        },
       ),
     );
   }
