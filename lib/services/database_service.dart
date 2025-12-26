@@ -20,6 +20,12 @@ class DatabaseService {
   late final TodocodigosApi _todocodigosApi;
   late final ReportsApi _reportsApi;
 
+  // Tipos와 Temporadas 캐시
+  List<Map<String, dynamic>>? _cachedTipos;
+  List<Map<String, dynamic>>? _cachedTemporadas;
+  bool _isLoadingTipos = false;
+  bool _isLoadingTemporadas = false;
+
   DatabaseService({required this.serverUrl}) {
     _httpHandler = HttpRequestHandler(serverUrl: serverUrl);
     _connectionApi = DatabaseConnectionApi(httpHandler: _httpHandler);
@@ -80,11 +86,13 @@ class DatabaseService {
     String? filteringWord,
     String? sortColumn,
     bool? sortAscending,
+    Map<String, dynamic>? filters,
   }) => _codigosApi.getCodigos(
     idCodigo: idCodigo,
     filteringWord: filteringWord,
     sortColumn: sortColumn,
     sortAscending: sortAscending,
+    filters: filters,
   );
 
   /// Codigos 전체 리스트 가져오기
@@ -120,11 +128,13 @@ class DatabaseService {
     String? filteringWord,
     String? sortColumn,
     bool? sortAscending,
+    Map<String, dynamic>? filters,
   }) => _todocodigosApi.getTodocodigos(
     idTodocodigo: idTodocodigo,
     filteringWord: filteringWord,
     sortColumn: sortColumn,
     sortAscending: sortAscending,
+    filters: filters,
   );
 
   /// Todocodigos 리스트 가져오기 (타입 안전)
@@ -264,6 +274,86 @@ class DatabaseService {
     vcodeId: vcodeId,
     sucursal: sucursal,
   );
+
+  // ========== Tipos & Temporadas API ==========
+  
+  /// Tipos 리스트 가져오기 (캐시 사용)
+  Future<List<Map<String, dynamic>>> getTipos({bool forceRefresh = false}) async {
+    if (_cachedTipos != null && !forceRefresh) {
+      return _cachedTipos!;
+    }
+    
+    if (_isLoadingTipos) {
+      // 이미 로딩 중이면 대기
+      while (_isLoadingTipos) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+      return _cachedTipos ?? [];
+    }
+    
+    try {
+      _isLoadingTipos = true;
+      final response = await _reportsApi.getTipos();
+      
+      if (response.containsKey('data') && response['data'] is List) {
+        _cachedTipos = List<Map<String, dynamic>>.from(response['data']);
+        final count = _cachedTipos!.length;
+        final showComboBox = count > 1;
+        print('✅ Tipos: $count개, 콤보박스 표시: ${showComboBox ? "예" : "아니오"}');
+        return _cachedTipos!;
+      }
+      
+      print('⚠️ Tipos 데이터가 비어있거나 형식이 올바르지 않습니다.');
+      return [];
+    } catch (e) {
+      print('❌ Tipos 로드 오류: $e');
+      return [];
+    } finally {
+      _isLoadingTipos = false;
+    }
+  }
+
+  /// Temporadas 리스트 가져오기 (캐시 사용)
+  Future<List<Map<String, dynamic>>> getTemporadas({bool forceRefresh = false}) async {
+    if (_cachedTemporadas != null && !forceRefresh) {
+      return _cachedTemporadas!;
+    }
+    
+    if (_isLoadingTemporadas) {
+      // 이미 로딩 중이면 대기
+      while (_isLoadingTemporadas) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+      return _cachedTemporadas ?? [];
+    }
+    
+    try {
+      _isLoadingTemporadas = true;
+      final response = await _reportsApi.getTemporadas();
+      
+      if (response.containsKey('data') && response['data'] is List) {
+        _cachedTemporadas = List<Map<String, dynamic>>.from(response['data']);
+        final count = _cachedTemporadas!.length;
+        final showComboBox = count > 1;
+        print('✅ Temporadas: $count개, 콤보박스 표시: ${showComboBox ? "예" : "아니오"}');
+        return _cachedTemporadas!;
+      }
+      
+      print('⚠️ Temporadas 데이터가 비어있거나 형식이 올바르지 않습니다.');
+      return [];
+    } catch (e) {
+      print('❌ Temporadas 로드 오류: $e');
+      return [];
+    } finally {
+      _isLoadingTemporadas = false;
+    }
+  }
+
+  /// Tipos와 Temporadas 캐시 초기화 (연결 변경 시 호출)
+  void clearTiposTemporadasCache() {
+    _cachedTipos = null;
+    _cachedTemporadas = null;
+  }
 
   /// 리소스 정리 (HTTP 클라이언트 연결 풀 정리)
   void dispose() {

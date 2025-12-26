@@ -491,7 +491,20 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         password: connection.password,
       );
 
+      // 연결 변경 시 기존 캐시 초기화
+      service.clearTiposTemporadasCache();
+
       final success = await service.connectToDatabase(request);
+      
+      // 데이터베이스 연결 성공 시 tipos와 temporadas 새로 로드
+      if (success) {
+        try {
+          final tipos = await service.getTipos(forceRefresh: true);
+          final temporadas = await service.getTemporadas(forceRefresh: true);
+        } catch (e) {
+          print('⚠️ Tipos/Temporadas 로드 실패 (계속 진행): $e');
+        }
+      }
 
       if (mounted) {
         Navigator.pop(context); // 로딩 다이얼로그 닫기
@@ -969,17 +982,9 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     return false;
   }
 
-  // 왼쪽 패널 빌드 (300px: 상단 보고서 목록, 하단 연결 관리)
-  Widget _buildLeftPanel(BuildContext context) {
-    return Container(
-      width: 300,
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        border: Border(
-          right: BorderSide(color: Colors.grey[300]!, width: 1),
-        ),
-      ),
-      child: Column(
+  // 왼쪽 패널 빌드 (200px: 상단 보고서 목록, 하단 연결 관리)
+  Widget _buildLeftPanel(BuildContext context, {bool forDrawer = false}) {
+    final content = Column(
         children: [
           // 상단: 보고서 목록 (더 크게)
           Expanded(
@@ -1029,7 +1034,23 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
             child: _buildConnectionManagementPanel(context),
           ),
         ],
+    );
+    
+    // Drawer용일 때는 Container 없이 내용만 반환
+    if (forDrawer) {
+      return content;
+    }
+    
+    // 일반 패널용일 때는 Container로 감싸서 반환
+    return Container(
+      width: 200,
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        border: Border(
+          right: BorderSide(color: Colors.grey[300]!, width: 1),
+        ),
       ),
+      child: content,
     );
   }
 
@@ -1646,6 +1667,15 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       Colors.red,
     ));
     
+    // Clientes
+    items.add(_buildReportMenuItem(
+      context,
+      'clientes',
+      'Clientes',
+      Icons.people,
+      Colors.purple,
+    ));
+    
     // Alertas
     items.add(_buildReportMenuItem(
       context,
@@ -2082,82 +2112,16 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
     final isLargeScreen = _isLargeScreen(context);
     
-    // 큰 화면인 경우 분할 레이아웃
+    // 넓은 화면: 좌우 분할 레이아웃 (왼쪽 메뉴 항상 표시)
     if (isLargeScreen) {
       return Scaffold(
-        appBar: AppBar(
-          title: Row(
-            children: [
-              if (_databaseName != null && _databaseName!.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.storage, color: Colors.white, size: 14),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          _databaseName!,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              if (_databaseName != null && _databaseName!.isNotEmpty)
-                const SizedBox(width: 12),
-              Expanded(
-                child: Text(_getCurrentReportTitle()),
-              ),
-              // Resumen del Día일 때만 날짜 선택기 표시
-              if (_currentReport == 'resumen') ...[
-                const SizedBox(width: 12),
-                _buildDateSelectorInAppBar(),
-              ],
-              // Sucursal 선택 콤보박스 (여러 개일 때만 표시)
-              if (_hasMultipleSucursales() && _availableSucursales != null && _availableSucursales!.isNotEmpty) ...[
-                const SizedBox(width: 12),
-                _buildSucursalSelector(),
-              ],
-            ],
-          ),
-          actions: [
-            // 보고서 선택 드롭다운 메뉴 (Windows/Mac/iPad에서는 왼쪽 메뉴가 항상 표시되므로 숨김)
-            if (!PlatformUtils.hasPersistentMenu(context))
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.assessment),
-              tooltip: 'Reportes',
-              onSelected: (value) {
-                  _navigateToReport(value);
-              },
-              itemBuilder: (BuildContext context) => _buildReportMenuItems(),
-            ),
-          ],
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        ),
         body: Row(
           children: [
-            // 왼쪽: 연결 관리 + 보고서 종류 패널 (300px 고정)
+            // 왼쪽: 연결 관리 + 보고서 종류 패널 (200px 고정)
             _buildLeftPanel(context),
-            // 오른쪽: 항상 결과 표시
+            // 오른쪽: 보고서 본문
             Expanded(
               child: _buildReportContent(context),
             ),
@@ -2166,356 +2130,25 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       );
     }
     
-    // 핸드폰: 기존 방식 유지
+    // 좁은 화면: Drawer를 사용하여 메뉴 접근
     return Scaffold(
       appBar: AppBar(
+        title: Text(_databaseName ?? 'Resumen del Día'),
         leading: IconButton(
           icon: const Icon(Icons.menu),
           onPressed: () {
-            showModalBottomSheet(
-              context: context,
-              builder: (context) => SafeArea(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.logout, color: Colors.orange),
-                      title: const Text('연결 끊고 초기 화면으로'),
-                      subtitle: const Text('기존 연결을 끊고 초기 화면으로 이동합니다'),
-                      onTap: () {
-                        Navigator.pop(context);
-                        _disconnectAndGoToInitialScreen();
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            );
+            Scaffold.of(context).openDrawer();
           },
         ),
-        title: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 첫 번째 줄: 데이터베이스 이름과 보고서 제목
-            Row(
-          children: [
-            if (_databaseName != null && _databaseName!.isNotEmpty)
-                  Flexible(
-                    child: GestureDetector(
-                onTap: _showConnectionListDialog,
-                child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.storage,
-                        color: Colors.white,
-                        size: 14,
-                      ),
-                            const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          _databaseName!,
-                          style: const TextStyle(
-                            color: Colors.white,
-                                  fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
-                      ),
-                            const SizedBox(width: 2),
-                      const Icon(
-                        Icons.arrow_drop_down,
-                        color: Colors.white,
-                              size: 14,
-                      ),
-                    ],
-                        ),
-                  ),
-                ),
-              ),
-            if (_databaseName != null && _databaseName!.isNotEmpty)
-                  const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    _getCurrentReportTitle(),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                ),
-              ],
-            ),
-            // 두 번째 줄: 날짜 선택기와 Sucursal 선택기
-            if (_currentReport == 'resumen' || 
-                (_hasMultipleSucursales() && _availableSucursales != null && _availableSucursales!.isNotEmpty))
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Row(
-                  children: [
-                    // Resumen del Día일 때만 날짜 선택기 표시
-                    if (_currentReport == 'resumen')
-                      Flexible(
-                        child: _buildDateSelectorInAppBar(),
-                      ),
-                    // Sucursal 선택 콤보박스 (여러 개일 때만 표시)
-                    if (_hasMultipleSucursales() && _availableSucursales != null && _availableSucursales!.isNotEmpty) ...[
-                      if (_currentReport == 'resumen')
-                        const SizedBox(width: 8),
-                      Flexible(
-                        child: _buildSucursalSelector(),
-                      ),
-                    ],
-                  ],
-                ),
-            ),
-          ],
-        ),
-        actions: [
-          // 보고서 선택 드롭다운 메뉴 (Windows/Mac/iPad에서는 왼쪽 메뉴가 항상 표시되므로 숨김)
-          if (!PlatformUtils.hasPersistentMenu(context))
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.assessment),
-            tooltip: 'Reportes',
-            onSelected: (value) {
-              _navigateToReport(value);
-            },
-            itemBuilder: (BuildContext context) => _buildReportMenuItems(),
-          ),
-        ],
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
-      body: _isLoading
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const CircularProgressIndicator(),
-                  const SizedBox(height: 16),
-                  Text(AppLocalizations.of(context)!.loadingData),
-                ],
-              ),
-            )
-          : _errorMessage != null
-              ? Builder(
-                  builder: (context) {
-                    final l10n = AppLocalizations.of(context)!;
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.error_outline,
-                            size: 64,
-                            color: Colors.red[300],
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            l10n.errorOccurred,
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 32),
-                            child: Text(
-                              _errorMessage!,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(color: Colors.grey[600]),
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          ElevatedButton.icon(
-                            onPressed: _loadData,
-                            icon: const Icon(Icons.refresh),
-                            label: Text(l10n.retry),
-                          ),
-                          const SizedBox(height: 12),
-                          OutlinedButton.icon(
-                            onPressed: () {
-                              Navigator.pushAndRemoveUntil(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const MainConnectionScreen(
-                                    skipAutoConnect: true,
-                                  ),
-                                ),
-                                (route) => false,
-                              );
-                            },
-                            icon: const Icon(Icons.settings_backup_restore),
-                            label: Text(l10n.goBackToConnection),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                )
-              : _data == null || _data!.isEmpty
-                  ? Center(
-                      child: Text(AppLocalizations.of(context)!.noData),
-                    )
-                  : Builder(
-                      builder: (context) {
-                        final l10n = AppLocalizations.of(context)!;
-                        final platformType = PlatformUtils.getPlatformType(context);
-                        final maxWidth = PlatformUtils.getMaxWidth(
-                          context,
-                          mobileMaxWidth: double.infinity,
-                          tabletMaxWidth: 1200,
-                          desktopMaxWidth: 1600,
-                        );
-                        final padding = PlatformUtils.getPadding(
-                          context,
-                          mobilePadding: const EdgeInsets.all(16),
-                          tabletPadding: const EdgeInsets.all(24),
-                          desktopPadding: const EdgeInsets.all(32),
-                        );
-                        
-                        return RefreshIndicator(
-                          onRefresh: _loadData,
-                          child: Center(
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(maxWidth: maxWidth),
-                              child: _hasMultipleSucursales()
-                                  ? Padding(
-                                      padding: padding,
-                                      child: _buildComparisonView(l10n),
-                                    )
-                                  : SingleChildScrollView(
-                                      child: Container(
-                                        width: double.infinity,
-                                        padding: padding,
-                                        child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                                      children: [
-                                        // 날짜 표시는 AppBar에 있으므로 본문에서는 제거
-
-                                        // 판매 통계 (vcodes) - 배열이면 첫 번째 항목 사용
-                                        if (_data!.containsKey('vcodes'))
-                                          _buildSection(
-                                            l10n.salesStatistics,
-                                            _buildVcodesSection(
-                                              _data!['vcodes'] is List && (_data!['vcodes'] as List).isNotEmpty
-                                                  ? ((_data!['vcodes'] as List).first is Map<String, dynamic>
-                                                      ? (_data!['vcodes'] as List).first as Map<String, dynamic>
-                                                      : <String, dynamic>{})
-                                                  : (_data!['vcodes'] is Map<String, dynamic>
-                                                      ? _data!['vcodes'] as Map<String, dynamic>
-                                                      : <String, dynamic>{})
-                                            ),
-                                            onTap: () {
-                                              // 해당 날짜의 venta lista를 요청하는 화면으로 이동
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (context) => ReportScreen(
-                                                    serverUrl: widget.serverUrl,
-                                                    reportType: ReportType.ventas,
-                                                    initialDate: _selectedDate,
-                                                  ),
-                                                ),
-                                              );
-                                            },
-                                          ),
-
-                                        // 지출 통계 (gastos) - 대형 화면에서 그리드 형태로 표시
-                                        if (_data!.containsKey('gastos'))
-                                          _buildSection(
-                                            l10n.expenseStatistics,
-                                            _buildGastosSection(
-                                              _data!['gastos'] is List && (_data!['gastos'] as List).isNotEmpty
-                                                  ? ((_data!['gastos'] as List).first is Map<String, dynamic>
-                                                      ? (_data!['gastos'] as List).first as Map<String, dynamic>
-                                                      : <String, dynamic>{})
-                                                  : (_data!['gastos'] is Map<String, dynamic>
-                                                      ? _data!['gastos'] as Map<String, dynamic>
-                                                      : <String, dynamic>{})
-                                            ),
-                                            // useGrid: true (기본값) - 대형 화면에서 그리드 형태로 표시
-                                          ),
-
-                                        // 할인 통계 (vdetalle) - 대형 화면에서 그리드 형태로 표시
-                                        if (_data!.containsKey('vdetalle'))
-                                          _buildSection(
-                                            l10n.discountStatistics,
-                                            _buildVdetalleSection(
-                                              _data!['vdetalle'] is List && (_data!['vdetalle'] as List).isNotEmpty
-                                                  ? ((_data!['vdetalle'] as List).first is Map<String, dynamic>
-                                                      ? (_data!['vdetalle'] as List).first as Map<String, dynamic>
-                                                      : <String, dynamic>{})
-                                                  : (_data!['vdetalle'] is Map<String, dynamic>
-                                                      ? _data!['vdetalle'] as Map<String, dynamic>
-                                                      : <String, dynamic>{})
-                                            ),
-                                            // useGrid: true (기본값) - 대형 화면에서 그리드 형태로 표시
-                                          ),
-
-                                        // 결제 통계 (vcodes_mpago) - 대형 화면에서 그리드 형태로 표시
-                                        if (_data!.containsKey('vcodes_mpago'))
-                                          _buildSection(
-                                            l10n.mercadoPagoStatistics,
-                                            _buildMpagoSection(
-                                              _data!['vcodes_mpago'] is List && (_data!['vcodes_mpago'] as List).isNotEmpty
-                                                  ? ((_data!['vcodes_mpago'] as List).first is Map<String, dynamic>
-                                                      ? (_data!['vcodes_mpago'] as List).first as Map<String, dynamic>
-                                                      : <String, dynamic>{})
-                                                  : (_data!['vcodes_mpago'] is Map<String, dynamic>
-                                                      ? _data!['vcodes_mpago'] as Map<String, dynamic>
-                                                      : <String, dynamic>{})
-                                            ),
-                                            // useGrid: true (기본값) - 대형 화면에서 그리드 형태로 표시
-                                          ),
-
-                                        // Stock Resumen (stock_resumen 또는 stocks 키 확인)
-                                        // useGrid: false로 설정하여 자체 GridView 사용 (중복 방지)
-                                        if (_data!.containsKey('stock_resumen') || _data!.containsKey('stocks'))
-                                          _buildSection(
-                                            'Stock Resumen',
-                                            _buildStockResumenSection(
-                                              _data!.containsKey('stocks') 
-                                                ? {'stocks': _data!['stocks']}
-                                                : _data!['stock_resumen']
-                                            ),
-                                            useGrid: false,
-                                            onTap: () {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (context) => ReportScreen(
-                                                    serverUrl: widget.serverUrl,
-                                                    reportType: ReportType.stocks,
-                                                    initialDate: _selectedDate,
-                                                  ),
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+      drawer: Drawer(
+        width: 280, // Drawer 너비
+        child: _buildLeftPanel(context, forDrawer: true),
+      ),
+      body: _buildReportContent(context),
     );
   }
+
 
   Widget _buildDateHeader(String fecha) {
     return GestureDetector(

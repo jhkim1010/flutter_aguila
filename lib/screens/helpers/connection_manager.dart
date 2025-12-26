@@ -114,9 +114,20 @@ class ConnectionManager {
         password: connection.password,
       );
 
+      // 연결 변경 시 기존 캐시 초기화
+      service.clearTiposTemporadasCache();
+      
       final success = await service.connectToDatabase(request);
-
+      
+      // 데이터베이스 연결 성공 시 tipos와 temporadas 새로 로드
       if (success) {
+        try {
+          final tipos = await service.getTipos(forceRefresh: true);
+          final temporadas = await service.getTemporadas(forceRefresh: true);
+        } catch (e) {
+          print('⚠️ Tipos/Temporadas 로드 실패 (계속 진행): $e');
+        }
+        
         // 연결 정보를 하이브리드 저장소에 저장
         await SecureStorageHelper.save('database_name', connection.databaseName);
         await SecureStorageHelper.save('username', connection.username);

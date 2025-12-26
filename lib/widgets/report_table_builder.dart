@@ -656,7 +656,22 @@ class ReportTableBuilder {
                         rows: displayedList.map((item) {
                           if (item is Map<String, dynamic>) {
                             var cells = keys.map((key) {
-                              final value = item[key];
+                              // 키 이름 대소문자 구분 없이 찾기
+                              final actualKey = item.keys.firstWhere(
+                                (k) => k.toLowerCase() == key.toLowerCase(),
+                                orElse: () => key,
+                              );
+                              final value = item[actualKey];
+                              
+                              // 디버깅: tpago, tefectivo, tbanco, treservado, tfavor 값 확인 (첫 번째 행만)
+                              if (displayedList.indexOf(item) == 0 && 
+                                  (key.toLowerCase() == 'tpago' || 
+                                   key.toLowerCase() == 'tefectivo' || 
+                                   key.toLowerCase() == 'tbanco' || 
+                                   key.toLowerCase() == 'treservado' || 
+                                   key.toLowerCase() == 'tfavor')) {
+                                print('🔍 Alertas ${key.toUpperCase()} 값 확인 - key: $key, actualKey: $actualKey, value: $value, 타입: ${value?.runtimeType}');
+                              }
                               
                               final keyLower = key.toLowerCase();
                               final isEventoColumn = keyLower == 'evento';
@@ -766,7 +781,24 @@ class ReportTableBuilder {
                       if (item is Map<String, dynamic>) {
                         // keys의 각 키에 대해 셀 생성 (키가 없어도 셀은 생성)
                         var cells = keys.map((key) {
-                          final value = item[key];
+                          // 키 이름 대소문자 구분 없이 찾기
+                          final actualKey = item.keys.firstWhere(
+                            (k) => k.toLowerCase() == key.toLowerCase(),
+                            orElse: () => key,
+                          );
+                          final value = item[actualKey];
+                          
+                          // 디버깅: tpago, tefectivo, tbanco, treservado, tfavor 값 확인
+                          if (key.toLowerCase() == 'tpago' || 
+                              key.toLowerCase() == 'tefectivo' || 
+                              key.toLowerCase() == 'tbanco' || 
+                              key.toLowerCase() == 'treservado' || 
+                              key.toLowerCase() == 'tfavor') {
+                            if (value == null || value == 0) {
+                              print('⚠️ ${key.toUpperCase()} 값 확인 - key: $key, actualKey: $actualKey, value: $value, 타입: ${value?.runtimeType}');
+                              print('   item의 모든 키: ${item.keys.toList()}');
+                            }
+                          }
                           String formattedValue;
                           
                           // codigo 관련 칼럼은 문자로 처리 (숫자 포맷팅 제외)

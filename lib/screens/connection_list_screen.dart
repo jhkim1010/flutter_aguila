@@ -159,6 +159,9 @@ class _ConnectionListScreenState extends State<ConnectionListScreen> {
     try {
       final service = DatabaseService(serverUrl: connection.serverUrl);
       
+      // 연결 변경 시 기존 캐시 초기화
+      service.clearTiposTemporadasCache();
+      
       final request = DatabaseConnectionRequest(
         databaseName: connection.databaseName,
         username: connection.username,
@@ -166,6 +169,16 @@ class _ConnectionListScreenState extends State<ConnectionListScreen> {
       );
 
       final success = await service.connectToDatabase(request);
+      
+      // 데이터베이스 연결 성공 시 tipos와 temporadas 새로 로드
+      if (success) {
+        try {
+          final tipos = await service.getTipos(forceRefresh: true);
+          final temporadas = await service.getTemporadas(forceRefresh: true);
+        } catch (e) {
+          print('⚠️ Tipos/Temporadas 로드 실패 (계속 진행): $e');
+        }
+      }
 
       if (success && mounted) {
         Navigator.pushReplacement(

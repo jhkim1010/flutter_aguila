@@ -15,6 +15,7 @@ class TodocodigosApi {
     String? filteringWord,
     String? sortColumn,
     bool? sortAscending,
+    Map<String, dynamic>? filters,
   }) async {
     final endpoint = '/api/todocodigos';
     final queryParams = <String, String>{};
@@ -33,30 +34,13 @@ class TodocodigosApi {
       queryParams['sort_ascending'] = (sortAscending ?? true) ? 'true' : 'false';
     }
     
-    // Todocodigos 요청 헤더와 쿼리 파라미터 출력
-    final headers = await _httpHandler.getDatabaseHeaders();
-    print('\n');
-    print('═══════════════════════════════════════════════════════════');
-    print('═══════════════════════════════════════════════════════════');
-    final uri = Uri.parse('${_httpHandler.serverUrl}$endpoint').replace(
-      queryParameters: queryParams.isNotEmpty ? queryParams : null,
-    );
-    print('🌐 Todocodigos 요청 URL: $uri');
-    print('');
-    print('📋 Headers:');
-    headers.forEach((key, value) {
-      final displayValue = key == 'x-db-password' ? '***' : value;
-      print('   $key: $displayValue');
-    });
-    if (queryParams.isNotEmpty) {
-      print('');
-      print('🔍 Query Parameters:');
-      queryParams.forEach((key, value) {
-        print('   $key: $value');
+    if (filters != null) {
+      filters.forEach((key, value) {
+        if (value != null) {
+          queryParams[key] = value.toString();
+        }
       });
     }
-    print('═══════════════════════════════════════════════════════════');
-    print('\n');
     
     return await _httpHandler.performGetRequest(
       endpoint,

@@ -175,7 +175,19 @@ class ReportsApi {
         throw Exception('필수 헤더 정보가 없습니다: x-db-user, x-db-password, x-db-name');
       }
       
-      print('=== Ventas 요청 헤더 (필터링됨) ===');
+      // 최종 요청 URL 구성
+      final uri = Uri.parse('${_httpHandler.serverUrl}$endpoint');
+      final uriWithQuery = queryParams.isNotEmpty
+          ? uri.replace(queryParameters: queryParams)
+          : uri;
+      
+      print('\n═══════════════════════════════════════════════════════════');
+      print('═══════════════════════════════════════════════════════════');
+      print('=== Ventas 보고서 요청 (descontado 포함) ===');
+      print('═══════════════════════════════════════════════════════════');
+      print('📡 요청 메서드: GET');
+      print('🔗 최종 URL: $uriWithQuery');
+      print('\n📋 요청 헤더:');
       ventasHeaders.forEach((key, value) {
         // 비밀번호는 보안상 일부만 표시
         if (key == 'x-db-password') {
@@ -193,13 +205,23 @@ class ReportsApi {
         }
       });
       
-      // Query Parameters 출력
+      // Query Parameters 출력 (체크박스 파라미터 강조)
       if (queryParams.isNotEmpty) {
-        print('=== Ventas 요청 파라미터 ===');
+        print('\n📝 Query Parameters (URL에 포함됨):');
         queryParams.forEach((key, value) {
-          print('  $key: $value');
+          // 체크박스 파라미터 강조 표시
+          if (key == 'descontado' || key == 'reservado' || key == 'credito') {
+            print('  ✅ $key: $value ⬅️ [체크박스 상태]');
+          } else {
+            print('  $key: $value');
+          }
         });
       }
+      
+      print('\n💡 참고: GET 요청이므로 Request Body는 없습니다.');
+      print('   모든 파라미터는 URL의 Query String으로 전송됩니다.');
+      print('═══════════════════════════════════════════════════════════');
+      print('═══════════════════════════════════════════════════════════\n');
       
       // 필터링된 헤더로 직접 GET 요청 수행
       return await _httpHandler.performGetRequestWithHeaders(
@@ -355,53 +377,12 @@ class ReportsApi {
         throw Exception('필수 헤더 정보가 없습니다: x-db-user, x-db-password, x-db-name');
       }
       
-      // URL 구성
-      final uri = Uri.parse('${_httpHandler.serverUrl}$endpoint');
-      final uriWithQuery = queryParams.isNotEmpty
-          ? uri.replace(queryParameters: queryParams)
-          : uri;
-      
-      print('\n═══════════════════════════════════════════════════════════');
-      print('═══════════════════════════════════════════════════════════');
-      print('=== FVentas 요청 ===');
-      print('URL: $uriWithQuery');
-      print('Headers:');
-      fventasHeaders.forEach((key, value) {
-        // 비밀번호는 마스킹 처리
-        if (key.toLowerCase().contains('password')) {
-          print('  $key: ${'*' * (value.length > 0 ? value.length : 8)}');
-        } else {
-          print('  $key: $value');
-        }
-      });
-      if (queryParams.isNotEmpty) {
-        print('Query Parameters:');
-        queryParams.forEach((key, value) {
-          print('  $key: $value');
-        });
-      }
-      print('═══════════════════════════════════════════════════════════');
-      
       // 필터링된 헤더로 직접 GET 요청 수행
       final response = await _httpHandler.performGetRequestWithHeaders(
         endpoint,
         headers: fventasHeaders,
         queryParameters: queryParams.isNotEmpty ? queryParams : null,
       );
-      
-      print('=== FVentas 응답 바디 ===');
-      try {
-        final responseJson = json.encode(response);
-        if (responseJson.length > 2000) {
-          print('${responseJson.substring(0, 2000)}... (${responseJson.length} bytes total)');
-        } else {
-          print(responseJson);
-        }
-      } catch (e) {
-        print('응답 바디 직렬화 오류: $e');
-        print('응답: $response');
-      }
-      print('═══════════════════════════════════════════════════════════\n');
       
       return response;
     } catch (e) {
@@ -594,5 +575,17 @@ class ReportsApi {
     print('═══════════════════════════════════════════════════════════\n');
     
     return response;
+  }
+
+  /// Tipos 리스트 가져오기
+  Future<Map<String, dynamic>> getTipos() async {
+    final endpoint = '/api/tipos';
+    return await _httpHandler.performGetRequest(endpoint);
+  }
+
+  /// Temporadas 리스트 가져오기
+  Future<Map<String, dynamic>> getTemporadas() async {
+    final endpoint = '/api/temporadas';
+    return await _httpHandler.performGetRequest(endpoint);
   }
 }

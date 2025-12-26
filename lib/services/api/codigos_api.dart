@@ -13,6 +13,7 @@ class CodigosApi {
     String? filteringWord,
     String? sortColumn,
     bool? sortAscending,
+    Map<String, dynamic>? filters,
   }) async {
     final endpoint = '/api/codigos';
     final queryParams = <String, String>{};
@@ -33,10 +34,13 @@ class CodigosApi {
       queryParams['sort_ascending'] = (sortAscending ?? true) ? 'true' : 'false';
     }
     
-    final uri = Uri.parse('${_httpHandler.serverUrl}$endpoint').replace(
-      queryParameters: queryParams.isNotEmpty ? queryParams : null,
-    );
-    print('🌐 Codigos 요청 URL: $uri');
+    if (filters != null) {
+      filters.forEach((key, value) {
+        if (value != null) {
+          queryParams[key] = value.toString();
+        }
+      });
+    }
     
     return await _httpHandler.performGetRequest(
       endpoint,

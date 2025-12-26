@@ -440,7 +440,20 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
       print('데이터베이스: ${_databaseNameController.text.trim()}');
       print('사용자: ${_usernameController.text.trim()}');
       
+      // 연결 변경 시 기존 캐시 초기화
+      service.clearTiposTemporadasCache();
+      
       final success = await service.connectToDatabase(request);
+      
+      // 데이터베이스 연결 성공 시 tipos와 temporadas 새로 로드
+      if (success) {
+        try {
+          final tipos = await service.getTipos(forceRefresh: true);
+          final temporadas = await service.getTemporadas(forceRefresh: true);
+        } catch (e) {
+          print('⚠️ Tipos/Temporadas 로드 실패 (계속 진행): $e');
+        }
+      }
 
       if (success && mounted) {
         print('✅ 연결 성공 - 정보 저장 및 상태 업데이트');
