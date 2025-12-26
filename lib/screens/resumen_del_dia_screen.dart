@@ -1753,6 +1753,10 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         initialItemsStartDate: widget.initialItemsStartDate ?? _currentItemsStartDate,
         initialItemsEndDate: widget.initialItemsEndDate ?? _currentItemsEndDate,
         useFullWidth: true, // resumen del dia에서 사용 시 전체 너비 사용
+        onMenuPressed: !_isLargeScreen(context) ? () {
+          // 좁은 화면일 때 Drawer 열기
+          Scaffold.of(context).openDrawer();
+        } : null,
         onStateChanged: (filteringWord, sortColumn, sortAscending) {
           // 보고서 상태 변경 시 저장 (연결 변경 시 유지용)
           setState(() {
@@ -2131,16 +2135,8 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     }
     
     // 좁은 화면: Drawer를 사용하여 메뉴 접근
+    // ReportScreen이 useFullWidth: true로 자체 AppBar를 가지므로 Scaffold의 AppBar는 제거
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_databaseName ?? 'Resumen del Día'),
-        leading: IconButton(
-          icon: const Icon(Icons.menu),
-          onPressed: () {
-            Scaffold.of(context).openDrawer();
-          },
-        ),
-      ),
       drawer: Drawer(
         width: 280, // Drawer 너비
         child: _buildLeftPanel(context, forDrawer: true),

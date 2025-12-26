@@ -12,3 +12,7 @@ PRODUCT_BUNDLE_IDENTIFIER = com.example.flutterApp
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2025 com.example. All rights reserved.
+
+// Version information from pubspec.yaml (1.0.0+1)
+MARKETING_VERSION = 1.0.0
+CURRENT_PROJECT_VERSION = 1

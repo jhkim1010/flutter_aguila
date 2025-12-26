@@ -1624,7 +1624,8 @@ class ReportTableBuilder {
     
     for (var key in keys) {
       final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1';
-      if (isCodigoColumn) continue; // 문자 칼럼은 합계 계산 제외
+      final isDniColumn = key == 'dni' || key == 'DNI';
+      if (isCodigoColumn || isDniColumn) continue; // 문자 칼럼 및 DNI 칼럼은 합계 계산 제외
       
       num sum = 0;
       for (var item in displayedList) {
@@ -1678,9 +1679,10 @@ class ReportTableBuilder {
             final index = entry.key;
             final key = entry.value;
             final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1';
+            final isDniColumn = key == 'dni' || key == 'DNI';
             final columnWidth = columnWidths[key] ?? 150.0;
             
-            if (isCodigoColumn) {
+            if (isCodigoColumn || isDniColumn) {
               return SizedBox(
                 width: columnWidth + (index < keys.length - 1 ? 8 : 0), // 마지막 컬럼 제외하고 8px 간격 추가
                 child: Padding(
@@ -1867,7 +1869,8 @@ class ReportTableBuilder {
     for (var key in keys) {
       final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1';
       final isDateColumn = key == 'fecha' || key == 'month' || key == 'year' || key == 'hora';
-      if (isCodigoColumn || isDateColumn) continue; // 문자 칼럼 및 날짜 칼럼은 합계 계산 제외
+      final isDniColumn = key == 'dni' || key == 'DNI';
+      if (isCodigoColumn || isDateColumn || isDniColumn) continue; // 문자 칼럼, 날짜 칼럼, DNI 칼럼은 합계 계산 제외
       
       num sum = 0;
       for (var item in dataList) {
@@ -1891,7 +1894,8 @@ class ReportTableBuilder {
       cells: keys.map((key) {
         final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1';
         final isDateColumn = key == 'fecha' || key == 'month' || key == 'year' || key == 'hora';
-        if (isCodigoColumn || isDateColumn) {
+        final isDniColumn = key == 'dni' || key == 'DNI';
+        if (isCodigoColumn || isDateColumn || isDniColumn) {
           return DataCell(
             Align(
               alignment: Alignment.centerLeft,
