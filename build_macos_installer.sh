@@ -44,11 +44,12 @@ fi
 cd ..
 
 # 빌드 전 정리 (선택사항)
-read -p "🧹 이전 빌드를 정리하시겠습니까? (y/n): " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
+# 자동 모드: 환경 변수 CLEAN_BUILD가 설정되어 있으면 정리, 아니면 건너뜀
+if [[ "${CLEAN_BUILD:-n}" =~ ^[Yy]$ ]]; then
     echo "🧹 이전 빌드 정리 중..."
     flutter clean
+else
+    echo "🧹 이전 빌드 정리 건너뜀..."
 fi
 
 # Release macOS 빌드
@@ -230,9 +231,8 @@ if [ -f "$DMG_PATH" ]; then
     echo ""
     
     # Finder에서 DMG 파일 열기 (선택사항)
-    read -p "📂 Finder에서 DMG 파일을 열까요? (y/n): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
+    # 자동 모드: 환경 변수 OPEN_FINDER가 설정되어 있으면 열기
+    if [[ "${OPEN_FINDER:-n}" =~ ^[Yy]$ ]]; then
         open -R "$DMG_PATH"
     fi
 else
