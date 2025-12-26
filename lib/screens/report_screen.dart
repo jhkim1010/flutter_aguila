@@ -1620,14 +1620,28 @@ class _ReportScreenState extends State<ReportScreen> {
         final isLargeScreen = constraints.maxWidth >= 800;
         final orientation = MediaQuery.of(context).orientation;
         final isMobilePortrait = !isLargeScreen && orientation == Orientation.portrait;
-        final needsTwoLineAppBar = !isLargeScreen && (
-          widget.reportType == ReportType.ventas ||
-          widget.reportType == ReportType.items ||
-          widget.reportType == ReportType.ingresos ||
-          widget.reportType == ReportType.gastos ||
-          widget.reportType == ReportType.alertas ||
-          widget.reportType == ReportType.fventas
-        );
+        final platformType = PlatformUtils.getPlatformType(context);
+        final isMobile = platformType == PlatformType.mobile;
+        
+        // 핸드폰의 경우: 넓은 화면(가로 모드)이면 1줄, 좁은 화면(세로 모드)이면 2줄
+        // 데스크톱/태블릿의 경우: 기존 로직 유지
+        final needsTwoLineAppBar = isMobile
+            ? isMobilePortrait && (
+                widget.reportType == ReportType.ventas ||
+                widget.reportType == ReportType.items ||
+                widget.reportType == ReportType.ingresos ||
+                widget.reportType == ReportType.gastos ||
+                widget.reportType == ReportType.alertas ||
+                widget.reportType == ReportType.fventas
+              )
+            : !isLargeScreen && (
+                widget.reportType == ReportType.ventas ||
+                widget.reportType == ReportType.items ||
+                widget.reportType == ReportType.ingresos ||
+                widget.reportType == ReportType.gastos ||
+                widget.reportType == ReportType.alertas ||
+                widget.reportType == ReportType.fventas
+              );
 
     // useFullWidth가 true이면 Scaffold를 반환하지 않고 AppBar와 body를 포함한 위젯 반환
     if (widget.useFullWidth) {
@@ -1650,27 +1664,82 @@ class _ReportScreenState extends State<ReportScreen> {
         automaticallyImplyLeading: false,
             toolbarHeight: needsTwoLineAppBar ? kToolbarHeight * 2 : null,
         title: widget.reportType == ReportType.stocks
-            ? Row(
-                children: [
-                  Icon(reportIcon, color: Colors.white),
-                  const SizedBox(width: 8),
-                  Text(reportTitle),
-                  const SizedBox(width: 16),
-                  // Tipo와 Temporada 콤보박스 (filteringWord 왼쪽)
-                  if (_tiposList.length > 1 || _temporadasList.length > 1) ...[
-                    if (_tiposList.length > 1) ...[
-                      _buildTipoSelector(),
+            ? LayoutBuilder(
+                builder: (context, constraints) {
+                  final isLargeScreen = constraints.maxWidth >= 800;
+                  final orientation = MediaQuery.of(context).orientation;
+                  final platformType = PlatformUtils.getPlatformType(context);
+                  final isMobile = platformType == PlatformType.mobile;
+                  // 핸드폰의 경우: 세로 모드일 때만 2줄, 가로 모드일 때는 1줄
+                  final isMobilePortrait = isMobile && !isLargeScreen && orientation == Orientation.portrait;
+                  
+                  // 핸드폰 세로 모드: 2줄로 배치
+                  if (isMobilePortrait) {
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 첫 번째 줄: 아이콘, 제목
+                        Row(
+                          children: [
+                            Icon(reportIcon, color: Colors.white),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                reportTitle,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 16),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        // 두 번째 줄: Tipo, Temporada 콤보박스, 필터링 단어 필드
+                        Row(
+                          children: [
+                            if (_tiposList.length > 1 || _temporadasList.length > 1) ...[
+                              if (_tiposList.length > 1) ...[
+                                _buildTipoSelector(),
+                                const SizedBox(width: 8),
+                              ],
+                              if (_temporadasList.length > 1) ...[
+                                _buildTemporadaSelector(),
+                                const SizedBox(width: 8),
+                              ],
+                            ],
+                            Expanded(
+                              child: _buildFilteringWordFieldInAppBar(),
+                            ),
+                          ],
+                        ),
+                      ],
+                    );
+                  }
+                  
+                  // 넓은 화면: 1줄로 배치
+                  return Row(
+                    children: [
+                      Icon(reportIcon, color: Colors.white),
                       const SizedBox(width: 8),
+                      Text(reportTitle),
+                      const SizedBox(width: 16),
+                      // Tipo와 Temporada 콤보박스 (filteringWord 왼쪽)
+                      if (_tiposList.length > 1 || _temporadasList.length > 1) ...[
+                        if (_tiposList.length > 1) ...[
+                          _buildTipoSelector(),
+                          const SizedBox(width: 8),
+                        ],
+                        if (_temporadasList.length > 1) ...[
+                          _buildTemporadaSelector(),
+                          const SizedBox(width: 8),
+                        ],
+                      ],
+                      Expanded(
+                        child: _buildFilteringWordFieldInAppBar(),
+                      ),
                     ],
-                    if (_temporadasList.length > 1) ...[
-                      _buildTemporadaSelector(),
-                      const SizedBox(width: 8),
-                    ],
-                  ],
-                  Expanded(
-                    child: _buildFilteringWordFieldInAppBar(),
-                  ),
-                ],
+                  );
+                },
               )
             : (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas || widget.reportType == ReportType.fventas)
                 ? LayoutBuilder(
@@ -1816,9 +1885,12 @@ class _ReportScreenState extends State<ReportScreen> {
                         builder: (context, constraints) {
                           final isLargeScreen = constraints.maxWidth >= 800;
                           final orientation = MediaQuery.of(context).orientation;
-                          final isMobilePortrait = !isLargeScreen && orientation == Orientation.portrait;
+                          final platformType = PlatformUtils.getPlatformType(context);
+                          final isMobile = platformType == PlatformType.mobile;
+                          // 핸드폰의 경우: 세로 모드일 때만 2줄, 가로 모드일 때는 1줄
+                          final isMobilePortrait = isMobile && !isLargeScreen && orientation == Orientation.portrait;
                           
-                          // 좁은 화면: 2줄로 배치
+                          // 핸드폰 세로 모드: 2줄로 배치
                           if (isMobilePortrait) {
                             return Column(
                               mainAxisSize: MainAxisSize.min,
@@ -2141,28 +2213,83 @@ class _ReportScreenState extends State<ReportScreen> {
                         },
                       )
                     : (widget.reportType == ReportType.codigos || widget.reportType == ReportType.todocodigos)
-                        ? Row(
-                            children: [
-                              Icon(reportIcon, color: Colors.white),
-                              const SizedBox(width: 8),
-                              Text(reportTitle),
-                              const SizedBox(width: 16),
-                              // Tipo와 Temporada 콤보박스 (filteringWord 왼쪽)
-                              if (_tiposList.length > 1 || _temporadasList.length > 1) ...[
-                                if (_tiposList.length > 1) ...[
-                                  _buildTipoSelector(),
+                        ? LayoutBuilder(
+                            builder: (context, constraints) {
+                              final isLargeScreen = constraints.maxWidth >= 800;
+                              final orientation = MediaQuery.of(context).orientation;
+                              final platformType = PlatformUtils.getPlatformType(context);
+                              final isMobile = platformType == PlatformType.mobile;
+                              // 핸드폰의 경우: 세로 모드일 때만 2줄, 가로 모드일 때는 1줄
+                              final isMobilePortrait = isMobile && !isLargeScreen && orientation == Orientation.portrait;
+                              
+                              // 핸드폰 세로 모드: 2줄로 배치
+                              if (isMobilePortrait) {
+                                return Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // 첫 번째 줄: 아이콘, 제목
+                                    Row(
+                                      children: [
+                                        Icon(reportIcon, color: Colors.white),
+                                        const SizedBox(width: 8),
+                                        Flexible(
+                                          child: Text(
+                                            reportTitle,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(fontSize: 16),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    // 두 번째 줄: Tipo, Temporada 콤보박스, 필터링 단어 필드
+                                    Row(
+                                      children: [
+                                        if (_tiposList.length > 1 || _temporadasList.length > 1) ...[
+                                          if (_tiposList.length > 1) ...[
+                                            _buildTipoSelector(),
+                                            const SizedBox(width: 8),
+                                          ],
+                                          if (_temporadasList.length > 1) ...[
+                                            _buildTemporadaSelector(),
+                                            const SizedBox(width: 8),
+                                          ],
+                                        ],
+                                        Expanded(
+                                          child: _buildFilteringWordFieldInAppBar(),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                );
+                              }
+                              
+                              // 넓은 화면: 1줄로 배치
+                              return Row(
+                                children: [
+                                  Icon(reportIcon, color: Colors.white),
                                   const SizedBox(width: 8),
+                                  Text(reportTitle),
+                                  const SizedBox(width: 16),
+                                  // Tipo와 Temporada 콤보박스 (filteringWord 왼쪽)
+                                  if (_tiposList.length > 1 || _temporadasList.length > 1) ...[
+                                    if (_tiposList.length > 1) ...[
+                                      _buildTipoSelector(),
+                                      const SizedBox(width: 8),
+                                    ],
+                                    if (_temporadasList.length > 1) ...[
+                                      _buildTemporadaSelector(),
+                                      const SizedBox(width: 8),
+                                    ],
+                                  ],
+                                  Expanded(
+                                    child: _buildFilteringWordFieldInAppBar(),
+                                  ),
                                 ],
-                                if (_temporadasList.length > 1) ...[
-                                  _buildTemporadaSelector(),
-                                  const SizedBox(width: 8),
-                                ],
-                              ],
-                          Expanded(
-                            child: _buildFilteringWordFieldInAppBar(),
-                          ),
-                        ],
-                      )
+                              );
+                            },
+                          )
                     : widget.reportType == ReportType.stocks
                         ? LayoutBuilder(
                             builder: (context, constraints) {
@@ -2409,36 +2536,94 @@ class _ReportScreenState extends State<ReportScreen> {
             )
           : null,
       title: widget.reportType == ReportType.stocks
-          ? Row(
-              children: [
-                Icon(reportIcon, color: Colors.white),
-                const SizedBox(width: 8),
-                Text(reportTitle),
-                const SizedBox(width: 16),
-                // Tipo와 Temporada 콤보박스 (filteringWord 왼쪽)
-                if (_tiposList.length > 1 || _temporadasList.length > 1) ...[
-                  if (_tiposList.length > 1) ...[
-                    _buildTipoSelector(),
+          ? LayoutBuilder(
+              builder: (context, constraints) {
+                final isLargeScreen = constraints.maxWidth >= 800;
+                final orientation = MediaQuery.of(context).orientation;
+                final platformType = PlatformUtils.getPlatformType(context);
+                final isMobile = platformType == PlatformType.mobile;
+                // 핸드폰의 경우: 세로 모드일 때만 2줄, 가로 모드일 때는 1줄
+                final isMobilePortrait = isMobile && !isLargeScreen && orientation == Orientation.portrait;
+                
+                // 핸드폰 세로 모드: 2줄로 배치
+                if (isMobilePortrait) {
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 첫 번째 줄: 아이콘, 제목
+                      Row(
+                        children: [
+                          Icon(reportIcon, color: Colors.white),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              reportTitle,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      // 두 번째 줄: Tipo, Temporada 콤보박스, 필터링 단어 필드
+                      Row(
+                        children: [
+                          if (_tiposList.length > 1 || _temporadasList.length > 1) ...[
+                            if (_tiposList.length > 1) ...[
+                              _buildTipoSelector(),
+                              const SizedBox(width: 8),
+                            ],
+                            if (_temporadasList.length > 1) ...[
+                              _buildTemporadaSelector(),
+                              const SizedBox(width: 8),
+                            ],
+                          ],
+                          Expanded(
+                            child: _buildFilteringWordFieldInAppBar(),
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                }
+                
+                // 넓은 화면: 1줄로 배치
+                return Row(
+                  children: [
+                    Icon(reportIcon, color: Colors.white),
                     const SizedBox(width: 8),
+                    Text(reportTitle),
+                    const SizedBox(width: 16),
+                    // Tipo와 Temporada 콤보박스 (filteringWord 왼쪽)
+                    if (_tiposList.length > 1 || _temporadasList.length > 1) ...[
+                      if (_tiposList.length > 1) ...[
+                        _buildTipoSelector(),
+                        const SizedBox(width: 8),
+                      ],
+                      if (_temporadasList.length > 1) ...[
+                        _buildTemporadaSelector(),
+                        const SizedBox(width: 8),
+                      ],
+                    ],
+                    Expanded(
+                      child: _buildFilteringWordFieldInAppBar(),
+                    ),
                   ],
-                  if (_temporadasList.length > 1) ...[
-                    _buildTemporadaSelector(),
-                    const SizedBox(width: 8),
-                  ],
-                ],
-                Expanded(
-                  child: _buildFilteringWordFieldInAppBar(),
-                ),
-              ],
+                );
+              },
             )
           : (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas || widget.reportType == ReportType.fventas)
               ? LayoutBuilder(
                   builder: (context, constraints) {
                     final isLargeScreen = constraints.maxWidth >= 800;
                     final orientation = MediaQuery.of(context).orientation;
-                    final isMobilePortrait = !isLargeScreen && orientation == Orientation.portrait;
+                    final platformType = PlatformUtils.getPlatformType(context);
+                    final isMobile = platformType == PlatformType.mobile;
+                    // 핸드폰의 경우: 세로 모드일 때만 2줄, 가로 모드일 때는 1줄
+                    final isMobilePortrait = isMobile && !isLargeScreen && orientation == Orientation.portrait;
                     
-                    // 좁은 화면: 2줄로 배치
+                    // 핸드폰 세로 모드: 2줄로 배치
                     if (isMobilePortrait) {
                       return Column(
                         mainAxisSize: MainAxisSize.min,
@@ -2575,9 +2760,12 @@ class _ReportScreenState extends State<ReportScreen> {
                       builder: (context, constraints) {
                         final isLargeScreen = constraints.maxWidth >= 800;
                         final orientation = MediaQuery.of(context).orientation;
-                        final isMobilePortrait = !isLargeScreen && orientation == Orientation.portrait;
+                        final platformType = PlatformUtils.getPlatformType(context);
+                        final isMobile = platformType == PlatformType.mobile;
+                        // 핸드폰의 경우: 세로 모드일 때만 2줄, 가로 모드일 때는 1줄
+                        final isMobilePortrait = isMobile && !isLargeScreen && orientation == Orientation.portrait;
                         
-                        // 좁은 화면: 2줄로 배치
+                        // 핸드폰 세로 모드: 2줄로 배치
                         if (isMobilePortrait) {
                           return Column(
                             mainAxisSize: MainAxisSize.min,
@@ -2900,27 +3088,82 @@ class _ReportScreenState extends State<ReportScreen> {
                       },
                     )
                   : (widget.reportType == ReportType.codigos || widget.reportType == ReportType.todocodigos)
-                      ? Row(
-                          children: [
-                            Icon(reportIcon, color: Colors.white),
-                            const SizedBox(width: 8),
-                            Text(reportTitle),
-                            const SizedBox(width: 16),
-                            // Tipo와 Temporada 콤보박스 (filteringWord 왼쪽)
-                            if (_tiposList.length > 1 || _temporadasList.length > 1) ...[
-                              if (_tiposList.length > 1) ...[
-                                _buildTipoSelector(),
+                      ? LayoutBuilder(
+                          builder: (context, constraints) {
+                            final isLargeScreen = constraints.maxWidth >= 800;
+                            final orientation = MediaQuery.of(context).orientation;
+                            final platformType = PlatformUtils.getPlatformType(context);
+                            final isMobile = platformType == PlatformType.mobile;
+                            // 핸드폰의 경우: 세로 모드일 때만 2줄, 가로 모드일 때는 1줄
+                            final isMobilePortrait = isMobile && !isLargeScreen && orientation == Orientation.portrait;
+                            
+                            // 핸드폰 세로 모드: 2줄로 배치
+                            if (isMobilePortrait) {
+                              return Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // 첫 번째 줄: 아이콘, 제목
+                                  Row(
+                                    children: [
+                                      Icon(reportIcon, color: Colors.white),
+                                      const SizedBox(width: 8),
+                                      Flexible(
+                                        child: Text(
+                                          reportTitle,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(fontSize: 16),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  // 두 번째 줄: Tipo, Temporada 콤보박스, 필터링 단어 필드
+                                  Row(
+                                    children: [
+                                      if (_tiposList.length > 1 || _temporadasList.length > 1) ...[
+                                        if (_tiposList.length > 1) ...[
+                                          _buildTipoSelector(),
+                                          const SizedBox(width: 8),
+                                        ],
+                                        if (_temporadasList.length > 1) ...[
+                                          _buildTemporadaSelector(),
+                                          const SizedBox(width: 8),
+                                        ],
+                                      ],
+                                      Expanded(
+                                        child: _buildFilteringWordFieldInAppBar(),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              );
+                            }
+                            
+                            // 넓은 화면: 1줄로 배치
+                            return Row(
+                              children: [
+                                Icon(reportIcon, color: Colors.white),
                                 const SizedBox(width: 8),
+                                Text(reportTitle),
+                                const SizedBox(width: 16),
+                                // Tipo와 Temporada 콤보박스 (filteringWord 왼쪽)
+                                if (_tiposList.length > 1 || _temporadasList.length > 1) ...[
+                                  if (_tiposList.length > 1) ...[
+                                    _buildTipoSelector(),
+                                    const SizedBox(width: 8),
+                                  ],
+                                  if (_temporadasList.length > 1) ...[
+                                    _buildTemporadaSelector(),
+                                    const SizedBox(width: 8),
+                                  ],
+                                ],
+                                Expanded(
+                                  child: _buildFilteringWordFieldInAppBar(),
+                                ),
                               ],
-                              if (_temporadasList.length > 1) ...[
-                                _buildTemporadaSelector(),
-                                const SizedBox(width: 8),
-                              ],
-                            ],
-                            Expanded(
-                              child: _buildFilteringWordFieldInAppBar(),
-                            ),
-                          ],
+                            );
+                          },
                         )
                       : widget.reportType == ReportType.stocks
                           ? LayoutBuilder(

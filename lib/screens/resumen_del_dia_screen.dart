@@ -2117,6 +2117,8 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
   @override
   Widget build(BuildContext context) {
     final isLargeScreen = _isLargeScreen(context);
+    final platformType = PlatformUtils.getPlatformType(context);
+    final isMobile = platformType == PlatformType.mobile;
     
     // 넓은 화면: 좌우 분할 레이아웃 (왼쪽 메뉴 항상 표시)
     if (isLargeScreen) {
@@ -2135,8 +2137,17 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     }
     
     // 좁은 화면: Drawer를 사용하여 메뉴 접근
-    // ReportScreen이 useFullWidth: true로 자체 AppBar를 가지므로 Scaffold의 AppBar는 제거
+    // 핸드폰의 경우 AppBar를 맨 위에 고정하여 메뉴 접근 용이하게 함
     return Scaffold(
+      appBar: isMobile ? AppBar(
+        title: const Text('Resumen del Día'),
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () {
+            Scaffold.of(context).openDrawer();
+          },
+        ),
+      ) : null,
       drawer: Drawer(
         width: 280, // Drawer 너비
         child: _buildLeftPanel(context, forDrawer: true),

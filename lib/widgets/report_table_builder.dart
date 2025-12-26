@@ -1623,9 +1623,14 @@ class ReportTableBuilder {
     final totals = <String, num>{};
     
     for (var key in keys) {
-      final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1';
-      final isDniColumn = key == 'dni' || key == 'DNI';
-      if (isCodigoColumn || isDniColumn) continue; // 문자 칼럼 및 DNI 칼럼은 합계 계산 제외
+      // 합계를 계산하지 않아야 하는 컬럼들
+      final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1' || key == 'vcode' || key == 'id';
+      final isDateColumn = key == 'fecha' || key == 'month' || key == 'year' || key == 'hora';
+      final isTextColumn = key == 'dni' || key == 'DNI' || key == 'clientenombre' || key == 'vendedor' || 
+                          key == 'tipo' || key == 'nencargado' || key == 'casoesp' || key == 'resiva' || 
+                          key == 'cretmp' || key == 'sucursal' || key == 'ntiqrepetir' || key == 'b_mercadopago' ||
+                          key == 'd_num_caja' || key == 'd_num_terminal';
+      if (isCodigoColumn || isDateColumn || isTextColumn) continue; // 합계 계산 제외
       
       num sum = 0;
       for (var item in displayedList) {
@@ -1678,30 +1683,38 @@ class ReportTableBuilder {
           children: keys.asMap().entries.map((entry) {
             final index = entry.key;
             final key = entry.value;
-            final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1';
-            final isDniColumn = key == 'dni' || key == 'DNI';
+            // 합계를 계산하지 않아야 하는 컬럼들
+            final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1' || key == 'vcode' || key == 'id';
+            final isDateColumn = key == 'fecha' || key == 'month' || key == 'year' || key == 'hora';
+            final isTextColumn = key == 'dni' || key == 'DNI' || key == 'clientenombre' || key == 'vendedor' || 
+                                key == 'tipo' || key == 'nencargado' || key == 'casoesp' || key == 'resiva' || 
+                                key == 'cretmp' || key == 'sucursal' || key == 'ntiqrepetir' || key == 'b_mercadopago' ||
+                                key == 'd_num_caja' || key == 'd_num_terminal';
             final columnWidth = columnWidths[key] ?? 150.0;
             
-            if (isCodigoColumn || isDniColumn) {
+            // 합계를 계산하지 않는 컬럼은 빈 칸으로 표시
+            if (isCodigoColumn || isDateColumn || isTextColumn) {
               return SizedBox(
-                width: columnWidth + (index < keys.length - 1 ? 8 : 0), // 마지막 컬럼 제외하고 8px 간격 추가
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5), // vertical padding을 12에서 5로 줄임
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Total',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
+                width: columnWidth + (index < keys.length - 1 ? 8 : 0),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  child: Text(''),
                 ),
               );
             }
             
-            final total = totals[key] ?? 0;
+            // 합계가 계산된 컬럼만 합계 값 표시
+            final total = totals.containsKey(key) ? totals[key] ?? 0 : null;
+            if (total == null) {
+              // 합계가 계산되지 않은 컬럼도 빈 칸으로 표시
+              return SizedBox(
+                width: columnWidth + (index < keys.length - 1 ? 8 : 0),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  child: Text(''),
+                ),
+              );
+            }
             return SizedBox(
               width: columnWidth + (index < keys.length - 1 ? 8 : 0), // 마지막 컬럼 제외하고 8px 간격 추가
               child: Padding(
@@ -1867,10 +1880,14 @@ class ReportTableBuilder {
     final totals = <String, num>{};
     
     for (var key in keys) {
-      final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1';
+      // 합계를 계산하지 않아야 하는 컬럼들
+      final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1' || key == 'vcode' || key == 'id';
       final isDateColumn = key == 'fecha' || key == 'month' || key == 'year' || key == 'hora';
-      final isDniColumn = key == 'dni' || key == 'DNI';
-      if (isCodigoColumn || isDateColumn || isDniColumn) continue; // 문자 칼럼, 날짜 칼럼, DNI 칼럼은 합계 계산 제외
+      final isTextColumn = key == 'dni' || key == 'DNI' || key == 'clientenombre' || key == 'vendedor' || 
+                          key == 'tipo' || key == 'nencargado' || key == 'casoesp' || key == 'resiva' || 
+                          key == 'cretmp' || key == 'sucursal' || key == 'ntiqrepetir' || key == 'b_mercadopago' ||
+                          key == 'd_num_caja' || key == 'd_num_terminal';
+      if (isCodigoColumn || isDateColumn || isTextColumn) continue; // 합계 계산 제외
       
       num sum = 0;
       for (var item in dataList) {
@@ -1892,15 +1909,27 @@ class ReportTableBuilder {
     return DataRow(
       color: MaterialStateProperty.all(reportColor.withOpacity(0.1)),
       cells: keys.map((key) {
-        final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1';
+        // 합계를 계산하지 않아야 하는 컬럼들
+        final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1' || key == 'vcode' || key == 'id';
         final isDateColumn = key == 'fecha' || key == 'month' || key == 'year' || key == 'hora';
-        final isDniColumn = key == 'dni' || key == 'DNI';
-        if (isCodigoColumn || isDateColumn || isDniColumn) {
+        final isTextColumn = key == 'dni' || key == 'DNI' || key == 'clientenombre' || key == 'vendedor' || 
+                            key == 'tipo' || key == 'nencargado' || key == 'casoesp' || key == 'resiva' || 
+                            key == 'cretmp' || key == 'sucursal' || key == 'ntiqrepetir' || key == 'b_mercadopago' ||
+                            key == 'd_num_caja' || key == 'd_num_terminal';
+        
+        // 합계를 계산하지 않는 컬럼은 빈 칸으로 표시
+        if (isCodigoColumn || isDateColumn || isTextColumn) {
+          return const DataCell(Text(''));
+        }
+        
+        // 합계가 계산된 컬럼만 합계 값 표시
+        if (totals.containsKey(key)) {
+          final total = totals[key] ?? 0;
           return DataCell(
             Align(
-              alignment: Alignment.centerLeft,
+              alignment: Alignment.centerRight,
               child: Text(
-                'Total',
+                ReportUtils.formatValue(total),
                 style: TextStyle(
                   fontSize: isVentas ? 12 : 14,
                   fontWeight: FontWeight.bold,
@@ -1911,20 +1940,8 @@ class ReportTableBuilder {
           );
         }
         
-        final total = totals[key] ?? 0;
-        return DataCell(
-          Align(
-            alignment: Alignment.centerRight,
-            child: Text(
-              ReportUtils.formatValue(total),
-              style: TextStyle(
-                fontSize: isVentas ? 12 : 14,
-                fontWeight: FontWeight.bold,
-                height: isVentas ? 1.0 : 1.2,
-              ),
-            ),
-          ),
-        );
+        // 합계가 계산되지 않은 컬럼도 빈 칸으로 표시
+        return const DataCell(Text(''));
       }).toList(),
     );
   }
