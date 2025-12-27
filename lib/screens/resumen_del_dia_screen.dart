@@ -66,6 +66,8 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
   // Items 보고서의 날짜 범위 정보 (연결 변경 시 유지용)
   DateTime? _currentItemsStartDate;
   DateTime? _currentItemsEndDate;
+  // Ventas 보고서의 descontado 필터 (할인 통계 카드 클릭 시 사용)
+  bool? _currentVentasDescontado;
   List<ConnectionInfo> _savedConnections = []; // 저장된 연결 목록
   bool _showAllConnections = false; // 연결 목록 전체 표시 여부
   bool _isAddingNewConnection = false; // 새 연결 추가 모드 여부
@@ -749,18 +751,27 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
   }
 
   Widget _buildDataCard(String title, dynamic value, IconData icon, {bool isCurrency = false, VoidCallback? onTap}) {
+    final isLarge = _isLargeScreen(context);
+    // 큰 화면에서는 글자 크기를 2배의 2/3 수준으로 (약 1.33배)
+    final titleFontSize = isLarge ? (10.0 * 2 * 2 / 3) : 10.0; // 약 13.3px
+    final valueFontSize = isLarge ? (16.0 * 2 * 2 / 3) : 16.0; // 약 21.3px
+    final iconSize = isLarge ? (20.0 * 2 * 2 / 3) : 20.0; // 약 26.7px
+    final padding = isLarge ? (12.0 * 2 * 2 / 3) : 12.0; // 약 16px
+    final iconPadding = isLarge ? (10.0 * 2 * 2 / 3) : 10.0; // 약 13.3px
+    final spacing = isLarge ? (2.0 * 2 * 2 / 3) : 2.0; // 약 2.7px
+    
     Widget cardContent = Card(
       elevation: 2,
       margin: EdgeInsets.zero,
       child: SizedBox(
         width: double.infinity,
         child: Padding(
-          padding: const EdgeInsets.all(12.0),
+          padding: EdgeInsets.all(padding),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: EdgeInsets.all(iconPadding),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
@@ -768,7 +779,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                 child: Icon(
                   icon,
                   color: Theme.of(context).colorScheme.primary,
-                  size: 20,
+                  size: iconSize,
                 ),
               ),
               Expanded(
@@ -779,7 +790,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                     Text(
                       title,
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: titleFontSize,
                         color: Colors.grey[600],
                         fontWeight: FontWeight.w500,
                       ),
@@ -787,11 +798,11 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 2),
+                    SizedBox(height: spacing),
                     Text(
                       _formatValue(value, isCurrency: isCurrency),
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: valueFontSize,
                         fontWeight: FontWeight.bold,
                         color: isCurrency ? Theme.of(context).colorScheme.primary : null,
                       ),
@@ -863,7 +874,12 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
               ? LayoutBuilder(
                   builder: (context, constraints) {
                     // 화면 크기에 따라 열 개수 결정 (최소 3개, 최대 4개)
-                    final crossAxisCount = constraints.maxWidth > 1000 ? 4 : 3;
+                    // 큰 화면에서 두 섹션이 나란히 있을 때를 고려하여 최소 너비 보장
+                    final availableWidth = constraints.maxWidth;
+                    // 카드 하나당 최소 너비를 고려 (약 250px)
+                    final minCardWidth = 250.0;
+                    final maxCrossAxisCount = (availableWidth / minCardWidth).floor();
+                    final crossAxisCount = maxCrossAxisCount >= 4 ? 4 : (maxCrossAxisCount >= 3 ? 3 : 2);
                     
                     return GridView.count(
                       crossAxisCount: crossAxisCount,
@@ -1741,17 +1757,23 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     if (_selectedReportType != null) {
       debugPrint('   → ReportScreen 반환: reportType=$_selectedReportType');
       // 보고서 화면 표시
-      // key를 reportType에 따라 설정하여 reportType 변경 시 새로운 위젯 인스턴스 생성
+      // key를 reportType과 필터 상태에 따라 설정하여 reportType 변경 시 새로운 위젯 인스턴스 생성
+      debugPrint('🔍 _buildReportContent: _selectedReportType=$_selectedReportType, _currentVentasDescontado=$_currentVentasDescontado');
       return ReportScreen(
-        key: ValueKey('report_${_selectedReportType.toString()}'),
+        key: ValueKey('report_${_selectedReportType.toString()}_descontado_${_currentVentasDescontado ?? false}_date_${_selectedDate?.toString() ?? 'null'}'),
         serverUrl: widget.serverUrl,
         reportType: _selectedReportType!,
         initialDate: (_selectedReportType == ReportType.ventas || _selectedReportType == ReportType.fventas) ? (_selectedDate ?? DateTime.now()) : null,
         initialFilteringWord: widget.initialFilteringWord ?? _currentFilteringWord,
         initialSortColumn: widget.initialSortColumn ?? _currentSortColumn,
         initialSortAscending: widget.initialSortAscending ?? _currentSortAscending,
-        initialItemsStartDate: widget.initialItemsStartDate ?? _currentItemsStartDate,
-        initialItemsEndDate: widget.initialItemsEndDate ?? _currentItemsEndDate,
+        initialItemsStartDate: (_selectedReportType == ReportType.gastos || _selectedReportType == ReportType.items || _selectedReportType == ReportType.ingresos) 
+            ? (_selectedDate ?? widget.initialItemsStartDate ?? _currentItemsStartDate)
+            : (widget.initialItemsStartDate ?? _currentItemsStartDate),
+        initialItemsEndDate: (_selectedReportType == ReportType.gastos || _selectedReportType == ReportType.items || _selectedReportType == ReportType.ingresos)
+            ? (_selectedDate ?? widget.initialItemsEndDate ?? _currentItemsEndDate)
+            : (widget.initialItemsEndDate ?? _currentItemsEndDate),
+        initialVentasDescontado: _currentVentasDescontado,
         useFullWidth: true, // resumen del dia에서 사용 시 전체 너비 사용
         onMenuPressed: !_isLargeScreen(context) ? () {
           // 좁은 화면일 때 Drawer 열기
@@ -1896,6 +1918,30 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
+                            // 날짜 선택 버튼 (맨 윗줄)
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 16),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  ElevatedButton.icon(
+                                    onPressed: _selectDate,
+                                    icon: const Icon(Icons.calendar_today),
+                                    label: Text(
+                                      _selectedDate != null
+                                          ? DateFormat('yyyy-MM-dd').format(_selectedDate!)
+                                          : DateFormat('yyyy-MM-dd').format(DateTime.now()),
+                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                      backgroundColor: Colors.blue[700],
+                                      foregroundColor: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                             // 에러가 있지만 데이터도 있는 경우 경고 배너 표시
                             if (_errorMessage != null && _data != null && _data!.isNotEmpty)
                               Container(
@@ -1963,43 +2009,116 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                               ),
                             ],
 
-                        // 지출 통계 (gastos) - 여러 sucursal이 있으면 합산
-                        if (_data!.containsKey('gastos')) ...[
-                          Builder(
-                            builder: (context) {
-                              final aggregatedGastos = _getAggregatedGastos();
-                              final gastosWidgets = _buildGastosSection(aggregatedGastos);
-                              
-                              if (gastosWidgets.isNotEmpty) {
-                                return _buildSection(
-                                  l10n.expenseStatistics,
-                                  gastosWidgets,
-                                );
-                              } else {
-                                return const SizedBox.shrink();
-                              }
-                            },
-                          ),
-                        ],
-
-                        // 할인 통계 (vdetalle) - 여러 sucursal이 있으면 합산
-                        if (_data!.containsKey('vdetalle')) ...[
-                          Builder(
-                            builder: (context) {
-                              final aggregatedVdetalle = _getAggregatedVdetalle();
-                              final vdetalleWidgets = _buildVdetalleSection(aggregatedVdetalle);
-                              
-                              if (vdetalleWidgets.isNotEmpty) {
-                                return _buildSection(
-                                  l10n.discountStatistics,
-                                  vdetalleWidgets,
-                                );
-                              } else {
-                                return const SizedBox.shrink();
-                              }
-                            },
-                          ),
-                        ],
+                        // 지출 통계 (gastos)와 할인 통계 (vdetalle) - 큰 화면에서는 1줄에 배치
+                        Builder(
+                          builder: (context) {
+                            final isLarge = _isLargeScreen(context);
+                            final hasGastos = _data!.containsKey('gastos');
+                            final hasVdetalle = _data!.containsKey('vdetalle');
+                            
+                            // 둘 다 없으면 빈 위젯 반환
+                            if (!hasGastos && !hasVdetalle) {
+                              return const SizedBox.shrink();
+                            }
+                            
+                            // 큰 화면: Row로 1줄에 배치
+                            if (isLarge) {
+                              return Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // 지출 통계 (gastos)
+                                  if (hasGastos)
+                                    Flexible(
+                                      flex: 1,
+                                      child: ConstrainedBox(
+                                        constraints: const BoxConstraints(minWidth: 400),
+                                        child: Builder(
+                                          builder: (context) {
+                                            final aggregatedGastos = _getAggregatedGastos();
+                                            final gastosWidgets = _buildGastosSection(aggregatedGastos);
+                                            
+                                            if (gastosWidgets.isNotEmpty) {
+                                              return _buildSection(
+                                                l10n.expenseStatistics,
+                                                gastosWidgets,
+                                              );
+                                            } else {
+                                              return const SizedBox.shrink();
+                                            }
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  if (hasGastos && hasVdetalle)
+                                    const SizedBox(width: 16),
+                                  // 할인 통계 (vdetalle)
+                                  if (hasVdetalle)
+                                    Flexible(
+                                      flex: 1,
+                                      child: ConstrainedBox(
+                                        constraints: const BoxConstraints(minWidth: 400),
+                                        child: Builder(
+                                          builder: (context) {
+                                            final aggregatedVdetalle = _getAggregatedVdetalle();
+                                            final vdetalleWidgets = _buildVdetalleSection(aggregatedVdetalle);
+                                            
+                                            if (vdetalleWidgets.isNotEmpty) {
+                                              return _buildSection(
+                                                l10n.discountStatistics,
+                                                vdetalleWidgets,
+                                              );
+                                            } else {
+                                              return const SizedBox.shrink();
+                                            }
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              );
+                            }
+                            
+                            // 작은 화면: 기존대로 세로로 배치
+                            return Column(
+                              children: [
+                                // 지출 통계 (gastos)
+                                if (hasGastos)
+                                  Builder(
+                                    builder: (context) {
+                                      final aggregatedGastos = _getAggregatedGastos();
+                                      final gastosWidgets = _buildGastosSection(aggregatedGastos);
+                                      
+                                      if (gastosWidgets.isNotEmpty) {
+                                        return _buildSection(
+                                          l10n.expenseStatistics,
+                                          gastosWidgets,
+                                        );
+                                      } else {
+                                        return const SizedBox.shrink();
+                                      }
+                                    },
+                                  ),
+                                // 할인 통계 (vdetalle)
+                                if (hasVdetalle)
+                                  Builder(
+                                    builder: (context) {
+                                      final aggregatedVdetalle = _getAggregatedVdetalle();
+                                      final vdetalleWidgets = _buildVdetalleSection(aggregatedVdetalle);
+                                      
+                                      if (vdetalleWidgets.isNotEmpty) {
+                                        return _buildSection(
+                                          l10n.discountStatistics,
+                                          vdetalleWidgets,
+                                        );
+                                      } else {
+                                        return const SizedBox.shrink();
+                                      }
+                                    },
+                                  ),
+                              ],
+                            );
+                          },
+                        ),
 
                         // 결제 통계 (vcodes_mpago) - 여러 sucursal이 있으면 합산
                         if (_data!.containsKey('vcodes_mpago')) ...[
@@ -2118,7 +2237,8 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
   Widget build(BuildContext context) {
     final isLargeScreen = _isLargeScreen(context);
     final platformType = PlatformUtils.getPlatformType(context);
-    final isMobile = platformType == PlatformType.mobile;
+    // 핸드폰만 체크 (iPad는 제외)
+    final isMobilePhone = platformType == PlatformType.mobile && !PlatformUtils.isIPad(context);
     
     // 넓은 화면: 좌우 분할 레이아웃 (왼쪽 메뉴 항상 표시)
     if (isLargeScreen) {
@@ -2137,16 +2257,12 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     }
     
     // 좁은 화면: Drawer를 사용하여 메뉴 접근
-    // 핸드폰의 경우 AppBar를 맨 위에 고정하여 메뉴 접근 용이하게 함
+    // 핸드폰의 경우 AppBar를 맨 위에 고정하여 메뉴 접근 용이하게 함 (iPad 제외)
     return Scaffold(
-      appBar: isMobile ? AppBar(
+      appBar: isMobilePhone ? AppBar(
         title: const Text('Resumen del Día'),
-        leading: IconButton(
-          icon: const Icon(Icons.menu),
-          onPressed: () {
-            Scaffold.of(context).openDrawer();
-          },
-        ),
+        backgroundColor: Colors.blue[700],
+        foregroundColor: Colors.white,
       ) : null,
       drawer: Drawer(
         width: 280, // Drawer 너비
@@ -2954,6 +3070,31 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         'Eventos de Descuento',
         vdetalle['count_discount_event'],
         Icons.local_offer,
+        onTap: () {
+          // 해당 날짜의 descuento가 있는 ventas 보고서로 이동
+          debugPrint('🔍 할인 통계 카드 클릭 (count_discount_event): _selectedDate=$_selectedDate');
+          if (_isLargeScreen(context)) {
+            setState(() {
+              _selectedReportType = ReportType.ventas;
+              _currentReport = 'ventas';
+              _currentVentasDescontado = true; // descuento 필터 적용
+              debugPrint('   → 큰 화면: _currentVentasDescontado=$_currentVentasDescontado');
+            });
+          } else {
+            debugPrint('   → 작은 화면: Navigator.push with initialVentasDescontado=true');
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ReportScreen(
+                  serverUrl: widget.serverUrl,
+                  reportType: ReportType.ventas,
+                  initialDate: _selectedDate,
+                  initialVentasDescontado: true,
+                ),
+              ),
+            );
+          }
+        },
       ));
     }
     
@@ -2963,6 +3104,30 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         vdetalle['total_discount_day'],
         Icons.discount,
         isCurrency: true,
+        onTap: () {
+          // 해당 날짜의 descuento가 있는 ventas 보고서로 이동
+          debugPrint('🔍 할인 통계 카드 클릭: _selectedDate=$_selectedDate');
+          if (_isLargeScreen(context)) {
+            setState(() {
+              _selectedReportType = ReportType.ventas;
+              _currentReport = 'ventas';
+              _currentVentasDescontado = true; // descuento 필터 적용
+              debugPrint('   → 큰 화면: _currentVentasDescontado=$_currentVentasDescontado');
+            });
+          } else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ReportScreen(
+                  serverUrl: widget.serverUrl,
+                  reportType: ReportType.ventas,
+                  initialDate: _selectedDate,
+                  initialVentasDescontado: true,
+                ),
+              ),
+            );
+          }
+        },
       ));
       }
 
@@ -4410,6 +4575,10 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       setState(() {
         _currentReport = reportType;
         _selectedReportType = reportTypeEnum;
+        // ventas가 아닌 다른 보고서로 이동할 때는 descontado 필터 초기화
+        if (reportTypeEnum != ReportType.ventas) {
+          _currentVentasDescontado = null;
+        }
       });
       debugPrint('   → setState 완료 후: _currentReport=$_currentReport, _selectedReportType=$_selectedReportType');
     } else {

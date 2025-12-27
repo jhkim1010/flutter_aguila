@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import '../services/database_service.dart';
 import '../services/pdf_service.dart';
+import '../services/excel_service.dart';
 import '../l10n/app_localizations.dart';
 import '../utils/platform_utils.dart';
 import '../widgets/report_utils.dart';
@@ -29,6 +30,7 @@ class ReportScreen extends StatefulWidget {
   final String? initialFilteringWord; // 초기 필터링 단어
   final String? initialSortColumn; // 초기 정렬 컬럼
   final bool? initialSortAscending; // 초기 정렬 방향
+  final bool? initialVentasDescontado; // Ventas 보고서용 초기 descontado 필터
   final Function(String?, String?, bool?)? onStateChanged; // 상태 변경 콜백 (filteringWord, sortColumn, sortAscending)
   final Function(DateTime?, DateTime?)? onItemsDateRangeChanged; // items 보고서 날짜 범위 변경 콜백
   final bool useFullWidth; // 전체 너비 사용 여부 (resumen del dia에서 사용 시 true)
@@ -44,6 +46,7 @@ class ReportScreen extends StatefulWidget {
     this.initialFilteringWord,
     this.initialSortColumn,
     this.initialSortAscending,
+    this.initialVentasDescontado,
     this.onStateChanged,
     this.onItemsDateRangeChanged,
     this.useFullWidth = false,
@@ -83,6 +86,8 @@ class _ReportScreenState extends State<ReportScreen> {
   bool _ventasDescontado = false; // Ventas 보고서용 descontado 필터
   bool _ventasReservado = false; // Ventas 보고서용 reservado 필터
   bool _ventasCredito = false; // Ventas 보고서용 credito 필터
+  bool _alertasVCancelado = false; // Alertas 보고서용 v_cancelado 필터
+  bool _alertasJefe = false; // Alertas 보고서용 jefe 필터
   
   // Codigos 보고서용 상태
   Map<String, dynamic>? _selectedCodigo; // 선택된 codigo
@@ -159,18 +164,25 @@ class _ReportScreenState extends State<ReportScreen> {
         _itemsEndDate = now;
       }
     }
-    // Ventas 보고서의 경우 초기 날짜 범위 설정
-    if (widget.reportType == ReportType.ventas) {
+    // Ventas 및 FVentas 보고서의 경우 초기 날짜 범위 설정
+    if (widget.reportType == ReportType.ventas || widget.reportType == ReportType.fventas) {
       final now = DateTime.now();
       if (widget.initialDate != null) {
         _ventasStartDate = widget.initialDate;
         _ventasEndDate = widget.initialDate;
-        print('📅 Ventas 보고서 초기 날짜 범위 설정: ${DateFormat('yyyy-MM-dd').format(_ventasStartDate!)} ~ ${DateFormat('yyyy-MM-dd').format(_ventasEndDate!)}');
+        final reportName = widget.reportType == ReportType.ventas ? "Ventas" : "FVentas";
+        print('📅 $reportName 보고서 초기 날짜 범위 설정: ${DateFormat('yyyy-MM-dd').format(_ventasStartDate!)} ~ ${DateFormat('yyyy-MM-dd').format(_ventasEndDate!)}');
       } else {
         // initialDate가 없으면 오늘 날짜로 설정
         _ventasStartDate = now;
         _ventasEndDate = now;
-        print('📅 Ventas 보고서 날짜 범위 설정 (오늘): ${DateFormat('yyyy-MM-dd').format(_ventasStartDate!)} ~ ${DateFormat('yyyy-MM-dd').format(_ventasEndDate!)}');
+        final reportName = widget.reportType == ReportType.ventas ? "Ventas" : "FVentas";
+        print('📅 $reportName 보고서 날짜 범위 설정 (오늘): ${DateFormat('yyyy-MM-dd').format(_ventasStartDate!)} ~ ${DateFormat('yyyy-MM-dd').format(_ventasEndDate!)}');
+      }
+      // 초기 descontado 필터 설정 (ventas만)
+      if (widget.reportType == ReportType.ventas && widget.initialVentasDescontado != null) {
+        _ventasDescontado = widget.initialVentasDescontado!;
+        print('📅 Ventas 보고서 초기 descontado 필터 설정: $_ventasDescontado');
       }
     }
     // 초기 상태 저장
@@ -183,6 +195,18 @@ class _ReportScreenState extends State<ReportScreen> {
   @override
   void didUpdateWidget(ReportScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    
+    // Ventas 보고서에서 initialVentasDescontado가 변경된 경우 처리
+    if (widget.reportType == ReportType.ventas && 
+        oldWidget.initialVentasDescontado != widget.initialVentasDescontado) {
+      if (widget.initialVentasDescontado != null) {
+        _ventasDescontado = widget.initialVentasDescontado!;
+        print('📅 Ventas 보고서 descontado 필터 변경 감지: $_ventasDescontado');
+        _loadData(); // 데이터 다시 로드
+        return;
+      }
+    }
+    
     // reportType이 변경되었을 때 데이터 다시 로드
     if (oldWidget.reportType != widget.reportType) {
       print('🔄 ReportType 변경 감지: ${oldWidget.reportType} → ${widget.reportType}');
@@ -218,19 +242,29 @@ class _ReportScreenState extends State<ReportScreen> {
         }
       }
       
-      // Ventas 보고서의 경우 초기 날짜 범위 설정
-      if (widget.reportType == ReportType.ventas) {
+      // Ventas 및 FVentas 보고서의 경우 초기 날짜 범위 설정
+      if (widget.reportType == ReportType.ventas || widget.reportType == ReportType.fventas) {
         final now = DateTime.now();
         if (widget.initialDate != null) {
           _ventasStartDate = widget.initialDate;
           _ventasEndDate = widget.initialDate;
-        } else if (oldWidget.reportType != ReportType.ventas) {
+        } else if (oldWidget.reportType != ReportType.ventas && oldWidget.reportType != ReportType.fventas) {
           _ventasStartDate = now;
           _ventasEndDate = now;
         }
-      } else if (oldWidget.reportType == ReportType.ventas && widget.reportType != ReportType.ventas) {
+        // 초기 descontado 필터 설정 (ventas만, reportType 변경 시 또는 initialVentasDescontado 변경 시)
+        if (widget.reportType == ReportType.ventas && (oldWidget.reportType != ReportType.ventas || oldWidget.initialVentasDescontado != widget.initialVentasDescontado)) {
+          if (widget.initialVentasDescontado != null) {
+            _ventasDescontado = widget.initialVentasDescontado!;
+            print('📅 Ventas 보고서 descontado 필터 업데이트: $_ventasDescontado');
+          } else {
+            _ventasDescontado = false;
+          }
+        }
+      } else if ((oldWidget.reportType == ReportType.ventas || oldWidget.reportType == ReportType.fventas) && widget.reportType != ReportType.ventas && widget.reportType != ReportType.fventas) {
         _ventasStartDate = null;
         _ventasEndDate = null;
+        _ventasDescontado = false;
       }
       
       // 데이터 다시 로드
@@ -242,6 +276,15 @@ class _ReportScreenState extends State<ReportScreen> {
   String _lastFilteringWord = '';
   void _onFilteringWordChanged() {
     final currentWord = _filteringWordController.text.trim();
+    
+    // Alertas 보고서의 경우 VCancelado 및 Jefe 버튼 상태 동기화
+    if (widget.reportType == ReportType.alertas) {
+      setState(() {
+        _alertasVCancelado = currentWord.toLowerCase() == 'vcancelado';
+        _alertasJefe = currentWord.toLowerCase() == 'jefe';
+      });
+    }
+    
     // debounce를 위해 타이머 사용 (500ms 후 실행)
     Future.delayed(const Duration(milliseconds: 500), () {
       if (!mounted) return;
@@ -404,7 +447,36 @@ class _ReportScreenState extends State<ReportScreen> {
       
       // Items, Ingresos, Gastos 및 Alertas 보고서의 정렬 적용
       if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas) {
-        if (_sortColumn != null) {
+        // Alertas 보고서는 항상 id_log 역순으로 정렬
+        if (widget.reportType == ReportType.alertas) {
+          dataList.sort((a, b) {
+            if (a is! Map<String, dynamic> || b is! Map<String, dynamic>) {
+              return 0;
+            }
+            
+            final aIdLog = a['id_log'];
+            final bIdLog = b['id_log'];
+            
+            // null 처리
+            if (aIdLog == null && bIdLog == null) return 0;
+            if (aIdLog == null) return 1; // null은 뒤로
+            if (bIdLog == null) return -1; // null은 뒤로
+            
+            // 숫자 비교 (역순: 큰 값이 앞으로)
+            final aNum = ReportUtils.isNumeric(aIdLog) ? num.tryParse(aIdLog.toString().replaceAll(',', '')) : null;
+            final bNum = ReportUtils.isNumeric(bIdLog) ? num.tryParse(bIdLog.toString().replaceAll(',', '')) : null;
+            
+            if (aNum != null && bNum != null) {
+              return bNum.compareTo(aNum); // 역순 정렬
+            }
+            
+            // 문자열 비교 (역순)
+            final aStr = aIdLog.toString().toLowerCase();
+            final bStr = bIdLog.toString().toLowerCase();
+            return bStr.compareTo(aStr); // 역순 정렬
+          });
+        } else if (_sortColumn != null) {
+          // 다른 보고서는 기존 정렬 로직 사용
           dataList.sort((a, b) {
             if (a is! Map<String, dynamic> || b is! Map<String, dynamic>) {
               return 0;
@@ -464,6 +536,69 @@ class _ReportScreenState extends State<ReportScreen> {
     }
     
     return data;
+  }
+
+  /// 보고서 공유 (macOS/Windows: PDF/Excel 선택, 기타: PDF만)
+  Future<void> _shareReport() async {
+    if (_data == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No hay datos para compartir'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    // macOS 또는 Windows인 경우 PDF/Excel 선택 다이얼로그 표시
+    if (Platform.isMacOS || Platform.isWindows) {
+      if (!mounted) return;
+      
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Exportar reporte'),
+          content: const Text('¿En qué formato desea exportar el reporte?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _shareAsPdf();
+              },
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.picture_as_pdf, color: Colors.red),
+                  SizedBox(width: 8),
+                  Text('PDF'),
+                ],
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _shareAsExcel();
+              },
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.table_chart, color: Colors.green),
+                  SizedBox(width: 8),
+                  Text('Excel'),
+                ],
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancelar'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      // 모바일/태블릿: 기존대로 PDF만 공유
+      _shareAsPdf();
+    }
   }
 
   /// PDF로 변환하여 공유
@@ -799,6 +934,366 @@ class _ReportScreenState extends State<ReportScreen> {
     }
   }
 
+  /// Excel로 변환하여 공유
+  Future<void> _shareAsExcel() async {
+    if (_data == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No hay datos para compartir'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    try {
+      // 로딩 표시
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Generando Excel...'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // 날짜 범위 가져오기
+      DateTime? startDate;
+      DateTime? endDate;
+      
+      if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas) {
+        startDate = _itemsStartDate;
+        endDate = _itemsEndDate;
+      } else if (widget.reportType == ReportType.ventas) {
+        startDate = _ventasStartDate;
+        endDate = _ventasEndDate;
+      }
+
+      // 필터링 단어 가져오기
+      final filteringWord = _filteringWordController.text.trim();
+      final filterWord = filteringWord.isEmpty ? null : filteringWord;
+
+      // 화면에 표시되는 모든 데이터 수집 (필터링/정렬 적용)
+      final displayedData = _getDisplayedData();
+      
+      // 화면에 표시되는 컬럼 목록 가져오기
+      List<String>? displayedColumns;
+      if (displayedData.containsKey('data') && displayedData['data'] is List) {
+        final dataList = displayedData['data'] as List;
+        if (dataList.isNotEmpty) {
+          displayedColumns = ReportTableBuilder.getDisplayedColumns(
+            dataList,
+            widget.reportType,
+            unit: widget.reportType == ReportType.ventas ? _ventasUnit : null,
+          );
+          print('📋 Excel용 표시 컬럼: $displayedColumns');
+        }
+      }
+
+      // Excel 생성
+      final excelFile = await ExcelService.generateReportExcel(
+        reportType: widget.reportType,
+        data: displayedData,
+        startDate: startDate,
+        endDate: endDate,
+        filteringWord: filterWord,
+        displayedColumns: displayedColumns,
+      );
+
+      // 로딩 다이얼로그 닫기
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // 파일 존재 확인
+      if (!await excelFile.exists()) {
+        throw Exception('Excel 파일이 생성되지 않았습니다: ${excelFile.path}');
+      }
+
+      print('📄 Excel 파일 생성 완료: ${excelFile.path}');
+      print('📄 파일 크기: ${await excelFile.length()} bytes');
+
+      // Excel 미리보기 및 공유 다이얼로그 표시
+      if (mounted) {
+        await _showExcelPreviewDialog(excelFile);
+      }
+    } catch (e, stackTrace) {
+      // 로딩 다이얼로그 닫기
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // 상세한 에러 로깅
+      print('❌ Excel 생성/공유 오류: $e');
+      print('❌ Stack trace: $stackTrace');
+
+      // 에러 메시지
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al generar/compartir Excel: $e'),
+            duration: const Duration(seconds: 5),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Excel 미리보기 및 공유 다이얼로그 표시
+  Future<void> _showExcelPreviewDialog(File excelFile) async {
+    final reportTitle = ReportUtils.getReportTitle(widget.reportType);
+    final fileName = excelFile.path.split('/').last;
+    final fileSize = await excelFile.length();
+    final fileSizeMB = (fileSize / (1024 * 1024)).toStringAsFixed(2);
+
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.table_chart, color: Colors.green, size: 28),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Excel 생성 완료',
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '보고서: $reportTitle',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '파일명: $fileName',
+              style: const TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '파일 크기: $fileSizeMB MB',
+              style: const TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 16),
+            const Text(
+              'Excel 파일을 열거나 공유할 수 있습니다.',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('취소'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await _openExcelFile(excelFile);
+            },
+            icon: const Icon(Icons.open_in_new, size: 20),
+            label: const Text('열기'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await _shareExcelFile(excelFile);
+            },
+            icon: const Icon(Icons.share, size: 20),
+            label: const Text('공유'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Excel 파일을 시스템 기본 앱으로 열기
+  Future<void> _openExcelFile(File excelFile) async {
+    try {
+      if (Platform.isMacOS) {
+        // macOS: Excel 또는 기본 앱으로 열기
+        final result = await Process.run(
+          'open',
+          [excelFile.path],
+        );
+        if (result.exitCode == 0) {
+          print('✅ Excel 파일 열기 성공: ${excelFile.path}');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Excel 파일이 열렸습니다'),
+                duration: Duration(seconds: 2),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        } else {
+          throw Exception('Excel 파일 열기 실패: ${result.stderr}');
+        }
+      } else if (Platform.isWindows) {
+        // Windows: 기본 앱으로 열기
+        final result = await Process.run(
+          'start',
+          ['', excelFile.path],
+          runInShell: true,
+        );
+        if (result.exitCode == 0) {
+          print('✅ Excel 파일 열기 성공: ${excelFile.path}');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Excel 파일이 열렸습니다'),
+                duration: Duration(seconds: 2),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        } else {
+          throw Exception('Excel 파일 열기 실패: ${result.stderr}');
+        }
+      }
+    } catch (e) {
+      print('❌ Excel 파일 열기 실패: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Excel 파일 열기 실패: $e'),
+            duration: const Duration(seconds: 3),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Excel 파일 공유
+  Future<void> _shareExcelFile(File excelFile) async {
+    try {
+      await Share.shareXFiles(
+        [XFile(excelFile.path)],
+        text: 'Reporte ${ReportUtils.getReportTitle(widget.reportType)}',
+      );
+      print('✅ Excel 공유 성공');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Excel 공유 완료'),
+            duration: Duration(seconds: 2),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (shareError) {
+      print('❌ Excel 공유 실패: $shareError');
+      
+      // macOS에서 공유가 실패하면 데스크톱에 복사하고 Finder에서 열기
+      if (Platform.isMacOS && mounted) {
+        try {
+          final homeDir = Platform.environment['HOME'] ?? '';
+          final desktopPath = '$homeDir/Desktop';
+          final desktopDir = Directory(desktopPath);
+          
+          if (await desktopDir.exists()) {
+            final fileName = excelFile.path.split('/').last;
+            final desktopFile = File('$desktopPath/$fileName');
+            
+            await excelFile.copy(desktopFile.path);
+            print('✅ Excel 파일을 데스크톱에 복사: ${desktopFile.path}');
+            
+            final result = await Process.run(
+              'open',
+              ['-R', desktopFile.path],
+            );
+            
+            if (result.exitCode == 0) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Excel이 데스크톱에 저장되었습니다: $fileName'),
+                    duration: const Duration(seconds: 4),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
+              return;
+            }
+          }
+        } catch (copyError) {
+          print('❌ Excel 파일 복사 실패: $copyError');
+        }
+      }
+      
+      // Windows에서 공유가 실패하면 데스크톱에 복사
+      if (Platform.isWindows && mounted) {
+        try {
+          final homeDir = Platform.environment['USERPROFILE'] ?? Platform.environment['HOME'] ?? '';
+          final desktopPath = '$homeDir\\Desktop';
+          final desktopDir = Directory(desktopPath);
+          
+          if (await desktopDir.exists()) {
+            final fileName = excelFile.path.split('\\').last;
+            final desktopFile = File('$desktopPath\\$fileName');
+            
+            await excelFile.copy(desktopFile.path);
+            print('✅ Excel 파일을 데스크톱에 복사: ${desktopFile.path}');
+            
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Excel이 데스크톱에 저장되었습니다: $fileName'),
+                  duration: const Duration(seconds: 4),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            }
+            return;
+          }
+        } catch (copyError) {
+          print('❌ Excel 파일 복사 실패: $copyError');
+        }
+      }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Excel 공유 실패: $shareError'),
+            duration: const Duration(seconds: 3),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   /// Tipos와 Temporadas 데이터 로드
   Future<void> _loadTiposAndTemporadas() async {
     try {
@@ -1078,6 +1573,7 @@ class _ReportScreenState extends State<ReportScreen> {
             'fecha_inicio': DateFormat('yyyy-MM-dd').format(startDate),
             'fecha_fin': DateFormat('yyyy-MM-dd').format(endDate),
           };
+          // VCancelado 필터는 filteringWord를 통해 처리 (서버 필터 제거)
           data = await _databaseService.getAlertasReport(
             filteringWord: currentFilteringWord.isNotEmpty ? currentFilteringWord : null,
             filters: filters,
@@ -1623,9 +2119,9 @@ class _ReportScreenState extends State<ReportScreen> {
         final platformType = PlatformUtils.getPlatformType(context);
         final isMobile = platformType == PlatformType.mobile;
         
-        // 핸드폰의 경우: 넓은 화면(가로 모드)이면 1줄, 좁은 화면(세로 모드)이면 2줄
+        // 핸드폰의 경우: 넓은 화면(가로 모드)이면 1줄, 좁은 화면(세로 모드)이면 2줄 또는 3줄
         // 데스크톱/태블릿의 경우: 기존 로직 유지
-        final needsTwoLineAppBar = isMobile
+        final needsMultiLineAppBar = isMobile
             ? isMobilePortrait && (
                 widget.reportType == ReportType.ventas ||
                 widget.reportType == ReportType.items ||
@@ -1642,10 +2138,14 @@ class _ReportScreenState extends State<ReportScreen> {
                 widget.reportType == ReportType.alertas ||
                 widget.reportType == ReportType.fventas
               );
+        
+        // ventas 보고서의 경우 핸드폰 좁은 화면에서 3줄
+        final needsThreeLineAppBar = isMobile && isMobilePortrait && widget.reportType == ReportType.ventas;
+        final needsTwoLineAppBar = needsMultiLineAppBar && !needsThreeLineAppBar;
 
     // useFullWidth가 true이면 Scaffold를 반환하지 않고 AppBar와 body를 포함한 위젯 반환
     if (widget.useFullWidth) {
-      final appBar = _buildAppBar(context, reportTitle, reportIcon, reportColor, isLargeScreen, isMobilePortrait, needsTwoLineAppBar);
+      final appBar = _buildAppBar(context, reportTitle, reportIcon, reportColor, isLargeScreen, isMobilePortrait, needsTwoLineAppBar, needsThreeLineAppBar);
       return Column(
         children: [
           PreferredSize(
@@ -1662,7 +2162,7 @@ class _ReportScreenState extends State<ReportScreen> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-            toolbarHeight: needsTwoLineAppBar ? kToolbarHeight * 2 : null,
+            toolbarHeight: needsThreeLineAppBar ? kToolbarHeight * 3 : (needsTwoLineAppBar ? kToolbarHeight * 2 : null),
         title: widget.reportType == ReportType.stocks
             ? LayoutBuilder(
                 builder: (context, constraints) {
@@ -1750,6 +2250,173 @@ class _ReportScreenState extends State<ReportScreen> {
                       
                       // 좁은 화면: 2줄로 배치
                       if (isMobilePortrait) {
+                        // Alertas 보고서의 경우 특별한 레이아웃
+                        if (widget.reportType == ReportType.alertas) {
+                          return Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // 첫 번째 줄: 아이콘, 제목, VCancelado 버튼, Jefe 버튼, 메뉴 버튼, 공유 버튼
+                              Row(
+                                children: [
+                                  Icon(reportIcon, color: Colors.white),
+                                  const SizedBox(width: 8),
+                                  Flexible(
+                                    child: Text(
+                                      reportTitle,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(fontSize: 16),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  // VCancelado 버튼
+                                  TextButton(
+                                    onPressed: () {
+                                      setState(() {
+                                        _alertasVCancelado = !_alertasVCancelado;
+                                        _alertasJefe = false; // 다른 버튼 비활성화
+                                        if (_alertasVCancelado) {
+                                          // VCancelado 버튼이 활성화되면 filteringWord에 "VCancelado" 입력
+                                          _filteringWordController.text = 'VCancelado';
+                                        } else {
+                                          // VCancelado 버튼이 비활성화되면 filteringWord 초기화
+                                          _filteringWordController.text = '';
+                                        }
+                                      });
+                                      _loadData();
+                                    },
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      minimumSize: Size.zero,
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      backgroundColor: _alertasVCancelado 
+                                          ? Colors.white.withOpacity(0.3) 
+                                          : Colors.transparent,
+                                    ),
+                                    child: Text(
+                                      'VCancelado',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: _alertasVCancelado ? FontWeight.bold : FontWeight.normal,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  // Jefe 버튼
+                                  TextButton(
+                                    onPressed: () {
+                                      setState(() {
+                                        _alertasJefe = !_alertasJefe;
+                                        _alertasVCancelado = false; // 다른 버튼 비활성화
+                                        if (_alertasJefe) {
+                                          // Jefe 버튼이 활성화되면 filteringWord에 "jefe" 입력
+                                          _filteringWordController.text = 'jefe';
+                                        } else {
+                                          // Jefe 버튼이 비활성화되면 filteringWord 초기화
+                                          _filteringWordController.text = '';
+                                        }
+                                      });
+                                      _loadData();
+                                    },
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      minimumSize: Size.zero,
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      backgroundColor: _alertasJefe 
+                                          ? Colors.white.withOpacity(0.3) 
+                                          : Colors.transparent,
+                                    ),
+                                    child: Text(
+                                      'Jefe',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: _alertasJefe ? FontWeight.bold : FontWeight.normal,
+                                      ),
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  // 메뉴 버튼
+                                  PopupMenuButton<ReportType>(
+                                    icon: const Icon(Icons.more_vert, color: Colors.white, size: 18),
+                                    tooltip: 'Menú',
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    iconSize: 18,
+                                    onSelected: (ReportType reportType) {
+                                      if (reportType != widget.reportType) {
+                                        Navigator.pushReplacement(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => ReportScreen(
+                                              serverUrl: widget.serverUrl,
+                                              reportType: reportType,
+                                              initialDate: widget.initialDate,
+                                              initialItemsStartDate: widget.initialItemsStartDate,
+                                              initialItemsEndDate: widget.initialItemsEndDate,
+                                              initialFilteringWord: widget.initialFilteringWord,
+                                              initialSortColumn: widget.initialSortColumn,
+                                              initialSortAscending: widget.initialSortAscending,
+                                              onStateChanged: widget.onStateChanged,
+                                              onItemsDateRangeChanged: widget.onItemsDateRangeChanged,
+                                              useFullWidth: widget.useFullWidth,
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                    itemBuilder: (BuildContext context) => _buildReportMenuItems(),
+                                  ),
+                                  // 공유 버튼
+                                  if (_data != null)
+                                    IconButton(
+                                      icon: const Icon(Icons.share, color: Colors.white, size: 18),
+                                      tooltip: 'Compartir como PDF',
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                      iconSize: 18,
+                                      onPressed: () => _shareReport(),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              // 두 번째 줄: 날짜 선택기, Sucursal 선택기, 필터링 단어 필드
+                              Row(
+                                children: [
+                                  Flexible(
+                                    child: ItemsDateRangeSelector(
+                                      reportType: widget.reportType,
+                                      startDate: _itemsStartDate,
+                                      endDate: _itemsEndDate,
+                                      onDateRangeChanged: (startDate, endDate) {
+                                        setState(() {
+                                          _itemsStartDate = startDate;
+                                          _itemsEndDate = endDate;
+                                        });
+                                        if (widget.onItemsDateRangeChanged != null) {
+                                          widget.onItemsDateRangeChanged!(startDate, endDate);
+                                        }
+                                        _loadData();
+                                      },
+                                    ),
+                                  ),
+                                  if (_availableSucursales != null && _availableSucursales!.length > 1) ...[
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child: _buildSucursalSelector(),
+                                    ),
+                                  ],
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: _buildFilteringWordFieldInAppBar(),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          );
+                        }
+                        // 다른 보고서는 기존 레이아웃 유지
                         return Column(
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1873,6 +2540,75 @@ class _ReportScreenState extends State<ReportScreen> {
                               _buildSucursalSelector(),
                               const SizedBox(width: 16),
                           ],
+                          // Alertas 보고서의 경우 VCancelado 및 Jefe 버튼 추가
+                          if (widget.reportType == ReportType.alertas) ...[
+                            TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  _alertasVCancelado = !_alertasVCancelado;
+                                  _alertasJefe = false; // 다른 버튼 비활성화
+                                  if (_alertasVCancelado) {
+                                    // VCancelado 버튼이 활성화되면 filteringWord에 "VCancelado" 입력
+                                    _filteringWordController.text = 'VCancelado';
+                                  } else {
+                                    // VCancelado 버튼이 비활성화되면 filteringWord 초기화
+                                    _filteringWordController.text = '';
+                                  }
+                                });
+                                _loadData();
+                              },
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                backgroundColor: _alertasVCancelado 
+                                    ? Colors.white.withOpacity(0.3) 
+                                    : Colors.transparent,
+                              ),
+                              child: Text(
+                                'VCancelado',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: _alertasVCancelado ? FontWeight.bold : FontWeight.normal,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  _alertasJefe = !_alertasJefe;
+                                  _alertasVCancelado = false; // 다른 버튼 비활성화
+                                  if (_alertasJefe) {
+                                    // Jefe 버튼이 활성화되면 filteringWord에 "jefe" 입력
+                                    _filteringWordController.text = 'jefe';
+                                  } else {
+                                    // Jefe 버튼이 비활성화되면 filteringWord 초기화
+                                    _filteringWordController.text = '';
+                                  }
+                                });
+                                _loadData();
+                              },
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                backgroundColor: _alertasJefe 
+                                    ? Colors.white.withOpacity(0.3) 
+                                    : Colors.transparent,
+                              ),
+                              child: Text(
+                                'Jefe',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: _alertasJefe ? FontWeight.bold : FontWeight.normal,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
                           Expanded(
                             child: _buildFilteringWordFieldInAppBar(),
                           ),
@@ -1887,226 +2623,75 @@ class _ReportScreenState extends State<ReportScreen> {
                           final orientation = MediaQuery.of(context).orientation;
                           final platformType = PlatformUtils.getPlatformType(context);
                           final isMobile = platformType == PlatformType.mobile;
-                          // 핸드폰의 경우: 세로 모드일 때만 2줄, 가로 모드일 때는 1줄
+                          // 핸드폰의 경우: 세로 모드일 때만 3줄, 가로 모드일 때는 1줄
                           final isMobilePortrait = isMobile && !isLargeScreen && orientation == Orientation.portrait;
                           
-                          // 핸드폰 세로 모드: 2줄로 배치
+                          // 핸드폰 세로 모드: 3줄로 배치
                           if (isMobilePortrait) {
                             return Column(
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // 첫 번째 줄: 아이콘, 제목, Unit 버튼들
+                                // 첫 번째 줄: Unit 선택 콤보, filteringWord, 메뉴 버튼, 공유 버튼
                                 Row(
                                   children: [
-                                    Icon(reportIcon, color: Colors.white),
-                                    const SizedBox(width: 8),
                                     Flexible(
-                                      child: Text(
-                                        reportTitle,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Flexible(
+                                      flex: 2,
                                       child: _buildVentasUnitButtonsInAppBar(),
                                     ),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      flex: 3,
+                                      child: _buildFilteringWordFieldInAppBar(),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    // 메뉴 버튼
+                                    PopupMenuButton<ReportType>(
+                                      icon: const Icon(Icons.more_vert, color: Colors.white, size: 18),
+                                      tooltip: 'Menú',
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                      iconSize: 18,
+                                      onSelected: (ReportType reportType) {
+                                        if (reportType != widget.reportType) {
+                                          Navigator.pushReplacement(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => ReportScreen(
+                                                serverUrl: widget.serverUrl,
+                                                reportType: reportType,
+                                                initialDate: widget.initialDate,
+                                                initialItemsStartDate: widget.initialItemsStartDate,
+                                                initialItemsEndDate: widget.initialItemsEndDate,
+                                                initialFilteringWord: widget.initialFilteringWord,
+                                                initialSortColumn: widget.initialSortColumn,
+                                                initialSortAscending: widget.initialSortAscending,
+                                                onStateChanged: widget.onStateChanged,
+                                                onItemsDateRangeChanged: widget.onItemsDateRangeChanged,
+                                                useFullWidth: widget.useFullWidth,
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      },
+                                      itemBuilder: (BuildContext context) => _buildReportMenuItems(),
+                                    ),
+                                    // PDF 공유 버튼
+                                    if (_data != null) ...[
+                                      const SizedBox(width: 2),
+                                      IconButton(
+                                        icon: const Icon(Icons.share, color: Colors.white, size: 18),
+                                        tooltip: 'Compartir como PDF',
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                        iconSize: 18,
+                                        onPressed: () => _shareReport(),
+                                      ),
+                                    ],
                                   ],
                                 ),
                                 const SizedBox(height: 4),
-                                // 두 번째 줄: 날짜 선택기, Sucursal 선택기, Descontado 체크박스, 필터링 단어 필드
-                                Row(
-                                  children: [
-                                    Flexible(
-                                      child: _buildCompactDateRangeButton(_getReportColor()),
-                                    ),
-                                    if (_availableSucursales != null && _availableSucursales!.length > 1) ...[
-                                      const SizedBox(width: 8),
-                                      Flexible(
-                                        child: _buildSucursalSelector(),
-                                      ),
-                                    ],
-                                    const SizedBox(width: 8),
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Checkbox(
-                                          value: _ventasDescontado,
-                                          onChanged: (value) {
-                                            setState(() {
-                                              _ventasDescontado = value ?? false;
-                                            });
-                                            _loadData();
-                                          },
-                                          checkColor: Colors.white,
-                                          fillColor: MaterialStateProperty.resolveWith<Color>(
-                                            (Set<MaterialState> states) {
-                                              if (states.contains(MaterialState.selected)) {
-                                                return Colors.white.withOpacity(0.3);
-                                              }
-                                              return Colors.transparent;
-                                            },
-                                          ),
-                                          side: const BorderSide(color: Colors.white, width: 1.5),
-                                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                        ),
-                                        const SizedBox(width: 2),
-                                        const Text(
-                                          'Descontado',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Checkbox(
-                                          value: _ventasReservado,
-                                          onChanged: (value) {
-                                            setState(() {
-                                              _ventasReservado = value ?? false;
-                                            });
-                                            _loadData();
-                                          },
-                                          checkColor: Colors.white,
-                                          fillColor: MaterialStateProperty.resolveWith<Color>(
-                                            (Set<MaterialState> states) {
-                                              if (states.contains(MaterialState.selected)) {
-                                                return Colors.white.withOpacity(0.3);
-                                              }
-                                              return Colors.transparent;
-                                            },
-                                          ),
-                                          side: const BorderSide(color: Colors.white, width: 1.5),
-                                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                        ),
-                                        const SizedBox(width: 2),
-                                        const Text(
-                                          'Reservado',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Checkbox(
-                                          value: _ventasCredito,
-                                          onChanged: (value) {
-                                            setState(() {
-                                              _ventasCredito = value ?? false;
-                                            });
-                                            _loadData();
-                                          },
-                                          checkColor: Colors.white,
-                                          fillColor: MaterialStateProperty.resolveWith<Color>(
-                                            (Set<MaterialState> states) {
-                                              if (states.contains(MaterialState.selected)) {
-                                                return Colors.white.withOpacity(0.3);
-                                              }
-                                              return Colors.transparent;
-                                            },
-                                          ),
-                                          side: const BorderSide(color: Colors.white, width: 1.5),
-                                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                        ),
-                                        const SizedBox(width: 2),
-                                        const Text(
-                                          'Crédito',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: _buildFilteringWordFieldInAppBar(),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            );
-                          }
-                          
-                          // 넓은 화면: 1줄로 배치
-                          return Row(
-                        children: [
-                          Icon(reportIcon, color: Colors.white),
-                          const SizedBox(width: 8),
-                          Text(
-                            reportTitle,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                              const SizedBox(width: 16),
-                              // Unit 버튼들
-                              _buildVentasUnitButtonsInAppBar(),
-                              const SizedBox(width: 16),
-                              // 큰 화면 또는 수평 모드: 시작일과 종료일 선택기 2개
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  SizedBox(
-                                    width: isLargeScreen ? 150 : 90,
-                                    child: _buildSingleDateButton(
-                                      label: 'Desde',
-                                      date: _ventasStartDate,
-                                      reportColor: _getReportColor(),
-                                      unit: _ventasUnit,
-                                  onDateSelected: (date) {
-                                    setState(() {
-                                      _ventasStartDate = date;
-                                      // month unit일 때만 종료일 자동 조정 (year는 사용자가 직접 선택)
-                                      if (_ventasUnit == 'month') {
-                                        _ventasEndDate = DateTime(date.year, date.month + 1, 0);
-                                      }
-                                    });
-                                    _loadData();
-                                  },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              // 큰 화면: 달력 간격을 unit 버튼 간격과 비슷하게 (4px)
-                              const SizedBox(width: 4),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  SizedBox(
-                                    width: isLargeScreen ? 150 : 90,
-                                    child: _buildSingleDateButton(
-                                      label: 'Hasta',
-                                      date: _ventasEndDate,
-                                      reportColor: _getReportColor(),
-                                      unit: _ventasUnit,
-                                  onDateSelected: (date) {
-                                    setState(() {
-                                      _ventasEndDate = date;
-                                      // month unit일 때만 시작일 자동 조정 (year는 사용자가 직접 선택)
-                                      if (_ventasUnit == 'month') {
-                                        _ventasStartDate = DateTime(date.year, date.month, 1);
-                                      }
-                                    });
-                                    _loadData();
-                                  },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              // 큰 화면: descontado, reservado, credito 체크박스 추가
-                              if (isLargeScreen) ...[
-                                const SizedBox(width: 4),
+                                // 두 번째 줄: Descontado, Reservado, Crédito 체크박스
                                 Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
@@ -2128,8 +2713,171 @@ class _ReportScreenState extends State<ReportScreen> {
                                         },
                                       ),
                                       side: const BorderSide(color: Colors.white, width: 1.5),
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    const SizedBox(width: 2),
+                                    const Text(
+                                      'Descontado',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Checkbox(
+                                      value: _ventasReservado,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _ventasReservado = value ?? false;
+                                        });
+                                        _loadData();
+                                      },
+                                      checkColor: Colors.white,
+                                      fillColor: MaterialStateProperty.resolveWith<Color>(
+                                        (Set<MaterialState> states) {
+                                          if (states.contains(MaterialState.selected)) {
+                                            return Colors.white.withOpacity(0.3);
+                                          }
+                                          return Colors.transparent;
+                                        },
+                                      ),
+                                      side: const BorderSide(color: Colors.white, width: 1.5),
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    const SizedBox(width: 2),
+                                    const Text(
+                                      'Reservado',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Checkbox(
+                                      value: _ventasCredito,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _ventasCredito = value ?? false;
+                                        });
+                                        _loadData();
+                                      },
+                                      checkColor: Colors.white,
+                                      fillColor: MaterialStateProperty.resolveWith<Color>(
+                                        (Set<MaterialState> states) {
+                                          if (states.contains(MaterialState.selected)) {
+                                            return Colors.white.withOpacity(0.3);
+                                          }
+                                          return Colors.transparent;
+                                        },
+                                      ),
+                                      side: const BorderSide(color: Colors.white, width: 1.5),
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    const SizedBox(width: 2),
+                                    const Text(
+                                      'Crédito',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                // 세 번째 줄: 달력 버튼 2개, sucursal 선택 콤보
+                                Row(
+                                  children: [
+                                    Flexible(
+                                      child: SizedBox(
+                                        width: 90,
+                                        child: _buildSingleDateButton(
+                                          label: 'Desde',
+                                          date: _ventasStartDate,
+                                          reportColor: _getReportColor(),
+                                          unit: _ventasUnit,
+                                          onDateSelected: (date) {
+                                            setState(() {
+                                              _ventasStartDate = date;
+                                              if (_ventasUnit == 'month') {
+                                                _ventasEndDate = DateTime(date.year, date.month + 1, 0);
+                                              }
+                                            });
+                                            _loadData();
+                                          },
+                                        ),
+                                      ),
                                     ),
                                     const SizedBox(width: 4),
+                                    Flexible(
+                                      child: SizedBox(
+                                        width: 90,
+                                        child: _buildSingleDateButton(
+                                          label: 'Hasta',
+                                          date: _ventasEndDate,
+                                          reportColor: _getReportColor(),
+                                          unit: _ventasUnit,
+                                          onDateSelected: (date) {
+                                            setState(() {
+                                              _ventasEndDate = date;
+                                              if (_ventasUnit == 'month') {
+                                                _ventasStartDate = DateTime(date.year, date.month, 1);
+                                              }
+                                            });
+                                            _loadData();
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                    if (_availableSucursales != null && _availableSucursales!.length > 1) ...[
+                                      const SizedBox(width: 8),
+                                      Flexible(
+                                        child: _buildSucursalSelector(),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ],
+                            );
+                          }
+                          
+                          // 넓은 화면: 1줄로 배치 (데스크톱/태블릿은 변경하지 않음, 핸드폰 넓은 화면만 변경)
+                          final isDesktopOrTablet = platformType == PlatformType.desktop || PlatformUtils.isIPad(context);
+                          
+                          // 데스크톱/태블릿: 기존대로 체크박스 사용
+                          if (isDesktopOrTablet) {
+                            return Row(
+                              children: [
+                                // Unit 선택 콤보
+                                _buildVentasUnitButtonsInAppBar(),
+                                const SizedBox(width: 8),
+                                // Descontado, Reservado, Crédito 체크박스
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Checkbox(
+                                      value: _ventasDescontado,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _ventasDescontado = value ?? false;
+                                        });
+                                        _loadData();
+                                      },
+                                      checkColor: Colors.white,
+                                      fillColor: MaterialStateProperty.resolveWith<Color>(
+                                        (Set<MaterialState> states) {
+                                          if (states.contains(MaterialState.selected)) {
+                                            return Colors.white.withOpacity(0.3);
+                                          }
+                                          return Colors.transparent;
+                                        },
+                                      ),
+                                      side: const BorderSide(color: Colors.white, width: 1.5),
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    const SizedBox(width: 2),
                                     const Text(
                                       'Descontado',
                                       style: TextStyle(
@@ -2157,8 +2905,9 @@ class _ReportScreenState extends State<ReportScreen> {
                                         },
                                       ),
                                       side: const BorderSide(color: Colors.white, width: 1.5),
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                     ),
-                                    const SizedBox(width: 4),
+                                    const SizedBox(width: 2),
                                     const Text(
                                       'Reservado',
                                       style: TextStyle(
@@ -2186,8 +2935,9 @@ class _ReportScreenState extends State<ReportScreen> {
                                         },
                                       ),
                                       side: const BorderSide(color: Colors.white, width: 1.5),
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                     ),
-                                    const SizedBox(width: 4),
+                                    const SizedBox(width: 2),
                                     const Text(
                                       'Crédito',
                                       style: TextStyle(
@@ -2198,13 +2948,509 @@ class _ReportScreenState extends State<ReportScreen> {
                                     ),
                                   ],
                                 ),
+                                const SizedBox(width: 8),
+                                // filteringWord
+                                Expanded(
+                                  child: _buildFilteringWordFieldInAppBar(),
+                                ),
                               ],
-                              const SizedBox(width: 16),
-                              // 지점 선택 UI (큰 화면에서만, sucursal이 1개 이상일 때만 표시)
-                              if (isLargeScreen && _availableSucursales != null && _availableSucursales!.length > 1) ...[
+                            );
+                          }
+                          
+                          // 핸드폰 넓은 화면: 콤보박스 사용
+                          return Row(
+                            children: [
+                              // Unit 선택 콤보
+                              _buildVentasUnitButtonsInAppBar(),
+                              const SizedBox(width: 8),
+                              // 달력 버튼 2개
+                              SizedBox(
+                                width: 90,
+                                child: _buildSingleDateButton(
+                                  label: 'Desde',
+                                  date: _ventasStartDate,
+                                  reportColor: _getReportColor(),
+                                  unit: _ventasUnit,
+                                  onDateSelected: (date) {
+                                    setState(() {
+                                      _ventasStartDate = date;
+                                      if (_ventasUnit == 'month') {
+                                        _ventasEndDate = DateTime(date.year, date.month + 1, 0);
+                                      }
+                                    });
+                                    _loadData();
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              SizedBox(
+                                width: 90,
+                                child: _buildSingleDateButton(
+                                  label: 'Hasta',
+                                  date: _ventasEndDate,
+                                  reportColor: _getReportColor(),
+                                  unit: _ventasUnit,
+                                  onDateSelected: (date) {
+                                    setState(() {
+                                      _ventasEndDate = date;
+                                      if (_ventasUnit == 'month') {
+                                        _ventasStartDate = DateTime(date.year, date.month, 1);
+                                      }
+                                    });
+                                    _loadData();
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Sucursal 선택 콤보
+                              if (_availableSucursales != null && _availableSucursales!.length > 1) ...[
                                 _buildSucursalSelector(),
-                                const SizedBox(width: 16),
+                                const SizedBox(width: 8),
                               ],
+                              // Descontado, Reservado, Crédito 콤보박스
+                              _buildVentasFilterComboBox('Descontado', _ventasDescontado, (value) {
+                                setState(() {
+                                  _ventasDescontado = value;
+                                });
+                                _loadData();
+                              }),
+                              const SizedBox(width: 4),
+                              _buildVentasFilterComboBox('Reservado', _ventasReservado, (value) {
+                                setState(() {
+                                  _ventasReservado = value;
+                                });
+                                _loadData();
+                              }),
+                              const SizedBox(width: 4),
+                              _buildVentasFilterComboBox('Crédito', _ventasCredito, (value) {
+                                setState(() {
+                                  _ventasCredito = value;
+                                });
+                                _loadData();
+                              }),
+                              const SizedBox(width: 8),
+                              // filteringWord
+                              Expanded(
+                                child: _buildFilteringWordFieldInAppBar(),
+                              ),
+                            ],
+                          );
+                        },
+                      )
+                    : widget.reportType == ReportType.ventas
+                    ? LayoutBuilder(
+                        builder: (context, constraints) {
+                          final isLargeScreen = constraints.maxWidth >= 800;
+                          final orientation = MediaQuery.of(context).orientation;
+                          final platformType = PlatformUtils.getPlatformType(context);
+                          final isMobile = platformType == PlatformType.mobile;
+                          // 핸드폰의 경우: 세로 모드일 때만 3줄, 가로 모드일 때는 1줄
+                          final isMobilePortrait = isMobile && !isLargeScreen && orientation == Orientation.portrait;
+                          
+                          // 핸드폰 세로 모드: 3줄로 배치
+                          if (isMobilePortrait) {
+                            return Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // 첫 번째 줄: Unit 선택 콤보, filteringWord, 메뉴 버튼, 공유 버튼
+                                Row(
+                                  children: [
+                                    Flexible(
+                                      flex: 2,
+                                      child: _buildVentasUnitButtonsInAppBar(),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      flex: 3,
+                                      child: _buildFilteringWordFieldInAppBar(),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    // 메뉴 버튼
+                                    PopupMenuButton<ReportType>(
+                                      icon: const Icon(Icons.more_vert, color: Colors.white, size: 18),
+                                      tooltip: 'Menú',
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                      iconSize: 18,
+                                      onSelected: (ReportType reportType) {
+                                        if (reportType != widget.reportType) {
+                                          Navigator.pushReplacement(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => ReportScreen(
+                                                serverUrl: widget.serverUrl,
+                                                reportType: reportType,
+                                                initialDate: widget.initialDate,
+                                                initialItemsStartDate: widget.initialItemsStartDate,
+                                                initialItemsEndDate: widget.initialItemsEndDate,
+                                                initialFilteringWord: widget.initialFilteringWord,
+                                                initialSortColumn: widget.initialSortColumn,
+                                                initialSortAscending: widget.initialSortAscending,
+                                                onStateChanged: widget.onStateChanged,
+                                                onItemsDateRangeChanged: widget.onItemsDateRangeChanged,
+                                                useFullWidth: widget.useFullWidth,
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      },
+                                      itemBuilder: (BuildContext context) => _buildReportMenuItems(),
+                                    ),
+                                    // PDF 공유 버튼
+                                    if (_data != null) ...[
+                                      const SizedBox(width: 2),
+                                      IconButton(
+                                        icon: const Icon(Icons.share, color: Colors.white, size: 18),
+                                        tooltip: 'Compartir como PDF',
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                        iconSize: 18,
+                                        onPressed: () => _shareReport(),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                // 두 번째 줄: Descontado, Reservado, Crédito 체크박스
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Checkbox(
+                                      value: _ventasDescontado,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _ventasDescontado = value ?? false;
+                                        });
+                                        _loadData();
+                                      },
+                                      checkColor: Colors.white,
+                                      fillColor: MaterialStateProperty.resolveWith<Color>(
+                                        (Set<MaterialState> states) {
+                                          if (states.contains(MaterialState.selected)) {
+                                            return Colors.white.withOpacity(0.3);
+                                          }
+                                          return Colors.transparent;
+                                        },
+                                      ),
+                                      side: const BorderSide(color: Colors.white, width: 1.5),
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    const SizedBox(width: 2),
+                                    const Text(
+                                      'Descontado',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Checkbox(
+                                      value: _ventasReservado,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _ventasReservado = value ?? false;
+                                        });
+                                        _loadData();
+                                      },
+                                      checkColor: Colors.white,
+                                      fillColor: MaterialStateProperty.resolveWith<Color>(
+                                        (Set<MaterialState> states) {
+                                          if (states.contains(MaterialState.selected)) {
+                                            return Colors.white.withOpacity(0.3);
+                                          }
+                                          return Colors.transparent;
+                                        },
+                                      ),
+                                      side: const BorderSide(color: Colors.white, width: 1.5),
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    const SizedBox(width: 2),
+                                    const Text(
+                                      'Reservado',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Checkbox(
+                                      value: _ventasCredito,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _ventasCredito = value ?? false;
+                                        });
+                                        _loadData();
+                                      },
+                                      checkColor: Colors.white,
+                                      fillColor: MaterialStateProperty.resolveWith<Color>(
+                                        (Set<MaterialState> states) {
+                                          if (states.contains(MaterialState.selected)) {
+                                            return Colors.white.withOpacity(0.3);
+                                          }
+                                          return Colors.transparent;
+                                        },
+                                      ),
+                                      side: const BorderSide(color: Colors.white, width: 1.5),
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    const SizedBox(width: 2),
+                                    const Text(
+                                      'Crédito',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                // 세 번째 줄: 달력 버튼 2개, sucursal 선택 콤보
+                                Row(
+                                  children: [
+                                    Flexible(
+                                      child: SizedBox(
+                                        width: 90,
+                                        child: _buildSingleDateButton(
+                                          label: 'Desde',
+                                          date: _ventasStartDate,
+                                          reportColor: _getReportColor(),
+                                          unit: _ventasUnit,
+                                          onDateSelected: (date) {
+                                            setState(() {
+                                              _ventasStartDate = date;
+                                              if (_ventasUnit == 'month') {
+                                                _ventasEndDate = DateTime(date.year, date.month + 1, 0);
+                                              }
+                                            });
+                                            _loadData();
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Flexible(
+                                      child: SizedBox(
+                                        width: 90,
+                                        child: _buildSingleDateButton(
+                                          label: 'Hasta',
+                                          date: _ventasEndDate,
+                                          reportColor: _getReportColor(),
+                                          unit: _ventasUnit,
+                                          onDateSelected: (date) {
+                                            setState(() {
+                                              _ventasEndDate = date;
+                                              if (_ventasUnit == 'month') {
+                                                _ventasStartDate = DateTime(date.year, date.month, 1);
+                                              }
+                                            });
+                                            _loadData();
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                    if (_availableSucursales != null && _availableSucursales!.length > 1) ...[
+                                      const SizedBox(width: 8),
+                                      Flexible(
+                                        child: _buildSucursalSelector(),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ],
+                            );
+                          }
+                          
+                          // 넓은 화면: 1줄로 배치 (데스크톱/태블릿은 변경하지 않음, 핸드폰 넓은 화면만 변경)
+                          final isDesktopOrTablet = platformType == PlatformType.desktop || PlatformUtils.isIPad(context);
+                          
+                          // 데스크톱/태블릿: 기존대로 체크박스 사용
+                          if (isDesktopOrTablet) {
+                            return Row(
+                              children: [
+                                // Unit 선택 콤보
+                                _buildVentasUnitButtonsInAppBar(),
+                                const SizedBox(width: 8),
+                                // Descontado, Reservado, Crédito 체크박스
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Checkbox(
+                                      value: _ventasDescontado,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _ventasDescontado = value ?? false;
+                                        });
+                                        _loadData();
+                                      },
+                                      checkColor: Colors.white,
+                                      fillColor: MaterialStateProperty.resolveWith<Color>(
+                                        (Set<MaterialState> states) {
+                                          if (states.contains(MaterialState.selected)) {
+                                            return Colors.white.withOpacity(0.3);
+                                          }
+                                          return Colors.transparent;
+                                        },
+                                      ),
+                                      side: const BorderSide(color: Colors.white, width: 1.5),
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    const SizedBox(width: 2),
+                                    const Text(
+                                      'Descontado',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Checkbox(
+                                      value: _ventasReservado,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _ventasReservado = value ?? false;
+                                        });
+                                        _loadData();
+                                      },
+                                      checkColor: Colors.white,
+                                      fillColor: MaterialStateProperty.resolveWith<Color>(
+                                        (Set<MaterialState> states) {
+                                          if (states.contains(MaterialState.selected)) {
+                                            return Colors.white.withOpacity(0.3);
+                                          }
+                                          return Colors.transparent;
+                                        },
+                                      ),
+                                      side: const BorderSide(color: Colors.white, width: 1.5),
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    const SizedBox(width: 2),
+                                    const Text(
+                                      'Reservado',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Checkbox(
+                                      value: _ventasCredito,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _ventasCredito = value ?? false;
+                                        });
+                                        _loadData();
+                                      },
+                                      checkColor: Colors.white,
+                                      fillColor: MaterialStateProperty.resolveWith<Color>(
+                                        (Set<MaterialState> states) {
+                                          if (states.contains(MaterialState.selected)) {
+                                            return Colors.white.withOpacity(0.3);
+                                          }
+                                          return Colors.transparent;
+                                        },
+                                      ),
+                                      side: const BorderSide(color: Colors.white, width: 1.5),
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    const SizedBox(width: 2),
+                                    const Text(
+                                      'Crédito',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(width: 8),
+                                // filteringWord
+                                Expanded(
+                                  child: _buildFilteringWordFieldInAppBar(),
+                                ),
+                              ],
+                            );
+                          }
+                          
+                          // 핸드폰 넓은 화면: 콤보박스 사용
+                          return Row(
+                            children: [
+                              // Unit 선택 콤보
+                              _buildVentasUnitButtonsInAppBar(),
+                              const SizedBox(width: 8),
+                              // 달력 버튼 2개
+                              SizedBox(
+                                width: 90,
+                                child: _buildSingleDateButton(
+                                  label: 'Desde',
+                                  date: _ventasStartDate,
+                                  reportColor: _getReportColor(),
+                                  unit: _ventasUnit,
+                                  onDateSelected: (date) {
+                                    setState(() {
+                                      _ventasStartDate = date;
+                                      if (_ventasUnit == 'month') {
+                                        _ventasEndDate = DateTime(date.year, date.month + 1, 0);
+                                      }
+                                    });
+                                    _loadData();
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              SizedBox(
+                                width: 90,
+                                child: _buildSingleDateButton(
+                                  label: 'Hasta',
+                                  date: _ventasEndDate,
+                                  reportColor: _getReportColor(),
+                                  unit: _ventasUnit,
+                                  onDateSelected: (date) {
+                                    setState(() {
+                                      _ventasEndDate = date;
+                                      if (_ventasUnit == 'month') {
+                                        _ventasStartDate = DateTime(date.year, date.month, 1);
+                                      }
+                                    });
+                                    _loadData();
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Sucursal 선택 콤보
+                              if (_availableSucursales != null && _availableSucursales!.length > 1) ...[
+                                _buildSucursalSelector(),
+                                const SizedBox(width: 8),
+                              ],
+                              // Descontado, Reservado, Crédito 콤보박스
+                              _buildVentasFilterComboBox('Descontado', _ventasDescontado, (value) {
+                                setState(() {
+                                  _ventasDescontado = value;
+                                });
+                                _loadData();
+                              }),
+                              const SizedBox(width: 4),
+                              _buildVentasFilterComboBox('Reservado', _ventasReservado, (value) {
+                                setState(() {
+                                  _ventasReservado = value;
+                                });
+                                _loadData();
+                              }),
+                              const SizedBox(width: 4),
+                              _buildVentasFilterComboBox('Crédito', _ventasCredito, (value) {
+                                setState(() {
+                                  _ventasCredito = value;
+                                });
+                                _loadData();
+                              }),
+                              const SizedBox(width: 8),
+                              // filteringWord
                               Expanded(
                                 child: _buildFilteringWordFieldInAppBar(),
                               ),
@@ -2346,43 +3592,45 @@ class _ReportScreenState extends State<ReportScreen> {
                             ],
                           ),
         backgroundColor: reportColor,
-        actions: [
-          // 보고서 선택 드롭다운 메뉴
-          PopupMenuButton<ReportType>(
-            icon: const Icon(Icons.assessment, color: Colors.white),
-            tooltip: 'Reportes',
-            onSelected: (ReportType reportType) {
-              if (reportType != widget.reportType) {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ReportScreen(
-                      serverUrl: widget.serverUrl,
-                      reportType: reportType,
-                      initialDate: widget.initialDate,
-                      initialItemsStartDate: widget.initialItemsStartDate,
-                      initialItemsEndDate: widget.initialItemsEndDate,
-                      initialFilteringWord: widget.initialFilteringWord,
-                      initialSortColumn: widget.initialSortColumn,
-                      initialSortAscending: widget.initialSortAscending,
-                      onStateChanged: widget.onStateChanged,
-                      onItemsDateRangeChanged: widget.onItemsDateRangeChanged,
-                      useFullWidth: widget.useFullWidth,
-                    ),
+        actions: needsThreeLineAppBar
+            ? [] // 좁은 화면에서는 첫 번째 줄에 이미 메뉴 버튼과 공유 버튼이 있으므로 actions 비활성화
+            : [
+                // 보고서 선택 드롭다운 메뉴
+                PopupMenuButton<ReportType>(
+                  icon: const Icon(Icons.assessment, color: Colors.white),
+                  tooltip: 'Reportes',
+                  onSelected: (ReportType reportType) {
+                    if (reportType != widget.reportType) {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ReportScreen(
+                            serverUrl: widget.serverUrl,
+                            reportType: reportType,
+                            initialDate: widget.initialDate,
+                            initialItemsStartDate: widget.initialItemsStartDate,
+                            initialItemsEndDate: widget.initialItemsEndDate,
+                            initialFilteringWord: widget.initialFilteringWord,
+                            initialSortColumn: widget.initialSortColumn,
+                            initialSortAscending: widget.initialSortAscending,
+                            onStateChanged: widget.onStateChanged,
+                            onItemsDateRangeChanged: widget.onItemsDateRangeChanged,
+                            useFullWidth: widget.useFullWidth,
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  itemBuilder: (BuildContext context) => _buildReportMenuItems(),
+                ),
+                // PDF 공유 버튼
+                if (_data != null)
+                  IconButton(
+                    icon: const Icon(Icons.share, color: Colors.white),
+                    tooltip: 'Compartir como PDF',
+                    onPressed: () => _shareReport(),
                   ),
-                );
-              }
-            },
-            itemBuilder: (BuildContext context) => _buildReportMenuItems(),
-          ),
-          // PDF 공유 버튼
-          if (_data != null)
-            IconButton(
-              icon: const Icon(Icons.share, color: Colors.white),
-              tooltip: 'Compartir como PDF',
-              onPressed: () => _shareAsPdf(),
-            ),
-        ],
+              ],
       ),
       body: _isLoading
           ? Center(
@@ -2524,10 +3772,11 @@ class _ReportScreenState extends State<ReportScreen> {
     bool isLargeScreen,
     bool isMobilePortrait,
     bool needsTwoLineAppBar,
+    bool needsThreeLineAppBar,
   ) {
     return AppBar(
       automaticallyImplyLeading: false,
-      toolbarHeight: needsTwoLineAppBar ? kToolbarHeight * 2 : null,
+      toolbarHeight: needsThreeLineAppBar ? kToolbarHeight * 3 : (needsTwoLineAppBar ? kToolbarHeight * 2 : null),
       leading: widget.useFullWidth && !isLargeScreen && widget.onMenuPressed != null
           ? IconButton(
               icon: const Icon(Icons.menu, color: Colors.white),
@@ -2625,6 +3874,173 @@ class _ReportScreenState extends State<ReportScreen> {
                     
                     // 핸드폰 세로 모드: 2줄로 배치
                     if (isMobilePortrait) {
+                      // Alertas 보고서의 경우 특별한 레이아웃
+                      if (widget.reportType == ReportType.alertas) {
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // 첫 번째 줄: 아이콘, 제목, VCancelado 버튼, Jefe 버튼, 메뉴 버튼, 공유 버튼
+                            Row(
+                              children: [
+                                Icon(reportIcon, color: Colors.white),
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    reportTitle,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 16),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                // VCancelado 버튼
+                                TextButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      _alertasVCancelado = !_alertasVCancelado;
+                                      _alertasJefe = false; // 다른 버튼 비활성화
+                                      if (_alertasVCancelado) {
+                                        // VCancelado 버튼이 활성화되면 filteringWord에 "VCancelado" 입력
+                                        _filteringWordController.text = 'VCancelado';
+                                      } else {
+                                        // VCancelado 버튼이 비활성화되면 filteringWord 초기화
+                                        _filteringWordController.text = '';
+                                      }
+                                    });
+                                    _loadData();
+                                  },
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    minimumSize: Size.zero,
+                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    backgroundColor: _alertasVCancelado 
+                                        ? Colors.white.withOpacity(0.3) 
+                                        : Colors.transparent,
+                                  ),
+                                  child: Text(
+                                    'VCancelado',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: _alertasVCancelado ? FontWeight.bold : FontWeight.normal,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                // Jefe 버튼
+                                TextButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      _alertasJefe = !_alertasJefe;
+                                      _alertasVCancelado = false; // 다른 버튼 비활성화
+                                      if (_alertasJefe) {
+                                        // Jefe 버튼이 활성화되면 filteringWord에 "jefe" 입력
+                                        _filteringWordController.text = 'jefe';
+                                      } else {
+                                        // Jefe 버튼이 비활성화되면 filteringWord 초기화
+                                        _filteringWordController.text = '';
+                                      }
+                                    });
+                                    _loadData();
+                                  },
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    minimumSize: Size.zero,
+                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    backgroundColor: _alertasJefe 
+                                        ? Colors.white.withOpacity(0.3) 
+                                        : Colors.transparent,
+                                  ),
+                                  child: Text(
+                                    'Jefe',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: _alertasJefe ? FontWeight.bold : FontWeight.normal,
+                                    ),
+                                  ),
+                                ),
+                                const Spacer(),
+                                // 메뉴 버튼
+                                PopupMenuButton<ReportType>(
+                                  icon: const Icon(Icons.more_vert, color: Colors.white, size: 18),
+                                  tooltip: 'Menú',
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  iconSize: 18,
+                                  onSelected: (ReportType reportType) {
+                                    if (reportType != widget.reportType) {
+                                      Navigator.pushReplacement(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => ReportScreen(
+                                            serverUrl: widget.serverUrl,
+                                            reportType: reportType,
+                                            initialDate: widget.initialDate,
+                                            initialItemsStartDate: widget.initialItemsStartDate,
+                                            initialItemsEndDate: widget.initialItemsEndDate,
+                                            initialFilteringWord: widget.initialFilteringWord,
+                                            initialSortColumn: widget.initialSortColumn,
+                                            initialSortAscending: widget.initialSortAscending,
+                                            onStateChanged: widget.onStateChanged,
+                                            onItemsDateRangeChanged: widget.onItemsDateRangeChanged,
+                                            useFullWidth: widget.useFullWidth,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  itemBuilder: (BuildContext context) => _buildReportMenuItems(),
+                                ),
+                                // 공유 버튼
+                                if (_data != null)
+                                  IconButton(
+                                    icon: const Icon(Icons.share, color: Colors.white, size: 18),
+                                    tooltip: 'Compartir como PDF',
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    iconSize: 18,
+                                    onPressed: () => _shareReport(),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            // 두 번째 줄: 날짜 선택기, Sucursal 선택기, 필터링 단어 필드
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: ItemsDateRangeSelector(
+                                    reportType: widget.reportType,
+                                    startDate: _itemsStartDate,
+                                    endDate: _itemsEndDate,
+                                    onDateRangeChanged: (startDate, endDate) {
+                                      setState(() {
+                                        _itemsStartDate = startDate;
+                                        _itemsEndDate = endDate;
+                                      });
+                                      if (widget.onItemsDateRangeChanged != null) {
+                                        widget.onItemsDateRangeChanged!(startDate, endDate);
+                                      }
+                                      _loadData();
+                                    },
+                                  ),
+                                ),
+                                if (_availableSucursales != null && _availableSucursales!.length > 1) ...[
+                                  const SizedBox(width: 8),
+                                  Flexible(
+                                    child: _buildSucursalSelector(),
+                                  ),
+                                ],
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _buildFilteringWordFieldInAppBar(),
+                                ),
+                              ],
+                            ),
+                          ],
+                        );
+                      }
+                      // 다른 보고서는 기존 레이아웃 유지
                       return Column(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2745,8 +4161,77 @@ class _ReportScreenState extends State<ReportScreen> {
                         const SizedBox(width: 16),
                         // 지점 선택 UI (큰 화면에서만, sucursal이 1개 이상일 때만 표시)
                         if (isLargeScreen && _availableSucursales != null && _availableSucursales!.length > 1) ...[
-                          _buildSucursalSelector(),
-                          const SizedBox(width: 16),
+                            _buildSucursalSelector(),
+                            const SizedBox(width: 16),
+                        ],
+                        // Alertas 보고서의 경우 VCancelado 및 Jefe 버튼 추가
+                        if (widget.reportType == ReportType.alertas) ...[
+                          TextButton(
+                            onPressed: () {
+                              setState(() {
+                                _alertasVCancelado = !_alertasVCancelado;
+                                _alertasJefe = false; // 다른 버튼 비활성화
+                                if (_alertasVCancelado) {
+                                  // VCancelado 버튼이 활성화되면 filteringWord에 "VCancelado" 입력
+                                  _filteringWordController.text = 'VCancelado';
+                                } else {
+                                  // VCancelado 버튼이 비활성화되면 filteringWord 초기화
+                                  _filteringWordController.text = '';
+                                }
+                              });
+                              _loadData();
+                            },
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              backgroundColor: _alertasVCancelado 
+                                  ? Colors.white.withOpacity(0.3) 
+                                  : Colors.transparent,
+                            ),
+                            child: Text(
+                              'VCancelado',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: _alertasVCancelado ? FontWeight.bold : FontWeight.normal,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          TextButton(
+                            onPressed: () {
+                              setState(() {
+                                _alertasJefe = !_alertasJefe;
+                                _alertasVCancelado = false; // 다른 버튼 비활성화
+                                if (_alertasJefe) {
+                                  // Jefe 버튼이 활성화되면 filteringWord에 "jefe" 입력
+                                  _filteringWordController.text = 'jefe';
+                                } else {
+                                  // Jefe 버튼이 비활성화되면 filteringWord 초기화
+                                  _filteringWordController.text = '';
+                                }
+                              });
+                              _loadData();
+                            },
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              backgroundColor: _alertasJefe 
+                                  ? Colors.white.withOpacity(0.3) 
+                                  : Colors.transparent,
+                            ),
+                            child: Text(
+                              'Jefe',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: _alertasJefe ? FontWeight.bold : FontWeight.normal,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                         ],
                         Expanded(
                           child: _buildFilteringWordFieldInAppBar(),
@@ -2914,172 +4399,106 @@ class _ReportScreenState extends State<ReportScreen> {
                         // 넓은 화면: 1줄로 배치
                         return Row(
                           children: [
-                            Icon(reportIcon, color: Colors.white),
-                            const SizedBox(width: 8),
-                            Text(
-                              reportTitle,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            // Unit 버튼들
+                            // Unit 선택 콤보
                             _buildVentasUnitButtonsInAppBar(),
-                            const SizedBox(width: 16),
-                            // 큰 화면 또는 수평 모드: 시작일과 종료일 선택기 2개
+                            const SizedBox(width: 8),
+                            // Descontado, Reservado, Crédito 체크박스
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                SizedBox(
-                                  width: isLargeScreen ? 150 : 90,
-                                  child: _buildSingleDateButton(
-                                    label: 'Desde',
-                                    date: _ventasStartDate,
-                                    reportColor: _getReportColor(),
-                                    unit: _ventasUnit,
-                                    onDateSelected: (date) {
-                                      setState(() {
-                                        _ventasStartDate = date;
-                                        // month unit일 때만 종료일 자동 조정 (year는 사용자가 직접 선택)
-                                        if (_ventasUnit == 'month') {
-                                          _ventasEndDate = DateTime(date.year, date.month + 1, 0);
-                                        }
-                                      });
-                                      _loadData();
+                                Checkbox(
+                                  value: _ventasDescontado,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _ventasDescontado = value ?? false;
+                                    });
+                                    _loadData();
+                                  },
+                                  checkColor: Colors.white,
+                                  fillColor: MaterialStateProperty.resolveWith<Color>(
+                                    (Set<MaterialState> states) {
+                                      if (states.contains(MaterialState.selected)) {
+                                        return Colors.white.withOpacity(0.3);
+                                      }
+                                      return Colors.transparent;
                                     },
+                                  ),
+                                  side: const BorderSide(color: Colors.white, width: 1.5),
+                                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                const SizedBox(width: 2),
+                                const Text(
+                                  'Descontado',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Checkbox(
+                                  value: _ventasReservado,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _ventasReservado = value ?? false;
+                                    });
+                                    _loadData();
+                                  },
+                                  checkColor: Colors.white,
+                                  fillColor: MaterialStateProperty.resolveWith<Color>(
+                                    (Set<MaterialState> states) {
+                                      if (states.contains(MaterialState.selected)) {
+                                        return Colors.white.withOpacity(0.3);
+                                      }
+                                      return Colors.transparent;
+                                    },
+                                  ),
+                                  side: const BorderSide(color: Colors.white, width: 1.5),
+                                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                const SizedBox(width: 2),
+                                const Text(
+                                  'Reservado',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Checkbox(
+                                  value: _ventasCredito,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _ventasCredito = value ?? false;
+                                    });
+                                    _loadData();
+                                  },
+                                  checkColor: Colors.white,
+                                  fillColor: MaterialStateProperty.resolveWith<Color>(
+                                    (Set<MaterialState> states) {
+                                      if (states.contains(MaterialState.selected)) {
+                                        return Colors.white.withOpacity(0.3);
+                                      }
+                                      return Colors.transparent;
+                                    },
+                                  ),
+                                  side: const BorderSide(color: Colors.white, width: 1.5),
+                                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                const SizedBox(width: 2),
+                                const Text(
+                                  'Crédito',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ],
                             ),
-                            // 큰 화면: 달력 간격을 unit 버튼 간격과 비슷하게 (4px)
-                            const SizedBox(width: 4),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                SizedBox(
-                                  width: isLargeScreen ? 150 : 90,
-                                  child: _buildSingleDateButton(
-                                    label: 'Hasta',
-                                    date: _ventasEndDate,
-                                    reportColor: _getReportColor(),
-                                    unit: _ventasUnit,
-                                    onDateSelected: (date) {
-                                      setState(() {
-                                        _ventasEndDate = date;
-                                        // month unit일 때만 시작일 자동 조정 (year는 사용자가 직접 선택)
-                                        if (_ventasUnit == 'month') {
-                                          _ventasStartDate = DateTime(date.year, date.month, 1);
-                                        }
-                                      });
-                                      _loadData();
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ),
-                            // 큰 화면: descontado, reservado, credito 체크박스 추가
-                            if (isLargeScreen) ...[
-                              const SizedBox(width: 4),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Checkbox(
-                                    value: _ventasDescontado,
-                                    onChanged: (value) {
-                                      setState(() {
-                                        _ventasDescontado = value ?? false;
-                                      });
-                                      _loadData();
-                                    },
-                                    checkColor: Colors.white,
-                                    fillColor: MaterialStateProperty.resolveWith<Color>(
-                                      (Set<MaterialState> states) {
-                                        if (states.contains(MaterialState.selected)) {
-                                          return Colors.white.withOpacity(0.3);
-                                        }
-                                        return Colors.transparent;
-                                      },
-                                    ),
-                                    side: const BorderSide(color: Colors.white, width: 1.5),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  const Text(
-                                    'Descontado',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Checkbox(
-                                    value: _ventasReservado,
-                                    onChanged: (value) {
-                                      setState(() {
-                                        _ventasReservado = value ?? false;
-                                      });
-                                      _loadData();
-                                    },
-                                    checkColor: Colors.white,
-                                    fillColor: MaterialStateProperty.resolveWith<Color>(
-                                      (Set<MaterialState> states) {
-                                        if (states.contains(MaterialState.selected)) {
-                                          return Colors.white.withOpacity(0.3);
-                                        }
-                                        return Colors.transparent;
-                                      },
-                                    ),
-                                    side: const BorderSide(color: Colors.white, width: 1.5),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  const Text(
-                                    'Reservado',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Checkbox(
-                                    value: _ventasCredito,
-                                    onChanged: (value) {
-                                      setState(() {
-                                        _ventasCredito = value ?? false;
-                                      });
-                                      _loadData();
-                                    },
-                                    checkColor: Colors.white,
-                                    fillColor: MaterialStateProperty.resolveWith<Color>(
-                                      (Set<MaterialState> states) {
-                                        if (states.contains(MaterialState.selected)) {
-                                          return Colors.white.withOpacity(0.3);
-                                        }
-                                        return Colors.transparent;
-                                      },
-                                    ),
-                                    side: const BorderSide(color: Colors.white, width: 1.5),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  const Text(
-                                    'Crédito',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                            const SizedBox(width: 16),
-                            // 지점 선택 UI (큰 화면에서만, sucursal이 1개 이상일 때만 표시)
-                            if (isLargeScreen && _availableSucursales != null && _availableSucursales!.length > 1) ...[
-                              _buildSucursalSelector(),
-                              const SizedBox(width: 16),
-                            ],
+                            const SizedBox(width: 8),
+                            // filteringWord
                             Expanded(
                               child: _buildFilteringWordFieldInAppBar(),
                             ),
@@ -3221,43 +4640,45 @@ class _ReportScreenState extends State<ReportScreen> {
                               ],
                             ),
       backgroundColor: reportColor,
-      actions: [
-        // 보고서 선택 드롭다운 메뉴
-        PopupMenuButton<ReportType>(
-          icon: const Icon(Icons.assessment, color: Colors.white),
-          tooltip: 'Reportes',
-          onSelected: (ReportType reportType) {
-            if (reportType != widget.reportType) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ReportScreen(
-                    serverUrl: widget.serverUrl,
-                    reportType: reportType,
-                    initialDate: widget.initialDate,
-                    initialItemsStartDate: widget.initialItemsStartDate,
-                    initialItemsEndDate: widget.initialItemsEndDate,
-                    initialFilteringWord: widget.initialFilteringWord,
-                    initialSortColumn: widget.initialSortColumn,
-                    initialSortAscending: widget.initialSortAscending,
-                    onStateChanged: widget.onStateChanged,
-                    onItemsDateRangeChanged: widget.onItemsDateRangeChanged,
-                    useFullWidth: widget.useFullWidth,
-                  ),
+      actions: needsThreeLineAppBar
+          ? [] // 좁은 화면에서는 첫 번째 줄에 이미 메뉴 버튼과 공유 버튼이 있으므로 actions 비활성화
+          : [
+              // 보고서 선택 드롭다운 메뉴
+              PopupMenuButton<ReportType>(
+                icon: const Icon(Icons.assessment, color: Colors.white),
+                tooltip: 'Reportes',
+                onSelected: (ReportType reportType) {
+                  if (reportType != widget.reportType) {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ReportScreen(
+                          serverUrl: widget.serverUrl,
+                          reportType: reportType,
+                          initialDate: widget.initialDate,
+                          initialItemsStartDate: widget.initialItemsStartDate,
+                          initialItemsEndDate: widget.initialItemsEndDate,
+                          initialFilteringWord: widget.initialFilteringWord,
+                          initialSortColumn: widget.initialSortColumn,
+                          initialSortAscending: widget.initialSortAscending,
+                          onStateChanged: widget.onStateChanged,
+                          onItemsDateRangeChanged: widget.onItemsDateRangeChanged,
+                          useFullWidth: widget.useFullWidth,
+                        ),
+                      ),
+                    );
+                  }
+                },
+                itemBuilder: (BuildContext context) => _buildReportMenuItems(),
+              ),
+              // PDF 공유 버튼
+              if (_data != null)
+                IconButton(
+                  icon: const Icon(Icons.share, color: Colors.white),
+                  tooltip: 'Compartir como PDF',
+                  onPressed: () => _shareAsPdf(),
                 ),
-              );
-            }
-          },
-          itemBuilder: (BuildContext context) => _buildReportMenuItems(),
-        ),
-        // PDF 공유 버튼
-        if (_data != null)
-          IconButton(
-            icon: const Icon(Icons.share, color: Colors.white),
-            tooltip: 'Compartir como PDF',
-            onPressed: () => _shareAsPdf(),
-          ),
-      ],
+            ],
     );
   }
 
@@ -3480,38 +4901,34 @@ class _ReportScreenState extends State<ReportScreen> {
         }
         // Alertas 보고서는 별도 처리 (화면을 나누지 않음)
         if (widget.reportType == ReportType.alertas) {
-          // Alertas 보고서의 경우 정렬 적용
+          // Alertas 보고서는 항상 id_log 역순으로 정렬
           List<dynamic> sortedDataList = List.from(filteredDataList);
-          if (_sortColumn != null) {
-            sortedDataList.sort((a, b) {
-              if (a is! Map<String, dynamic> || b is! Map<String, dynamic>) {
-                return 0;
-              }
-              
-              final aValue = a[_sortColumn];
-              final bValue = b[_sortColumn];
-              
-              // null 처리
-              if (aValue == null && bValue == null) return 0;
-              if (aValue == null) return _sortAscending ? -1 : 1;
-              if (bValue == null) return _sortAscending ? 1 : -1;
-              
-              // 숫자 비교
-              final aNum = ReportUtils.isNumeric(aValue) ? num.tryParse(aValue.toString().replaceAll(',', '')) : null;
-              final bNum = ReportUtils.isNumeric(bValue) ? num.tryParse(bValue.toString().replaceAll(',', '')) : null;
-              
-              if (aNum != null && bNum != null) {
-                final comparison = aNum.compareTo(bNum);
-                return _sortAscending ? comparison : -comparison;
-              }
-              
-              // 문자열 비교
-              final aStr = aValue.toString().toLowerCase();
-              final bStr = bValue.toString().toLowerCase();
-              final comparison = aStr.compareTo(bStr);
-              return _sortAscending ? comparison : -comparison;
-            });
-          }
+          sortedDataList.sort((a, b) {
+            if (a is! Map<String, dynamic> || b is! Map<String, dynamic>) {
+              return 0;
+            }
+            
+            final aIdLog = a['id_log'];
+            final bIdLog = b['id_log'];
+            
+            // null 처리
+            if (aIdLog == null && bIdLog == null) return 0;
+            if (aIdLog == null) return 1; // null은 뒤로
+            if (bIdLog == null) return -1; // null은 뒤로
+            
+            // 숫자 비교 (역순: 큰 값이 앞으로)
+            final aNum = ReportUtils.isNumeric(aIdLog) ? num.tryParse(aIdLog.toString().replaceAll(',', '')) : null;
+            final bNum = ReportUtils.isNumeric(bIdLog) ? num.tryParse(bIdLog.toString().replaceAll(',', '')) : null;
+            
+            if (aNum != null && bNum != null) {
+              return bNum.compareTo(aNum); // 역순 정렬
+            }
+            
+            // 문자열 비교 (역순)
+            final aStr = aIdLog.toString().toLowerCase();
+            final bStr = bIdLog.toString().toLowerCase();
+            return bStr.compareTo(aStr); // 역순 정렬
+          });
           
           // Alertas 보고서 색상 결정
           Color alertasColor = Colors.orange; // alertas 보고서 기본 색상
@@ -4754,6 +6171,67 @@ class _ReportScreenState extends State<ReportScreen> {
           );
         }
       },
+    );
+  }
+
+  /// Ventas 보고서의 필터 콤보박스 (넓은 화면용)
+  Widget _buildVentasFilterComboBox(String label, bool value, Function(bool) onChanged) {
+    final reportColor = _getReportColor();
+    final options = ['Todos', 'Sí', 'No'];
+    String selectedValue;
+    if (!value) {
+      selectedValue = 'Todos';
+    } else {
+      selectedValue = 'Sí';
+    }
+    
+    return Container(
+      height: 36,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+      ),
+      child: DropdownButton<String>(
+        value: selectedValue,
+        isExpanded: true,
+        underline: Container(),
+        icon: const Icon(Icons.arrow_drop_down, color: Colors.white, size: 20),
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
+        dropdownColor: reportColor,
+        items: options.map((String option) {
+          return DropdownMenuItem<String>(
+            value: option,
+            child: Text(option),
+          );
+        }).toList(),
+        onChanged: (String? newValue) {
+          if (newValue != null) {
+            onChanged(newValue == 'Sí');
+          }
+        },
+        selectedItemBuilder: (BuildContext context) {
+          return options.map<Widget>((String option) {
+            return Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                '$label: $option',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            );
+          }).toList();
+        },
+      ),
     );
   }
 
