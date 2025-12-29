@@ -70,9 +70,19 @@ class ReportsApi {
   /// 고객 보고서 가져오기
   Future<Map<String, dynamic>> getClientesReport({
     Map<String, dynamic>? filters,
+    int? limit,
+    int? offset,
   }) async {
     final endpoint = '/api/reporte/clientes';
     final queryParams = <String, String>{};
+    
+    // 페이지네이션 파라미터 추가
+    if (limit != null) {
+      queryParams['limit'] = limit.toString();
+    }
+    if (offset != null) {
+      queryParams['offset'] = offset.toString();
+    }
     
     if (filters != null) {
       filters.forEach((key, value) {

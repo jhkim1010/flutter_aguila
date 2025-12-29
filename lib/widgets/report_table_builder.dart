@@ -545,7 +545,8 @@ class ReportTableBuilder {
           (key == 'codigo' || key == 'codigo1' || key == 'descripcion' || key == 'desc1' || 
            key == 'tprendas' || key == 'timporte' || key == 'tIngreso' || key == 'tingreso' ||
            key == 'tevent' || key == 'tcant' || key == 'cntEvent' || key == 'cntevent') ||
-          reportType == ReportType.ventas; // ventas 보고서는 모든 컬럼 정렬 가능
+          reportType == ReportType.ventas || // ventas 보고서는 모든 컬럼 정렬 가능
+          reportType == ReportType.clientes; // clientes 보고서는 모든 컬럼 정렬 가능
       
       return DataColumn(
         label: Row(
@@ -1232,7 +1233,8 @@ class ReportTableBuilder {
 
     // 다른 보고서는 기존 방식 유지 (ventas는 DataTable 헤더 사용)
     // ventas 보고서의 경우 별도 헤더를 사용하지 않고 DataTable 헤더만 사용
-    final headerRow = reportType == ReportType.ventas 
+    // clientes 보고서도 별도 헤더를 사용하지 않고 DataTable 헤더만 사용
+    final headerRow = (reportType == ReportType.ventas || reportType == ReportType.clientes)
         ? null 
         : _buildHeaderRow(keys, columns, color, sortColumn, sortAscending, onSort);
     
@@ -1265,18 +1267,22 @@ class ReportTableBuilder {
                 }
                 return false;
               },
-            child: SingleChildScrollView(
-              controller: scrollController,
-              scrollDirection: Axis.vertical,
-                child: (horizontalScrollController != null || reportType == ReportType.ventas)
-                    ? SingleChildScrollView(
-                        controller: horizontalScrollController,
-                        scrollDirection: Axis.horizontal,
-                        child: DataTable(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  controller: scrollController,
+                  scrollDirection: Axis.vertical,
+                  child: (horizontalScrollController != null || reportType == ReportType.ventas || reportType == ReportType.clientes)
+                      ? SingleChildScrollView(
+                          controller: horizontalScrollController,
+                          scrollDirection: Axis.horizontal,
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(minWidth: constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity),
+                            child: DataTable(
                           columnSpacing: 8,
-                          dataRowMinHeight: reportType == ReportType.ventas ? 32 : (reportType == ReportType.alertas ? null : 48),
-                          dataRowMaxHeight: reportType == ReportType.ventas ? 40 : (reportType == ReportType.alertas ? null : 56),
-                          headingRowHeight: reportType == ReportType.ventas ? 40 : 56,
+                          dataRowMinHeight: (reportType == ReportType.ventas || reportType == ReportType.clientes) ? 32 : (reportType == ReportType.alertas ? null : 48),
+                          dataRowMaxHeight: (reportType == ReportType.ventas || reportType == ReportType.clientes) ? 40 : (reportType == ReportType.alertas ? null : 56),
+                          headingRowHeight: (reportType == ReportType.ventas || reportType == ReportType.clientes) ? 40 : 56,
                           headingRowColor: MaterialStateProperty.all(
                             Colors.transparent, // 헤더 배경을 투명하게
                           ),
@@ -1423,12 +1429,15 @@ class ReportTableBuilder {
                           _buildTotalRow(keys, dataList, color, reportType: reportType),
                           ],
                         ),
-                      )
-                      : DataTable(
+                          ),
+                        )
+                      : ConstrainedBox(
+                          constraints: BoxConstraints(minWidth: constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity),
+                          child: DataTable(
                           columnSpacing: 8,
-                          dataRowMinHeight: reportType == ReportType.ventas ? 32 : (reportType == ReportType.alertas ? null : 48),
-                          dataRowMaxHeight: reportType == ReportType.ventas ? 40 : (reportType == ReportType.alertas ? null : 56),
-                          headingRowHeight: reportType == ReportType.ventas ? 40 : 56,
+                          dataRowMinHeight: (reportType == ReportType.ventas || reportType == ReportType.clientes) ? 32 : (reportType == ReportType.alertas ? null : 48),
+                          dataRowMaxHeight: (reportType == ReportType.ventas || reportType == ReportType.clientes) ? 40 : (reportType == ReportType.alertas ? null : 56),
+                          headingRowHeight: (reportType == ReportType.ventas || reportType == ReportType.clientes) ? 40 : 56,
                           headingRowColor: MaterialStateProperty.all(
                             Colors.transparent,
                           ),
@@ -1609,6 +1618,9 @@ class ReportTableBuilder {
                             _buildTotalRow(keys, dataList, color, reportType: reportType),
                           ],
                         ),
+                          ),
+                );
+              },
               ),
             ),
           ),

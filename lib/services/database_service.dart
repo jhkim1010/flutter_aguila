@@ -173,7 +173,13 @@ class DatabaseService {
   /// 고객 보고서 가져오기
   Future<Map<String, dynamic>> getClientesReport({
     Map<String, dynamic>? filters,
-  }) => _reportsApi.getClientesReport(filters: filters);
+    int? limit,
+    int? offset,
+  }) => _reportsApi.getClientesReport(
+    filters: filters,
+    limit: limit,
+    offset: offset,
+  );
 
   /// 지출 보고서 가져오기
   Future<Map<String, dynamic>> getGastosReport({

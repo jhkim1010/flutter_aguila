@@ -89,6 +89,12 @@ class _ReportScreenState extends State<ReportScreen> {
   bool _alertasVCancelado = false; // Alertas 보고서용 v_cancelado 필터
   bool _alertasJefe = false; // Alertas 보고서용 jefe 필터
   
+  // Clientes 보고서용 필터 상태
+  String? _clientesResponsableIns; // "Responsable Ins", "Monotributista", "Sin Rubro"
+  String? _clientesProvincia; // 23 provinces + CABA + "Otro Países"
+  bool _clientesDeudores = false; // Deudores 체크박스
+  bool _clientesReservadores = false; // Reservadores 체크박스
+  
   // Codigos 보고서용 상태
   Map<String, dynamic>? _selectedCodigo; // 선택된 codigo
   final Map<String, TextEditingController> _codigoEditControllers = {}; // 편집용 컨트롤러들
@@ -98,6 +104,13 @@ class _ReportScreenState extends State<ReportScreen> {
   bool _isLoadingMoreCodigos = false; // 추가 codigos 로딩 중 여부
   String? _codigosNextIdCodigo; // 다음 페이지의 id_codigo
   bool _codigosHasMore = false; // 더 많은 페이지가 있는지 여부
+  
+  // Clientes 보고서용 페이지네이션 상태
+  int _clientesOffset = 0; // 현재 offset
+  bool _clientesHasMore = false; // 더 많은 페이지가 있는지 여부
+  bool _clientesIsLoadingMore = false; // 다음 페이지 로딩 중인지 여부
+  String? _clientesSortColumn; // Clientes 정렬 칼럼
+  bool _clientesSortAscending = false; // Clientes 정렬 방향 (true: 오름차순, false: 내림차순, 기본값: 내림차순)
   String? _codigosSortColumn = 'codigo'; // Codigos 정렬 칼럼 (기본값: codigo)
   bool _codigosSortAscending = true; // Codigos 정렬 방향 (true: 오름차순, false: 내림차순)
   
@@ -228,6 +241,12 @@ class _ReportScreenState extends State<ReportScreen> {
         _stocksHasMore = false;
         _stocksSortColumn = 'codigo';
         _stocksSortAscending = true;
+      } else if (widget.reportType == ReportType.clientes) {
+        _clientesOffset = 0;
+        _clientesHasMore = false;
+        _clientesIsLoadingMore = false;
+        _clientesSortColumn = null;
+        _clientesSortAscending = false;
       }
       
       // Items, Ingresos, Gastos 및 Alertas 보고서의 경우 기본 날짜 설정 (오늘 날짜 또는 초기값)
@@ -297,10 +316,11 @@ class _ReportScreenState extends State<ReportScreen> {
         _lastFilteringWord = currentWord;
         // 상태 변경 콜백 호출
         _notifyStateChanged();
-        // codigos, todocodigos 또는 stocks 보고서인 경우에만 데이터 재로드
+        // codigos, todocodigos, stocks 또는 clientes 보고서인 경우 데이터 재로드
         if (widget.reportType == ReportType.codigos || 
             widget.reportType == ReportType.todocodigos || 
-            widget.reportType == ReportType.stocks) {
+            widget.reportType == ReportType.stocks ||
+            widget.reportType == ReportType.clientes) {
           _reloadDataWithFilters();
         }
       });
@@ -341,6 +361,10 @@ class _ReportScreenState extends State<ReportScreen> {
     } else if (widget.reportType == ReportType.stocks) {
       _stocksNextMaxUtime = null;
       _stocksHasMore = false;
+    } else if (widget.reportType == ReportType.clientes) {
+      _clientesOffset = 0;
+      _clientesHasMore = false;
+      _clientesIsLoadingMore = false;
     }
     
     await _loadData();
@@ -1425,7 +1449,57 @@ class _ReportScreenState extends State<ReportScreen> {
           );
           break;
         case ReportType.clientes:
-          data = await _databaseService.getClientesReport();
+          final currentFilteringWord = filteringWord ?? _filteringWordController.text.trim();
+          final filters = <String, dynamic>{};
+          
+          // 날짜 범위 필터 추가
+          final now = DateTime.now();
+          final startDate = _itemsStartDate ?? now;
+          final endDate = _itemsEndDate ?? now;
+          filters['fecha_inicio'] = DateFormat('yyyy-MM-dd').format(startDate);
+          filters['fecha_fin'] = DateFormat('yyyy-MM-dd').format(endDate);
+          
+          if (_clientesResponsableIns != null) {
+            filters['responsable_ins'] = _clientesResponsableIns;
+          }
+          if (_clientesProvincia != null) {
+            filters['provincia'] = _clientesProvincia;
+          }
+          if (_clientesDeudores) {
+            filters['deudores'] = '1';
+          }
+          if (_clientesReservadores) {
+            filters['reservadores'] = '1';
+          }
+          if (currentFilteringWord.isNotEmpty) {
+            filters['filtering_word'] = currentFilteringWord;
+          }
+          
+          // 정렬 파라미터 추가
+          if (_clientesSortColumn != null) {
+            filters['sort_column'] = _clientesSortColumn;
+            filters['sort_ascending'] = _clientesSortAscending ? '1' : '0';
+          }
+          
+          // 첫 페이지 로드: offset을 0으로 리셋
+          _clientesOffset = 0;
+          data = await _databaseService.getClientesReport(
+            filters: filters.isNotEmpty ? filters : null,
+            limit: 200,
+            offset: 0,
+          );
+          
+          // 페이지네이션 정보 확인
+          if (data.containsKey('data') && data['data'] is List) {
+            final dataList = data['data'] as List;
+            // 받은 데이터가 200개면 다음 페이지가 있을 수 있음
+            _clientesHasMore = dataList.length >= 200;
+            _clientesOffset = dataList.length;
+            print('📄 Clientes 첫 페이지 로드: ${dataList.length}개 항목, hasMore=$_clientesHasMore');
+          } else {
+            _clientesHasMore = false;
+            _clientesOffset = 0;
+          }
           break;
         case ReportType.gastos:
           // gastos 보고서는 날짜 범위 필터 사용 (기본값: 오늘부터 오늘까지)
@@ -1951,6 +2025,94 @@ class _ReportScreenState extends State<ReportScreen> {
     }
   }
 
+  // Clientes 다음 페이지 로드 (스크롤 기반)
+  Future<void> _loadNextClientesPage() async {
+    if (widget.reportType != ReportType.clientes) return;
+    if (!_clientesHasMore) return;
+    if (_clientesIsLoadingMore) return; // 이미 로딩 중이면 중복 요청 방지
+    
+    setState(() {
+      _clientesIsLoadingMore = true;
+    });
+    
+    try {
+      print('📄 다음 Clientes 페이지 로드 중... (offset=$_clientesOffset)');
+      final currentFilteringWord = _filteringWordController.text.trim();
+      final filters = <String, dynamic>{};
+      
+      // 날짜 범위 필터 추가
+      final now = DateTime.now();
+      final startDate = _itemsStartDate ?? now;
+      final endDate = _itemsEndDate ?? now;
+      filters['fecha_inicio'] = DateFormat('yyyy-MM-dd').format(startDate);
+      filters['fecha_fin'] = DateFormat('yyyy-MM-dd').format(endDate);
+      
+      if (_clientesResponsableIns != null) {
+        filters['responsable_ins'] = _clientesResponsableIns;
+      }
+      if (_clientesProvincia != null) {
+        filters['provincia'] = _clientesProvincia;
+      }
+      if (_clientesDeudores) {
+        filters['deudores'] = '1';
+      }
+      if (_clientesReservadores) {
+        filters['reservadores'] = '1';
+      }
+      if (currentFilteringWord.isNotEmpty) {
+        filters['filtering_word'] = currentFilteringWord;
+      }
+      
+      // 정렬 파라미터 추가
+      if (_clientesSortColumn != null) {
+        filters['sort_column'] = _clientesSortColumn;
+        filters['sort_ascending'] = _clientesSortAscending ? '1' : '0';
+      }
+      
+      final response = await _databaseService.getClientesReport(
+        filters: filters.isNotEmpty ? filters : null,
+        limit: 200,
+        offset: _clientesOffset,
+      );
+      
+      // 새 데이터 추가
+      if (response.containsKey('data') && response['data'] is List) {
+        final newData = response['data'] as List;
+        if (newData.isNotEmpty && _data != null && _data!.containsKey('data')) {
+          final currentData = _data!['data'] as List;
+          setState(() {
+            _data = {
+              ..._data!,
+              'data': [...currentData, ...newData],
+            };
+          });
+          print('✅ 다음 페이지 로드됨: ${newData.length}개 항목 (총 ${currentData.length + newData.length}개)');
+          
+          // 페이지네이션 정보 업데이트
+          // 받은 데이터가 200개 미만이면 마지막 페이지
+          _clientesHasMore = newData.length >= 200;
+          _clientesOffset += newData.length;
+          
+          if (!_clientesHasMore) {
+            print('ℹ️ 모든 Clientes 페이지 로드 완료');
+          }
+        } else {
+          _clientesHasMore = false;
+        }
+      } else {
+        _clientesHasMore = false;
+      }
+    } catch (e) {
+      print('❌ 다음 페이지 로드 실패: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _clientesIsLoadingMore = false;
+        });
+      }
+    }
+  }
+
   // 스크롤 이벤트 처리 (무한 스크롤)
   void _onScroll() {
     if (widget.reportType == ReportType.codigos || widget.reportType == ReportType.todocodigos) {
@@ -1964,6 +2126,16 @@ class _ReportScreenState extends State<ReportScreen> {
       if (_scrollController.hasClients && 
           _scrollController.position.pixels >= _scrollController.position.maxScrollExtent * 0.8) {
         _loadNextStocksPage();
+      }
+    } else if (widget.reportType == ReportType.clientes) {
+      // Clientes의 경우 아래쪽 50개 남았을 때 다음 페이지 로드 (약 75% 지점)
+      if (_scrollController.hasClients) {
+        final maxScroll = _scrollController.position.maxScrollExtent;
+        final currentScroll = _scrollController.position.pixels;
+        // 아래쪽 50개 남았을 때 = 전체 높이의 약 75% 지점
+        if (currentScroll >= maxScroll * 0.75) {
+          _loadNextClientesPage();
+        }
       }
     } else {
       // 다른 보고서의 경우 기존 로직 사용
@@ -2241,7 +2413,7 @@ class _ReportScreenState extends State<ReportScreen> {
                   );
                 },
               )
-            : (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas || widget.reportType == ReportType.fventas)
+            : (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas || widget.reportType == ReportType.fventas || widget.reportType == ReportType.clientes)
                 ? LayoutBuilder(
                     builder: (context, constraints) {
                       final isLargeScreen = constraints.maxWidth >= 800;
@@ -2250,6 +2422,110 @@ class _ReportScreenState extends State<ReportScreen> {
                       
                       // 좁은 화면: 2줄로 배치
                       if (isMobilePortrait) {
+                        // Clientes 보고서의 경우 특별한 레이아웃
+                        if (widget.reportType == ReportType.clientes) {
+                          return Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // 첫 번째 줄: 아이콘, 제목, 필터들, 메뉴 버튼, 공유 버튼
+                              Row(
+                                children: [
+                                  Icon(reportIcon, color: Colors.white),
+                                  const SizedBox(width: 8),
+                                  Flexible(
+                                    child: Text(
+                                      reportTitle,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(fontSize: 16),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  // Responsable Ins 콤보박스
+                                  _buildClientesResponsableInsSelector(),
+                                  const SizedBox(width: 8),
+                                  // Provincias 콤보박스
+                                  _buildClientesProvinciaSelector(),
+                                  const SizedBox(width: 8),
+                                  // Deudores 체크박스
+                                  _buildClientesDeudoresCheckbox(),
+                                  const SizedBox(width: 8),
+                                  // Reservadores 체크박스
+                                  _buildClientesReservadoresCheckbox(),
+                                  const SizedBox(width: 8),
+                                  // FilteringWord 필드
+                                  Expanded(
+                                    child: _buildFilteringWordFieldInAppBar(),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  // 메뉴 버튼
+                                  PopupMenuButton<ReportType>(
+                                    icon: const Icon(Icons.more_vert, color: Colors.white, size: 18),
+                                    tooltip: 'Menú',
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    iconSize: 18,
+                                    onSelected: (ReportType reportType) {
+                                      if (reportType != widget.reportType) {
+                                        Navigator.pushReplacement(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => ReportScreen(
+                                              serverUrl: widget.serverUrl,
+                                              reportType: reportType,
+                                              initialDate: widget.initialDate,
+                                              initialItemsStartDate: widget.initialItemsStartDate,
+                                              initialItemsEndDate: widget.initialItemsEndDate,
+                                              initialFilteringWord: widget.initialFilteringWord,
+                                              initialSortColumn: widget.initialSortColumn,
+                                              initialSortAscending: widget.initialSortAscending,
+                                              onStateChanged: widget.onStateChanged,
+                                              onItemsDateRangeChanged: widget.onItemsDateRangeChanged,
+                                              useFullWidth: widget.useFullWidth,
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                    itemBuilder: (BuildContext context) => _buildReportMenuItems(),
+                                  ),
+                                  // 공유 버튼
+                                  if (_data != null)
+                                    IconButton(
+                                      icon: const Icon(Icons.share, color: Colors.white, size: 18),
+                                      tooltip: 'Compartir como PDF',
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                      iconSize: 18,
+                                      onPressed: () => _shareReport(),
+                                    ),
+                                ],
+                              ),
+                              // 두 번째 줄: 달력 2개
+                              Row(
+                                children: [
+                                  Flexible(
+                                    child: ItemsDateRangeSelector(
+                                      reportType: widget.reportType,
+                                      startDate: _itemsStartDate,
+                                      endDate: _itemsEndDate,
+                                      onDateRangeChanged: (startDate, endDate) {
+                                        setState(() {
+                                          _itemsStartDate = startDate;
+                                          _itemsEndDate = endDate;
+                                        });
+                                        if (widget.onItemsDateRangeChanged != null) {
+                                          widget.onItemsDateRangeChanged!(startDate, endDate);
+                                        }
+                                        _loadData();
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          );
+                        }
                         // Alertas 보고서의 경우 특별한 레이아웃
                         if (widget.reportType == ReportType.alertas) {
                           return Column(
@@ -2539,6 +2815,17 @@ class _ReportScreenState extends State<ReportScreen> {
                           if (isLargeScreen && _availableSucursales != null && _availableSucursales!.length > 1) ...[
                               _buildSucursalSelector(),
                               const SizedBox(width: 16),
+                          ],
+                          // Clientes 보고서의 경우 필터들 추가
+                          if (widget.reportType == ReportType.clientes) ...[
+                            _buildClientesResponsableInsSelector(),
+                            const SizedBox(width: 8),
+                            _buildClientesProvinciaSelector(),
+                            const SizedBox(width: 8),
+                            _buildClientesDeudoresCheckbox(),
+                            const SizedBox(width: 8),
+                            _buildClientesReservadoresCheckbox(),
+                            const SizedBox(width: 8),
                           ],
                           // Alertas 보고서의 경우 VCancelado 및 Jefe 버튼 추가
                           if (widget.reportType == ReportType.alertas) ...[
@@ -3697,7 +3984,7 @@ class _ReportScreenState extends State<ReportScreen> {
                               return Column(
                                 children: [
                                   // 작은 화면에서만 날짜 범위 선택 UI 표시 (큰 화면은 AppBar에 있음)
-                                  if (!isLargeScreen && (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas))
+                                  if (!isLargeScreen && (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas || widget.reportType == ReportType.clientes))
                                     _buildItemsFilterSection(),
                                   // 스톡 보고서의 vista 타입 표시
                                   if (widget.reportType == ReportType.stocks && _data != null)
@@ -3862,7 +4149,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 );
               },
             )
-          : (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas || widget.reportType == ReportType.fventas)
+          : (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas || widget.reportType == ReportType.fventas || widget.reportType == ReportType.clientes)
               ? LayoutBuilder(
                   builder: (context, constraints) {
                     final isLargeScreen = constraints.maxWidth >= 800;
@@ -3874,6 +4161,110 @@ class _ReportScreenState extends State<ReportScreen> {
                     
                     // 핸드폰 세로 모드: 2줄로 배치
                     if (isMobilePortrait) {
+                      // Clientes 보고서의 경우 특별한 레이아웃
+                      if (widget.reportType == ReportType.clientes) {
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // 첫 번째 줄: 아이콘, 제목, 필터들, 메뉴 버튼, 공유 버튼
+                            Row(
+                              children: [
+                                Icon(reportIcon, color: Colors.white),
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    reportTitle,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 16),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                // Responsable Ins 콤보박스
+                                _buildClientesResponsableInsSelector(),
+                                const SizedBox(width: 8),
+                                // Provincias 콤보박스
+                                _buildClientesProvinciaSelector(),
+                                const SizedBox(width: 8),
+                                // Deudores 체크박스
+                                _buildClientesDeudoresCheckbox(),
+                                const SizedBox(width: 8),
+                                // Reservadores 체크박스
+                                _buildClientesReservadoresCheckbox(),
+                                const SizedBox(width: 8),
+                                // FilteringWord 필드
+                                Expanded(
+                                  child: _buildFilteringWordFieldInAppBar(),
+                                ),
+                                const SizedBox(width: 8),
+                                // 메뉴 버튼
+                                PopupMenuButton<ReportType>(
+                                  icon: const Icon(Icons.more_vert, color: Colors.white, size: 18),
+                                  tooltip: 'Menú',
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  iconSize: 18,
+                                  onSelected: (ReportType reportType) {
+                                    if (reportType != widget.reportType) {
+                                      Navigator.pushReplacement(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => ReportScreen(
+                                            serverUrl: widget.serverUrl,
+                                            reportType: reportType,
+                                            initialDate: widget.initialDate,
+                                            initialItemsStartDate: widget.initialItemsStartDate,
+                                            initialItemsEndDate: widget.initialItemsEndDate,
+                                            initialFilteringWord: widget.initialFilteringWord,
+                                            initialSortColumn: widget.initialSortColumn,
+                                            initialSortAscending: widget.initialSortAscending,
+                                            onStateChanged: widget.onStateChanged,
+                                            onItemsDateRangeChanged: widget.onItemsDateRangeChanged,
+                                            useFullWidth: widget.useFullWidth,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  itemBuilder: (BuildContext context) => _buildReportMenuItems(),
+                                ),
+                                // 공유 버튼
+                                if (_data != null)
+                                  IconButton(
+                                    icon: const Icon(Icons.share, color: Colors.white, size: 18),
+                                    tooltip: 'Compartir como PDF',
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    iconSize: 18,
+                                    onPressed: () => _shareReport(),
+                                  ),
+                              ],
+                            ),
+                            // 두 번째 줄: 달력 2개
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: ItemsDateRangeSelector(
+                                    reportType: widget.reportType,
+                                    startDate: _itemsStartDate,
+                                    endDate: _itemsEndDate,
+                                    onDateRangeChanged: (startDate, endDate) {
+                                      setState(() {
+                                        _itemsStartDate = startDate;
+                                        _itemsEndDate = endDate;
+                                      });
+                                      if (widget.onItemsDateRangeChanged != null) {
+                                        widget.onItemsDateRangeChanged!(startDate, endDate);
+                                      }
+                                      _loadData();
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        );
+                      }
                       // Alertas 보고서의 경우 특별한 레이아웃
                       if (widget.reportType == ReportType.alertas) {
                         return Column(
@@ -4163,6 +4554,17 @@ class _ReportScreenState extends State<ReportScreen> {
                         if (isLargeScreen && _availableSucursales != null && _availableSucursales!.length > 1) ...[
                             _buildSucursalSelector(),
                             const SizedBox(width: 16),
+                        ],
+                        // Clientes 보고서의 경우 필터들 추가
+                        if (widget.reportType == ReportType.clientes) ...[
+                          _buildClientesResponsableInsSelector(),
+                          const SizedBox(width: 8),
+                          _buildClientesProvinciaSelector(),
+                          const SizedBox(width: 8),
+                          _buildClientesDeudoresCheckbox(),
+                          const SizedBox(width: 8),
+                          _buildClientesReservadoresCheckbox(),
+                          const SizedBox(width: 8),
                         ],
                         // Alertas 보고서의 경우 VCancelado 및 Jefe 버튼 추가
                         if (widget.reportType == ReportType.alertas) ...[
@@ -4749,7 +5151,7 @@ class _ReportScreenState extends State<ReportScreen> {
         return Column(
           children: [
             // 작은 화면에서만 날짜 범위 선택 UI 표시 (큰 화면은 AppBar에 있음)
-            if (!isLargeScreen && (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas))
+            if (!isLargeScreen && (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas || widget.reportType == ReportType.clientes))
               _buildItemsFilterSection(),
             // 스톡 보고서의 vista 타입 표시
             if (widget.reportType == ReportType.stocks && _data != null)
@@ -5099,6 +5501,45 @@ class _ReportScreenState extends State<ReportScreen> {
             // 좁은 화면이거나 Gastos 보고서일 때는 전체 화면 사용
             return tableWidget;
           }
+        }
+        
+        // Clientes 보고서의 경우 별도 처리 (서버에서 정렬하므로 클라이언트 측 정렬 불필요)
+        if (widget.reportType == ReportType.clientes) {
+          return ReportTableBuilder.buildTableFromList(
+            filteredDataList,
+            _displayedItemsCount,
+            _itemsPerPage,
+            _scrollController,
+            widget.reportType,
+            sortColumn: _clientesSortColumn,
+            sortAscending: _clientesSortAscending,
+            horizontalScrollController: _horizontalScrollController,
+            reportColor: _getReportColor(),
+            unit: null,
+            onRowDoubleTap: null,
+            onRowTap: null,
+            onSort: (columnIndex, ascending) {
+              setState(() {
+                // 키 목록을 필터링된 데이터에서 가져오기
+                final allKeys = filteredDataList.isNotEmpty 
+                    ? (filteredDataList.first as Map<String, dynamic>).keys.toList()
+                    : <String>[];
+                if (columnIndex >= 0 && columnIndex < allKeys.length) {
+                  final key = allKeys[columnIndex];
+                  if (_clientesSortColumn == key) {
+                    // 같은 칼럼을 클릭하면 정렬 방향 변경
+                    _clientesSortAscending = !_clientesSortAscending;
+                  } else {
+                    // 다른 칼럼을 클릭하면 새 칼럼으로 정렬 (첫 클릭 시 내림차순)
+                    _clientesSortColumn = key;
+                    _clientesSortAscending = false;
+                  }
+                  // 정렬이 변경되면 서버에서 다시 로드
+                  _reloadDataWithFilters();
+                }
+              });
+            },
+          );
         }
         
         // Ventas 보고서의 경우 정렬 적용
@@ -7690,6 +8131,194 @@ class _ReportScreenState extends State<ReportScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  // Clientes 보고서용 필터 UI 빌더들
+  // Responsable Ins 콤보박스
+  Widget _buildClientesResponsableInsSelector() {
+    final reportColor = _getReportColor();
+    
+    final items = <DropdownMenuItem<String?>>[
+      const DropdownMenuItem<String?>(
+        value: null,
+        child: Text('Todos', style: TextStyle(fontSize: 12, color: Colors.white)),
+      ),
+      const DropdownMenuItem<String?>(
+        value: 'Responsable Ins',
+        child: Text('Responsable Ins', style: TextStyle(fontSize: 12, color: Colors.white)),
+      ),
+      const DropdownMenuItem<String?>(
+        value: 'Monotributista',
+        child: Text('Monotributista', style: TextStyle(fontSize: 12, color: Colors.white)),
+      ),
+      const DropdownMenuItem<String?>(
+        value: 'Sin Rubro',
+        child: Text('Sin Rubro', style: TextStyle(fontSize: 12, color: Colors.white)),
+      ),
+    ];
+    
+    return SizedBox(
+      width: 150,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.white.withOpacity(0.3)),
+        ),
+        child: DropdownButton<String?>(
+          value: _clientesResponsableIns,
+          hint: const Text('Responsable', style: TextStyle(fontSize: 12, color: Colors.white70)),
+          underline: const SizedBox(),
+          isDense: true,
+          isExpanded: true,
+          dropdownColor: reportColor,
+          icon: const Icon(Icons.arrow_drop_down, color: Colors.white, size: 18),
+          style: const TextStyle(fontSize: 12, color: Colors.white),
+          items: items,
+          onChanged: (String? value) {
+            setState(() {
+              _clientesResponsableIns = value;
+            });
+            _loadData();
+          },
+        ),
+      ),
+    );
+  }
+
+  // Provincias 콤보박스
+  Widget _buildClientesProvinciaSelector() {
+    final reportColor = _getReportColor();
+    
+    // 아르헨티나 23개 주 + CABA + Otro Países
+    final provincias = [
+      'Buenos Aires',
+      'Catamarca',
+      'Chaco',
+      'Chubut',
+      'Córdoba',
+      'Corrientes',
+      'Entre Ríos',
+      'Formosa',
+      'Jujuy',
+      'La Pampa',
+      'La Rioja',
+      'Mendoza',
+      'Misiones',
+      'Neuquén',
+      'Río Negro',
+      'Salta',
+      'San Juan',
+      'San Luis',
+      'Santa Cruz',
+      'Santa Fe',
+      'Santiago del Estero',
+      'Tierra del Fuego',
+      'Tucumán',
+      'CABA',
+      'Otro Países',
+    ];
+    
+    final items = <DropdownMenuItem<String?>>[
+      const DropdownMenuItem<String?>(
+        value: null,
+        child: Text('Todas', style: TextStyle(fontSize: 12, color: Colors.white)),
+      ),
+      ...provincias.map((provincia) {
+        return DropdownMenuItem<String?>(
+          value: provincia,
+          child: Text(provincia, style: const TextStyle(fontSize: 12, color: Colors.white)),
+        );
+      }).toList(),
+    ];
+    
+    return SizedBox(
+      width: 150,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.white.withOpacity(0.3)),
+        ),
+        child: DropdownButton<String?>(
+          value: _clientesProvincia,
+          hint: const Text('Provincia', style: TextStyle(fontSize: 12, color: Colors.white70)),
+          underline: const SizedBox(),
+          isDense: true,
+          isExpanded: true,
+          dropdownColor: reportColor,
+          icon: const Icon(Icons.arrow_drop_down, color: Colors.white, size: 18),
+          style: const TextStyle(fontSize: 12, color: Colors.white),
+          items: items,
+          onChanged: (String? value) {
+            setState(() {
+              _clientesProvincia = value;
+            });
+            _loadData();
+          },
+        ),
+      ),
+    );
+  }
+
+  // Deudores 체크박스
+  Widget _buildClientesDeudoresCheckbox() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Checkbox(
+          value: _clientesDeudores,
+          onChanged: (bool? value) {
+            setState(() {
+              _clientesDeudores = value ?? false;
+            });
+            _loadData();
+          },
+          checkColor: Colors.white,
+          fillColor: MaterialStateProperty.resolveWith<Color>((Set<MaterialState> states) {
+            if (states.contains(MaterialState.selected)) {
+              return Colors.white.withOpacity(0.3);
+            }
+            return Colors.transparent;
+          }),
+        ),
+        const Text(
+          'Deudores',
+          style: TextStyle(fontSize: 12, color: Colors.white),
+        ),
+      ],
+    );
+  }
+
+  // Reservadores 체크박스
+  Widget _buildClientesReservadoresCheckbox() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Checkbox(
+          value: _clientesReservadores,
+          onChanged: (bool? value) {
+            setState(() {
+              _clientesReservadores = value ?? false;
+            });
+            _loadData();
+          },
+          checkColor: Colors.white,
+          fillColor: MaterialStateProperty.resolveWith<Color>((Set<MaterialState> states) {
+            if (states.contains(MaterialState.selected)) {
+              return Colors.white.withOpacity(0.3);
+            }
+            return Colors.transparent;
+          }),
+        ),
+        const Text(
+          'Reservadores',
+          style: TextStyle(fontSize: 12, color: Colors.white),
+        ),
+      ],
     );
   }
 
