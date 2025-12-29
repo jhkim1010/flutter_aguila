@@ -1452,12 +1452,11 @@ class _ReportScreenState extends State<ReportScreen> {
           final currentFilteringWord = filteringWord ?? _filteringWordController.text.trim();
           final filters = <String, dynamic>{};
           
-          // 날짜 범위 필터 추가
-          final now = DateTime.now();
-          final startDate = _itemsStartDate ?? now;
-          final endDate = _itemsEndDate ?? now;
-          filters['fecha_inicio'] = DateFormat('yyyy-MM-dd').format(startDate);
-          filters['fecha_fin'] = DateFormat('yyyy-MM-dd').format(endDate);
+          // 날짜 범위 필터 추가 (달력이 선택된 경우에만)
+          if (_itemsStartDate != null && _itemsEndDate != null) {
+            filters['fecha_inicio'] = DateFormat('yyyy-MM-dd').format(_itemsStartDate!);
+            filters['fecha_fin'] = DateFormat('yyyy-MM-dd').format(_itemsEndDate!);
+          }
           
           if (_clientesResponsableIns != null) {
             filters['responsable_ins'] = _clientesResponsableIns;
@@ -2040,12 +2039,11 @@ class _ReportScreenState extends State<ReportScreen> {
       final currentFilteringWord = _filteringWordController.text.trim();
       final filters = <String, dynamic>{};
       
-      // 날짜 범위 필터 추가
-      final now = DateTime.now();
-      final startDate = _itemsStartDate ?? now;
-      final endDate = _itemsEndDate ?? now;
-      filters['fecha_inicio'] = DateFormat('yyyy-MM-dd').format(startDate);
-      filters['fecha_fin'] = DateFormat('yyyy-MM-dd').format(endDate);
+      // 날짜 범위 필터 추가 (달력이 선택된 경우에만)
+      if (_itemsStartDate != null && _itemsEndDate != null) {
+        filters['fecha_inicio'] = DateFormat('yyyy-MM-dd').format(_itemsStartDate!);
+        filters['fecha_fin'] = DateFormat('yyyy-MM-dd').format(_itemsEndDate!);
+      }
       
       if (_clientesResponsableIns != null) {
         filters['responsable_ins'] = _clientesResponsableIns;
