@@ -68,6 +68,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
   String _currentReport = 'resumen'; // 현재 선택된 보고서
   ReportType? _selectedReportType; // 선택된 보고서 타입
   DatabaseService? _databaseService; // 데이터베이스 서비스
+  bool _isLeftPanelCollapsed = false; // 왼쪽 패널 축소 상태 (큰 화면에서만 사용)
   
   // 연결 ID 생성
   String _generateConnectionId() {
@@ -570,12 +571,14 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
 
   // 큰 화면인지 확인 (macOS, Windows, iPad)
   bool _isLargeScreen(BuildContext context) {
-    final platformType = PlatformUtils.getPlatformType(context);
-    final size = MediaQuery.of(context).size;
+    // macOS, Windows, Linux는 항상 큰 화면으로 간주
+    if (PlatformUtils.isDesktop()) {
+      return true;
+    }
     
-    // 데스크톱 또는 iPad이고 화면이 충분히 큰 경우
-    if (platformType == PlatformType.desktop || PlatformUtils.isIPad(context)) {
-      return size.width >= 800 && size.height >= 600;
+    // iPad도 큰 화면으로 간주
+    if (PlatformUtils.isIPad(context)) {
+      return true;
     }
     
     return false;
@@ -583,6 +586,55 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
 
   // 왼쪽 패널 빌드 (화면의 1/4 너비)
   Widget _buildLeftPanel(BuildContext context) {
+    // 축소된 상태일 때는 메뉴 버튼만 표시
+    if (_isLeftPanelCollapsed) {
+      return Container(
+        width: 60,
+        decoration: BoxDecoration(
+          color: Colors.grey[50],
+          border: Border(
+            right: BorderSide(color: Colors.grey[300]!, width: 1),
+          ),
+        ),
+        child: Column(
+          children: [
+            // 메뉴 버튼
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.secondary,
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.menu, color: Colors.white),
+                onPressed: () {
+                  setState(() {
+                    _isLeftPanelCollapsed = false;
+                  });
+                },
+                tooltip: 'Menú',
+              ),
+            ),
+            // 연결 관리 버튼
+            if (_isConnected)
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  child: IconButton(
+                    icon: const Icon(Icons.storage, color: Colors.blue),
+                    onPressed: () {
+                      setState(() {
+                        _isLeftPanelCollapsed = false;
+                      });
+                    },
+                    tooltip: 'Conexiones',
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    }
+    
     final screenWidth = MediaQuery.of(context).size.width;
     final leftPanelWidth = screenWidth * 0.25; // 화면의 1/4
     
@@ -647,6 +699,19 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                   ),
                 ),
               ),
+              // 축소 버튼 (큰 화면에서만 표시, 연결된 경우)
+              if (_isLargeScreen(context) && _isConnected)
+                IconButton(
+                  icon: const Icon(Icons.chevron_left, color: Colors.white, size: 18),
+                  onPressed: () {
+                    setState(() {
+                      _isLeftPanelCollapsed = true;
+                    });
+                  },
+                  tooltip: 'Colapsar menú',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
               IconButton(
                 icon: const Icon(Icons.add, color: Colors.white, size: 18),
                 onPressed: () async {
@@ -1206,6 +1271,19 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                   ),
                 ),
               ),
+              // 축소 버튼 (큰 화면에서만 표시)
+              if (_isLargeScreen(context))
+                IconButton(
+                  icon: const Icon(Icons.chevron_left, color: Colors.white, size: 18),
+                  onPressed: () {
+                    setState(() {
+                      _isLeftPanelCollapsed = true;
+                    });
+                  },
+                  tooltip: 'Colapsar menú',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
             ],
           ),
         ),
@@ -1313,6 +1391,8 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
           _currentReport = reportType;
           if (reportType == 'resumen') {
             _selectedReportType = null;
+            // resumen 선택 시 패널 확장 유지
+            _isLeftPanelCollapsed = false;
           } else {
             switch (reportType) {
               case 'stocks':
@@ -1341,6 +1421,10 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                 break;
               default:
                 _selectedReportType = null;
+            }
+            // 보고서 선택 시 큰 화면에서 왼쪽 패널 자동 축소
+            if (_isLargeScreen(context)) {
+              _isLeftPanelCollapsed = true;
             }
           }
         });
@@ -1395,6 +1479,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
       _databaseService = null;
       _selectedReportType = null;
       _currentReport = 'resumen';
+      _isLeftPanelCollapsed = false; // 연결 해제 시 패널 확장
     });
   }
 
