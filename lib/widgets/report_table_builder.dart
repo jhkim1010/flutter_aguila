@@ -1106,11 +1106,37 @@ class ReportTableBuilder {
                               }).toList();
                               assert(cells.length == keys.length);
                               
-                              // ventas 보고서의 vcode 단위에서 더블 탭 및 단일 탭 제스처 추가
-                              final finalCells = ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas && unit == 'vcode' && cells.isNotEmpty)
+                              // ventas 보고서의 vcode 단위 또는 clientes 보고서에서 더블 탭 및 단일 탭 제스처 추가
+                              final finalCells = ((onRowDoubleTap != null || onRowTap != null) && 
+                                  ((reportType == ReportType.ventas && unit == 'vcode') || reportType == ReportType.clientes) && 
+                                  cells.isNotEmpty)
                                   ? (() {
                                       final updatedCells = List<DataCell>.from(cells);
-                                      // vcode 컬럼의 인덱스 찾기
+                                      
+                                      // clientes 보고서의 경우 모든 셀에 더블 클릭 제스처 추가
+                                      if (reportType == ReportType.clientes) {
+                                        for (int i = 0; i < updatedCells.length; i++) {
+                                          final cell = updatedCells[i];
+                                          if (cell.child is Align) {
+                                            final align = cell.child as Align;
+                                            updatedCells[i] = DataCell(
+                                              GestureDetector(
+                                                onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
+                                                behavior: HitTestBehavior.opaque,
+                                                child: Container(
+                                                  width: double.infinity,
+                                                  height: double.infinity,
+                                                  alignment: align.alignment,
+                                                  child: align.child,
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        }
+                                        return updatedCells;
+                                      }
+                                      
+                                      // ventas 보고서의 vcode 단위: vcode 컬럼의 인덱스 찾기
                                       final vcodeIndex = keys.indexOf('vcode');
                                       if (vcodeIndex >= 0 && vcodeIndex < updatedCells.length) {
                                         final vcodeCell = updatedCells[vcodeIndex];
@@ -1171,10 +1197,36 @@ class ReportTableBuilder {
                               );
                             });
                             
-                            // ventas 보고서의 vcode 단위에서 더블 탭 및 단일 탭 제스처 추가
-                            if ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas && unit == 'vcode' && nonMapCells.isNotEmpty && item is Map<String, dynamic>) {
+                            // ventas 보고서의 vcode 단위 또는 clientes 보고서에서 더블 탭 및 단일 탭 제스처 추가
+                            if ((onRowDoubleTap != null || onRowTap != null) && 
+                                ((reportType == ReportType.ventas && unit == 'vcode') || reportType == ReportType.clientes) && 
+                                nonMapCells.isNotEmpty && item is Map<String, dynamic>) {
                               final updatedCells = List<DataCell>.from(nonMapCells);
-                              // vcode 컬럼의 인덱스 찾기
+                              
+                              // clientes 보고서의 경우 모든 셀에 더블 클릭 제스처 추가
+                              if (reportType == ReportType.clientes) {
+                                for (int i = 0; i < updatedCells.length; i++) {
+                                  final cell = updatedCells[i];
+                                  if (cell.child is Align) {
+                                    final align = cell.child as Align;
+                                    updatedCells[i] = DataCell(
+                                      GestureDetector(
+                                        onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
+                                        behavior: HitTestBehavior.opaque,
+                                        child: Container(
+                                          width: double.infinity,
+                                          height: double.infinity,
+                                          alignment: align.alignment,
+                                          child: align.child,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                }
+                                return DataRow(cells: updatedCells);
+                              }
+                              
+                              // ventas 보고서의 vcode 단위: vcode 컬럼의 인덱스 찾기
                               final vcodeIndex = keys.indexOf('vcode');
                               if (vcodeIndex >= 0 && vcodeIndex < updatedCells.length) {
                                 final vcodeCell = updatedCells[vcodeIndex];
@@ -1378,16 +1430,18 @@ class ReportTableBuilder {
                               assert(cells.length == keys.length, 
                                 'Row cells count (${cells.length}) must match keys count (${keys.length})');
                               
-                              // ventas 보고서의 경우 제스처 추가
+                              // ventas 보고서 또는 clientes 보고서의 경우 제스처 추가
                               // 모든 단위: 모든 셀에 더블 클릭 제스처 추가
-                              if ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas && cells.isNotEmpty) {
+                              if ((onRowDoubleTap != null || onRowTap != null) && 
+                                  (reportType == ReportType.ventas || reportType == ReportType.clientes) && 
+                                  cells.isNotEmpty) {
                                 // 모든 셀에 더블 클릭 제스처 추가
                                 cells = cells.map((cell) {
                                   if (cell.child is Align) {
                                     final align = cell.child as Align;
                                     return DataCell(
                                       GestureDetector(
-                                        onTap: (onRowTap != null && unit == 'vcode') ? () => onRowTap(item) : null,
+                                        onTap: (onRowTap != null && reportType == ReportType.ventas && unit == 'vcode') ? () => onRowTap(item) : null,
                                         onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
                                         behavior: HitTestBehavior.opaque,
                                         child: Container(
@@ -1532,21 +1586,23 @@ class ReportTableBuilder {
                                 }).toList();
                                 assert(cells.length == keys.length);
                                 
-                                // ventas 보고서의 경우 제스처 추가
+                                // ventas 보고서 또는 clientes 보고서의 경우 제스처 추가
                                 // year, month, day 단위: 모든 셀에 제스처 추가
                                 // vcode 단위: 모든 셀에 제스처 추가 (단일 탭은 vcode만)
-                                final finalCells = ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas)
+                                // clientes 보고서: 모든 셀에 더블 클릭 제스처 추가
+                                final finalCells = ((onRowDoubleTap != null || onRowTap != null) && 
+                                    (reportType == ReportType.ventas || reportType == ReportType.clientes))
                                     ? cells.map((cell) {
                                         if (cell.child is Align) {
                                           final align = cell.child as Align;
                                           return DataCell(
                                             GestureDetector(
-                                              onTap: (onRowTap != null && unit == 'vcode') ? () {
+                                              onTap: (onRowTap != null && reportType == ReportType.ventas && unit == 'vcode') ? () {
                                                 print('🔵 단일 탭 감지 (vcode unit)');
                                                 onRowTap(item);
                                               } : null,
                                               onDoubleTap: onRowDoubleTap != null ? () {
-                                                print('🔵🔵 더블 탭 감지! unit: $unit');
+                                                print('🔵🔵 더블 탭 감지! reportType: $reportType, unit: $unit');
                                                 onRowDoubleTap(item);
                                               } : null,
                                               behavior: HitTestBehavior.opaque,

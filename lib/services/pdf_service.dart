@@ -5,6 +5,15 @@ import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
 import '../widgets/report_utils.dart';
 
+// ReportUtils의 formatValue 함수를 사용하기 위한 헬퍼
+String _formatValue(dynamic value) {
+  if (value == null) return 'N/A';
+  if (value is num) {
+    return NumberFormat('#,##0.00').format(value);
+  }
+  return value.toString();
+}
+
 class PdfService {
   /// 보고서 데이터를 PDF로 변환하여 파일로 저장
   static Future<File> generateReportPdf({
@@ -322,5 +331,260 @@ class PdfService {
     }
     
     return widgets;
+  }
+
+  /// Cliente 상세 정보를 PDF로 변환하여 파일로 저장
+  static Future<File> generateClienteDetailPdf({
+    required Map<String, dynamic> clienteDetailData,
+    required String clienteNombre,
+  }) async {
+    final pdf = pw.Document();
+    final dateFormat = DateFormat('yyyy-MM-dd HH:mm');
+    final now = DateTime.now();
+    
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(40),
+        build: (pw.Context context) {
+          final widgets = <pw.Widget>[];
+          
+          // 헤더
+          widgets.add(
+            pw.Header(
+              level: 0,
+              child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(
+                    'Detalle del Cliente',
+                    style: pw.TextStyle(
+                      fontSize: 24,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                  pw.Text(
+                    dateFormat.format(now),
+                    style: const pw.TextStyle(fontSize: 10),
+                  ),
+                ],
+              ),
+            ),
+          );
+          widgets.add(pw.SizedBox(height: 20));
+          
+          // Cliente 기본 정보
+          if (clienteDetailData.containsKey('cliente') && clienteDetailData['cliente'] is Map) {
+            final cliente = clienteDetailData['cliente'] as Map<String, dynamic>;
+            widgets.add(
+              pw.Text(
+                'Información del Cliente',
+                style: pw.TextStyle(
+                  fontSize: 16,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+            );
+            widgets.add(pw.SizedBox(height: 10));
+            
+            final clienteInfo = [
+              ['DNI', cliente['dni']?.toString() ?? 'N/A'],
+              ['Nombre', cliente['nombre']?.toString() ?? 'N/A'],
+              ['Dirección', cliente['direccion']?.toString() ?? 'N/A'],
+              ['Localidad', cliente['localidad']?.toString() ?? 'N/A'],
+              ['Provincia', cliente['provincia']?.toString() ?? 'N/A'],
+              ['Vendedor', cliente['vendedor']?.toString() ?? 'N/A'],
+              ['Teléfono', cliente['telefono']?.toString() ?? 'N/A'],
+              ['Email', cliente['email']?.toString() ?? 'N/A'],
+              ['Transporte', cliente['transporte']?.toString() ?? 'N/A'],
+              ['Deuda', _formatValue(cliente['deuda'])],
+              ['Tipo', cliente['tipo']?.toString() ?? 'N/A'],
+              ['Memo', cliente['memo']?.toString() ?? 'N/A'],
+            ];
+            
+            widgets.add(
+              pw.Table(
+                border: pw.TableBorder.all(color: PdfColors.grey300),
+                children: clienteInfo.map((row) {
+                  return pw.TableRow(
+                    children: [
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.all(5),
+                        child: pw.Text(
+                          row[0],
+                          style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                        ),
+                      ),
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.all(5),
+                        child: pw.Text(row[1] ?? 'N/A'),
+                      ),
+                    ],
+                  );
+                }).toList(),
+              ),
+            );
+            widgets.add(pw.SizedBox(height: 20));
+          }
+          
+          // 구매 이력 요약
+          if (clienteDetailData.containsKey('compra_historial')) {
+            final compraHistorial = clienteDetailData['compra_historial'] as Map<String, dynamic>;
+            
+            // Summary 정보
+            if (compraHistorial.containsKey('summary') && compraHistorial['summary'] is Map) {
+              final summary = compraHistorial['summary'] as Map<String, dynamic>;
+              widgets.add(
+                pw.Text(
+                  'Resumen de Compras',
+                  style: pw.TextStyle(
+                    fontSize: 16,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+              );
+              widgets.add(pw.SizedBox(height: 10));
+              
+              final summaryInfo = [
+                ['Total de Items', summary['total_items']?.toString() ?? 'N/A'],
+                ['Unidad', summary['unit']?.toString() ?? 'N/A'],
+                ['Función Usada', summary['function_used']?.toString() ?? 'N/A'],
+              ];
+              
+              widgets.add(
+                pw.Table(
+                  border: pw.TableBorder.all(color: PdfColors.grey300),
+                  children: summaryInfo.map((row) {
+                    return pw.TableRow(
+                      children: [
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(5),
+                          child: pw.Text(
+                            row[0],
+                            style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                          ),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(5),
+                          child: pw.Text(row[1] ?? 'N/A'),
+                        ),
+                      ],
+                    );
+                  }).toList(),
+                ),
+              );
+              widgets.add(pw.SizedBox(height: 20));
+            }
+            
+            // 구매 이력 데이터 테이블
+            if (compraHistorial.containsKey('data') && compraHistorial['data'] is List) {
+              final compraData = compraHistorial['data'] as List;
+              if (compraData.isNotEmpty) {
+                widgets.add(
+                  pw.Text(
+                    'Historial de Compras (${compraData.length} registros)',
+                    style: pw.TextStyle(
+                      fontSize: 16,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                );
+                widgets.add(pw.SizedBox(height: 10));
+                
+                final columns = ['vcode', 'fecha', 'tpago', 'cntropas', 'tefectivo', 'tcredito', 'tbanco', 'treservado', 'sucursal', 'vendedor'];
+                final labels = {
+                  'vcode': 'Código',
+                  'fecha': 'Fecha',
+                  'tpago': 'Total Pago',
+                  'cntropas': 'Cant. Ropas',
+                  'tefectivo': 'Efectivo',
+                  'tcredito': 'Crédito',
+                  'tbanco': 'Banco',
+                  'treservado': 'Reservado',
+                  'sucursal': 'Sucursal',
+                  'vendedor': 'Vendedor',
+                };
+                
+                // 헤더 행
+                widgets.add(
+                  pw.Table(
+                    border: pw.TableBorder.all(color: PdfColors.grey300),
+                    columnWidths: {
+                      for (int i = 0; i < columns.length; i++)
+                        i: const pw.FlexColumnWidth(1),
+                    },
+                    children: [
+                      pw.TableRow(
+                        decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                        children: columns.map((key) {
+                          return pw.Padding(
+                            padding: const pw.EdgeInsets.all(5),
+                            child: pw.Text(
+                              labels[key] ?? key,
+                              style: pw.TextStyle(
+                                fontSize: 9,
+                                fontWeight: pw.FontWeight.bold,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      // 데이터 행들 (최대 50개만 표시)
+                      ...compraData.take(50).map((item) {
+                        if (item is Map<String, dynamic>) {
+                          return pw.TableRow(
+                            children: columns.map((key) {
+                              final value = item[key];
+                              return pw.Padding(
+                                padding: const pw.EdgeInsets.all(3),
+                                child: pw.Text(
+                                  _formatValue(value),
+                                  style: const pw.TextStyle(fontSize: 8),
+                                ),
+                              );
+                            }).toList(),
+                          );
+                        }
+                        return pw.TableRow(children: []);
+                      }).toList(),
+                    ],
+                  ),
+                );
+                
+                if (compraData.length > 50) {
+                  widgets.add(pw.SizedBox(height: 10));
+                  widgets.add(
+                    pw.Text(
+                      '... y ${compraData.length - 50} registros más',
+                      style: pw.TextStyle(
+                        fontSize: 10,
+                        fontStyle: pw.FontStyle.italic,
+                        color: PdfColors.grey700,
+                      ),
+                    ),
+                  );
+                }
+              }
+            }
+          }
+          
+          return widgets;
+        },
+      ),
+    );
+
+    // 임시 디렉토리에 파일 저장
+    final directory = await getTemporaryDirectory();
+    if (!await directory.exists()) {
+      await directory.create(recursive: true);
+    }
+    
+    final fileName = 'Detalle_Cliente_${clienteNombre.replaceAll(RegExp(r'[^\w\s-]'), '_')}_${DateFormat('yyyyMMdd_HHmmss').format(now)}.pdf';
+    final file = File('${directory.path}/$fileName');
+    
+    final pdfBytes = await pdf.save();
+    await file.writeAsBytes(pdfBytes);
+    
+    return file;
   }
 }

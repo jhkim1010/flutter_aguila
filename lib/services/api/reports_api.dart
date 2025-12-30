@@ -598,4 +598,40 @@ class ReportsApi {
     final endpoint = '/api/temporadas';
     return await _httpHandler.performGetRequest(endpoint);
   }
+
+  /// Cliente 상세 정보 가져오기 (cuit으로)
+  Future<Map<String, dynamic>> getClienteDetail({
+    required String cuit,
+  }) async {
+    final endpoint = '/api/cliente/detail';
+    final queryParams = <String, String>{
+      'cuit': cuit,
+    };
+    
+    print('\n═══════════════════════════════════════════════════════════');
+    print('=== Cliente 상세 정보 요청 ===');
+    print('CUIT: $cuit');
+    print('═══════════════════════════════════════════════════════════\n');
+    
+    final response = await _httpHandler.performGetRequest(
+      endpoint,
+      queryParameters: queryParams,
+    );
+    
+    print('=== Cliente 상세 정보 응답 ===');
+    try {
+      final responseJson = json.encode(response);
+      if (responseJson.length > 2000) {
+        print('${responseJson.substring(0, 2000)}... (${responseJson.length} bytes total)');
+      } else {
+        print(responseJson);
+      }
+    } catch (e) {
+      print('응답 바디 직렬화 오류: $e');
+      print('응답: $response');
+    }
+    print('═══════════════════════════════════════════════════════════\n');
+    
+    return response;
+  }
 }

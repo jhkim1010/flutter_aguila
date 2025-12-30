@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:intl/intl.dart';
@@ -9,6 +10,7 @@ import '../services/pdf_service.dart';
 import '../services/excel_service.dart';
 import '../l10n/app_localizations.dart';
 import '../utils/platform_utils.dart';
+import '../utils/report_data_utils.dart';
 import '../widgets/report_utils.dart';
 import '../widgets/items_date_range_selector.dart';
 import '../widgets/report_table_builder.dart';
@@ -18,6 +20,8 @@ import '../widgets/gastos_builder.dart';
 import '../widgets/report_data_builder.dart';
 import '../widgets/report_filters.dart';
 import '../widgets/report_header_builders.dart';
+import '../widgets/report_total_row_builder.dart';
+import '../widgets/report_filter_widgets.dart';
 
 export '../widgets/report_utils.dart' show ReportType;
 
@@ -126,6 +130,8 @@ class _ReportScreenState extends State<ReportScreen> {
   List<Map<String, dynamic>> _temporadasList = [];
   int? _selectedTipoId;
   int? _selectedTemporadaId;
+  
+  // 성능 최적화: 합계 계산 캐시는 ReportTotalRowBuilder에서 관리
 
   @override
   void initState() {
@@ -133,8 +139,8 @@ class _ReportScreenState extends State<ReportScreen> {
     _databaseService = DatabaseService(serverUrl: widget.serverUrl);
     // 스크롤 리스너 추가 (무한 스크롤)
     _scrollController.addListener(_onScroll);
-    // filteringWord 변경 감지 리스너 추가
-    _filteringWordController.addListener(_onFilteringWordChanged);
+    // filteringWord 변경 감지 리스너 추가 (debounce 처리)
+    _filteringWordController.addListener(_onFilteringWordChangedDebounced);
     
     // 초기 필터링 단어 설정
     if (widget.initialFilteringWord != null && widget.initialFilteringWord!.isNotEmpty) {
@@ -291,29 +297,42 @@ class _ReportScreenState extends State<ReportScreen> {
     }
   }
   
-  // filteringWord 변경 감지 핸들러
+  // filteringWord 변경 감지 핸들러 (즉시 반응하지 않음)
   String _lastFilteringWord = '';
-  void _onFilteringWordChanged() {
-    final currentWord = _filteringWordController.text.trim();
+  Timer? _filteringWordDebounceTimer;
+  
+  /// filteringWord 변경 감지 (debounced) - 0.1초보다 빠른 입력은 묶어서 처리
+  void _onFilteringWordChangedDebounced() {
+    // 이전 타이머 취소
+    _filteringWordDebounceTimer?.cancel();
     
-    // Alertas 보고서의 경우 VCancelado 및 Jefe 버튼 상태 동기화
-    if (widget.reportType == ReportType.alertas) {
-      setState(() {
-        _alertasVCancelado = currentWord.toLowerCase() == 'vcancelado';
-        _alertasJefe = currentWord.toLowerCase() == 'jefe';
-      });
-    }
-    
-    // debounce를 위해 타이머 사용 (500ms 후 실행)
-    Future.delayed(const Duration(milliseconds: 500), () {
+    // debounce를 위해 타이머 사용 (100ms 후 실행)
+    _filteringWordDebounceTimer = Timer(const Duration(milliseconds: 100), () {
       if (!mounted) return;
-      if (currentWord != _filteringWordController.text.trim()) return;
-      if (currentWord == _lastFilteringWord) return;
+      final finalWord = _filteringWordController.text.trim();
+      if (finalWord == _lastFilteringWord) return; // 변경사항이 없으면 취소
       
       // 프레임 완료 후 상태 업데이트를 보장하여 mouse_tracker assertion 오류 방지
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
+        final currentWord = _filteringWordController.text.trim();
+        if (currentWord != finalWord) return; // 입력이 계속 변경 중이면 취소
+        
         _lastFilteringWord = currentWord;
+        
+        // Alertas 보고서의 경우 VCancelado 및 Jefe 버튼 상태 동기화
+        // setState를 debounce 후에만 호출하여 키보드 이벤트 충돌 방지
+        if (widget.reportType == ReportType.alertas) {
+          final newVCancelado = currentWord.toLowerCase() == 'vcancelado';
+          final newJefe = currentWord.toLowerCase() == 'jefe';
+          if (_alertasVCancelado != newVCancelado || _alertasJefe != newJefe) {
+            setState(() {
+              _alertasVCancelado = newVCancelado;
+              _alertasJefe = newJefe;
+            });
+          }
+        }
+        
         // 상태 변경 콜백 호출
         _notifyStateChanged();
         // codigos, todocodigos, stocks 또는 clientes 보고서인 경우 데이터 재로드
@@ -354,6 +373,9 @@ class _ReportScreenState extends State<ReportScreen> {
   
   // 필터 및 정렬 기준으로 데이터 재로드
   Future<void> _reloadDataWithFilters() async {
+    // 성능 최적화: 필터 변경 시 합계 계산 캐시 무효화
+    ReportTotalRowBuilder.clearCache();
+    
     // 페이지네이션 상태 초기화
     if (widget.reportType == ReportType.codigos || widget.reportType == ReportType.todocodigos) {
       _codigosNextIdCodigo = null;
@@ -372,6 +394,7 @@ class _ReportScreenState extends State<ReportScreen> {
 
   @override
   void dispose() {
+    _filteringWordDebounceTimer?.cancel(); // debounce 타이머 취소
     _databaseService.dispose(); // HTTP 클라이언트 연결 풀 정리
     _filteringWordController.dispose();
     _scrollController.dispose();
@@ -415,11 +438,9 @@ class _ReportScreenState extends State<ReportScreen> {
                 final descripcion = item['descripcion']?.toString().toLowerCase() ?? '';
                 return codigo.contains(filteringWord) || descripcion.contains(filteringWord);
               } else if (widget.reportType == ReportType.gastos) {
-                // gastos 필터링 로직 추가 (필요한 필드에 따라 수정 가능)
-                final codigo = item['codigo']?.toString().toLowerCase() ?? '';
-                final descripcion = item['descripcion']?.toString().toLowerCase() ?? '';
-                final concepto = item['concepto']?.toString().toLowerCase() ?? '';
-                return codigo.contains(filteringWord) || descripcion.contains(filteringWord) || concepto.contains(filteringWord);
+                // gastos 필터링: tema 칼럼에서 대소문자 구분 없이 비교
+                final tema = item['tema']?.toString().toLowerCase() ?? '';
+                return tema.contains(filteringWord);
               } else if (widget.reportType == ReportType.alertas) {
                 // alertas 필터링 로직: evento 필드에서 검색
                 final evento = item['evento']?.toString().toLowerCase() ?? '';
@@ -1821,6 +1842,8 @@ class _ReportScreenState extends State<ReportScreen> {
         _data = data;
         _isLoading = false;
         _availableSucursales = sucursales;
+        // 성능 최적화: 데이터 변경 시 합계 계산 캐시 무효화
+        ReportTotalRowBuilder.clearCache();
         // sucursal이 1개 이하이면 필터 초기화
         if (sucursales == null || sucursales.length <= 1) {
           _selectedSucursal = null;
@@ -2083,6 +2106,8 @@ class _ReportScreenState extends State<ReportScreen> {
               ..._data!,
               'data': [...currentData, ...newData],
             };
+            // 성능 최적화: 데이터 변경 시 합계 계산 캐시 무효화
+            ReportTotalRowBuilder.clearCache();
           });
           print('✅ 다음 페이지 로드됨: ${newData.length}개 항목 (총 ${currentData.length + newData.length}개)');
           
@@ -5178,38 +5203,77 @@ class _ReportScreenState extends State<ReportScreen> {
     if (widget.reportType == ReportType.stocks && 
         data.containsKey('data') && 
         data['data'] is List) {
-      return _buildStocksContent(data);
+      // 성능 최적화: RepaintBoundary로 감싸서 불필요한 리페인트 방지
+      return RepaintBoundary(
+        child: _buildStocksContent(data),
+      );
     }
     
     // Codigos 및 Todo Codigos 보고서의 경우 특별 처리
     if ((widget.reportType == ReportType.codigos || widget.reportType == ReportType.todocodigos) && 
         data.containsKey('data') && 
         data['data'] is List) {
-      return _buildCodigosContent(data);
+      // 성능 최적화: RepaintBoundary로 감싸서 불필요한 리페인트 방지
+      return RepaintBoundary(
+        child: _buildCodigosContent(data),
+      );
     }
     
-    // Gastos 보고서의 경우 특별 처리 (새로운 응답 구조)
-    if (widget.reportType == ReportType.gastos && 
-        data.containsKey('data') && 
-        data['data'] is Map &&
-        (data['data'] as Map).containsKey('detail')) {
-      final filteringWord = _filteringWordController.text.trim();
-      // _getDisplayedData()를 사용하여 필터링/정렬 적용
-      final displayedData = _getDisplayedData();
-      return GastosBuilder.buildContent(
-        data: displayedData,
-        context: context,
-        scrollController: _scrollController,
-        onSort: (column, ascending) {
-          setState(() {
-            _sortColumn = column;
-            _sortAscending = ascending;
-          });
-        },
-        sortColumn: _sortColumn,
-        sortAscending: _sortAscending,
-        filteringWord: filteringWord.isNotEmpty ? filteringWord : null,
-      );
+    // Gastos 보고서의 경우 특별 처리
+    if (widget.reportType == ReportType.gastos) {
+      // 새로운 구조: summary_by_rubro가 있고 data가 List인 경우
+      if (data.containsKey('summary_by_rubro') && 
+          data.containsKey('data') && 
+          data['data'] is List) {
+        print('📊 Gastos 새로운 구조 감지: summary_by_rubro + data(List)');
+        final filteringWord = _filteringWordController.text.trim();
+        // _getDisplayedData()를 사용하여 필터링/정렬 적용
+        final displayedData = _getDisplayedData();
+        // 성능 최적화: RepaintBoundary로 감싸서 불필요한 리페인트 방지
+        return RepaintBoundary(
+          child: GastosBuilder.buildContent(
+            data: displayedData,
+            context: context,
+            scrollController: _scrollController,
+            onSort: (column, ascending) {
+              setState(() {
+                _sortColumn = column;
+                _sortAscending = ascending;
+              });
+            },
+            sortColumn: _sortColumn,
+            sortAscending: _sortAscending,
+            filteringWord: filteringWord.isNotEmpty ? filteringWord : null,
+          ),
+        );
+      }
+      
+      // 기존 구조: data가 Map이고 detail 키가 있는 경우
+      if (data.containsKey('data') && 
+          data['data'] is Map &&
+          (data['data'] as Map).containsKey('detail')) {
+        print('📊 Gastos 기존 구조 감지: data(Map) + detail');
+        final filteringWord = _filteringWordController.text.trim();
+        // _getDisplayedData()를 사용하여 필터링/정렬 적용
+        final displayedData = _getDisplayedData();
+        // 성능 최적화: RepaintBoundary로 감싸서 불필요한 리페인트 방지
+        return RepaintBoundary(
+          child: GastosBuilder.buildContent(
+            data: displayedData,
+            context: context,
+            scrollController: _scrollController,
+            onSort: (column, ascending) {
+              setState(() {
+                _sortColumn = column;
+                _sortAscending = ascending;
+              });
+            },
+            sortColumn: _sortColumn,
+            sortAscending: _sortAscending,
+            filteringWord: filteringWord.isNotEmpty ? filteringWord : null,
+          ),
+        );
+      }
     }
     
     // 'data' 키가 있고 리스트인 경우
@@ -5242,10 +5306,9 @@ class _ReportScreenState extends State<ReportScreen> {
                   final descripcion = item['descripcion']?.toString().toLowerCase() ?? '';
                   return codigo.contains(filteringWord) || descripcion.contains(filteringWord);
                 } else if (widget.reportType == ReportType.gastos) {
-                  final codigo = item['codigo']?.toString().toLowerCase() ?? '';
-                  final descripcion = item['descripcion']?.toString().toLowerCase() ?? '';
-                  final concepto = item['concepto']?.toString().toLowerCase() ?? '';
-                  return codigo.contains(filteringWord) || descripcion.contains(filteringWord) || concepto.contains(filteringWord);
+                  // gastos 필터링: tema 칼럼에서 대소문자 구분 없이 비교
+                  final tema = item['tema']?.toString().toLowerCase() ?? '';
+                  return tema.contains(filteringWord);
                 } else if (widget.reportType == ReportType.alertas) {
                   // alertas 필터링 로직: evento 필드에서 검색
                   final evento = item['evento']?.toString().toLowerCase() ?? '';
@@ -5333,37 +5396,39 @@ class _ReportScreenState extends State<ReportScreen> {
           // Alertas 보고서 색상 결정
           Color alertasColor = Colors.orange; // alertas 보고서 기본 색상
           
-          // 테이블 위젯 생성 (화면을 나누지 않음)
-          return ReportTableBuilder.buildTableFromList(
-            sortedDataList,
-            _displayedItemsCount,
-            _itemsPerPage,
-            _scrollController,
-            widget.reportType,
-            sortColumn: _sortColumn,
-            sortAscending: _sortAscending,
-            horizontalScrollController: _horizontalScrollController,
-            reportColor: alertasColor,
-            unit: null,
-            onRowDoubleTap: null,
-            onRowTap: null,
-            onSort: (columnIndex, ascending) {
-              setState(() {
-                final allKeys = sortedDataList.isNotEmpty 
-                    ? (sortedDataList.first as Map<String, dynamic>).keys.toList()
-                    : <String>[];
-                if (columnIndex >= 0 && columnIndex < allKeys.length) {
-                  final key = allKeys[columnIndex];
-                  if (_sortColumn == key) {
-                    _sortAscending = !_sortAscending;
-                  } else {
-                    _sortColumn = key;
-                    _sortAscending = false;
+          // 테이블 위젯 생성 (화면을 나누지 않음) (성능 최적화: RepaintBoundary로 감싸서 불필요한 리페인트 방지)
+          return RepaintBoundary(
+            child: ReportTableBuilder.buildTableFromList(
+              sortedDataList,
+              _displayedItemsCount,
+              _itemsPerPage,
+              _scrollController,
+              widget.reportType,
+              sortColumn: _sortColumn,
+              sortAscending: _sortAscending,
+              horizontalScrollController: _horizontalScrollController,
+              reportColor: alertasColor,
+              unit: null,
+              onRowDoubleTap: null,
+              onRowTap: null,
+              onSort: (columnIndex, ascending) {
+                setState(() {
+                  final allKeys = sortedDataList.isNotEmpty 
+                      ? (sortedDataList.first as Map<String, dynamic>).keys.toList()
+                      : <String>[];
+                  if (columnIndex >= 0 && columnIndex < allKeys.length) {
+                    final key = allKeys[columnIndex];
+                    if (_sortColumn == key) {
+                      _sortAscending = !_sortAscending;
+                    } else {
+                      _sortColumn = key;
+                      _sortAscending = false;
+                    }
+                    _displayedItemsCount = _itemsPerPage;
                   }
-                  _displayedItemsCount = _itemsPerPage;
-                }
-              });
-            },
+                });
+              },
+            ),
           );
         }
         
@@ -5421,23 +5486,24 @@ class _ReportScreenState extends State<ReportScreen> {
           final screenWidth = MediaQuery.of(context).size.width;
           final isWideScreen = screenWidth >= 800; // 800px 이상이면 큰 화면으로 간주
           
-          // 테이블 위젯 생성
-          final tableWidget = ReportTableBuilder.buildTableFromList(
-                  sortedDataList,
-                  _displayedItemsCount,
-                  _itemsPerPage,
-                  _scrollController,
-                  widget.reportType,
-                  sortColumn: _sortColumn,
-                  sortAscending: _sortAscending,
-                  horizontalScrollController: _horizontalScrollController,
-                  reportColor: itemsColor,
-                  unit: widget.reportType == ReportType.ventas ? _ventasUnit : null,
-                  onRowDoubleTap: widget.reportType == ReportType.ventas ? _handleRowDoubleTap : null,
-                  onRowTap: null, // vcode 단위에서는 단일 클릭 비활성화 (더블 클릭만 사용)
-                  onSort: (columnIndex, ascending) {
-                    setState(() {
-                      // 키 목록을 정렬된 데이터에서 가져오기 (report_table_builder와 동일한 순서 보장)
+          // 테이블 위젯 생성 (성능 최적화: RepaintBoundary로 감싸서 불필요한 리페인트 방지)
+          final tableWidget = RepaintBoundary(
+            child: ReportTableBuilder.buildTableFromList(
+                    sortedDataList,
+                    _displayedItemsCount,
+                    _itemsPerPage,
+                    _scrollController,
+                    widget.reportType,
+                    sortColumn: _sortColumn,
+                    sortAscending: _sortAscending,
+                    horizontalScrollController: _horizontalScrollController,
+                    reportColor: itemsColor,
+                    unit: widget.reportType == ReportType.ventas ? _ventasUnit : null,
+                    onRowDoubleTap: widget.reportType == ReportType.ventas ? _handleRowDoubleTap : null,
+                    onRowTap: null, // vcode 단위에서는 단일 클릭 비활성화 (더블 클릭만 사용)
+                    onSort: (columnIndex, ascending) {
+                      setState(() {
+                        // 키 목록을 정렬된 데이터에서 가져오기 (report_table_builder와 동일한 순서 보장)
                       // Items 보고서: start_date, end_date, sucursal 제외
                       final allKeys = sortedDataList.isNotEmpty 
                           ? (sortedDataList.first as Map<String, dynamic>).keys.toList()
@@ -5460,7 +5526,8 @@ class _ReportScreenState extends State<ReportScreen> {
                       }
                     });
                   },
-                );
+                ),
+          );
           
           // 큰 화면일 때만 2/3, 1/3로 나눔 (Items, Ingresos, Gastos만)
           if (isWideScreen && (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos)) {
@@ -5503,40 +5570,43 @@ class _ReportScreenState extends State<ReportScreen> {
         
         // Clientes 보고서의 경우 별도 처리 (서버에서 정렬하므로 클라이언트 측 정렬 불필요)
         if (widget.reportType == ReportType.clientes) {
-          return ReportTableBuilder.buildTableFromList(
-            filteredDataList,
-            _displayedItemsCount,
-            _itemsPerPage,
-            _scrollController,
-            widget.reportType,
-            sortColumn: _clientesSortColumn,
-            sortAscending: _clientesSortAscending,
-            horizontalScrollController: _horizontalScrollController,
-            reportColor: _getReportColor(),
-            unit: null,
-            onRowDoubleTap: null,
-            onRowTap: null,
-            onSort: (columnIndex, ascending) {
-              setState(() {
-                // 키 목록을 필터링된 데이터에서 가져오기
-                final allKeys = filteredDataList.isNotEmpty 
-                    ? (filteredDataList.first as Map<String, dynamic>).keys.toList()
-                    : <String>[];
-                if (columnIndex >= 0 && columnIndex < allKeys.length) {
-                  final key = allKeys[columnIndex];
-                  if (_clientesSortColumn == key) {
-                    // 같은 칼럼을 클릭하면 정렬 방향 변경
-                    _clientesSortAscending = !_clientesSortAscending;
-                  } else {
-                    // 다른 칼럼을 클릭하면 새 칼럼으로 정렬 (첫 클릭 시 내림차순)
-                    _clientesSortColumn = key;
-                    _clientesSortAscending = false;
+          // 성능 최적화: RepaintBoundary로 감싸서 불필요한 리페인트 방지
+          return RepaintBoundary(
+            child: ReportTableBuilder.buildTableFromList(
+              filteredDataList,
+              _displayedItemsCount,
+              _itemsPerPage,
+              _scrollController,
+              widget.reportType,
+              sortColumn: _clientesSortColumn,
+              sortAscending: _clientesSortAscending,
+              horizontalScrollController: _horizontalScrollController,
+              reportColor: _getReportColor(),
+              unit: null,
+              onRowDoubleTap: (rowData) => _handleClienteRowTap(rowData),
+              onRowTap: null,
+              onSort: (columnIndex, ascending) {
+                setState(() {
+                  // 키 목록을 필터링된 데이터에서 가져오기
+                  final allKeys = filteredDataList.isNotEmpty 
+                      ? (filteredDataList.first as Map<String, dynamic>).keys.toList()
+                      : <String>[];
+                  if (columnIndex >= 0 && columnIndex < allKeys.length) {
+                    final key = allKeys[columnIndex];
+                    if (_clientesSortColumn == key) {
+                      // 같은 칼럼을 클릭하면 정렬 방향 변경
+                      _clientesSortAscending = !_clientesSortAscending;
+                    } else {
+                      // 다른 칼럼을 클릭하면 새 칼럼으로 정렬 (첫 클릭 시 내림차순)
+                      _clientesSortColumn = key;
+                      _clientesSortAscending = false;
+                    }
+                    // 정렬이 변경되면 서버에서 다시 로드
+                    _reloadDataWithFilters();
                   }
-                  // 정렬이 변경되면 서버에서 다시 로드
-                  _reloadDataWithFilters();
-                }
-              });
-            },
+                });
+              },
+            ),
           );
         }
         
@@ -5573,45 +5643,48 @@ class _ReportScreenState extends State<ReportScreen> {
           });
         }
         
-        return ReportTableBuilder.buildTableFromList(
-          widget.reportType == ReportType.ventas ? sortedDataList : filteredDataList,
-          _displayedItemsCount,
-          _itemsPerPage,
-          _scrollController,
-          widget.reportType,
-          sortColumn: widget.reportType == ReportType.ventas ? _sortColumn : null,
-          sortAscending: widget.reportType == ReportType.ventas ? _sortAscending : true,
-          horizontalScrollController: _horizontalScrollController,
-          reportColor: widget.reportType == ReportType.ventas ? Colors.purple : null,
-          unit: widget.reportType == ReportType.ventas ? _ventasUnit : null,
-          onRowDoubleTap: widget.reportType == ReportType.ventas ? _handleRowDoubleTap : null,
-          onRowTap: null, // vcode 단위에서는 단일 클릭 비활성화 (더블 클릭만 사용)
-          onSort: widget.reportType == ReportType.ventas
-              ? (columnIndex, ascending) {
-                  setState(() {
-                    // 키 목록을 정렬된 데이터에서 가져오기 (report_table_builder와 동일한 순서 보장)
-                    final allKeys = sortedDataList.isNotEmpty 
-                        ? (sortedDataList.first as Map<String, dynamic>).keys.toList()
-                        : <String>[];
-                    // ventas 보고서는 특정 순서로 컬럼이 정렬되어 있으므로 report_table_builder에서 사용하는 순서를 따라야 함
-                    // 하지만 여기서는 실제 데이터의 키 순서를 사용
-                    final keys = allKeys;
-                    if (columnIndex >= 0 && columnIndex < keys.length) {
-                      final key = keys[columnIndex];
-                      if (_sortColumn == key) {
-                        // 같은 칼럼을 클릭하면 정렬 방향 변경
-                        _sortAscending = !_sortAscending;
-                      } else {
-                        // 다른 칼럼을 클릭하면 새 칼럼으로 정렬 (첫 클릭 시 내림차순)
-                        _sortColumn = key;
-                        _sortAscending = false;
+        // 성능 최적화: RepaintBoundary로 감싸서 불필요한 리페인트 방지
+        return RepaintBoundary(
+          child: ReportTableBuilder.buildTableFromList(
+            widget.reportType == ReportType.ventas ? sortedDataList : filteredDataList,
+            _displayedItemsCount,
+            _itemsPerPage,
+            _scrollController,
+            widget.reportType,
+            sortColumn: widget.reportType == ReportType.ventas ? _sortColumn : null,
+            sortAscending: widget.reportType == ReportType.ventas ? _sortAscending : true,
+            horizontalScrollController: _horizontalScrollController,
+            reportColor: widget.reportType == ReportType.ventas ? Colors.purple : null,
+            unit: widget.reportType == ReportType.ventas ? _ventasUnit : null,
+            onRowDoubleTap: widget.reportType == ReportType.ventas ? _handleRowDoubleTap : null,
+            onRowTap: null, // vcode 단위에서는 단일 클릭 비활성화 (더블 클릭만 사용)
+            onSort: widget.reportType == ReportType.ventas
+                ? (columnIndex, ascending) {
+                    setState(() {
+                      // 키 목록을 정렬된 데이터에서 가져오기 (report_table_builder와 동일한 순서 보장)
+                      final allKeys = sortedDataList.isNotEmpty 
+                          ? (sortedDataList.first as Map<String, dynamic>).keys.toList()
+                          : <String>[];
+                      // ventas 보고서는 특정 순서로 컬럼이 정렬되어 있으므로 report_table_builder에서 사용하는 순서를 따라야 함
+                      // 하지만 여기서는 실제 데이터의 키 순서를 사용
+                      final keys = allKeys;
+                      if (columnIndex >= 0 && columnIndex < keys.length) {
+                        final key = keys[columnIndex];
+                        if (_sortColumn == key) {
+                          // 같은 칼럼을 클릭하면 정렬 방향 변경
+                          _sortAscending = !_sortAscending;
+                        } else {
+                          // 다른 칼럼을 클릭하면 새 칼럼으로 정렬 (첫 클릭 시 내림차순)
+                          _sortColumn = key;
+                          _sortAscending = false;
+                        }
+                        // 정렬이 변경되면 처음부터 다시 표시
+                        _displayedItemsCount = _itemsPerPage;
                       }
-                      // 정렬이 변경되면 처음부터 다시 표시
-                      _displayedItemsCount = _itemsPerPage;
-                    }
-                  });
-                }
-              : null,
+                    });
+                  }
+                : null,
+          ),
         );
       }
       
@@ -6239,63 +6312,13 @@ class _ReportScreenState extends State<ReportScreen> {
     );
   }
 
-  // 합계 행 빌드
+  // 합계 행 빌드 (캐싱 적용) - ReportTotalRowBuilder로 이동
   DataRow _buildTotalRow(List<String> orderedKeys, List<dynamic> dataList, bool isResumida) {
-    // 각 칼럼별 합계 계산
-    final totals = <String, num>{};
-    
-    for (var key in orderedKeys) {
-      final isCodigoColumn = key == 'codigo' || key == 'tcode' || key == 'codigo1' || key == 'id_codigo1';
-      if (isCodigoColumn) continue; // 문자 칼럼은 합계 계산 제외
-      
-      num sum = 0;
-      for (var item in dataList) {
-        if (item is Map<String, dynamic> && item.containsKey(key)) {
-          final value = item[key];
-          if (ReportUtils.isNumeric(value)) {
-            final numValue = num.tryParse(value.toString().replaceAll(',', '').replaceAll('\$', '').trim());
-            if (numValue != null) {
-              sum += numValue;
-            }
-          }
-        }
-      }
-      totals[key] = sum;
-    }
-    
-    return DataRow(
-      color: MaterialStateProperty.all(_getReportColor().withOpacity(0.1)),
-      cells: orderedKeys.map((key) {
-        final isCodigoColumn = key == 'codigo' || key == 'tcode' || key == 'codigo1' || key == 'id_codigo1';
-        if (isCodigoColumn) {
-          return DataCell(
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Total',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          );
-        }
-        
-        final total = totals[key] ?? 0;
-        return DataCell(
-          Align(
-            alignment: Alignment.centerRight,
-            child: Text(
-              ReportUtils.formatValue(total),
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        );
-      }).toList(),
+    return ReportTotalRowBuilder.buildTotalRow(
+      orderedKeys,
+      dataList,
+      isResumida,
+      _getReportColor(),
     );
   }
 
@@ -6353,68 +6376,14 @@ class _ReportScreenState extends State<ReportScreen> {
     }).toList();
   }
 
-  // 필터 적용
+  // 필터 적용 - ReportDataUtils로 이동
   List<dynamic> _applyFilters(List<dynamic> dataList) {
-    if (_columnFilters.isEmpty) {
-      return dataList;
-    }
-    
-    return dataList.where((item) {
-      if (item is! Map<String, dynamic>) return true;
-      
-      for (var entry in _columnFilters.entries) {
-        final columnKey = entry.key;
-        final filterValue = entry.value.toLowerCase();
-        
-        if (!item.containsKey(columnKey)) continue;
-        
-        final cellValue = item[columnKey];
-        final cellValueStr = ReportUtils.formatValue(cellValue).toLowerCase();
-        
-        if (!cellValueStr.contains(filterValue)) {
-          return false;
-        }
-      }
-      
-      return true;
-    }).toList();
+    return ReportDataUtils.applyFilters(dataList, _columnFilters);
   }
 
-  // 정렬 적용
+  // 정렬 적용 - ReportDataUtils로 이동
   List<dynamic> _applySort(List<dynamic> dataList) {
-    if (_sortColumn == null || dataList.isEmpty) {
-      return dataList;
-    }
-    
-    final sortedList = List<dynamic>.from(dataList);
-    
-    sortedList.sort((a, b) {
-      if (a is! Map<String, dynamic> || b is! Map<String, dynamic>) {
-        return 0;
-      }
-      
-      final aValue = a[_sortColumn];
-      final bValue = b[_sortColumn];
-      
-      // null 처리
-      if (aValue == null && bValue == null) return 0;
-      if (aValue == null) return 1;
-      if (bValue == null) return -1;
-      
-      // 숫자 비교
-      if (aValue is num && bValue is num) {
-        final comparison = aValue.compareTo(bValue);
-        return _sortAscending ? comparison : -comparison;
-      }
-      
-      // 문자열 비교
-      final aStr = ReportUtils.formatValue(aValue).toLowerCase();
-      final bStr = ReportUtils.formatValue(bValue).toLowerCase();
-      final comparison = aStr.compareTo(bStr);
-      return _sortAscending ? comparison : -comparison;
-    });
-    
-    return sortedList;
+    return ReportDataUtils.applySort(dataList, _sortColumn, _sortAscending);
   }
 
   // Stocks 필드명 매핑 (스페인어)
@@ -7237,6 +7206,69 @@ class _ReportScreenState extends State<ReportScreen> {
     }
   }
 
+  /// Cliente 행 탭 핸들러 - cliente 상세 정보 보기
+  void _handleClienteRowTap(Map<String, dynamic> rowData) async {
+    if (widget.reportType != ReportType.clientes) return;
+    
+    print('🔍 Cliente 행 탭 - rowData: $rowData');
+    
+    // dni 추출 (다양한 필드명 시도)
+    final dni = rowData['dni'] ?? 
+                rowData['DNI'] ?? 
+                rowData['Dni'] ??
+                rowData['dni_numero'] ??
+                rowData['numero_dni'] ??
+                rowData['documento'] ??
+                rowData['Documento'];
+    
+    if (dni == null || dni.toString().isEmpty) {
+      print('❌ dni가 없습니다. rowData keys: ${rowData.keys.toList()}');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('DNI 정보를 찾을 수 없습니다.')),
+        );
+      }
+      return;
+    }
+    
+    final dniStr = dni.toString().trim();
+    print('✅ Cliente 상세 정보 요청 - DNI: $dniStr (cuit 파라미터로 전송)');
+    
+    // 로딩 다이얼로그 표시
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+    
+    try {
+      // Cliente 상세 정보 요청 (cuit 파라미터에 dni 값을 전송)
+      final clienteDetailData = await _databaseService.getClienteDetail(
+        cuit: dniStr,
+      );
+      
+      // 로딩 다이얼로그 닫기
+      if (mounted) Navigator.of(context).pop();
+      
+      print('✅ Cliente 상세 정보 응답: $clienteDetailData');
+      
+      // Cliente 상세 정보 다이얼로그 표시
+      if (mounted) {
+        _showClienteDetailDialog(clienteDetailData, rowData);
+      }
+    } catch (e) {
+      // 로딩 다이얼로그 닫기
+      if (mounted) Navigator.of(context).pop();
+      
+      print('❌ Cliente 상세 정보 요청 실패: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Cliente 상세 정보를 가져오는 중 오류가 발생했습니다: $e')),
+        );
+      }
+    }
+  }
+
   /// vcode 행 탭 핸들러 - vdetalle 상세 정보 보기
   void _handleVcodeRowTap(Map<String, dynamic> rowData) async {
     if (widget.reportType != ReportType.ventas || _ventasUnit != 'vcode') return;
@@ -7299,6 +7331,496 @@ class _ReportScreenState extends State<ReportScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('vdetalle 데이터를 가져오는 중 오류가 발생했습니다: $e')),
+        );
+      }
+    }
+  }
+
+  /// Cliente 상세 정보를 표시하는 다이얼로그
+  void _showClienteDetailDialog(Map<String, dynamic> clienteDetailData, Map<String, dynamic> rowData) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final screenWidth = MediaQuery.of(context).size.width;
+        final screenHeight = MediaQuery.of(context).size.height;
+        final isWideScreen = screenWidth >= 800;
+        // 좁은 화면일 때는 전체 화면 사용
+        final dialogWidth = isWideScreen ? screenWidth * 2 / 3 : screenWidth;
+        final dialogHeight = isWideScreen ? screenHeight * 0.9 : screenHeight;
+        final reportColor = _getReportColor();
+        
+        return Dialog(
+          insetPadding: isWideScreen ? const EdgeInsets.all(16) : EdgeInsets.zero,
+          child: Container(
+            width: dialogWidth,
+            height: dialogHeight,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 헤더
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: reportColor,
+                    borderRadius: isWideScreen
+                        ? const BorderRadius.only(
+                            topLeft: Radius.circular(8),
+                            topRight: Radius.circular(8),
+                          )
+                        : null,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Detalle del Cliente',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // 공유 버튼
+                          IconButton(
+                            icon: const Icon(Icons.share, color: Colors.white),
+                            tooltip: 'Compartir (PDF/Excel)',
+                            onPressed: () => _shareClienteDetail(clienteDetailData),
+                          ),
+                          // 닫기 버튼
+                          IconButton(
+                            icon: const Icon(Icons.close, color: Colors.white),
+                            onPressed: () => Navigator.of(context).pop(),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // 내용
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: _buildClienteDetailContent(clienteDetailData, rowData),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Cliente 상세 정보 내용 빌드
+  Widget _buildClienteDetailContent(Map<String, dynamic> clienteDetailData, Map<String, dynamic> rowData) {
+    if (clienteDetailData is! Map<String, dynamic>) {
+      return Center(
+        child: Text(
+          'Datos: ${clienteDetailData.toString()}',
+          style: const TextStyle(fontSize: 14),
+        ),
+      );
+    }
+
+    final reportColor = _getReportColor();
+    final cards = <Widget>[];
+
+    // 1. Cliente 기본 정보 카드
+    if (clienteDetailData.containsKey('cliente') && clienteDetailData['cliente'] is Map) {
+      final cliente = clienteDetailData['cliente'] as Map<String, dynamic>;
+      cards.add(_buildInfoCard(
+        'Información del Cliente',
+        {
+          'DNI': cliente['dni']?.toString() ?? 'N/A',
+          'Nombre': cliente['nombre']?.toString() ?? 'N/A',
+          'Dirección': cliente['direccion']?.toString() ?? 'N/A',
+          'Localidad': cliente['localidad']?.toString() ?? 'N/A',
+          'Provincia': cliente['provincia']?.toString() ?? 'N/A',
+          'Vendedor': cliente['vendedor']?.toString() ?? 'N/A',
+          'Teléfono': cliente['telefono']?.toString() ?? 'N/A',
+          'Email': cliente['email']?.toString() ?? 'N/A',
+          'Transporte': cliente['transporte']?.toString() ?? 'N/A',
+          'Deuda': ReportUtils.formatValue(cliente['deuda']),
+          'Tipo': cliente['tipo']?.toString() ?? 'N/A',
+          'Memo': cliente['memo']?.toString() ?? 'N/A',
+        },
+        reportColor: reportColor,
+      ));
+    }
+
+    // 2. 구매 이력 요약 정보 카드
+    if (clienteDetailData.containsKey('compra_historial')) {
+      final compraHistorial = clienteDetailData['compra_historial'] as Map<String, dynamic>;
+      
+      // Summary 정보
+      if (compraHistorial.containsKey('summary') && compraHistorial['summary'] is Map) {
+        final summary = compraHistorial['summary'] as Map<String, dynamic>;
+        cards.add(_buildInfoCard(
+          'Resumen de Compras',
+          {
+            'Total de Items': summary['total_items']?.toString() ?? 'N/A',
+            'Unidad': summary['unit']?.toString() ?? 'N/A',
+            'Función Usada': summary['function_used']?.toString() ?? 'N/A',
+          },
+          reportColor: reportColor,
+        ));
+      }
+
+      // Filters 정보
+      if (compraHistorial.containsKey('filters') && compraHistorial['filters'] is Map) {
+        final filters = compraHistorial['filters'] as Map<String, dynamic>;
+        cards.add(_buildInfoCard(
+          'Filtros Aplicados',
+          {
+            'Fecha Inicio': filters['fecha_inicio']?.toString() ?? 'N/A',
+            'Fecha Fin': filters['fecha_fin']?.toString() ?? 'N/A',
+            'Período (Días)': filters['period_days']?.toString() ?? 'N/A',
+            'Período (Meses)': filters['period_months']?.toString() ?? 'N/A',
+            'Período (Años)': filters['period_years']?.toString() ?? 'N/A',
+          },
+          reportColor: reportColor,
+        ));
+      }
+
+      // 3. 구매 이력 데이터 테이블
+      if (compraHistorial.containsKey('data') && compraHistorial['data'] is List) {
+        final compraData = compraHistorial['data'] as List;
+        if (compraData.isNotEmpty) {
+          cards.add(_buildCompraHistorialTable(compraData, reportColor));
+        }
+      }
+    }
+
+    if (cards.isEmpty) {
+      return const Center(child: Text('No hay datos disponibles'));
+    }
+
+    // 큰 화면일 때는 2열 레이아웃, 작은 화면일 때는 1열
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isWideScreen = screenWidth >= 800;
+
+    if (isWideScreen && cards.length > 2) {
+      // 큰 화면: 왼쪽에 정보 카드들, 오른쪽에 테이블
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 왼쪽: 정보 카드들
+          Expanded(
+            flex: 1,
+            child: Column(
+              children: cards.where((card) => card != cards.last).toList(),
+            ),
+          ),
+          const SizedBox(width: 16),
+          // 오른쪽: 테이블
+          Expanded(
+            flex: 2,
+            child: cards.last,
+          ),
+        ],
+      );
+    }
+
+    // 작은 화면: 세로로 배치
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: cards,
+    );
+  }
+
+  /// 구매 이력 테이블 빌드
+  Widget _buildCompraHistorialTable(List<dynamic> compraData, Color reportColor) {
+    if (compraData.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final firstItem = compraData.first;
+    if (firstItem is! Map<String, dynamic>) {
+      return const SizedBox.shrink();
+    }
+
+    // 주요 컬럼만 선택하여 표시
+    final columns = [
+      'vcode',
+      'fecha',
+      'tpago',
+      'cntropas',
+      'tefectivo',
+      'tcredito',
+      'tbanco',
+      'treservado',
+      'sucursal',
+      'vendedor',
+    ];
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Historial de Compras (${compraData.length} registros)',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: reportColor,
+              ),
+            ),
+            const SizedBox(height: 12),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                columnSpacing: 20,
+                headingRowColor: MaterialStateProperty.all(reportColor.withOpacity(0.1)),
+                columns: columns.map((key) {
+                  final labels = {
+                    'vcode': 'Código',
+                    'fecha': 'Fecha',
+                    'tpago': 'Total Pago',
+                    'cntropas': 'Cant. Ropas',
+                    'tefectivo': 'Efectivo',
+                    'tcredito': 'Crédito',
+                    'tbanco': 'Banco',
+                    'treservado': 'Reservado',
+                    'sucursal': 'Sucursal',
+                    'vendedor': 'Vendedor',
+                  };
+                  final isNumeric = ['tpago', 'cntropas', 'tefectivo', 'tcredito', 'tbanco', 'treservado', 'sucursal'].contains(key);
+                  return DataColumn(
+                    label: Text(
+                      labels[key] ?? key,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    numeric: isNumeric,
+                  );
+                }).toList(),
+                rows: compraData.map((item) {
+                  if (item is! Map<String, dynamic>) {
+                    return DataRow(
+                      cells: columns.map((_) => const DataCell(Text('N/A'))).toList(),
+                    );
+                  }
+                  return DataRow(
+                    cells: columns.map((key) {
+                      final value = item[key];
+                      final formattedValue = ReportUtils.formatValue(value);
+                      final isNumeric = ['tpago', 'cntropas', 'tefectivo', 'tcredito', 'tbanco', 'treservado', 'sucursal'].contains(key);
+                      return DataCell(
+                        Align(
+                          alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+                          child: Text(
+                            formattedValue,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Cliente 상세 정보 공유 (PDF/Excel)
+  Future<void> _shareClienteDetail(Map<String, dynamic> clienteDetailData) async {
+    // macOS 또는 Windows인 경우 PDF/Excel 선택 다이얼로그 표시
+    if (Platform.isMacOS || Platform.isWindows) {
+      if (!mounted) return;
+      
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Exportar detalle del cliente'),
+          content: const Text('¿En qué formato desea exportar el detalle del cliente?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _shareClienteDetailAsPdf(clienteDetailData);
+              },
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.picture_as_pdf, color: Colors.red),
+                  SizedBox(width: 8),
+                  Text('PDF'),
+                ],
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _shareClienteDetailAsExcel(clienteDetailData);
+              },
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.table_chart, color: Colors.green),
+                  SizedBox(width: 8),
+                  Text('Excel'),
+                ],
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancelar'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      // 모바일/태블릿: PDF만 공유
+      _shareClienteDetailAsPdf(clienteDetailData);
+    }
+  }
+
+  /// Cliente 상세 정보를 PDF로 변환하여 공유
+  Future<void> _shareClienteDetailAsPdf(Map<String, dynamic> clienteDetailData) async {
+    try {
+      // 로딩 표시
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Generando PDF...'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // 클라이언트 정보 추출
+      final cliente = clienteDetailData['cliente'] as Map<String, dynamic>?;
+      final clienteNombre = cliente?['nombre']?.toString() ?? 'Cliente';
+      
+      // PDF 생성
+      final pdfFile = await PdfService.generateClienteDetailPdf(
+        clienteDetailData: clienteDetailData,
+        clienteNombre: clienteNombre,
+      );
+
+      // 로딩 다이얼로그 닫기
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // 파일 존재 확인
+      if (!await pdfFile.exists()) {
+        throw Exception('PDF 파일이 생성되지 않았습니다: ${pdfFile.path}');
+      }
+
+      print('📄 PDF 파일 생성 완료: ${pdfFile.path}');
+
+      // PDF 공유
+      if (mounted) {
+        await _sharePdfFile(pdfFile);
+      }
+    } catch (e, stackTrace) {
+      // 로딩 다이얼로그 닫기
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      print('❌ PDF 생성/공유 오류: $e');
+      print('❌ Stack trace: $stackTrace');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al generar/compartir PDF: $e'),
+            duration: const Duration(seconds: 5),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Cliente 상세 정보를 Excel로 변환하여 공유
+  Future<void> _shareClienteDetailAsExcel(Map<String, dynamic> clienteDetailData) async {
+    try {
+      // 로딩 표시
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Generando Excel...'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // 클라이언트 정보 추출
+      final cliente = clienteDetailData['cliente'] as Map<String, dynamic>?;
+      final clienteNombre = cliente?['nombre']?.toString() ?? 'Cliente';
+      
+      // Excel 생성
+      final excelFile = await ExcelService.generateClienteDetailExcel(
+        clienteDetailData: clienteDetailData,
+        clienteNombre: clienteNombre,
+      );
+
+      // 로딩 다이얼로그 닫기
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // 파일 존재 확인
+      if (!await excelFile.exists()) {
+        throw Exception('Excel 파일이 생성되지 않았습니다: ${excelFile.path}');
+      }
+
+      print('📊 Excel 파일 생성 완료: ${excelFile.path}');
+
+      // Excel 공유
+      if (mounted) {
+        await _shareExcelFile(excelFile);
+      }
+    } catch (e, stackTrace) {
+      // 로딩 다이얼로그 닫기
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      print('❌ Excel 생성/공유 오류: $e');
+      print('❌ Stack trace: $stackTrace');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al generar/compartir Excel: $e'),
+            duration: const Duration(seconds: 5),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -7671,7 +8193,8 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   /// 정보 카드 위젯 생성
-  Widget _buildInfoCard(String title, Map<String, dynamic> data) {
+  Widget _buildInfoCard(String title, Map<String, dynamic> data, {Color? reportColor}) {
+    final cardColor = reportColor ?? Colors.purple;
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 2,
@@ -7682,10 +8205,10 @@ class _ReportScreenState extends State<ReportScreen> {
           children: [
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Colors.purple,
+                color: cardColor,
               ),
             ),
             const SizedBox(height: 12),
@@ -7874,7 +8397,7 @@ class _ReportScreenState extends State<ReportScreen> {
   // Filtering word 입력 필드 (AppBar용)
   Widget _buildFilteringWordFieldInAppBar() {
     return ReportFilters.buildFilteringWordField(
-        controller: _filteringWordController,
+      controller: _filteringWordController,
       onSubmitted: (value) {
         // codigos, todocodigos 또는 stocks 보고서인 경우 서버에 요청
         if (widget.reportType == ReportType.codigos || 
@@ -7884,482 +8407,112 @@ class _ReportScreenState extends State<ReportScreen> {
         }
       },
       onClear: () {
-                    setState(() {
-                      _filteringWordController.clear();
-                    });
-                  },
+        // clear 호출을 다음 프레임으로 지연하여 키보드 이벤트 충돌 방지
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _filteringWordController.clear();
+          }
+        });
+      },
     );
   }
 
-  // Tipo 선택 UI (AppBar용)
+  // Tipo 선택 UI (AppBar용) - ReportFilterWidgets로 이동
   Widget _buildTipoSelector() {
-    final reportColor = _getReportColor();
-    
-    // 현재 선택된 값이 items 리스트에 있는지 확인
-    final availableIds = _tiposList.map((tipo) {
-      final id = tipo['id_tipo'] is int 
-          ? tipo['id_tipo'] 
-          : (tipo['id_tipo'] != null ? int.tryParse(tipo['id_tipo'].toString()) : null) ??
-            (tipo['id'] is int ? tipo['id'] : (tipo['id'] != null ? int.tryParse(tipo['id'].toString()) : null));
-      return id;
-    }).where((id) => id != null).cast<int>().toList();
-    
-    final validValue = _selectedTipoId != null && availableIds.contains(_selectedTipoId)
-        ? _selectedTipoId
-        : null;
-    
-    // items 생성
-    final items = <DropdownMenuItem<int?>>[
-      const DropdownMenuItem<int?>(
-        value: null,
-        child: Text('Todos', style: TextStyle(fontSize: 12)),
-      ),
-      ..._tiposList.map((tipo) {
-        // id_tipo 또는 id 필드 확인
-        final id = tipo['id_tipo'] is int 
-            ? tipo['id_tipo'] 
-            : (tipo['id_tipo'] != null ? int.tryParse(tipo['id_tipo'].toString()) : null) ??
-              (tipo['id'] is int ? tipo['id'] : (tipo['id'] != null ? int.tryParse(tipo['id'].toString()) : null));
-        
-        // tpdesc 필드 확인 (실제 서버 응답 필드명)
-        final nombre = tipo['tpdesc']?.toString() ?? 
-                      tipo['tipodesc']?.toString() ?? 
-                      tipo['tipo_desc']?.toString() ?? 
-                      tipo['descripcion']?.toString() ?? 
-                      tipo['nombre']?.toString() ?? 
-                      tipo['tipo']?.toString() ?? 
-                      tipo['tipo_nombre']?.toString() ??
-                      'N/A';
-        
-        if (id == null) {
-          print('⚠️ Tipo 항목 ID 없음: $tipo');
-          return null;
-        }
-        if (nombre == 'N/A') {
-          print('⚠️ Tipo 항목 이름 없음 (키: ${tipo.keys.toList()}): $tipo');
-        }
-        return DropdownMenuItem<int?>(
-          value: id,
-          child: Text(nombre, style: const TextStyle(fontSize: 12)),
-        );
-      }).where((item) => item != null).cast<DropdownMenuItem<int?>>().toList(),
-    ];
-    
-    // 디버깅: 모든 tipos 데이터를 JSON 형태로 출력
-    print('═══════════════════════════════════════════════════════════');
-    print('🔍 Tipo 콤보박스 데이터 (JSON 형태)');
-    print('═══════════════════════════════════════════════════════════');
-    print('_tiposList.length: ${_tiposList.length}');
-    print('items.length: ${items.length}');
-    print('');
-    print('📋 모든 Tipos 데이터:');
-    try {
-      final jsonString = const JsonEncoder.withIndent('  ').convert(_tiposList);
-      print(jsonString);
-    } catch (e) {
-      print('JSON 변환 오류: $e');
-      print('원본 데이터: $_tiposList');
-    }
-    print('═══════════════════════════════════════════════════════════');
-    
-    // 각 항목의 필드명 확인
-    if (_tiposList.isNotEmpty) {
-      print('');
-      print('📋 첫 번째 Tipo 항목 상세:');
-      final firstTipo = _tiposList.first;
-      firstTipo.forEach((key, value) {
-        print('   $key: $value (타입: ${value.runtimeType})');
-      });
-    }
-    
-    return Tooltip(
-      message: 'Filtrar por Tipo',
-      child: SizedBox(
-        width: 140,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey[300]!),
-          ),
-          child: DropdownButton<int?>(
-            value: validValue,
-            hint: const Text('Tipo', style: TextStyle(fontSize: 12, color: Colors.grey)),
-            underline: const SizedBox(),
-            isDense: true,
-            isExpanded: true,
-            icon: Icon(Icons.arrow_drop_down, color: reportColor, size: 20),
-            selectedItemBuilder: (BuildContext context) {
-              return items.map((item) {
-                if (item.value == null) {
-                  return const Text('Todos', style: TextStyle(fontSize: 12));
-                }
-                final tipo = _tiposList.firstWhere(
-                  (t) {
-                    final id = t['id_tipo'] is int 
-                        ? t['id_tipo'] 
-                        : (t['id_tipo'] != null ? int.tryParse(t['id_tipo'].toString()) : null) ??
-                          (t['id'] is int ? t['id'] : (t['id'] != null ? int.tryParse(t['id'].toString()) : null));
-                    return id == item.value;
-                  },
-                  orElse: () => <String, dynamic>{},
-                );
-                
-                // tpdesc 필드 확인 (실제 서버 응답 필드명)
-                final nombre = tipo['tpdesc']?.toString() ?? 
-                               tipo['tipodesc']?.toString() ?? 
-                               tipo['tipo_desc']?.toString() ?? 
-                               tipo['descripcion']?.toString() ?? 
-                               tipo['nombre']?.toString() ?? 
-                               tipo['tipo']?.toString() ?? 
-                               tipo['tipo_nombre']?.toString() ??
-                               'N/A';
-                return Text(nombre, style: const TextStyle(fontSize: 12));
-              }).toList();
-            },
-            items: items,
-            onChanged: (int? value) {
-              setState(() {
-                _selectedTipoId = value;
-              });
-              _loadData();
-            },
-          ),
-        ),
-      ),
+    return ReportFilterWidgets.buildTipoSelector(
+      tiposList: _tiposList,
+      selectedTipoId: _selectedTipoId,
+      onChanged: (int? value) {
+        setState(() {
+          _selectedTipoId = value;
+        });
+        _loadData();
+      },
+      reportColor: _getReportColor(),
     );
   }
 
-  // Temporada 선택 UI (AppBar용)
+  // Temporada 선택 UI (AppBar용) - ReportFilterWidgets로 이동
   Widget _buildTemporadaSelector() {
-    final reportColor = _getReportColor();
-    
-    // 현재 선택된 값이 items 리스트에 있는지 확인
-    final availableIds = _temporadasList.map((temporada) {
-      final id = temporada['id_temporada'] is int 
-          ? temporada['id_temporada'] 
-          : (temporada['id_temporada'] != null ? int.tryParse(temporada['id_temporada'].toString()) : null) ??
-            (temporada['id'] is int ? temporada['id'] : (temporada['id'] != null ? int.tryParse(temporada['id'].toString()) : null));
-      return id;
-    }).where((id) => id != null).cast<int>().toList();
-    
-    final validValue = _selectedTemporadaId != null && availableIds.contains(_selectedTemporadaId)
-        ? _selectedTemporadaId
-        : null;
-    
-    // items 생성
-    final items = <DropdownMenuItem<int?>>[
-      const DropdownMenuItem<int?>(
-        value: null,
-        child: Text('Todos', style: TextStyle(fontSize: 12)),
-      ),
-      ..._temporadasList.map((temporada) {
-        // id_temporada 또는 id 필드 확인
-        final id = temporada['id_temporada'] is int 
-            ? temporada['id_temporada'] 
-            : (temporada['id_temporada'] != null ? int.tryParse(temporada['id_temporada'].toString()) : null) ??
-              (temporada['id'] is int ? temporada['id'] : (temporada['id'] != null ? int.tryParse(temporada['id'].toString()) : null));
-        // temporada_nombre, nombre, temporada 필드 확인
-        final nombre = temporada['temporada_nombre']?.toString() ?? 
-                      temporada['nombre']?.toString() ?? 
-                      temporada['temporada']?.toString() ??
-                      'N/A';
-        if (id == null) return null;
-        return DropdownMenuItem<int?>(
-          value: id,
-          child: Text(nombre, style: const TextStyle(fontSize: 12)),
-        );
-      }).where((item) => item != null).cast<DropdownMenuItem<int?>>().toList(),
-    ];
-    
-    // 디버깅
-    print('🔍 Temporada 콤보박스: _temporadasList.length=${_temporadasList.length}, items.length=${items.length}');
-    if (_temporadasList.isNotEmpty) {
-      print('   첫 번째 temporada: ${_temporadasList.first}');
-    }
-    
-    return Tooltip(
-      message: 'Filtrar por Temporada',
-      child: SizedBox(
-        width: 140,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey[300]!),
-          ),
-          child: DropdownButton<int?>(
-            value: validValue,
-            hint: const Text('Temporada', style: TextStyle(fontSize: 12, color: Colors.grey)),
-            underline: const SizedBox(),
-            isDense: true,
-            isExpanded: true,
-            icon: Icon(Icons.arrow_drop_down, color: reportColor, size: 20),
-            selectedItemBuilder: (BuildContext context) {
-              return items.map((item) {
-                if (item.value == null) {
-                  return const Text('Todos', style: TextStyle(fontSize: 12));
-                }
-                final temporada = _temporadasList.firstWhere(
-                  (t) {
-                    final id = t['id_temporada'] is int 
-                        ? t['id_temporada'] 
-                        : (t['id_temporada'] != null ? int.tryParse(t['id_temporada'].toString()) : null) ??
-                          (t['id'] is int ? t['id'] : (t['id'] != null ? int.tryParse(t['id'].toString()) : null));
-                    return id == item.value;
-                  },
-                  orElse: () => <String, dynamic>{},
-                );
-                final nombre = temporada['temporada_nombre']?.toString() ?? 
-                               temporada['nombre']?.toString() ?? 
-                               temporada['temporada']?.toString() ??
-                               'N/A';
-                return Text(nombre, style: const TextStyle(fontSize: 12));
-              }).toList();
-            },
-            items: items,
-            onChanged: (int? value) {
-              setState(() {
-                _selectedTemporadaId = value;
-              });
-              _loadData();
-            },
-          ),
-        ),
-      ),
+    return ReportFilterWidgets.buildTemporadaSelector(
+      temporadasList: _temporadasList,
+      selectedTemporadaId: _selectedTemporadaId,
+      onChanged: (int? value) {
+        setState(() {
+          _selectedTemporadaId = value;
+        });
+        _loadData();
+      },
+      reportColor: _getReportColor(),
     );
   }
 
-  // Clientes 보고서용 필터 UI 빌더들
+  // Clientes 보고서용 필터 UI 빌더들 - ReportFilterWidgets로 이동
   // Responsable Ins 콤보박스
   Widget _buildClientesResponsableInsSelector() {
-    final reportColor = _getReportColor();
-    
-    final items = <DropdownMenuItem<String?>>[
-      const DropdownMenuItem<String?>(
-        value: null,
-        child: Text('Todos', style: TextStyle(fontSize: 12, color: Colors.white)),
-      ),
-      const DropdownMenuItem<String?>(
-        value: 'Responsable Ins',
-        child: Text('Responsable Ins', style: TextStyle(fontSize: 12, color: Colors.white)),
-      ),
-      const DropdownMenuItem<String?>(
-        value: 'Monotributista',
-        child: Text('Monotributista', style: TextStyle(fontSize: 12, color: Colors.white)),
-      ),
-      const DropdownMenuItem<String?>(
-        value: 'Sin Rubro',
-        child: Text('Sin Rubro', style: TextStyle(fontSize: 12, color: Colors.white)),
-      ),
-    ];
-    
-    return SizedBox(
-      width: 150,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.white.withOpacity(0.3)),
-        ),
-        child: DropdownButton<String?>(
-          value: _clientesResponsableIns,
-          hint: const Text('Responsable', style: TextStyle(fontSize: 12, color: Colors.white70)),
-          underline: const SizedBox(),
-          isDense: true,
-          isExpanded: true,
-          dropdownColor: reportColor,
-          icon: const Icon(Icons.arrow_drop_down, color: Colors.white, size: 18),
-          style: const TextStyle(fontSize: 12, color: Colors.white),
-          items: items,
-          onChanged: (String? value) {
-            setState(() {
-              _clientesResponsableIns = value;
-            });
-            _loadData();
-          },
-        ),
-      ),
+    return ReportFilterWidgets.buildClientesResponsableInsSelector(
+      selectedValue: _clientesResponsableIns,
+      onChanged: (String? value) {
+        setState(() {
+          _clientesResponsableIns = value;
+        });
+        _loadData();
+      },
+      reportColor: _getReportColor(),
     );
   }
 
-  // Provincias 콤보박스
+  // Provincias 콤보박스 - ReportFilterWidgets로 이동
   Widget _buildClientesProvinciaSelector() {
-    final reportColor = _getReportColor();
-    
-    // 아르헨티나 23개 주 + CABA + Otro Países
-    final provincias = [
-      'Buenos Aires',
-      'Catamarca',
-      'Chaco',
-      'Chubut',
-      'Córdoba',
-      'Corrientes',
-      'Entre Ríos',
-      'Formosa',
-      'Jujuy',
-      'La Pampa',
-      'La Rioja',
-      'Mendoza',
-      'Misiones',
-      'Neuquén',
-      'Río Negro',
-      'Salta',
-      'San Juan',
-      'San Luis',
-      'Santa Cruz',
-      'Santa Fe',
-      'Santiago del Estero',
-      'Tierra del Fuego',
-      'Tucumán',
-      'CABA',
-      'Otro Países',
-    ];
-    
-    final items = <DropdownMenuItem<String?>>[
-      const DropdownMenuItem<String?>(
-        value: null,
-        child: Text('Todas', style: TextStyle(fontSize: 12, color: Colors.white)),
-      ),
-      ...provincias.map((provincia) {
-        return DropdownMenuItem<String?>(
-          value: provincia,
-          child: Text(provincia, style: const TextStyle(fontSize: 12, color: Colors.white)),
-        );
-      }).toList(),
-    ];
-    
-    return SizedBox(
-      width: 150,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.white.withOpacity(0.3)),
-        ),
-        child: DropdownButton<String?>(
-          value: _clientesProvincia,
-          hint: const Text('Provincia', style: TextStyle(fontSize: 12, color: Colors.white70)),
-          underline: const SizedBox(),
-          isDense: true,
-          isExpanded: true,
-          dropdownColor: reportColor,
-          icon: const Icon(Icons.arrow_drop_down, color: Colors.white, size: 18),
-          style: const TextStyle(fontSize: 12, color: Colors.white),
-          items: items,
-          onChanged: (String? value) {
-            setState(() {
-              _clientesProvincia = value;
-            });
-            _loadData();
-          },
-        ),
-      ),
+    return ReportFilterWidgets.buildClientesProvinciaSelector(
+      selectedValue: _clientesProvincia,
+      onChanged: (String? value) {
+        setState(() {
+          _clientesProvincia = value;
+        });
+        _loadData();
+      },
+      reportColor: _getReportColor(),
     );
   }
 
-  // Deudores 체크박스
+  // Deudores 체크박스 - ReportFilterWidgets로 이동
   Widget _buildClientesDeudoresCheckbox() {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Checkbox(
-          value: _clientesDeudores,
-          onChanged: (bool? value) {
-            setState(() {
-              _clientesDeudores = value ?? false;
-            });
-            _loadData();
-          },
-          checkColor: Colors.white,
-          fillColor: MaterialStateProperty.resolveWith<Color>((Set<MaterialState> states) {
-            if (states.contains(MaterialState.selected)) {
-              return Colors.white.withOpacity(0.3);
-            }
-            return Colors.transparent;
-          }),
-        ),
-        const Text(
-          'Deudores',
-          style: TextStyle(fontSize: 12, color: Colors.white),
-        ),
-      ],
+    return ReportFilterWidgets.buildClientesDeudoresCheckbox(
+      value: _clientesDeudores,
+      onChanged: (bool value) {
+        setState(() {
+          _clientesDeudores = value;
+        });
+        _loadData();
+      },
     );
   }
 
-  // Reservadores 체크박스
+  // Reservadores 체크박스 - ReportFilterWidgets로 이동
   Widget _buildClientesReservadoresCheckbox() {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Checkbox(
-          value: _clientesReservadores,
-          onChanged: (bool? value) {
-            setState(() {
-              _clientesReservadores = value ?? false;
-            });
-            _loadData();
-          },
-          checkColor: Colors.white,
-          fillColor: MaterialStateProperty.resolveWith<Color>((Set<MaterialState> states) {
-            if (states.contains(MaterialState.selected)) {
-              return Colors.white.withOpacity(0.3);
-            }
-            return Colors.transparent;
-          }),
-        ),
-        const Text(
-          'Reservadores',
-          style: TextStyle(fontSize: 12, color: Colors.white),
-        ),
-      ],
+    return ReportFilterWidgets.buildClientesReservadoresCheckbox(
+      value: _clientesReservadores,
+      onChanged: (bool value) {
+        setState(() {
+          _clientesReservadores = value;
+        });
+        _loadData();
+      },
     );
   }
 
-  // 지점 선택 UI (AppBar용)
+  // 지점 선택 UI (AppBar용) - ReportFilterWidgets로 이동
   Widget _buildSucursalSelector() {
-    final reportColor = _getReportColor();
-    
-    return SizedBox(
-      width: 140, // 명시적 너비 설정
-      child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: DropdownButton<String?>(
-        value: _selectedSucursal,
-        hint: const Text('Todos', style: TextStyle(fontSize: 12)),
-        underline: const SizedBox(),
-        isDense: true,
-          isExpanded: false, // AppBar의 Row 안에서는 false로 설정
-        icon: Icon(Icons.arrow_drop_down, color: reportColor, size: 20),
-        items: [
-          const DropdownMenuItem<String?>(
-            value: null,
-            child: Text('Todos', style: TextStyle(fontSize: 12)),
-          ),
-          if (_availableSucursales != null)
-            ..._availableSucursales!.map((sucursal) {
-              return DropdownMenuItem<String?>(
-                value: sucursal,
-                child: Text('Sucursal $sucursal', style: const TextStyle(fontSize: 12)),
-              );
-            }).toList(),
-        ],
-        onChanged: (String? value) {
-          setState(() {
-            _selectedSucursal = value;
-          });
-        },
-        ),
-      ),
+    return ReportFilterWidgets.buildSucursalSelector(
+      selectedSucursal: _selectedSucursal,
+      availableSucursales: _availableSucursales,
+      onChanged: (String? value) {
+        setState(() {
+          _selectedSucursal = value;
+        });
+      },
+      reportColor: _getReportColor(),
     );
   }
 
@@ -8463,63 +8616,12 @@ class _ReportScreenState extends State<ReportScreen> {
     );
   }
 
-  // 테이블용 합계 행 빌드
+  // 테이블용 합계 행 빌드 (캐싱 적용) - ReportTotalRowBuilder로 이동
   DataRow _buildTotalRowForTable(List<String> keys, List<dynamic> dataList) {
-    // 각 칼럼별 합계 계산
-    final totals = <String, num>{};
-    
-    for (var key in keys) {
-      final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1';
-      if (isCodigoColumn) continue; // 문자 칼럼은 합계 계산 제외
-      
-      num sum = 0;
-      for (var item in dataList) {
-        if (item is Map<String, dynamic> && item.containsKey(key)) {
-          final value = item[key];
-          if (ReportUtils.isNumeric(value)) {
-            final numValue = num.tryParse(value.toString().replaceAll(',', '').replaceAll('\$', '').trim());
-            if (numValue != null) {
-              sum += numValue;
-            }
-          }
-        }
-      }
-      totals[key] = sum;
-    }
-    
-    return DataRow(
-      color: MaterialStateProperty.all(_getReportColor().withOpacity(0.1)),
-      cells: keys.map((key) {
-        final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1';
-        if (isCodigoColumn) {
-          return DataCell(
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Total',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          );
-        }
-        
-        final total = totals[key] ?? 0;
-        return DataCell(
-          Align(
-            alignment: Alignment.centerRight,
-            child: Text(
-              ReportUtils.formatValue(total),
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        );
-      }).toList(),
+    return ReportTotalRowBuilder.buildTotalRowForTable(
+      keys,
+      dataList,
+      _getReportColor(),
     );
   }
 

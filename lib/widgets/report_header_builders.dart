@@ -163,6 +163,7 @@ class ReportHeaderBuilders {
                                     ),
                                   ),
                                   child: TextField(
+                                    key: ValueKey('filtering_word_field_header'), // 키 추가로 재생성 방지
                                     controller: filteringWordController,
                                     style: TextStyle(
                                       color: reportColor,
@@ -181,8 +182,11 @@ class ReportHeaderBuilders {
                                       suffixIcon: value.text.isNotEmpty
                                           ? IconButton(
                                               icon: Icon(Icons.clear, color: reportColor, size: 22),
-                                              onPressed: onFilteringWordClear ?? () {
-                                                filteringWordController.clear();
+                                              onPressed: () {
+                                                // clear 호출을 다음 프레임으로 지연하여 키보드 이벤트 충돌 방지
+                                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                                  onFilteringWordClear?.call() ?? filteringWordController.clear();
+                                                });
                                               },
                                               padding: EdgeInsets.zero,
                                               constraints: const BoxConstraints(),
@@ -190,6 +194,10 @@ class ReportHeaderBuilders {
                                           : null,
                                     ),
                                     onSubmitted: onFilteringWordSubmitted,
+                                    // 키보드 이벤트 처리를 최적화
+                                    enableInteractiveSelection: true,
+                                    keyboardType: TextInputType.text,
+                                    textInputAction: TextInputAction.search,
                                   ),
                                 );
                               },

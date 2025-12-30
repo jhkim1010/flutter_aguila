@@ -281,6 +281,13 @@ class DatabaseService {
     sucursal: sucursal,
   );
 
+  /// Cliente 상세 정보 가져오기 (cuit으로)
+  Future<Map<String, dynamic>> getClienteDetail({
+    required String cuit,
+  }) => _reportsApi.getClienteDetail(
+    cuit: cuit,
+  );
+
   // ========== Tipos & Temporadas API ==========
   
   /// Tipos 리스트 가져오기 (캐시 사용)

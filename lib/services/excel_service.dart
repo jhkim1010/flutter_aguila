@@ -189,5 +189,177 @@ class ExcelService {
       rethrow;
     }
   }
+
+  /// Cliente 상세 정보를 Excel로 변환하여 파일로 저장
+  static Future<File> generateClienteDetailExcel({
+    required Map<String, dynamic> clienteDetailData,
+    required String clienteNombre,
+  }) async {
+    final excel = Excel.createExcel();
+    final dateFormat = DateFormat('yyyy-MM-dd HH:mm');
+    final now = DateTime.now();
+    
+    // 첫 번째 시트 선택
+    excel.delete('Sheet1');
+    final sheet = excel['Detalle del Cliente'];
+    
+    int currentRow = 0;
+    
+    // 헤더 행
+    sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+        .value = TextCellValue('Detalle del Cliente');
+    sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+        .cellStyle = CellStyle(bold: true, fontSize: 16);
+    currentRow++;
+    
+    sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+        .value = TextCellValue('Generado: ${dateFormat.format(now)}');
+    currentRow++;
+    currentRow++; // 빈 줄
+    
+    // Cliente 기본 정보
+    if (clienteDetailData.containsKey('cliente') && clienteDetailData['cliente'] is Map) {
+      final cliente = clienteDetailData['cliente'] as Map<String, dynamic>;
+      
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+          .value = TextCellValue('Información del Cliente');
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+          .cellStyle = CellStyle(bold: true, fontSize: 14);
+      currentRow++;
+      
+      final clienteInfo = [
+        ['DNI', cliente['dni']?.toString() ?? 'N/A'],
+        ['Nombre', cliente['nombre']?.toString() ?? 'N/A'],
+        ['Dirección', cliente['direccion']?.toString() ?? 'N/A'],
+        ['Localidad', cliente['localidad']?.toString() ?? 'N/A'],
+        ['Provincia', cliente['provincia']?.toString() ?? 'N/A'],
+        ['Vendedor', cliente['vendedor']?.toString() ?? 'N/A'],
+        ['Teléfono', cliente['telefono']?.toString() ?? 'N/A'],
+        ['Email', cliente['email']?.toString() ?? 'N/A'],
+        ['Transporte', cliente['transporte']?.toString() ?? 'N/A'],
+        ['Deuda', cliente['deuda']?.toString() ?? 'N/A'],
+        ['Tipo', cliente['tipo']?.toString() ?? 'N/A'],
+        ['Memo', cliente['memo']?.toString() ?? 'N/A'],
+      ];
+      
+      for (var info in clienteInfo) {
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+            .value = TextCellValue(info[0]);
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+            .cellStyle = CellStyle(bold: true);
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: currentRow))
+            .value = TextCellValue(info[1]);
+        currentRow++;
+      }
+      currentRow++; // 빈 줄
+    }
+    
+    // 구매 이력 요약
+    if (clienteDetailData.containsKey('compra_historial')) {
+      final compraHistorial = clienteDetailData['compra_historial'] as Map<String, dynamic>;
+      
+      // Summary 정보
+      if (compraHistorial.containsKey('summary') && compraHistorial['summary'] is Map) {
+        final summary = compraHistorial['summary'] as Map<String, dynamic>;
+        
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+            .value = TextCellValue('Resumen de Compras');
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+            .cellStyle = CellStyle(bold: true, fontSize: 14);
+        currentRow++;
+        
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+            .value = TextCellValue('Total de Items');
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+            .cellStyle = CellStyle(bold: true);
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: currentRow))
+            .value = TextCellValue(summary['total_items']?.toString() ?? 'N/A');
+        currentRow++;
+        
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+            .value = TextCellValue('Unidad');
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+            .cellStyle = CellStyle(bold: true);
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: currentRow))
+            .value = TextCellValue(summary['unit']?.toString() ?? 'N/A');
+        currentRow++;
+        
+        currentRow++; // 빈 줄
+      }
+      
+      // 구매 이력 데이터 테이블
+      if (compraHistorial.containsKey('data') && compraHistorial['data'] is List) {
+        final compraData = compraHistorial['data'] as List;
+        if (compraData.isNotEmpty) {
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+              .value = TextCellValue('Historial de Compras (${compraData.length} registros)');
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+              .cellStyle = CellStyle(bold: true, fontSize: 14);
+          currentRow++;
+          currentRow++; // 빈 줄
+          
+          final columns = ['vcode', 'fecha', 'tpago', 'cntropas', 'tefectivo', 'tcredito', 'tbanco', 'treservado', 'sucursal', 'vendedor'];
+          final labels = {
+            'vcode': 'Código',
+            'fecha': 'Fecha',
+            'tpago': 'Total Pago',
+            'cntropas': 'Cant. Ropas',
+            'tefectivo': 'Efectivo',
+            'tcredito': 'Crédito',
+            'tbanco': 'Banco',
+            'treservado': 'Reservado',
+            'sucursal': 'Sucursal',
+            'vendedor': 'Vendedor',
+          };
+          
+          // 헤더 행
+          int col = 0;
+          for (var key in columns) {
+            sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: currentRow))
+                .value = TextCellValue(labels[key] ?? key);
+            sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: currentRow))
+                .cellStyle = CellStyle(bold: true);
+            col++;
+          }
+          currentRow++;
+          
+          // 데이터 행들
+          for (var item in compraData) {
+            if (item is Map<String, dynamic>) {
+              col = 0;
+              for (var key in columns) {
+                final value = item[key];
+                if (value is num) {
+                  sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: currentRow))
+                      .value = IntCellValue(value.toInt());
+                } else {
+                  sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: currentRow))
+                      .value = TextCellValue(value?.toString() ?? '');
+                }
+                col++;
+              }
+              currentRow++;
+            }
+          }
+        }
+      }
+    }
+    
+    // 파일 저장
+    final directory = await getTemporaryDirectory();
+    if (!await directory.exists()) {
+      await directory.create(recursive: true);
+    }
+    
+    final fileName = 'Detalle_Cliente_${clienteNombre.replaceAll(RegExp(r'[^\w\s-]'), '_')}_${DateFormat('yyyyMMdd_HHmmss').format(now)}.xlsx';
+    final file = File('${directory.path}/$fileName');
+    
+    final excelBytes = excel.save();
+    if (excelBytes != null) {
+      await file.writeAsBytes(excelBytes);
+    }
+    
+    return file;
+  }
 }
 
