@@ -71,6 +71,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
   List<ConnectionInfo> _savedConnections = []; // 저장된 연결 목록
   bool _showAllConnections = false; // 연결 목록 전체 표시 여부
   bool _isAddingNewConnection = false; // 새 연결 추가 모드 여부
+  bool _isLeftPanelCollapsed = false; // 왼쪽 패널 축소 상태 (큰 화면에서만 사용)
   
   // 새 연결 입력 필드 컨트롤러 (MainConnectionScreen과 동일한 구조)
   final _newProfileNameController = TextEditingController();
@@ -985,14 +986,18 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     ];
   }
 
-  // 큰 화면인지 확인 (macOS, Windows, iPad)
+  // 큰 화면인지 확인 (macOS, Windows, Linux, iPad)
+  // 모든 데스크톱 플랫폼과 iPad는 큰 화면으로 간주하여 자동 축소 기능 사용
   bool _isLargeScreen(BuildContext context) {
-    final platformType = PlatformUtils.getPlatformType(context);
-    final size = MediaQuery.of(context).size;
+    // macOS, Windows, Linux는 항상 큰 화면으로 간주
+    // 화면 크기와 관계없이 데스크톱 플랫폼은 자동 축소 기능 사용
+    if (PlatformUtils.isDesktop()) {
+      return true;
+    }
     
-    // 데스크톱 또는 iPad이고 화면이 충분히 큰 경우
-    if (platformType == PlatformType.desktop || PlatformUtils.isIPad(context)) {
-      return size.width >= 800 && size.height >= 600;
+    // iPad도 큰 화면으로 간주하여 자동 축소 기능 사용
+    if (PlatformUtils.isIPad(context)) {
+      return true;
     }
     
     return false;
@@ -1001,60 +1006,121 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
   // 왼쪽 패널 빌드 (200px: 상단 보고서 목록, 하단 연결 관리)
   Widget _buildLeftPanel(BuildContext context, {bool forDrawer = false}) {
     final content = Column(
-        children: [
-          // 상단: 보고서 목록 (더 크게)
-          Expanded(
-            flex: _isAddingNewConnection ? 3 : 7,
-            child: Column(
-              children: [
-                // 보고서 헤더
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.secondary,
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.assessment, color: Colors.white, size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Reportes',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
+      children: [
+        // 상단: 보고서 목록 (더 크게)
+        Expanded(
+          flex: _isAddingNewConnection ? 3 : 7,
+          child: Column(
+            children: [
+              // 보고서 헤더
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.secondary,
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.assessment, color: Colors.white, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Reportes',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                    // 축소 버튼 (큰 화면에서만 표시, Drawer 제외)
+                    if (!forDrawer && _isLargeScreen(context))
+                      IconButton(
+                        icon: const Icon(Icons.chevron_left, color: Colors.white, size: 18),
+                        onPressed: () {
+                          setState(() {
+                            _isLeftPanelCollapsed = true;
+                          });
+                        },
+                        tooltip: 'Colapsar menú',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                  ],
                 ),
-                // 보고서 목록
-                Expanded(
-                  child: ListView(
-                    children: _buildReportMenuItemsForPanel(context),
-                  ),
+              ),
+              // 보고서 목록
+              Expanded(
+                child: ListView(
+                  children: _buildReportMenuItemsForPanel(context),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          // 구분선
-          Container(
-            height: 1,
-            color: Colors.grey[300],
-          ),
-          // 하단: 연결 관리 (2/3 수준으로 작게)
-          Expanded(
-            flex: _isAddingNewConnection ? 7 : 3,
-            child: _buildConnectionManagementPanel(context),
-          ),
-        ],
+        ),
+        // 구분선
+        Container(
+          height: 1,
+          color: Colors.grey[300],
+        ),
+        // 하단: 연결 관리 (2/3 수준으로 작게)
+        Expanded(
+          flex: _isAddingNewConnection ? 7 : 3,
+          child: _buildConnectionManagementPanel(context),
+        ),
+      ],
     );
     
     // Drawer용일 때는 Container 없이 내용만 반환
     if (forDrawer) {
       return content;
+    }
+    
+    // 축소된 상태일 때는 메뉴 버튼만 표시
+    if (_isLeftPanelCollapsed) {
+      return Container(
+        width: 60,
+        decoration: BoxDecoration(
+          color: Colors.grey[50],
+          border: Border(
+            right: BorderSide(color: Colors.grey[300]!, width: 1),
+          ),
+        ),
+        child: Column(
+          children: [
+            // 메뉴 버튼
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.secondary,
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.menu, color: Colors.white),
+                onPressed: () {
+                  setState(() {
+                    _isLeftPanelCollapsed = false;
+                  });
+                },
+                tooltip: 'Menú',
+              ),
+            ),
+            // 연결 관리 버튼
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                child: IconButton(
+                  icon: const Icon(Icons.storage, color: Colors.blue),
+                  onPressed: () {
+                    setState(() {
+                      _isLeftPanelCollapsed = false;
+                    });
+                  },
+                  tooltip: 'Conexiones',
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
     }
     
     // 일반 패널용일 때는 Container로 감싸서 반환
@@ -4524,6 +4590,8 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         setState(() {
           _currentReport = 'resumen';
           _selectedReportType = null;
+          // resumen 선택 시 패널 확장 유지
+          _isLeftPanelCollapsed = false;
         });
       }
       return;
@@ -4579,6 +4647,8 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         if (reportTypeEnum != ReportType.ventas) {
           _currentVentasDescontado = null;
         }
+        // 보고서 선택 시 왼쪽 패널 자동 축소
+        _isLeftPanelCollapsed = true;
       });
       debugPrint('   → setState 완료 후: _currentReport=$_currentReport, _selectedReportType=$_selectedReportType');
     } else {

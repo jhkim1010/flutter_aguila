@@ -569,14 +569,16 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
     }
   }
 
-  // 큰 화면인지 확인 (macOS, Windows, iPad)
+  // 큰 화면인지 확인 (macOS, Windows, Linux, iPad)
+  // 모든 데스크톱 플랫폼과 iPad는 큰 화면으로 간주하여 자동 축소 기능 사용
   bool _isLargeScreen(BuildContext context) {
     // macOS, Windows, Linux는 항상 큰 화면으로 간주
+    // 화면 크기와 관계없이 데스크톱 플랫폼은 자동 축소 기능 사용
     if (PlatformUtils.isDesktop()) {
       return true;
     }
     
-    // iPad도 큰 화면으로 간주
+    // iPad도 큰 화면으로 간주하여 자동 축소 기능 사용
     if (PlatformUtils.isIPad(context)) {
       return true;
     }
@@ -1598,6 +1600,14 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
     
     // 큰 화면인 경우 분할 레이아웃
     if (isLargeScreen) {
+      // 연결 후에는 ResumenDelDiaScreen이 자체 왼쪽 패널을 가지고 있으므로
+      // MainConnectionScreen의 왼쪽 패널을 표시하지 않음
+      if (_isConnected && _currentServerUrl != null) {
+        // 연결 후: ResumenDelDiaScreen이 자체 레이아웃을 가지고 있음
+        return _buildRightPanel(context);
+      }
+      
+      // 연결 전: 왼쪽 패널과 오른쪽 패널 분할
       return Scaffold(
         appBar: AppBar(
           title: Text(l10n.databaseConnection),

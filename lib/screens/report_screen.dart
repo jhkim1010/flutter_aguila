@@ -17,6 +17,8 @@ import '../widgets/report_table_builder.dart';
 import '../widgets/codigos_builder.dart';
 import '../widgets/stocks_builder.dart';
 import '../widgets/gastos_builder.dart';
+import '../widgets/items_builder.dart';
+import '../widgets/ingresos_builder.dart';
 import '../widgets/report_data_builder.dart';
 import '../widgets/report_filters.dart';
 import '../widgets/report_header_builders.dart';
@@ -64,6 +66,7 @@ class ReportScreen extends StatefulWidget {
 class _ReportScreenState extends State<ReportScreen> {
   late final DatabaseService _databaseService;
   Map<String, dynamic>? _data;
+  Map<String, dynamic>? _originalGastosData; // Gastos 보고서의 원본 데이터 (summary_by_rubro 포함)
   bool _isLoading = true;
   String? _errorMessage;
   final TextEditingController _filteringWordController = TextEditingController();
@@ -103,6 +106,9 @@ class _ReportScreenState extends State<ReportScreen> {
   Map<String, dynamic>? _selectedCodigo; // 선택된 codigo
   final Map<String, TextEditingController> _codigoEditControllers = {}; // 편집용 컨트롤러들
   final Map<String, FocusNode> _codigoFocusNodes = {}; // 편집용 포커스 노드들
+  
+  // Gastos 보고서용 선택된 rubro 코드
+  String? _selectedRubroCode;
   bool _isEditingCodigo = false; // 편집 모드 여부
   String? _editedCodigoIdentifier; // 편집된 codigo 식별자 (색상 표시용)
   bool _isLoadingMoreCodigos = false; // 추가 codigos 로딩 중 여부
@@ -414,6 +420,27 @@ class _ReportScreenState extends State<ReportScreen> {
     }
 
     final data = Map<String, dynamic>.from(_data!);
+    
+    // Gastos 보고서의 경우 summary_by_rubro를 포함한 전체 구조 유지
+    // rubro 선택 시 summary_by_rubro는 원본 데이터를 유지하고, data만 필터링된 데이터 사용
+    if (widget.reportType == ReportType.gastos && 
+        data.containsKey('data') && 
+        data['data'] is List) {
+      debugPrint('🔍 [ReportScreen] _getDisplayedData: Gastos 보고서 처리');
+      
+      // summary_by_rubro가 있고 원본 데이터가 저장되어 있으면 원본 사용
+      if (data.containsKey('summary_by_rubro') && _originalGastosData != null) {
+        debugPrint('   → summary_by_rubro는 원본 데이터에서 가져옴');
+        final result = Map<String, dynamic>.from(data);
+        // summary_by_rubro는 원본 데이터에서 가져오기
+        result['summary_by_rubro'] = _originalGastosData!['summary_by_rubro'];
+        return result;
+      }
+      
+      // 원본 데이터가 없으면 현재 데이터 그대로 사용
+      debugPrint('   → 원본 데이터 없음, 현재 데이터 사용');
+      return data;
+    }
     
     // 데이터 리스트가 있는 경우 필터링/정렬 적용
     if (data.containsKey('data') && data['data'] is List) {
@@ -1532,10 +1559,21 @@ class _ReportScreenState extends State<ReportScreen> {
             'fecha_inicio': DateFormat('yyyy-MM-dd').format(startDate),
             'fecha_fin': DateFormat('yyyy-MM-dd').format(endDate),
           };
+          debugPrint('🔍 [ReportScreen] Gastos API 요청 시작');
+          debugPrint('   → rubroCode: $_selectedRubroCode');
+          debugPrint('   → filteringWord: ${currentFilteringWord.isNotEmpty ? currentFilteringWord : null}');
+          debugPrint('   → fecha_inicio: ${filters['fecha_inicio']}');
+          debugPrint('   → fecha_fin: ${filters['fecha_fin']}');
           data = await _databaseService.getGastosReport(
             filteringWord: currentFilteringWord.isNotEmpty ? currentFilteringWord : null,
+            rubroCode: _selectedRubroCode,
             filters: filters,
           );
+          debugPrint('🔍 [ReportScreen] Gastos API 응답 받음');
+          debugPrint('   → 데이터 키: ${data.keys.toList()}');
+          if (data.containsKey('data') && data['data'] is List) {
+            debugPrint('   → data 개수: ${(data['data'] as List).length}');
+          }
           break;
         case ReportType.ventas:
           debugPrint('   → ReportType.ventas 케이스 실행');
@@ -1836,9 +1874,43 @@ class _ReportScreenState extends State<ReportScreen> {
         final dataList = data['data'] as List;
         debugPrint('   - 응답 데이터 개수: ${dataList.length}');
       }
+      // Items 보고서의 경우 CompanyResumen, CategoryResumen 확인
+      if (widget.reportType == ReportType.items) {
+        debugPrint('   - Items 보고서 데이터 구조 확인:');
+        if (data.containsKey('CompanyResumen')) {
+          debugPrint('     → CompanyResumen 존재: ${data['CompanyResumen']}');
+        }
+        if (data.containsKey('CategoryResumen')) {
+          debugPrint('     → CategoryResumen 존재: ${data['CategoryResumen']}');
+        }
+        if (data.containsKey('company_resumen')) {
+          debugPrint('     → company_resumen 존재: ${data['company_resumen']}');
+        }
+        if (data.containsKey('category_resumen')) {
+          debugPrint('     → category_resumen 존재: ${data['category_resumen']}');
+        }
+      }
+      // 페이지네이션 정보 확인
+      if (data.containsKey('pagination') && data['pagination'] is Map) {
+        final pagination = data['pagination'] as Map<String, dynamic>;
+        debugPrint('   - 페이지네이션 정보: $pagination');
+        if (widget.reportType == ReportType.gastos) {
+          debugPrint('   ⚠️ Gastos 보고서에 페이지네이션 정보가 있습니다!');
+          debugPrint('      → 현재 페이지네이션 처리 없음');
+        }
+      }
       debugPrint('   - 사용 가능한 sucursales: $sucursales');
 
       setState(() {
+        // Gastos 보고서의 경우 원본 데이터 저장 (summary_by_rubro 유지용)
+        if (widget.reportType == ReportType.gastos && 
+            data.containsKey('summary_by_rubro') && 
+            _selectedRubroCode == null) {
+          // rubro가 선택되지 않은 첫 로드 시 원본 데이터 저장
+          _originalGastosData = Map<String, dynamic>.from(data);
+          debugPrint('🔍 [ReportScreen] 원본 Gastos 데이터 저장 (summary_by_rubro 포함)');
+        }
+        
         _data = data;
         _isLoading = false;
         _availableSucursales = sucursales;
@@ -5244,6 +5316,17 @@ class _ReportScreenState extends State<ReportScreen> {
             sortColumn: _sortColumn,
             sortAscending: _sortAscending,
             filteringWord: filteringWord.isNotEmpty ? filteringWord : null,
+            selectedRubroCode: _selectedRubroCode,
+            onRubroSelected: (rubroCode) {
+              debugPrint('🔍 [ReportScreen] Rubro 선택 콜백 호출: $rubroCode');
+              setState(() {
+                _selectedRubroCode = rubroCode;
+                debugPrint('🔍 [ReportScreen] _selectedRubroCode 업데이트: $_selectedRubroCode');
+              });
+              // rubro 선택 시 API 재요청 (setState 외부에서 호출)
+              debugPrint('🔍 [ReportScreen] _loadData() 호출 시작');
+              _loadData();
+            },
           ),
         );
       }
@@ -5271,9 +5354,96 @@ class _ReportScreenState extends State<ReportScreen> {
             sortColumn: _sortColumn,
             sortAscending: _sortAscending,
             filteringWord: filteringWord.isNotEmpty ? filteringWord : null,
+            selectedRubroCode: _selectedRubroCode,
+            onRubroSelected: (rubroCode) {
+              debugPrint('🔍 [ReportScreen] Rubro 선택 콜백 호출: $rubroCode');
+              setState(() {
+                _selectedRubroCode = rubroCode;
+                debugPrint('🔍 [ReportScreen] _selectedRubroCode 업데이트: $_selectedRubroCode');
+              });
+              // rubro 선택 시 API 재요청 (setState 외부에서 호출)
+              debugPrint('🔍 [ReportScreen] _loadData() 호출 시작');
+              _loadData();
+            },
           ),
         );
       }
+    }
+    
+    // Items 보고서의 경우 새로운 구조 처리 (summary_by_company, summary_by_category, products)
+    if (widget.reportType == ReportType.items &&
+        data.containsKey('data') && 
+        data['data'] is Map &&
+        (data['data'] as Map).containsKey('products') &&
+        (data['data'] as Map)['products'] is List) {
+      debugPrint('📊 Items 새로운 구조 감지: summary + data(Map) + products');
+      final filteringWord = _filteringWordController.text.trim();
+      
+      // bcolorview 값에 따라 색상 결정
+      Color itemsColor = Colors.blue;
+      if (data.containsKey('filters') && data['filters'] is Map) {
+        final filters = data['filters'] as Map<String, dynamic>;
+        final bcolorview = filters['bcolorview'];
+        itemsColor = ReportUtils.isBcolorviewEnabled(bcolorview) ? Colors.orange : Colors.lightBlue;
+      } else if (data.containsKey('bcolorview')) {
+        final bcolorview = data['bcolorview'];
+        itemsColor = ReportUtils.isBcolorviewEnabled(bcolorview) ? Colors.orange : Colors.lightBlue;
+      }
+      
+      return RepaintBoundary(
+        child: ItemsBuilder.buildContent(
+          data: data,
+          context: context,
+          scrollController: _scrollController,
+          onSort: (column, ascending) {
+            setState(() {
+              _sortColumn = column;
+              _sortAscending = ascending;
+            });
+          },
+          sortColumn: _sortColumn,
+          sortAscending: _sortAscending,
+          filteringWord: filteringWord.isNotEmpty ? filteringWord : null,
+          displayedItemsCount: _displayedItemsCount,
+          itemsPerPage: _itemsPerPage,
+          horizontalScrollController: _horizontalScrollController,
+          reportColor: itemsColor,
+        ),
+      );
+    }
+    
+    // Ingresos 보고서의 경우 새로운 구조 처리 (summary_by_company, summary_by_category, products)
+    if (widget.reportType == ReportType.ingresos &&
+        data.containsKey('data') && 
+        data['data'] is Map &&
+        (data['data'] as Map).containsKey('products') &&
+        (data['data'] as Map)['products'] is List) {
+      debugPrint('📊 Ingresos 새로운 구조 감지: summary + data(Map) + products');
+      final filteringWord = _filteringWordController.text.trim();
+      
+      // Ingresos 보고서 색상 (기본값: 녹색)
+      Color ingresosColor = Colors.green;
+      
+      return RepaintBoundary(
+        child: IngresosBuilder.buildContent(
+          data: data,
+          context: context,
+          scrollController: _scrollController,
+          onSort: (column, ascending) {
+            setState(() {
+              _sortColumn = column;
+              _sortAscending = ascending;
+            });
+          },
+          sortColumn: _sortColumn,
+          sortAscending: _sortAscending,
+          filteringWord: filteringWord.isNotEmpty ? filteringWord : null,
+          displayedItemsCount: _displayedItemsCount,
+          itemsPerPage: _itemsPerPage,
+          horizontalScrollController: _horizontalScrollController,
+          reportColor: ingresosColor,
+        ),
+      );
     }
     
     // 'data' 키가 있고 리스트인 경우

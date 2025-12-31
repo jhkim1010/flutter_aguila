@@ -184,9 +184,11 @@ class DatabaseService {
   /// 지출 보고서 가져오기
   Future<Map<String, dynamic>> getGastosReport({
     String? filteringWord,
+    String? rubroCode,
     Map<String, dynamic>? filters,
   }) => _reportsApi.getGastosReport(
     filteringWord: filteringWord,
+    rubroCode: rubroCode,
     filters: filters,
   );
 

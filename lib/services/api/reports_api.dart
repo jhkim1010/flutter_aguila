@@ -101,6 +101,7 @@ class ReportsApi {
   /// 지출 보고서 가져오기
   Future<Map<String, dynamic>> getGastosReport({
     String? filteringWord,
+    String? rubroCode,
     Map<String, dynamic>? filters,
   }) async {
     final endpoint = '/api/gastos';
@@ -109,6 +110,11 @@ class ReportsApi {
     // filteringWord 파라미터 추가
     if (filteringWord != null && filteringWord.isNotEmpty) {
       queryParams['filtering_word'] = filteringWord;
+    }
+    
+    // rubroCode 파라미터 추가
+    if (rubroCode != null && rubroCode.isNotEmpty) {
+      queryParams['rubro'] = rubroCode;
     }
     
     // filters에서 fecha_inicio와 fecha_fin 추출하여 쿼리 파라미터로 추가

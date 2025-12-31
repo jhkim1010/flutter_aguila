@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'report_utils.dart';
-import '../services/config_service.dart';
 
 class ReportTableBuilder {
   /// 화면에 표시되는 컬럼 목록을 반환 (PDF 생성용)
@@ -1319,370 +1318,398 @@ class ReportTableBuilder {
                 }
                 return false;
               },
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  controller: scrollController,
-                  scrollDirection: Axis.vertical,
-                  child: (horizontalScrollController != null || reportType == ReportType.ventas || reportType == ReportType.clientes)
-                      ? SingleChildScrollView(
-                          controller: horizontalScrollController,
-                          scrollDirection: Axis.horizontal,
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(minWidth: constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity),
-                            child: DataTable(
-                          columnSpacing: 8,
-                          dataRowMinHeight: (reportType == ReportType.ventas || reportType == ReportType.clientes) ? 32 : (reportType == ReportType.alertas ? null : 48),
-                          dataRowMaxHeight: (reportType == ReportType.ventas || reportType == ReportType.clientes) ? 40 : (reportType == ReportType.alertas ? null : 56),
-                          headingRowHeight: (reportType == ReportType.ventas || reportType == ReportType.clientes) ? 40 : 56,
-                          headingRowColor: MaterialStateProperty.all(
-                            Colors.transparent, // 헤더 배경을 투명하게
-                          ),
-                          columns: columns,
-                          rows: [
-                          ...displayedList.map((item) {
-                            if (item is Map<String, dynamic>) {
-                              // keys의 각 키에 대해 셀 생성 (키가 없어도 셀은 생성)
-                              var cells = keys.map((key) {
-                                final value = item[key];
-                                String formattedValue;
-                                
-                                // codigo 관련 칼럼은 문자로 처리 (숫자 포맷팅 제외)
-                                final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1';
-                                
-                                // year 필드 포맷팅: "2025-01-01" 또는 "2025" -> "2025" (대소문자 구분 없음)
-                                final keyLower = key.toLowerCase();
-                                if (keyLower == 'year' && value != null) {
-                                  final yearStr = value.toString();
-                                  if (yearStr.contains('-')) {
-                                    // "YYYY-MM-DD" 또는 "YYYY-MM" 형식에서 연도만 추출
-                                    formattedValue = yearStr.split('-')[0];
-                                  } else {
-                                    formattedValue = yearStr;
-                                  }
-                                }
-                                // month 필드 포맷팅: "2025-12-01" -> "2025-12" (대소문자 구분 없음)
-                                else if (keyLower == 'month' && value != null) {
-                                  final monthStr = value.toString();
-                                  if (monthStr.length >= 7 && monthStr.contains('-')) {
-                                    // "YYYY-MM-DD" 형식을 "YYYY-MM"으로 변환
-                                    formattedValue = monthStr.substring(0, 7);
-                                  } else {
-                                    formattedValue = monthStr;
-                                  }
-                                } else {
-                                  formattedValue = isCodigoColumn 
-                                      ? (value?.toString() ?? 'N/A')
-                                      : ReportUtils.formatValue(value);
-                                }
-                                
-                                // 금액/숫자 관련 컬럼명 체크 (명시적으로 숫자로 처리)
-                                final isAmountColumn = keyLower.contains('costo') || 
-                                                       keyLower.contains('importe') || 
-                                                       keyLower.contains('ingreso') || 
-                                                       keyLower.contains('precio') ||
-                                                       keyLower.contains('pre') ||
-                                                       keyLower.contains('venta') ||
-                                                       keyLower.contains('cantidad') ||
-                                                       keyLower.contains('count') ||
-                                                       keyLower.contains('total') ||
-                                                       (keyLower.startsWith('t') && 
-                                                        (keyLower.contains('cant') || 
-                                                         keyLower.contains('event') ||
-                                                         keyLower.contains('prendas')));
-                                
-                                final isNumeric = (key != 'codigo' && key != 'codigo1' && key != 'tcode' && key != 'id_codigo1') 
-                                    ? (ReportUtils.isNumeric(value) || isAmountColumn)
-                                    : false;
-                                // Alertas 보고서는 내용에 맞게 자동 높이 조절
-                                final isAlertas = reportType == ReportType.alertas;
-                                final isEventoColumn = keyLower == 'evento';
-                                
-                                return DataCell(
-                                  Align(
-                                    alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
-                                    child: isAlertas
-                                        ? Wrap(
-                                            children: [
-                                              Text(
-                                                formattedValue,
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  height: isEventoColumn ? 1.3 : 1.2,
-                                                ),
-                                                maxLines: null, // 모든 줄 표시
-                                                overflow: TextOverflow.visible, // 내용에 맞게 자동 높이 조절
-                                              ),
-                                            ],
-                                          )
-                                        : Text(
-                                            formattedValue,
-                                            style: TextStyle(
-                                              fontSize: reportType == ReportType.ventas ? 12 : 14,
-                                              height: reportType == ReportType.ventas ? 1.0 : 1.2,
-                                            ),
-                                          ),
-                                  ),
-                                );
-                              }).toList();
-                              
-                              // 셀 개수가 keys.length와 일치하는지 확인
-                              assert(cells.length == keys.length, 
-                                'Row cells count (${cells.length}) must match keys count (${keys.length})');
-                              
-                              // ventas 보고서 또는 clientes 보고서의 경우 제스처 추가
-                              // 모든 단위: 모든 셀에 더블 클릭 제스처 추가
-                              if ((onRowDoubleTap != null || onRowTap != null) && 
-                                  (reportType == ReportType.ventas || reportType == ReportType.clientes) && 
-                                  cells.isNotEmpty) {
-                                // 모든 셀에 더블 클릭 제스처 추가
-                                cells = cells.map((cell) {
-                                  if (cell.child is Align) {
-                                    final align = cell.child as Align;
-                                    return DataCell(
-                                      GestureDetector(
-                                        onTap: (onRowTap != null && reportType == ReportType.ventas && unit == 'vcode') ? () => onRowTap(item) : null,
-                                        onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
-                                        behavior: HitTestBehavior.opaque,
-                                        child: Container(
-                                          width: double.infinity,
-                                          height: double.infinity,
-                                          alignment: align.alignment,
-                                          child: align.child,
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                  return cell;
-                                }).toList();
-                              }
-                              
-                              return DataRow(cells: cells);
-                            }
-                            // Map이 아닌 경우에도 keys.length만큼 셀 생성
-                            final formattedValue = ReportUtils.formatValue(item);
-                            final isNumeric = ReportUtils.isNumeric(item);
-                            return DataRow(
-                              cells: List.generate(keys.length, (index) {
-                                return DataCell(
-                                  Align(
-                                    alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
-                                    child: Text(
-                                      index == 0 ? formattedValue : '',
-                                      style: TextStyle(
-                                        fontSize: reportType == ReportType.ventas ? 12 : 14,
-                                        height: reportType == ReportType.ventas ? 1.0 : 1.2,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }),
-                            );
-                          }),
-                          // 합계 행 추가
-                          _buildTotalRow(keys, dataList, color, reportType: reportType),
-                          ],
-                        ),
-                          ),
-                        )
-                      : ConstrainedBox(
-                          constraints: BoxConstraints(minWidth: constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity),
-                          child: DataTable(
-                          columnSpacing: 8,
-                          dataRowMinHeight: (reportType == ReportType.ventas || reportType == ReportType.clientes) ? 32 : (reportType == ReportType.alertas ? null : 48),
-                          dataRowMaxHeight: (reportType == ReportType.ventas || reportType == ReportType.clientes) ? 40 : (reportType == ReportType.alertas ? null : 56),
-                          headingRowHeight: (reportType == ReportType.ventas || reportType == ReportType.clientes) ? 40 : 56,
-                          headingRowColor: MaterialStateProperty.all(
-                            Colors.transparent,
-                          ),
-                          columns: columns,
-                          rows: [
-                            ...displayedList.map((item) {
-                              if (item is Map<String, dynamic>) {
-                                var cells = keys.map((key) {
-                                  final value = item[key];
-                                  String formattedValue;
-                                  // codigo 관련 칼럼은 문자로 처리 (숫자 포맷팅 제외)
-                                  // vcode는 서버에서 이미 right(vcode, 5)로 처리되었으므로 특별 처리 불필요
-                                  final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1' || key == 'vcode';
-                                  
-                                  // year 필드 포맷팅: "2025-01-01" 또는 "2025" -> "2025" (대소문자 구분 없음)
-                                  final keyLower = key.toLowerCase();
-                                  if (keyLower == 'year' && value != null) {
-                                    final yearStr = value.toString();
-                                    print('🔵 year 필드 포맷팅 - key: $key, value: $yearStr');
-                                    if (yearStr.contains('-')) {
-                                      // "YYYY-MM-DD" 또는 "YYYY-MM" 형식에서 연도만 추출
-                                      formattedValue = yearStr.split('-')[0];
-                                      print('🔵 year 포맷팅 결과: $formattedValue');
-                                    } else {
-                                      formattedValue = yearStr;
-                                    }
-                                  }
-                                  // month 필드 포맷팅: "2025-12-01" -> "2025-12" (대소문자 구분 없음)
-                                  else if (keyLower == 'month' && value != null) {
-                                    final monthStr = value.toString();
-                                    if (monthStr.length >= 7 && monthStr.contains('-')) {
-                                      // "YYYY-MM-DD" 형식을 "YYYY-MM"으로 변환
-                                      formattedValue = monthStr.substring(0, 7);
-                                    } else {
-                                      formattedValue = monthStr;
-                                    }
-                                  } else {
-                                    formattedValue = isCodigoColumn 
-                                        ? (value?.toString() ?? 'N/A')
-                                        : ReportUtils.formatValue(value);
-                                  }
-                                
-                                // 금액/숫자 관련 컬럼명 체크 (명시적으로 숫자로 처리)
-                                final isAmountColumn = keyLower.contains('costo') ||
-                                                       keyLower.contains('importe') ||
-                                                       keyLower.contains('ingreso') ||
-                                                       keyLower.contains('precio') ||
-                                                       keyLower.contains('pre') ||
-                                                       keyLower.contains('venta') ||
-                                                       keyLower.contains('cantidad') ||
-                                                       keyLower.contains('count') ||
-                                                       keyLower.contains('total') ||
-                                                       keyLower == 'sucursal' || // alertas 보고서의 sucursal 컬럼
-                                                       (keyLower.startsWith('t') &&
-                                                        (keyLower.contains('cant') ||
-                                                         keyLower.contains('event') ||
-                                                         keyLower.contains('prendas')));
-                                
-                                final isNumeric = (key != 'codigo' && key != 'codigo1' && key != 'tcode' && key != 'id_codigo1' && key != 'vcode')
-                                    ? (ReportUtils.isNumeric(value) || isAmountColumn)
-                                    : false;
-                                // Alertas 보고서는 내용에 맞게 자동 높이 조절
-                                final isAlertas = reportType == ReportType.alertas;
-                                final isEventoColumn = keyLower == 'evento';
-                                
-                                return DataCell(
-                                  Align(
-                                    alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
-                                    child: isAlertas
-                                        ? Wrap(
-                                            children: [
-                                              Text(
-                                                formattedValue,
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  height: isEventoColumn ? 1.3 : 1.2,
-                                                ),
-                                                maxLines: null, // 모든 줄 표시
-                                                overflow: TextOverflow.visible, // 내용에 맞게 자동 높이 조절
-                                              ),
-                                            ],
-                                          )
-                                        : Text(
-                                            formattedValue,
-                                            style: TextStyle(
-                                              fontSize: reportType == ReportType.ventas ? 12 : 14,
-                                              height: reportType == ReportType.ventas ? 1.0 : 1.2,
-                                            ),
-                                          ),
-                                    ),
-                                  );
-                                }).toList();
-                                assert(cells.length == keys.length);
-                                
-                                // ventas 보고서 또는 clientes 보고서의 경우 제스처 추가
-                                // year, month, day 단위: 모든 셀에 제스처 추가
-                                // vcode 단위: 모든 셀에 제스처 추가 (단일 탭은 vcode만)
-                                // clientes 보고서: 모든 셀에 더블 클릭 제스처 추가
-                                final finalCells = ((onRowDoubleTap != null || onRowTap != null) && 
-                                    (reportType == ReportType.ventas || reportType == ReportType.clientes))
-                                    ? cells.map((cell) {
-                                        if (cell.child is Align) {
-                                          final align = cell.child as Align;
-                                          return DataCell(
-                                            GestureDetector(
-                                              onTap: (onRowTap != null && reportType == ReportType.ventas && unit == 'vcode') ? () {
-                                                print('🔵 단일 탭 감지 (vcode unit)');
-                                                onRowTap(item);
-                                              } : null,
-                                              onDoubleTap: onRowDoubleTap != null ? () {
-                                                print('🔵🔵 더블 탭 감지! reportType: $reportType, unit: $unit');
-                                                onRowDoubleTap(item);
-                                              } : null,
-                                              behavior: HitTestBehavior.opaque,
-                                              child: Container(
-                                                width: double.infinity,
-                                                height: double.infinity,
-                                                alignment: align.alignment,
-                                                child: align.child,
-                                              ),
-                                            ),
-                                          );
-                                        } else {
-                                          print('⚠️ cell.child가 Align이 아닙니다: ${cell.child.runtimeType}');
-                                        }
-                                        return cell;
-                                      }).toList()
-                                    : cells;
-                                
-                                return DataRow(cells: finalCells);
-                              }
-                              final formattedValue = ReportUtils.formatValue(item);
-                              final isNumeric = ReportUtils.isNumeric(item);
-                              final nonMapCells = List.generate(keys.length, (index) {
-                                return DataCell(
-                                  Align(
-                                    alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
-                                    child: Text(
-                                      index == 0 ? formattedValue : '',
-                                      style: TextStyle(
-                                        fontSize: reportType == ReportType.ventas ? 12 : 14,
-                                        height: reportType == ReportType.ventas ? 1.0 : 1.2,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              });
-                              
-                              // ventas 보고서의 경우 제스처 추가
-                              // 모든 단위: 모든 셀에 더블 클릭 제스처 추가
-                              if ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas && nonMapCells.isNotEmpty && item is Map<String, dynamic>) {
-                                final updatedCells = List<DataCell>.from(nonMapCells);
-                                
-                                // 모든 셀에 더블 클릭 제스처 추가
-                                for (int i = 0; i < updatedCells.length; i++) {
-                                  final cell = updatedCells[i];
-                                  if (cell.child is Align) {
-                                    final align = cell.child as Align;
-                                    updatedCells[i] = DataCell(
-                                      GestureDetector(
-                                        onTap: (onRowTap != null && unit == 'vcode') ? () => onRowTap(item) : null,
-                                        onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
-                                        behavior: HitTestBehavior.opaque,
-                                        child: Container(
-                                          width: double.infinity,
-                                          height: double.infinity,
-                                          alignment: align.alignment,
-                                          child: align.child,
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                }
-                                
-                                return DataRow(cells: updatedCells);
-                              }
-                              
-                              return DataRow(cells: nonMapCells);
-                            }),
-                            _buildTotalRow(keys, dataList, color, reportType: reportType),
-                          ],
-                        ),
-                          ),
-                );
-              },
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    controller: scrollController,
+                    scrollDirection: Axis.vertical,
+                    child: _buildTableContent(
+                      constraints: constraints,
+                      horizontalScrollController: horizontalScrollController,
+                      reportType: reportType,
+                      displayedList: displayedList,
+                      keys: keys,
+                      columns: columns,
+                      dataList: dataList,
+                      color: color,
+                      onRowDoubleTap: onRowDoubleTap,
+                      onRowTap: onRowTap,
+                      unit: unit,
+                    ),
+                  );
+                },
               ),
             ),
           ),
         ),
       ],
     );
+  }
+
+  /// 테이블 콘텐츠 빌드 (수평 스크롤 여부에 따라 분기)
+  static Widget _buildTableContent({
+    required BoxConstraints constraints,
+    ScrollController? horizontalScrollController,
+    required ReportType reportType,
+    required List<dynamic> displayedList,
+    required List<String> keys,
+    required List<DataColumn> columns,
+    required List<dynamic> dataList,
+    required Color color,
+    Function(Map<String, dynamic>)? onRowDoubleTap,
+    Function(Map<String, dynamic>)? onRowTap,
+    String? unit,
+  }) {
+    final needsHorizontalScroll = horizontalScrollController != null || 
+                                  reportType == ReportType.ventas || 
+                                  reportType == ReportType.clientes;
+    
+    if (needsHorizontalScroll) {
+      return _buildTableWithHorizontalScroll(
+        constraints: constraints,
+        horizontalScrollController: horizontalScrollController,
+        reportType: reportType,
+        displayedList: displayedList,
+        keys: keys,
+        columns: columns,
+        dataList: dataList,
+        color: color,
+        onRowDoubleTap: onRowDoubleTap,
+        onRowTap: onRowTap,
+        unit: unit,
+      );
+    } else {
+      return _buildTableWithoutHorizontalScroll(
+        constraints: constraints,
+        reportType: reportType,
+        displayedList: displayedList,
+        keys: keys,
+        columns: columns,
+        dataList: dataList,
+        color: color,
+        onRowDoubleTap: onRowDoubleTap,
+        onRowTap: onRowTap,
+        unit: unit,
+      );
+    }
+  }
+
+  /// 수평 스크롤이 있는 테이블 빌드
+  static Widget _buildTableWithHorizontalScroll({
+    required BoxConstraints constraints,
+    ScrollController? horizontalScrollController,
+    required ReportType reportType,
+    required List<dynamic> displayedList,
+    required List<String> keys,
+    required List<DataColumn> columns,
+    required List<dynamic> dataList,
+    required Color color,
+    Function(Map<String, dynamic>)? onRowDoubleTap,
+    Function(Map<String, dynamic>)? onRowTap,
+    String? unit,
+  }) {
+    return SingleChildScrollView(
+      controller: horizontalScrollController,
+      scrollDirection: Axis.horizontal,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          minWidth: constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity,
+          maxWidth: constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity,
+        ),
+        child: SizedBox(
+          width: constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity,
+          child: _buildDataTable(
+            reportType: reportType,
+            displayedList: displayedList,
+            keys: keys,
+            columns: columns,
+            dataList: dataList,
+            color: color,
+            onRowDoubleTap: onRowDoubleTap,
+            onRowTap: onRowTap,
+            unit: unit,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 수평 스크롤이 없는 테이블 빌드
+  static Widget _buildTableWithoutHorizontalScroll({
+    required BoxConstraints constraints,
+    required ReportType reportType,
+    required List<dynamic> displayedList,
+    required List<String> keys,
+    required List<DataColumn> columns,
+    required List<dynamic> dataList,
+    required Color color,
+    Function(Map<String, dynamic>)? onRowDoubleTap,
+    Function(Map<String, dynamic>)? onRowTap,
+    String? unit,
+  }) {
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        minWidth: constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity,
+        maxWidth: constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity,
+      ),
+      child: SizedBox(
+        width: constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity,
+        child: _buildDataTable(
+          reportType: reportType,
+          displayedList: displayedList,
+          keys: keys,
+          columns: columns,
+          dataList: dataList,
+          color: color,
+          onRowDoubleTap: onRowDoubleTap,
+          onRowTap: onRowTap,
+          unit: unit,
+        ),
+      ),
+    );
+  }
+
+  /// DataTable 위젯 빌드
+  static Widget _buildDataTable({
+    required ReportType reportType,
+    required List<dynamic> displayedList,
+    required List<String> keys,
+    required List<DataColumn> columns,
+    required List<dynamic> dataList,
+    required Color color,
+    Function(Map<String, dynamic>)? onRowDoubleTap,
+    Function(Map<String, dynamic>)? onRowTap,
+    String? unit,
+  }) {
+    return DataTable(
+      columnSpacing: 8,
+      dataRowMinHeight: (reportType == ReportType.ventas || reportType == ReportType.clientes) ? 32 : (reportType == ReportType.alertas ? null : 48),
+      dataRowMaxHeight: (reportType == ReportType.ventas || reportType == ReportType.clientes) ? 40 : (reportType == ReportType.alertas ? null : 56),
+      headingRowHeight: (reportType == ReportType.ventas || reportType == ReportType.clientes) ? 40 : 56,
+      headingRowColor: MaterialStateProperty.all(Colors.transparent),
+      columns: columns,
+      rows: _buildDataTableRows(
+        displayedList: displayedList,
+        keys: keys,
+        reportType: reportType,
+        onRowDoubleTap: onRowDoubleTap,
+        onRowTap: onRowTap,
+        unit: unit,
+        dataList: dataList,
+        color: color,
+      ),
+    );
+  }
+
+  /// DataTable의 rows 생성
+  static List<DataRow> _buildDataTableRows({
+    required List<dynamic> displayedList,
+    required List<String> keys,
+    required ReportType reportType,
+    Function(Map<String, dynamic>)? onRowDoubleTap,
+    Function(Map<String, dynamic>)? onRowTap,
+    String? unit,
+    required List<dynamic> dataList,
+    required Color color,
+  }) {
+    final rows = <DataRow>[];
+    
+    // 데이터 행 생성
+    rows.addAll(displayedList.map((item) {
+      if (item is Map<String, dynamic>) {
+        return _buildDataRowFromMap(
+          item: item,
+          keys: keys,
+          reportType: reportType,
+          onRowDoubleTap: onRowDoubleTap,
+          onRowTap: onRowTap,
+          unit: unit,
+        );
+      } else {
+        return _buildDataRowFromNonMap(
+          item: item,
+          keys: keys,
+          reportType: reportType,
+        );
+      }
+    }));
+    
+    // 합계 행 추가
+    rows.add(_buildTotalRow(keys, dataList, color, reportType: reportType));
+    
+    return rows;
+  }
+
+  /// Map 형태의 데이터에서 DataRow 생성
+  static DataRow _buildDataRowFromMap({
+    required Map<String, dynamic> item,
+    required List<String> keys,
+    required ReportType reportType,
+    Function(Map<String, dynamic>)? onRowDoubleTap,
+    Function(Map<String, dynamic>)? onRowTap,
+    String? unit,
+  }) {
+    var cells = keys.map((key) {
+      return _buildDataCell(
+        key: key,
+        value: item[key],
+        reportType: reportType,
+      );
+    }).toList();
+    
+    assert(cells.length == keys.length, 
+      'Row cells count (${cells.length}) must match keys count (${keys.length})');
+    
+    // 제스처 추가 (ventas 또는 clientes 보고서)
+    if ((onRowDoubleTap != null || onRowTap != null) && 
+        (reportType == ReportType.ventas || reportType == ReportType.clientes) && 
+        cells.isNotEmpty) {
+      cells = _addGesturesToCells(
+        cells: cells,
+        item: item,
+        reportType: reportType,
+        onRowDoubleTap: onRowDoubleTap,
+        onRowTap: onRowTap,
+        unit: unit,
+      );
+    }
+    
+    return DataRow(cells: cells);
+  }
+
+  /// Map이 아닌 데이터에서 DataRow 생성
+  static DataRow _buildDataRowFromNonMap({
+    required dynamic item,
+    required List<String> keys,
+    required ReportType reportType,
+  }) {
+    final formattedValue = ReportUtils.formatValue(item);
+    final isNumeric = ReportUtils.isNumeric(item);
+    final cells = List.generate(keys.length, (index) {
+      return DataCell(
+        Align(
+          alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+          child: Text(
+            index == 0 ? formattedValue : '',
+            style: TextStyle(
+              fontSize: reportType == ReportType.ventas ? 12 : 14,
+              height: reportType == ReportType.ventas ? 1.0 : 1.2,
+            ),
+          ),
+        ),
+      );
+    });
+    return DataRow(cells: cells);
+  }
+
+  /// DataCell 생성
+  static DataCell _buildDataCell({
+    required String key,
+    required dynamic value,
+    required ReportType reportType,
+  }) {
+    String formattedValue;
+    final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1' || key == 'vcode';
+    final keyLower = key.toLowerCase();
+    
+    // year 필드 포맷팅
+    if (keyLower == 'year' && value != null) {
+      final yearStr = value.toString();
+      formattedValue = yearStr.contains('-') ? yearStr.split('-')[0] : yearStr;
+    }
+    // month 필드 포맷팅
+    else if (keyLower == 'month' && value != null) {
+      final monthStr = value.toString();
+      formattedValue = (monthStr.length >= 7 && monthStr.contains('-')) 
+          ? monthStr.substring(0, 7) 
+          : monthStr;
+    } else {
+      formattedValue = isCodigoColumn 
+          ? (value?.toString() ?? 'N/A')
+          : ReportUtils.formatValue(value);
+    }
+    
+    // 숫자 컬럼 체크
+    final isAmountColumn = keyLower.contains('costo') || 
+                           keyLower.contains('importe') || 
+                           keyLower.contains('ingreso') || 
+                           keyLower.contains('precio') ||
+                           keyLower.contains('pre') ||
+                           keyLower.contains('venta') ||
+                           keyLower.contains('cantidad') ||
+                           keyLower.contains('count') ||
+                           keyLower.contains('total') ||
+                           keyLower == 'sucursal' ||
+                           (keyLower.startsWith('t') && 
+                            (keyLower.contains('cant') || 
+                             keyLower.contains('event') ||
+                             keyLower.contains('prendas')));
+    
+    final isNumeric = (key != 'codigo' && key != 'codigo1' && key != 'tcode' && key != 'id_codigo1' && key != 'vcode')
+        ? (ReportUtils.isNumeric(value) || isAmountColumn)
+        : false;
+    
+    final isAlertas = reportType == ReportType.alertas;
+    final isEventoColumn = keyLower == 'evento';
+    
+    return DataCell(
+      Align(
+        alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+        child: isAlertas
+            ? Wrap(
+                children: [
+                  Text(
+                    formattedValue,
+                    style: TextStyle(
+                      fontSize: 14,
+                      height: isEventoColumn ? 1.3 : 1.2,
+                    ),
+                    maxLines: null,
+                    overflow: TextOverflow.visible,
+                  ),
+                ],
+              )
+            : Text(
+                formattedValue,
+                style: TextStyle(
+                  fontSize: reportType == ReportType.ventas ? 12 : 14,
+                  height: reportType == ReportType.ventas ? 1.0 : 1.2,
+                ),
+              ),
+      ),
+    );
+  }
+
+  /// 셀에 제스처 추가
+  static List<DataCell> _addGesturesToCells({
+    required List<DataCell> cells,
+    required Map<String, dynamic> item,
+    required ReportType reportType,
+    Function(Map<String, dynamic>)? onRowDoubleTap,
+    Function(Map<String, dynamic>)? onRowTap,
+    String? unit,
+  }) {
+    return cells.map((cell) {
+      if (cell.child is Align) {
+        final align = cell.child as Align;
+        return DataCell(
+          GestureDetector(
+            onTap: (onRowTap != null && reportType == ReportType.ventas && unit == 'vcode') 
+                ? () => onRowTap(item) 
+                : null,
+            onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              width: double.infinity,
+              height: double.infinity,
+              alignment: align.alignment,
+              child: align.child,
+            ),
+          ),
+        );
+      }
+      return cell;
+    }).toList();
   }
 
   // 고정된 합계 행 빌드 (화면 하단에 고정, 현재 보이는 항목들의 합계)
