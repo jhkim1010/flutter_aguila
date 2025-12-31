@@ -173,25 +173,64 @@ class ItemsBuilder {
                   // 오른쪽: products 테이블 (왼쪽의 2배 폭)
                   Expanded(
                     flex: 2,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.max,
-                      children: [
-                        const Text(
-                          'Productos',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Expanded(
-                          child: SizedBox(
-                            width: double.infinity,
-                            child: productsTable,
-                          ),
-                        ),
-                      ],
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        debugPrint('═══════════════════════════════════════════════════════');
+                        debugPrint('📊 [ItemsBuilder] 오른쪽 패널 LayoutBuilder');
+                        debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
+                        debugPrint('   → constraints.maxHeight: ${constraints.maxHeight}');
+                        debugPrint('   → constraints.minWidth: ${constraints.minWidth}');
+                        debugPrint('   → constraints.minHeight: ${constraints.minHeight}');
+                        
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          mainAxisSize: MainAxisSize.max,
+                          children: [
+                            const Text(
+                              'Productos',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Expanded(
+                              child: LayoutBuilder(
+                                builder: (context, expandedConstraints) {
+                                  debugPrint('📊 [ItemsBuilder] Expanded 내부 LayoutBuilder');
+                                  debugPrint('   → expandedConstraints.maxWidth: ${expandedConstraints.maxWidth}');
+                                  debugPrint('   → expandedConstraints.maxHeight: ${expandedConstraints.maxHeight}');
+                                  
+                                  if (productsTable == null) {
+                                    debugPrint('   ⚠️ productsTable이 null입니다!');
+                                    return const SizedBox.shrink();
+                                  }
+                                  
+                                  return SizedBox(
+                                    width: expandedConstraints.maxWidth,
+                                    child: Builder(
+                                      builder: (context) {
+                                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                                          final renderObject = context.findRenderObject();
+                                          if (renderObject is RenderBox) {
+                                            debugPrint('📊 [ItemsBuilder] SizedBox 실제 렌더링 크기');
+                                            debugPrint('   → SizedBox width: ${renderObject.size.width}');
+                                            debugPrint('   → SizedBox height: ${renderObject.size.height}');
+                                            debugPrint('   → 예상 width: ${expandedConstraints.maxWidth}');
+                                            debugPrint('   → 차이: ${renderObject.size.width - expandedConstraints.maxWidth}');
+                                          }
+                                        });
+                                        
+                                        return productsTable!;
+                                      },
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ],

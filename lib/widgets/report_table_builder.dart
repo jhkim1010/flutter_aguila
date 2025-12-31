@@ -1289,7 +1289,104 @@ class ReportTableBuilder {
         ? null 
         : _buildHeaderRow(keys, columns, color, sortColumn, sortAscending, onSort);
     
+    // items 및 ingresos 보고서는 전체 폭을 차지하도록 다른 구조 사용
+    final isItemsOrIngresos = reportType == ReportType.items || reportType == ReportType.ingresos;
+    
+    // items 및 ingresos 보고서는 LayoutBuilder로 전체 폭 강제
+    if (isItemsOrIngresos) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('📊 [ReportTableBuilder] buildTableFromList Column LayoutBuilder');
+          debugPrint('   → reportType: $reportType');
+          debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
+          debugPrint('   → constraints.maxHeight: ${constraints.maxHeight}');
+          
+          return SizedBox(
+            width: constraints.maxWidth,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // 헤더 (수평 스크롤 동기화) - ventas는 제외
+                if (headerRow != null)
+                  if (horizontalScrollController != null)
+                    SingleChildScrollView(
+                      controller: horizontalScrollController,
+                      scrollDirection: Axis.horizontal,
+                      physics: const NeverScrollableScrollPhysics(),
+                      child: headerRow,
+                    )
+                  else
+                    headerRow,
+                Expanded(
+                  child: Scrollbar(
+                    controller: scrollController,
+                    thumbVisibility: true,
+                    child: NotificationListener<ScrollNotification>(
+                      onNotification: (notification) {
+                        // 데이터 부분의 수평 스크롤 이벤트를 헤더에 전달
+                        if (notification is ScrollUpdateNotification && 
+                            notification.depth == 0 && 
+                            notification.metrics.axis == Axis.horizontal &&
+                            horizontalScrollController != null &&
+                            horizontalScrollController.hasClients) {
+                          horizontalScrollController.jumpTo(notification.metrics.pixels);
+                        }
+                        return false;
+                      },
+                      child: LayoutBuilder(
+                        builder: (context, innerConstraints) {
+                          debugPrint('═══════════════════════════════════════════════════════');
+                          debugPrint('📊 [ReportTableBuilder] buildTableFromList LayoutBuilder');
+                          debugPrint('   → reportType: $reportType');
+                          debugPrint('   → innerConstraints.maxWidth: ${innerConstraints.maxWidth}');
+                          debugPrint('   → innerConstraints.maxHeight: ${innerConstraints.maxHeight}');
+                          debugPrint('   → innerConstraints.minWidth: ${innerConstraints.minWidth}');
+                          debugPrint('   → innerConstraints.minHeight: ${innerConstraints.minHeight}');
+                          
+                          // items 및 ingresos 보고서는 SingleChildScrollView 없이 직접 렌더링
+                          debugPrint('   → Items/Ingresos: SingleChildScrollView 없이 직접 렌더링');
+                          final tableContent = _buildTableContent(
+                            constraints: innerConstraints,
+                            horizontalScrollController: horizontalScrollController,
+                            reportType: reportType,
+                            displayedList: displayedList,
+                            keys: keys,
+                            columns: columns,
+                            dataList: dataList,
+                            color: color,
+                            onRowDoubleTap: onRowDoubleTap,
+                            onRowTap: onRowTap,
+                            unit: unit,
+                          );
+                          
+                          return Builder(
+                            builder: (context) {
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+                                if (renderBox != null) {
+                                  debugPrint('📊 [ReportTableBuilder] buildTableFromList 실제 렌더링 크기');
+                                  debugPrint('   → width: ${renderBox.size.width}');
+                                  debugPrint('   → height: ${renderBox.size.height}');
+                                }
+                              });
+                              return tableContent;
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    }
+    
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // 헤더 (수평 스크롤 동기화) - ventas는 제외
         if (headerRow != null)
@@ -1320,6 +1417,46 @@ class ReportTableBuilder {
               },
               child: LayoutBuilder(
                 builder: (context, constraints) {
+                  debugPrint('═══════════════════════════════════════════════════════');
+                  debugPrint('📊 [ReportTableBuilder] buildTableFromList LayoutBuilder');
+                  debugPrint('   → reportType: $reportType');
+                  debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
+                  debugPrint('   → constraints.maxHeight: ${constraints.maxHeight}');
+                  debugPrint('   → constraints.minWidth: ${constraints.minWidth}');
+                  debugPrint('   → constraints.minHeight: ${constraints.minHeight}');
+                  
+                  // items 및 ingresos 보고서는 SingleChildScrollView 없이 직접 렌더링
+                  if (isItemsOrIngresos) {
+                    debugPrint('   → Items/Ingresos: SingleChildScrollView 없이 직접 렌더링');
+                    final tableContent = _buildTableContent(
+                      constraints: constraints,
+                      horizontalScrollController: horizontalScrollController,
+                      reportType: reportType,
+                      displayedList: displayedList,
+                      keys: keys,
+                      columns: columns,
+                      dataList: dataList,
+                      color: color,
+                      onRowDoubleTap: onRowDoubleTap,
+                      onRowTap: onRowTap,
+                      unit: unit,
+                    );
+                    
+                    return Builder(
+                      builder: (context) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+                          if (renderBox != null) {
+                            debugPrint('📊 [ReportTableBuilder] buildTableFromList 실제 렌더링 크기');
+                            debugPrint('   → width: ${renderBox.size.width}');
+                            debugPrint('   → height: ${renderBox.size.height}');
+                          }
+                        });
+                        return tableContent;
+                      },
+                    );
+                  }
+                  
                   return SingleChildScrollView(
                     controller: scrollController,
                     scrollDirection: Axis.vertical,
@@ -1360,9 +1497,50 @@ class ReportTableBuilder {
     Function(Map<String, dynamic>)? onRowTap,
     String? unit,
   }) {
+    // 디버깅: constraints 정보 출력
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('📊 [ReportTableBuilder] _buildTableContent');
+    debugPrint('   → reportType: $reportType');
+    debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
+    debugPrint('   → constraints.maxHeight: ${constraints.maxHeight}');
+    debugPrint('   → constraints.minWidth: ${constraints.minWidth}');
+    debugPrint('   → constraints.minHeight: ${constraints.minHeight}');
+    debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
+    
     final needsHorizontalScroll = horizontalScrollController != null || 
                                   reportType == ReportType.ventas || 
                                   reportType == ReportType.clientes;
+    
+    // items 및 ingresos 보고서는 항상 전체 폭을 차지하도록 처리
+    if (reportType == ReportType.items || reportType == ReportType.ingresos) {
+      debugPrint('   → Items/Ingresos 보고서: 전체 폭 차지 모드');
+      final tableWidget = _buildTableWithoutHorizontalScroll(
+        constraints: constraints,
+        reportType: reportType,
+        displayedList: displayedList,
+        keys: keys,
+        columns: columns,
+        dataList: dataList,
+        color: color,
+        onRowDoubleTap: onRowDoubleTap,
+        onRowTap: onRowTap,
+        unit: unit,
+      );
+      
+      return Builder(
+        builder: (context) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+            if (renderBox != null) {
+              debugPrint('📊 [ReportTableBuilder] _buildTableContent 실제 렌더링 크기');
+              debugPrint('   → width: ${renderBox.size.width}');
+              debugPrint('   → height: ${renderBox.size.height}');
+            }
+          });
+          return tableWidget;
+        },
+      );
+    }
     
     if (needsHorizontalScroll) {
       return _buildTableWithHorizontalScroll(
@@ -1447,13 +1625,29 @@ class ReportTableBuilder {
     Function(Map<String, dynamic>)? onRowTap,
     String? unit,
   }) {
-    return ConstrainedBox(
+    // 디버깅: constraints 정보 출력
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('📊 [ReportTableBuilder] _buildTableWithoutHorizontalScroll');
+    debugPrint('   → reportType: $reportType');
+    debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
+    debugPrint('   → constraints.maxHeight: ${constraints.maxHeight}');
+    debugPrint('   → constraints.minWidth: ${constraints.minWidth}');
+    debugPrint('   → constraints.minHeight: ${constraints.minHeight}');
+    
+    // items 및 ingresos 보고서는 항상 전체 폭을 차지하도록 강제
+    final tableWidth = (reportType == ReportType.items || reportType == ReportType.ingresos)
+        ? (constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity)
+        : (constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity);
+    
+    debugPrint('   → 계산된 tableWidth: $tableWidth');
+    
+    final constrainedBox = ConstrainedBox(
       constraints: BoxConstraints(
-        minWidth: constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity,
-        maxWidth: constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity,
+        minWidth: tableWidth,
+        maxWidth: tableWidth,
       ),
       child: SizedBox(
-        width: constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity,
+        width: tableWidth,
         child: _buildDataTable(
           reportType: reportType,
           displayedList: displayedList,
@@ -1466,6 +1660,22 @@ class ReportTableBuilder {
           unit: unit,
         ),
       ),
+    );
+    
+    return Builder(
+      builder: (context) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+          if (renderBox != null) {
+            debugPrint('📊 [ReportTableBuilder] _buildTableWithoutHorizontalScroll 실제 렌더링 크기');
+            debugPrint('   → ConstrainedBox width: ${renderBox.size.width}');
+            debugPrint('   → ConstrainedBox height: ${renderBox.size.height}');
+            debugPrint('   → 예상 tableWidth: $tableWidth');
+            debugPrint('   → 차이: ${renderBox.size.width - tableWidth}');
+          }
+        });
+        return constrainedBox;
+      },
     );
   }
 
@@ -1481,23 +1691,70 @@ class ReportTableBuilder {
     Function(Map<String, dynamic>)? onRowTap,
     String? unit,
   }) {
-    return DataTable(
-      columnSpacing: 8,
-      dataRowMinHeight: (reportType == ReportType.ventas || reportType == ReportType.clientes) ? 32 : (reportType == ReportType.alertas ? null : 48),
-      dataRowMaxHeight: (reportType == ReportType.ventas || reportType == ReportType.clientes) ? 40 : (reportType == ReportType.alertas ? null : 56),
-      headingRowHeight: (reportType == ReportType.ventas || reportType == ReportType.clientes) ? 40 : 56,
-      headingRowColor: MaterialStateProperty.all(Colors.transparent),
-      columns: columns,
-      rows: _buildDataTableRows(
-        displayedList: displayedList,
-        keys: keys,
-        reportType: reportType,
-        onRowDoubleTap: onRowDoubleTap,
-        onRowTap: onRowTap,
-        unit: unit,
-        dataList: dataList,
-        color: color,
-      ),
+    // items 및 ingresos 보고서는 전체 폭을 차지하도록 설정
+    final isItemsOrIngresos = reportType == ReportType.items || reportType == ReportType.ingresos;
+    
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('📊 [ReportTableBuilder] _buildDataTable');
+    debugPrint('   → reportType: $reportType');
+    debugPrint('   → isItemsOrIngresos: $isItemsOrIngresos');
+    debugPrint('   → columns.length: ${columns.length}');
+    
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        debugPrint('📊 [ReportTableBuilder] _buildDataTable LayoutBuilder');
+        debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
+        debugPrint('   → constraints.maxHeight: ${constraints.maxHeight}');
+        debugPrint('   → constraints.minWidth: ${constraints.minWidth}');
+        debugPrint('   → constraints.minHeight: ${constraints.minHeight}');
+        
+        final dataTable = DataTable(
+          columnSpacing: 8,
+          dataRowMinHeight: (reportType == ReportType.ventas || reportType == ReportType.clientes) ? 32 : (reportType == ReportType.alertas ? null : 48),
+          dataRowMaxHeight: (reportType == ReportType.ventas || reportType == ReportType.clientes) ? 40 : (reportType == ReportType.alertas ? null : 56),
+          headingRowHeight: (reportType == ReportType.ventas || reportType == ReportType.clientes) ? 40 : 56,
+          headingRowColor: MaterialStateProperty.all(Colors.transparent),
+          columns: columns,
+          rows: _buildDataTableRows(
+            displayedList: displayedList,
+            keys: keys,
+            reportType: reportType,
+            onRowDoubleTap: onRowDoubleTap,
+            onRowTap: onRowTap,
+            unit: unit,
+            dataList: dataList,
+            color: color,
+          ),
+        );
+        
+        final sizedBox = SizedBox(
+          width: constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity,
+          child: dataTable,
+        );
+        
+        return Builder(
+          builder: (context) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+              if (renderBox != null) {
+                debugPrint('📊 [ReportTableBuilder] _buildDataTable 실제 렌더링 크기');
+                debugPrint('   → SizedBox width: ${renderBox.size.width}');
+                debugPrint('   → SizedBox height: ${renderBox.size.height}');
+                debugPrint('   → 예상 width: ${constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity}');
+                
+                // DataTable 내부 크기 확인 (자식 RenderObject 찾기)
+                renderBox.visitChildren((child) {
+                  if (child is RenderBox) {
+                    debugPrint('   → 자식 RenderBox width: ${child.size.width}');
+                    debugPrint('   → 자식 RenderBox height: ${child.size.height}');
+                  }
+                });
+              }
+            });
+            return sizedBox;
+          },
+        );
+      },
     );
   }
 
