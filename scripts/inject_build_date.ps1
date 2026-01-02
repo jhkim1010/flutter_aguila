@@ -1,5 +1,9 @@
-# 빌드 날짜를 각 플랫폼의 설정 파일에 자동으로 주입하는 PowerShell 스크립트
-# 빌드 시점에 실행되어 컴파일 날짜를 기록합니다.
+# Build date injection script for Windows
+# This script injects build date into platform-specific configuration files
+
+# Set UTF-8 encoding
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 
 # 프로젝트 루트 디렉토리로 이동
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
