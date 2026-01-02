@@ -79,11 +79,17 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
   @override
   void initState() {
     super.initState();
-    _checkAndAutoConnect();
-    _loadSavedConnections();
-    _checkConnectionStatus();
-    // 백그라운드에서 생체 인식 수행
-    _authenticateInBackground();
+    // 성능 최적화: 우선순위에 따라 순차 실행
+    // 1. 자동 연결 시도 (가장 중요, 먼저 실행)
+    _checkAndAutoConnect().then((_) {
+      // 2. 자동 연결 실패 시에만 연결 리스트와 상태 확인
+      if (mounted && !_isAutoConnecting) {
+        _loadSavedConnections();
+        _checkConnectionStatus();
+      }
+    });
+    // 생체 인식은 BiometricAuthScreen에서 이미 완료되었으므로 여기서는 호출하지 않음
+    // _authenticateInBackground();
   }
 
   @override
@@ -92,7 +98,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
     // 화면이 다시 표시될 때마다 연결 리스트 갱신 (로딩 중이 아니고 이미 로드된 경우에만)
     final route = ModalRoute.of(context);
     if (route != null && route.isCurrent && !_isLoadingConnections && _savedConnections.isEmpty) {
-      print('🔄 MainConnectionScreen: didChangeDependencies 호출, 연결 리스트 로드');
+      // 성능 최적화: 디버깅 출력 제거
       _loadSavedConnections();
     }
   }

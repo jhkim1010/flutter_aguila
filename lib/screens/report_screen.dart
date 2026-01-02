@@ -109,6 +109,18 @@ class _ReportScreenState extends State<ReportScreen> {
   
   // Gastos 보고서용 선택된 rubro 코드
   String? _selectedRubroCode;
+  
+  // Gastos 보고서 오른쪽 패널(세부 테이블) 로딩 상태
+  bool _isLoadingGastosDetail = false;
+  
+  // Items 보고서용 선택된 category 코드
+  String? _selectedCategoryCode;
+  
+  // Ingresos 보고서용 선택된 category 코드
+  String? _selectedIngresosCategoryCode;
+  
+  // Ingresos 보고서용 선택된 company 코드
+  String? _selectedIngresosCompanyCode;
   bool _isEditingCodigo = false; // 편집 모드 여부
   String? _editedCodigoIdentifier; // 편집된 codigo 식별자 (색상 표시용)
   bool _isLoadingMoreCodigos = false; // 추가 codigos 로딩 중 여부
@@ -121,6 +133,11 @@ class _ReportScreenState extends State<ReportScreen> {
   bool _clientesIsLoadingMore = false; // 다음 페이지 로딩 중인지 여부
   String? _clientesSortColumn; // Clientes 정렬 칼럼
   bool _clientesSortAscending = false; // Clientes 정렬 방향 (true: 오름차순, false: 내림차순, 기본값: 내림차순)
+  
+  // Clientes 모달리스 대화상자 상태
+  OverlayEntry? _clienteDetailOverlayEntry; // 모달리스 대화상자 OverlayEntry
+  Map<String, dynamic>? _currentClienteDetailData; // 현재 표시 중인 Cliente 상세 데이터
+  Map<String, dynamic>? _currentClienteRowData; // 현재 표시 중인 Cliente 행 데이터
   String? _codigosSortColumn = 'codigo'; // Codigos 정렬 칼럼 (기본값: codigo)
   bool _codigosSortAscending = true; // Codigos 정렬 방향 (true: 오름차순, false: 내림차순)
   
@@ -410,6 +427,8 @@ class _ReportScreenState extends State<ReportScreen> {
       controller.dispose();
     }
     _codigoEditControllers.clear();
+    // Clientes 모달리스 대화상자 정리
+    _closeClienteDetailOverlay();
     super.dispose();
   }
 
@@ -1423,6 +1442,92 @@ class _ReportScreenState extends State<ReportScreen> {
     }
   }
 
+  /// Gastos 보고서의 오른쪽 패널(세부 테이블)만 갱신하는 메서드
+  Future<void> _loadGastosDetailOnly(String? rubroCode) async {
+    if (widget.reportType != ReportType.gastos) return;
+    
+    setState(() {
+      _isLoadingGastosDetail = true;
+    });
+
+    try {
+      final now = DateTime.now();
+      final startDate = _itemsStartDate ?? now;
+      final endDate = _itemsEndDate ?? now;
+      final currentFilteringWord = _filteringWordController.text.trim();
+      
+      final filters = <String, dynamic>{
+        'fecha_inicio': DateFormat('yyyy-MM-dd').format(startDate),
+        'fecha_fin': DateFormat('yyyy-MM-dd').format(endDate),
+      };
+      
+      debugPrint('🔍 [ReportScreen] Gastos Detail만 API 요청 시작');
+      debugPrint('   → rubroCode: $rubroCode');
+      debugPrint('   → filteringWord: ${currentFilteringWord.isNotEmpty ? currentFilteringWord : null}');
+      
+      final data = await _databaseService.getGastosReport(
+        filteringWord: currentFilteringWord.isNotEmpty ? currentFilteringWord : null,
+        rubroCode: rubroCode,
+        filters: filters,
+      );
+      
+      debugPrint('🔍 [ReportScreen] Gastos Detail API 응답 받음');
+      
+      if (mounted && _data != null) {
+        setState(() {
+          // summary_by_rubro는 유지하고 detail/data만 업데이트
+          if (data.containsKey('data')) {
+            if (_data!['data'] is Map && data['data'] is Map) {
+              // 기존 구조: data가 Map이고 detail 키가 있는 경우
+              final newDataMap = Map<String, dynamic>.from(_data!);
+              final newDataData = Map<String, dynamic>.from(newDataMap['data'] as Map);
+              newDataData['detail'] = (data['data'] as Map)['detail'];
+              newDataMap['data'] = newDataData;
+              _data = newDataMap;
+            } else if (data['data'] is List) {
+              // 새로운 구조: data가 List인 경우
+              final newDataMap = Map<String, dynamic>.from(_data!);
+              newDataMap['data'] = data['data'];
+              _data = newDataMap;
+            }
+          }
+          
+          // summary 카드도 업데이트 (필요한 경우)
+          if (data.containsKey('summary')) {
+            final newDataMap = Map<String, dynamic>.from(_data!);
+            newDataMap['summary'] = data['summary'];
+            _data = newDataMap;
+          }
+          
+          _isLoadingGastosDetail = false;
+          
+          // displayedItemsCount 업데이트
+          if (_data!.containsKey('data')) {
+            if (_data!['data'] is List) {
+              final dataList = _data!['data'] as List;
+              _displayedItemsCount = dataList.length > _itemsPerPage ? _itemsPerPage : dataList.length;
+            } else if (_data!['data'] is Map) {
+              final dataMap = _data!['data'] as Map<String, dynamic>;
+              if (dataMap.containsKey('detail') && dataMap['detail'] is List) {
+                final detailList = dataMap['detail'] as List;
+                _displayedItemsCount = detailList.length > _itemsPerPage ? _itemsPerPage : detailList.length;
+              }
+            }
+          }
+          
+          debugPrint('   → 오른쪽 패널만 업데이트 완료');
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ Gastos Detail 로드 실패: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingGastosDetail = false;
+        });
+      }
+    }
+  }
+
   Future<void> _loadData({String? filteringWord}) async {
     setState(() {
       _isLoading = true;
@@ -1560,13 +1665,14 @@ class _ReportScreenState extends State<ReportScreen> {
             'fecha_fin': DateFormat('yyyy-MM-dd').format(endDate),
           };
           debugPrint('🔍 [ReportScreen] Gastos API 요청 시작');
-          debugPrint('   → rubroCode: $_selectedRubroCode');
+          debugPrint('   → rubroCode: null (전체 데이터 로드)');
           debugPrint('   → filteringWord: ${currentFilteringWord.isNotEmpty ? currentFilteringWord : null}');
           debugPrint('   → fecha_inicio: ${filters['fecha_inicio']}');
           debugPrint('   → fecha_fin: ${filters['fecha_fin']}');
+          // 첫 로드 시 전체 데이터를 가져옴 (summary_by_rubro 포함)
           data = await _databaseService.getGastosReport(
             filteringWord: currentFilteringWord.isNotEmpty ? currentFilteringWord : null,
-            rubroCode: _selectedRubroCode,
+            rubroCode: null, // 첫 로드 시 전체 데이터
             filters: filters,
           );
           debugPrint('🔍 [ReportScreen] Gastos API 응답 받음');
@@ -3001,6 +3107,13 @@ class _ReportScreenState extends State<ReportScreen> {
                 : widget.reportType == ReportType.ventas
                     ? LayoutBuilder(
                         builder: (context, constraints) {
+                          // 디버깅: Ventas AppBar title 렌더링 시작
+                          debugPrint('═══════════════════════════════════════════════════════');
+                          debugPrint('📅 [Ventas AppBar Title] LayoutBuilder builder 호출');
+                          debugPrint('   → 파일: report_screen.dart');
+                          debugPrint('   → 라인: ~3102');
+                          debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
+                          
                           final isLargeScreen = constraints.maxWidth >= 800;
                           final orientation = MediaQuery.of(context).orientation;
                           final platformType = PlatformUtils.getPlatformType(context);
@@ -3008,8 +3121,15 @@ class _ReportScreenState extends State<ReportScreen> {
                           // 핸드폰의 경우: 세로 모드일 때만 3줄, 가로 모드일 때는 1줄
                           final isMobilePortrait = isMobile && !isLargeScreen && orientation == Orientation.portrait;
                           
+                          debugPrint('   → isLargeScreen: $isLargeScreen');
+                          debugPrint('   → orientation: $orientation');
+                          debugPrint('   → platformType: $platformType');
+                          debugPrint('   → isMobile: $isMobile');
+                          debugPrint('   → isMobilePortrait: $isMobilePortrait');
+                          
                           // 핸드폰 세로 모드: 3줄로 배치
                           if (isMobilePortrait) {
+                            debugPrint('   → isMobilePortrait = true → 핸드폰 세로 모드 레이아웃 사용');
                             return Column(
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -3228,114 +3348,203 @@ class _ReportScreenState extends State<ReportScreen> {
                           // 넓은 화면: 1줄로 배치 (데스크톱/태블릿은 변경하지 않음, 핸드폰 넓은 화면만 변경)
                           final isDesktopOrTablet = platformType == PlatformType.desktop || PlatformUtils.isIPad(context);
                           
+                          // 디버깅: macOS/Windows 대형 화면에서 달력 버튼 표시 확인
+                          debugPrint('═══════════════════════════════════════════════════════');
+                          debugPrint('📅 [Ventas AppBar] 달력 버튼 표시 디버깅');
+                          debugPrint('   → 파일: report_screen.dart');
+                          debugPrint('   → 라인: ~3330');
+                          debugPrint('   → platformType: $platformType');
+                          debugPrint('   → PlatformType.desktop: ${PlatformType.desktop}');
+                          debugPrint('   → PlatformUtils.isIPad(context): ${PlatformUtils.isIPad(context)}');
+                          debugPrint('   → isDesktopOrTablet: $isDesktopOrTablet');
+                          debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
+                          debugPrint('   → isLargeScreen: $isLargeScreen');
+                          debugPrint('   → orientation: $orientation');
+                          debugPrint('   → isMobile: $isMobile');
+                          debugPrint('   → isMobilePortrait: $isMobilePortrait');
+                          debugPrint('   → _ventasStartDate: $_ventasStartDate');
+                          debugPrint('   → _ventasEndDate: $_ventasEndDate');
+                          debugPrint('   → _ventasUnit: $_ventasUnit');
+                          
                           // 데스크톱/태블릿: 기존대로 체크박스 사용
                           if (isDesktopOrTablet) {
-                            return Row(
+                            debugPrint('   ✅ isDesktopOrTablet = true → 달력 버튼 2개 포함 Row 반환');
+                            final desdeButton = SizedBox(
+                              width: 90,
+                              child: _buildSingleDateButton(
+                                label: 'Desde',
+                                date: _ventasStartDate,
+                                reportColor: _getReportColor(),
+                                unit: _ventasUnit,
+                                onDateSelected: (date) {
+                                  setState(() {
+                                    _ventasStartDate = date;
+                                    if (_ventasUnit == 'month') {
+                                      _ventasEndDate = DateTime(date.year, date.month + 1, 0);
+                                    }
+                                  });
+                                  _loadData();
+                                },
+                              ),
+                            );
+                            final hastaButton = SizedBox(
+                              width: 90,
+                              child: _buildSingleDateButton(
+                                label: 'Hasta',
+                                date: _ventasEndDate,
+                                reportColor: _getReportColor(),
+                                unit: _ventasUnit,
+                                onDateSelected: (date) {
+                                  setState(() {
+                                    _ventasEndDate = date;
+                                    if (_ventasUnit == 'month') {
+                                      _ventasStartDate = DateTime(date.year, date.month, 1);
+                                    }
+                                  });
+                                  _loadData();
+                                },
+                              ),
+                            );
+                            
+                            debugPrint('   → Desde 버튼 생성 완료');
+                            debugPrint('   → Hasta 버튼 생성 완료');
+                            
+                            final unitButtons = _buildVentasUnitButtonsInAppBar();
+                            final checkboxesRow = Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                // Unit 선택 콤보
-                                _buildVentasUnitButtonsInAppBar(),
-                                const SizedBox(width: 8),
-                                // Descontado, Reservado, Crédito 체크박스
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Checkbox(
-                                      value: _ventasDescontado,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          _ventasDescontado = value ?? false;
-                                        });
-                                        _loadData();
-                                      },
-                                      checkColor: Colors.white,
-                                      fillColor: MaterialStateProperty.resolveWith<Color>(
-                                        (Set<MaterialState> states) {
-                                          if (states.contains(MaterialState.selected)) {
-                                            return Colors.white.withOpacity(0.3);
-                                          }
-                                          return Colors.transparent;
-                                        },
-                                      ),
-                                      side: const BorderSide(color: Colors.white, width: 1.5),
-                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                    ),
-                                    const SizedBox(width: 2),
-                                    const Text(
-                                      'Descontado',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Checkbox(
-                                      value: _ventasReservado,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          _ventasReservado = value ?? false;
-                                        });
-                                        _loadData();
-                                      },
-                                      checkColor: Colors.white,
-                                      fillColor: MaterialStateProperty.resolveWith<Color>(
-                                        (Set<MaterialState> states) {
-                                          if (states.contains(MaterialState.selected)) {
-                                            return Colors.white.withOpacity(0.3);
-                                          }
-                                          return Colors.transparent;
-                                        },
-                                      ),
-                                      side: const BorderSide(color: Colors.white, width: 1.5),
-                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                    ),
-                                    const SizedBox(width: 2),
-                                    const Text(
-                                      'Reservado',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Checkbox(
-                                      value: _ventasCredito,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          _ventasCredito = value ?? false;
-                                        });
-                                        _loadData();
-                                      },
-                                      checkColor: Colors.white,
-                                      fillColor: MaterialStateProperty.resolveWith<Color>(
-                                        (Set<MaterialState> states) {
-                                          if (states.contains(MaterialState.selected)) {
-                                            return Colors.white.withOpacity(0.3);
-                                          }
-                                          return Colors.transparent;
-                                        },
-                                      ),
-                                      side: const BorderSide(color: Colors.white, width: 1.5),
-                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                    ),
-                                    const SizedBox(width: 2),
-                                    const Text(
-                                      'Crédito',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
+                                Checkbox(
+                                  value: _ventasDescontado,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _ventasDescontado = value ?? false;
+                                    });
+                                    _loadData();
+                                  },
+                                  checkColor: Colors.white,
+                                  fillColor: MaterialStateProperty.resolveWith<Color>(
+                                    (Set<MaterialState> states) {
+                                      if (states.contains(MaterialState.selected)) {
+                                        return Colors.white.withOpacity(0.3);
+                                      }
+                                      return Colors.transparent;
+                                    },
+                                  ),
+                                  side: const BorderSide(color: Colors.white, width: 1.5),
+                                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                const SizedBox(width: 2),
+                                const Text(
+                                  'Descontado',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                                 const SizedBox(width: 8),
-                                // filteringWord
-                                Expanded(
-                                  child: _buildFilteringWordFieldInAppBar(),
+                                Checkbox(
+                                  value: _ventasReservado,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _ventasReservado = value ?? false;
+                                    });
+                                    _loadData();
+                                  },
+                                  checkColor: Colors.white,
+                                  fillColor: MaterialStateProperty.resolveWith<Color>(
+                                    (Set<MaterialState> states) {
+                                      if (states.contains(MaterialState.selected)) {
+                                        return Colors.white.withOpacity(0.3);
+                                      }
+                                      return Colors.transparent;
+                                    },
+                                  ),
+                                  side: const BorderSide(color: Colors.white, width: 1.5),
+                                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                const SizedBox(width: 2),
+                                const Text(
+                                  'Reservado',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Checkbox(
+                                  value: _ventasCredito,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _ventasCredito = value ?? false;
+                                    });
+                                    _loadData();
+                                  },
+                                  checkColor: Colors.white,
+                                  fillColor: MaterialStateProperty.resolveWith<Color>(
+                                    (Set<MaterialState> states) {
+                                      if (states.contains(MaterialState.selected)) {
+                                        return Colors.white.withOpacity(0.3);
+                                      }
+                                      return Colors.transparent;
+                                    },
+                                  ),
+                                  side: const BorderSide(color: Colors.white, width: 1.5),
+                                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                const SizedBox(width: 2),
+                                const Text(
+                                  'Crédito',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ],
+                            );
+                            
+                            final filteringField = _buildFilteringWordFieldInAppBar();
+                            
+                            debugPrint('   → Row children 구성:');
+                            debugPrint('      - unitButtons: 생성됨');
+                            debugPrint('      - desdeButton: 생성됨 (width: 90)');
+                            debugPrint('      - hastaButton: 생성됨 (width: 90)');
+                            debugPrint('      - checkboxesRow: 생성됨');
+                            debugPrint('      - filteringField: 생성됨');
+                            
+                            return Builder(
+                              builder: (context) {
+                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                  final renderObject = context.findRenderObject();
+                                  if (renderObject != null && renderObject is RenderBox) {
+                                    debugPrint('   → Row 실제 렌더링 크기:');
+                                    debugPrint('      - width: ${renderObject.size.width}');
+                                    debugPrint('      - height: ${renderObject.size.height}');
+                                  }
+                                });
+                                
+                                return Row(
+                                  children: [
+                                    // Unit 선택 콤보
+                                    unitButtons,
+                                    const SizedBox(width: 8),
+                                    // 달력 버튼 2개
+                                    desdeButton,
+                                    const SizedBox(width: 4),
+                                    hastaButton,
+                                    const SizedBox(width: 8),
+                                    // Descontado, Reservado, Crédito 체크박스
+                                    checkboxesRow,
+                                    const SizedBox(width: 8),
+                                    // filteringWord
+                                    Expanded(
+                                      child: filteringField,
+                                    ),
+                                  ],
+                                );
+                              },
                             );
                           }
                           
@@ -4894,13 +5103,69 @@ class _ReportScreenState extends State<ReportScreen> {
                         }
                         
                         // 넓은 화면: 1줄로 배치
-                        return Row(
-                          children: [
-                            // Unit 선택 콤보
-                            _buildVentasUnitButtonsInAppBar(),
-                            const SizedBox(width: 8),
-                            // Descontado, Reservado, Crédito 체크박스
-                            Row(
+                        // 디버깅: _buildAppBar 내부 ventas title 렌더링
+                        debugPrint('═══════════════════════════════════════════════════════');
+                        debugPrint('📅 [_buildAppBar] Ventas AppBar title 렌더링');
+                        debugPrint('   → 파일: report_screen.dart');
+                        debugPrint('   → 라인: ~5098');
+                        debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
+                        debugPrint('   → isLargeScreen: $isLargeScreen');
+                        debugPrint('   → orientation: $orientation');
+                        debugPrint('   → platformType: $platformType');
+                        debugPrint('   → isMobile: $isMobile');
+                        debugPrint('   → isMobilePortrait: $isMobilePortrait');
+                        
+                        final isDesktopOrTablet = platformType == PlatformType.desktop || PlatformUtils.isIPad(context);
+                        debugPrint('   → isDesktopOrTablet: $isDesktopOrTablet');
+                        
+                        if (isDesktopOrTablet) {
+                          debugPrint('   ✅ isDesktopOrTablet = true → 달력 버튼 2개 포함 Row 반환');
+                          return Row(
+                            children: [
+                              // Unit 선택 콤보
+                              _buildVentasUnitButtonsInAppBar(),
+                              const SizedBox(width: 8),
+                              // 달력 버튼 2개
+                              SizedBox(
+                                width: 90,
+                                child: _buildSingleDateButton(
+                                  label: 'Desde',
+                                  date: _ventasStartDate,
+                                  reportColor: _getReportColor(),
+                                  unit: _ventasUnit,
+                                  onDateSelected: (date) {
+                                    setState(() {
+                                      _ventasStartDate = date;
+                                      if (_ventasUnit == 'month') {
+                                        _ventasEndDate = DateTime(date.year, date.month + 1, 0);
+                                      }
+                                    });
+                                    _loadData();
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              SizedBox(
+                                width: 90,
+                                child: _buildSingleDateButton(
+                                  label: 'Hasta',
+                                  date: _ventasEndDate,
+                                  reportColor: _getReportColor(),
+                                  unit: _ventasUnit,
+                                  onDateSelected: (date) {
+                                    setState(() {
+                                      _ventasEndDate = date;
+                                      if (_ventasUnit == 'month') {
+                                        _ventasStartDate = DateTime(date.year, date.month, 1);
+                                      }
+                                    });
+                                    _loadData();
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Descontado, Reservado, Crédito 체크박스
+                              Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Checkbox(
@@ -5001,6 +5266,115 @@ class _ReportScreenState extends State<ReportScreen> {
                             ),
                           ],
                         );
+                        } else {
+                          debugPrint('   ⚠️ isDesktopOrTablet = false → 핸드폰 넓은 화면 레이아웃 사용');
+                          return Row(
+                            children: [
+                              // Unit 선택 콤보
+                              _buildVentasUnitButtonsInAppBar(),
+                              const SizedBox(width: 8),
+                              // Descontado, Reservado, Crédito 체크박스
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Checkbox(
+                                    value: _ventasDescontado,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _ventasDescontado = value ?? false;
+                                      });
+                                      _loadData();
+                                    },
+                                    checkColor: Colors.white,
+                                    fillColor: MaterialStateProperty.resolveWith<Color>(
+                                      (Set<MaterialState> states) {
+                                        if (states.contains(MaterialState.selected)) {
+                                          return Colors.white.withOpacity(0.3);
+                                        }
+                                        return Colors.transparent;
+                                      },
+                                    ),
+                                    side: const BorderSide(color: Colors.white, width: 1.5),
+                                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  const SizedBox(width: 2),
+                                  const Text(
+                                    'Descontado',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Checkbox(
+                                    value: _ventasReservado,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _ventasReservado = value ?? false;
+                                      });
+                                      _loadData();
+                                    },
+                                    checkColor: Colors.white,
+                                    fillColor: MaterialStateProperty.resolveWith<Color>(
+                                      (Set<MaterialState> states) {
+                                        if (states.contains(MaterialState.selected)) {
+                                          return Colors.white.withOpacity(0.3);
+                                        }
+                                        return Colors.transparent;
+                                      },
+                                    ),
+                                    side: const BorderSide(color: Colors.white, width: 1.5),
+                                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  const SizedBox(width: 2),
+                                  const Text(
+                                    'Reservado',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Checkbox(
+                                    value: _ventasCredito,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _ventasCredito = value ?? false;
+                                      });
+                                      _loadData();
+                                    },
+                                    checkColor: Colors.white,
+                                    fillColor: MaterialStateProperty.resolveWith<Color>(
+                                      (Set<MaterialState> states) {
+                                        if (states.contains(MaterialState.selected)) {
+                                          return Colors.white.withOpacity(0.3);
+                                        }
+                                        return Colors.transparent;
+                                      },
+                                    ),
+                                    side: const BorderSide(color: Colors.white, width: 1.5),
+                                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  const SizedBox(width: 2),
+                                  const Text(
+                                    'Crédito',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _buildFilteringWordFieldInAppBar(),
+                              ),
+                            ],
+                          );
+                        }
                       },
                     )
                   : (widget.reportType == ReportType.codigos || widget.reportType == ReportType.todocodigos)
@@ -5317,15 +5691,15 @@ class _ReportScreenState extends State<ReportScreen> {
             sortAscending: _sortAscending,
             filteringWord: filteringWord.isNotEmpty ? filteringWord : null,
             selectedRubroCode: _selectedRubroCode,
+            isLoadingDetail: _isLoadingGastosDetail,
             onRubroSelected: (rubroCode) {
               debugPrint('🔍 [ReportScreen] Rubro 선택 콜백 호출: $rubroCode');
               setState(() {
                 _selectedRubroCode = rubroCode;
                 debugPrint('🔍 [ReportScreen] _selectedRubroCode 업데이트: $_selectedRubroCode');
               });
-              // rubro 선택 시 API 재요청 (setState 외부에서 호출)
-              debugPrint('🔍 [ReportScreen] _loadData() 호출 시작');
-              _loadData();
+              // 오른쪽 패널만 갱신하기 위해 별도 메서드 호출
+              _loadGastosDetailOnly(rubroCode);
             },
           ),
         );
@@ -5355,15 +5729,15 @@ class _ReportScreenState extends State<ReportScreen> {
             sortAscending: _sortAscending,
             filteringWord: filteringWord.isNotEmpty ? filteringWord : null,
             selectedRubroCode: _selectedRubroCode,
+            isLoadingDetail: _isLoadingGastosDetail,
             onRubroSelected: (rubroCode) {
               debugPrint('🔍 [ReportScreen] Rubro 선택 콜백 호출: $rubroCode');
               setState(() {
                 _selectedRubroCode = rubroCode;
                 debugPrint('🔍 [ReportScreen] _selectedRubroCode 업데이트: $_selectedRubroCode');
               });
-              // rubro 선택 시 API 재요청 (setState 외부에서 호출)
-              debugPrint('🔍 [ReportScreen] _loadData() 호출 시작');
-              _loadData();
+              // 오른쪽 패널만 갱신하기 위해 별도 메서드 호출
+              _loadGastosDetailOnly(rubroCode);
             },
           ),
         );
@@ -5408,6 +5782,14 @@ class _ReportScreenState extends State<ReportScreen> {
           itemsPerPage: _itemsPerPage,
           horizontalScrollController: _horizontalScrollController,
           reportColor: itemsColor,
+          selectedCategoryCode: _selectedCategoryCode,
+          onCategorySelected: (categoryCode) {
+            debugPrint('🔍 [ReportScreen] Category 선택 콜백 호출: $categoryCode');
+            setState(() {
+              _selectedCategoryCode = categoryCode;
+              debugPrint('🔍 [ReportScreen] _selectedCategoryCode 업데이트: $_selectedCategoryCode');
+            });
+          },
         ),
       );
     }
@@ -5441,6 +5823,24 @@ class _ReportScreenState extends State<ReportScreen> {
           displayedItemsCount: _displayedItemsCount,
           itemsPerPage: _itemsPerPage,
           horizontalScrollController: _horizontalScrollController,
+          selectedCategoryCode: _selectedIngresosCategoryCode,
+          onCategorySelected: (categoryCode) {
+            debugPrint('🔍 [ReportScreen] Ingresos Category 선택 콜백 호출: $categoryCode');
+            setState(() {
+              _selectedIngresosCategoryCode = categoryCode;
+              _selectedIngresosCompanyCode = null; // 카테고리 선택 시 회사 선택 해제
+              debugPrint('🔍 [ReportScreen] _selectedIngresosCategoryCode 업데이트: $_selectedIngresosCategoryCode');
+            });
+          },
+          selectedCompanyCode: _selectedIngresosCompanyCode,
+          onCompanySelected: (companyCode) {
+            debugPrint('🔍 [ReportScreen] Ingresos Company 선택 콜백 호출: $companyCode');
+            setState(() {
+              _selectedIngresosCompanyCode = companyCode;
+              _selectedIngresosCategoryCode = null; // 회사 선택 시 카테고리 선택 해제
+              debugPrint('🔍 [ReportScreen] _selectedIngresosCompanyCode 업데이트: $_selectedIngresosCompanyCode');
+            });
+          },
           reportColor: ingresosColor,
         ),
       );
@@ -5754,7 +6154,13 @@ class _ReportScreenState extends State<ReportScreen> {
               reportColor: _getReportColor(),
               unit: null,
               onRowDoubleTap: (rowData) => _handleClienteRowTap(rowData),
-              onRowTap: null,
+              // detail 화면이 이미 열려있으면 단일 클릭으로도 고객 정보 표시
+              onRowTap: (rowData) {
+                // detail 화면이 열려있을 때만 단일 클릭으로 동작
+                if (_clienteDetailOverlayEntry != null) {
+                  _handleClienteRowTap(rowData);
+                }
+              },
               onSort: (columnIndex, ascending) {
                 setState(() {
                   // 키 목록을 필터링된 데이터에서 가져오기
@@ -7376,11 +7782,18 @@ class _ReportScreenState extends State<ReportScreen> {
     }
   }
 
-  /// Cliente 행 탭 핸들러 - cliente 상세 정보 보기
+  /// Cliente 행 탭 핸들러 - cliente 상세 정보 보기 (모달리스 대화상자)
   void _handleClienteRowTap(Map<String, dynamic> rowData) async {
     if (widget.reportType != ReportType.clientes) return;
     
-    print('🔍 Cliente 행 탭 - rowData: $rowData');
+    debugPrint('═══════════════════════════════════════════════════════════');
+    debugPrint('🔍 [Cliente 행 더블클릭] 이벤트 감지');
+    debugPrint('→ reportType: ${widget.reportType}');
+    debugPrint('→ rowData keys: ${rowData.keys.toList()}');
+    debugPrint('→ _clienteDetailOverlayEntry: ${_clienteDetailOverlayEntry != null ? "존재함" : "null"}');
+    debugPrint('→ _currentClienteDetailData: ${_currentClienteDetailData != null ? "존재함" : "null"}');
+    debugPrint('→ mounted: $mounted');
+    debugPrint('═══════════════════════════════════════════════════════════');
     
     // dni 추출 (다양한 필드명 시도)
     final dni = rowData['dni'] ?? 
@@ -7392,7 +7805,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 rowData['Documento'];
     
     if (dni == null || dni.toString().isEmpty) {
-      print('❌ dni가 없습니다. rowData keys: ${rowData.keys.toList()}');
+      debugPrint('❌ [Cliente 행 더블클릭] dni가 없습니다. rowData keys: ${rowData.keys.toList()}');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('DNI 정보를 찾을 수 없습니다.')),
@@ -7402,14 +7815,19 @@ class _ReportScreenState extends State<ReportScreen> {
     }
     
     final dniStr = dni.toString().trim();
-    print('✅ Cliente 상세 정보 요청 - DNI: $dniStr (cuit 파라미터로 전송)');
+    debugPrint('✅ [Cliente 행 더블클릭] Cliente 상세 정보 요청 - DNI: $dniStr (cuit 파라미터로 전송)');
     
-    // 로딩 다이얼로그 표시
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator()),
-    );
+    // 모달리스 대화상자가 이미 열려있으면 로딩 표시만 업데이트
+    if (_clienteDetailOverlayEntry != null) {
+      debugPrint('📋 [Cliente 행 더블클릭] 모달리스 대화상자가 이미 열려있음 - 내용 업데이트 시작');
+      setState(() {
+        _currentClienteRowData = rowData;
+        _currentClienteDetailData = null; // 로딩 중임을 표시
+      });
+      _updateClienteDetailOverlay();
+    } else {
+      debugPrint('📋 [Cliente 행 더블클릭] 모달리스 대화상자가 열려있지 않음 - 새로 생성 예정');
+    }
     
     try {
       // Cliente 상세 정보 요청 (cuit 파라미터에 dni 값을 전송)
@@ -7417,26 +7835,233 @@ class _ReportScreenState extends State<ReportScreen> {
         cuit: dniStr,
       );
       
-      // 로딩 다이얼로그 닫기
-      if (mounted) Navigator.of(context).pop();
+      debugPrint('✅ [Cliente 행 더블클릭] Cliente 상세 정보 응답 받음');
+      debugPrint('→ clienteDetailData keys: ${clienteDetailData is Map ? (clienteDetailData as Map).keys.toList() : "N/A"}');
       
-      print('✅ Cliente 상세 정보 응답: $clienteDetailData');
-      
-      // Cliente 상세 정보 다이얼로그 표시
+      // 모달리스 대화상자 표시 또는 업데이트
       if (mounted) {
-        _showClienteDetailDialog(clienteDetailData, rowData);
+        debugPrint('📋 [Cliente 행 더블클릭] mounted=true, 대화상자 표시/업데이트 시작');
+        setState(() {
+          _currentClienteDetailData = clienteDetailData;
+          _currentClienteRowData = rowData;
+        });
+        
+        if (_clienteDetailOverlayEntry == null) {
+          debugPrint('📋 [Cliente 행 더블클릭] 첫 번째 열기 - 모달리스 대화상자 생성 및 표시');
+          // 첫 번째 열기: 모달리스 대화상자 생성 및 표시
+          _showClienteDetailOverlay(clienteDetailData, rowData);
+        } else {
+          debugPrint('📋 [Cliente 행 더블클릭] 이미 열려있음 - 내용만 업데이트');
+          // 이미 열려있음: 내용만 업데이트
+          _updateClienteDetailOverlay();
+        }
+        debugPrint('📋 [Cliente 행 더블클릭] 대화상자 표시/업데이트 완료');
+      } else {
+        debugPrint('❌ [Cliente 행 더블클릭] mounted=false, 대화상자 표시 불가');
       }
     } catch (e) {
-      // 로딩 다이얼로그 닫기
-      if (mounted) Navigator.of(context).pop();
-      
-      print('❌ Cliente 상세 정보 요청 실패: $e');
+      debugPrint('❌ [Cliente 행 더블클릭] Cliente 상세 정보 요청 실패: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Cliente 상세 정보를 가져오는 중 오류가 발생했습니다: $e')),
         );
+        // 오류 발생 시 대화상자 닫기
+        _closeClienteDetailOverlay();
       }
     }
+  }
+  
+  /// 모달리스 Cliente 상세 정보 대화상자 표시
+  void _showClienteDetailOverlay(Map<String, dynamic> clienteDetailData, Map<String, dynamic> rowData) {
+    debugPrint('═══════════════════════════════════════════════════════════');
+    debugPrint('📋 [_showClienteDetailOverlay] 모달리스 대화상자 생성 시작');
+    debugPrint('→ mounted: $mounted');
+    
+    if (!mounted) {
+      debugPrint('❌ [_showClienteDetailOverlay] mounted=false, 종료');
+      return;
+    }
+    
+    final overlayState = Overlay.of(context);
+    if (overlayState == null) {
+      debugPrint('❌ [_showClienteDetailOverlay] overlayState=null, 종료');
+      return;
+    }
+    
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isWideScreen = screenWidth >= 800;
+    final reportColor = _getReportColor();
+    
+    debugPrint('→ screenWidth: $screenWidth');
+    debugPrint('→ screenHeight: $screenHeight');
+    debugPrint('→ isWideScreen: $isWideScreen');
+    
+    // 대화상자 크기 설정 (큰 화면: 화면의 2/3, 작은 화면: 전체 화면)
+    final dialogWidth = isWideScreen ? screenWidth * 2 / 3 : screenWidth;
+    final dialogHeight = isWideScreen ? screenHeight * 0.9 : screenHeight;
+    
+    debugPrint('→ dialogWidth: $dialogWidth');
+    debugPrint('→ dialogHeight: $dialogHeight');
+    
+    _clienteDetailOverlayEntry = OverlayEntry(
+      builder: (context) {
+        debugPrint('🔨 [OverlayEntry builder] 빌드 시작');
+        debugPrint('→ isWideScreen: $isWideScreen');
+        debugPrint('→ dialogWidth: $dialogWidth');
+        debugPrint('→ dialogHeight: $dialogHeight');
+        
+        // 큰 화면에서는 배경 없이 대화상자만 표시 (터치 이벤트 차단 최소화)
+        // 작은 화면에서는 전체 화면 사용
+        Widget dialogWidget = Material(
+          color: Colors.transparent,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: isWideScreen ? BorderRadius.circular(8) : null,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 10,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 헤더
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: reportColor,
+                    borderRadius: isWideScreen
+                        ? const BorderRadius.only(
+                            topLeft: Radius.circular(8),
+                            topRight: Radius.circular(8),
+                          )
+                        : null,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Detalle del Cliente',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // 공유 버튼
+                          IconButton(
+                            icon: const Icon(Icons.share, color: Colors.white),
+                            tooltip: 'Compartir (PDF/Excel)',
+                            onPressed: () {
+                              if (_currentClienteDetailData != null) {
+                                _shareClienteDetail(_currentClienteDetailData!);
+                              }
+                            },
+                          ),
+                          // 닫기 버튼
+                          IconButton(
+                            icon: const Icon(Icons.close, color: Colors.white),
+                            onPressed: _closeClienteDetailOverlay,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // 내용
+                Expanded(
+                  child: _currentClienteDetailData == null || _currentClienteRowData == null
+                      ? const Center(child: CircularProgressIndicator())
+                      : SingleChildScrollView(
+                          padding: const EdgeInsets.all(16),
+                          child: _buildClienteDetailContent(_currentClienteDetailData!, _currentClienteRowData!),
+                        ),
+                ),
+              ],
+            ),
+          ),
+        );
+        
+        if (isWideScreen) {
+          // 큰 화면: 오른쪽에만 대화상자 표시, 배경 없음
+          return Positioned(
+            right: 16,
+            top: 16,
+            width: dialogWidth,
+            height: dialogHeight,
+            child: dialogWidget,
+          );
+        } else {
+          // 작은 화면: 전체 화면 사용
+          return Positioned.fill(
+            child: dialogWidget,
+          );
+        }
+      },
+    );
+    
+    debugPrint('📋 [_showClienteDetailOverlay] OverlayEntry 생성 완료, Overlay에 삽입 시작');
+    overlayState.insert(_clienteDetailOverlayEntry!);
+    debugPrint('✅ [_showClienteDetailOverlay] Overlay에 삽입 완료');
+    
+    // OverlayEntry가 설정된 후 setState를 호출하여 위젯을 다시 빌드하고 onRowTap이 활성화되도록 함
+    if (mounted) {
+      setState(() {
+        // 상태 업데이트를 위한 빈 setState (onRowTap이 다시 평가되도록 함)
+      });
+    }
+    
+    debugPrint('═══════════════════════════════════════════════════════════');
+  }
+  
+  /// 모달리스 Cliente 상세 정보 대화상자 업데이트
+  void _updateClienteDetailOverlay() {
+    debugPrint('═══════════════════════════════════════════════════════════');
+    debugPrint('📋 [_updateClienteDetailOverlay] 대화상자 업데이트 시작');
+    debugPrint('→ _clienteDetailOverlayEntry: ${_clienteDetailOverlayEntry != null ? "존재함" : "null"}');
+    debugPrint('→ mounted: $mounted');
+    debugPrint('→ _currentClienteDetailData: ${_currentClienteDetailData != null ? "존재함" : "null"}');
+    debugPrint('→ _currentClienteRowData: ${_currentClienteRowData != null ? "존재함" : "null"}');
+    
+    if (_clienteDetailOverlayEntry == null || !mounted || _currentClienteDetailData == null || _currentClienteRowData == null) {
+      debugPrint('❌ [_updateClienteDetailOverlay] 조건 불만족으로 종료');
+      debugPrint('═══════════════════════════════════════════════════════════');
+      return;
+    }
+    
+    // OverlayEntry를 다시 생성하여 내용 업데이트
+    debugPrint('📋 [_updateClienteDetailOverlay] 기존 OverlayEntry 제거 및 새로 생성');
+    final oldEntry = _clienteDetailOverlayEntry!;
+    _showClienteDetailOverlay(_currentClienteDetailData!, _currentClienteRowData!);
+    oldEntry.remove();
+    debugPrint('✅ [_updateClienteDetailOverlay] 대화상자 업데이트 완료');
+    debugPrint('═══════════════════════════════════════════════════════════');
+  }
+  
+  /// 모달리스 Cliente 상세 정보 대화상자 닫기
+  void _closeClienteDetailOverlay() {
+    debugPrint('═══════════════════════════════════════════════════════════');
+    debugPrint('📋 [_closeClienteDetailOverlay] 대화상자 닫기 시작');
+    debugPrint('→ _clienteDetailOverlayEntry: ${_clienteDetailOverlayEntry != null ? "존재함" : "null"}');
+    
+    if (_clienteDetailOverlayEntry != null) {
+      _clienteDetailOverlayEntry!.remove();
+      _clienteDetailOverlayEntry = null;
+      _currentClienteDetailData = null;
+      _currentClienteRowData = null;
+      debugPrint('✅ [_closeClienteDetailOverlay] 대화상자 닫기 완료');
+    } else {
+      debugPrint('⚠️ [_closeClienteDetailOverlay] OverlayEntry가 이미 null임');
+    }
+    debugPrint('═══════════════════════════════════════════════════════════');
   }
 
   /// vcode 행 탭 핸들러 - vdetalle 상세 정보 보기

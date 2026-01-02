@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'items_date_range_selector.dart';
 import 'report_utils.dart';
 import '../utils/platform_utils.dart';
+import 'report_appbar_builders.dart';
 
 /// 보고서 헤더 빌더들
 class ReportHeaderBuilders {
@@ -133,15 +134,36 @@ class ReportHeaderBuilders {
                           onUnitChanged: onUnitChanged,
                         ),
                         const SizedBox(width: 8),
-                        // 날짜 범위 선택 버튼 (하나의 달력)
-                        Expanded(
-                          child: buildDateRangeButton(
+                        // 달력 버튼 2개 (Desde, Hasta)
+                        SizedBox(
+                          width: 90,
+                          child: ReportAppBarBuilders.buildSingleDateButton(
                             context: context,
-                            startDate: startDate,
-                            endDate: endDate,
-                            unit: unit,
+                            label: 'Desde',
+                            date: startDate,
                             reportColor: reportColor,
-                            onTap: () => selectDateRange(context, startDate, endDate, unit, reportColor, reportType, onDateRangeChanged),
+                            reportType: reportType,
+                            unit: unit,
+                            onDateSelected: (date) {
+                              final finalEndDate = endDate ?? date;
+                              onDateRangeChanged(date, finalEndDate);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        SizedBox(
+                          width: 90,
+                          child: ReportAppBarBuilders.buildSingleDateButton(
+                            context: context,
+                            label: 'Hasta',
+                            date: endDate,
+                            reportColor: reportColor,
+                            reportType: reportType,
+                            unit: unit,
+                            onDateSelected: (date) {
+                              final finalStartDate = startDate ?? date;
+                              onDateRangeChanged(finalStartDate, date);
+                            },
                           ),
                         ),
                         const SizedBox(width: 8),

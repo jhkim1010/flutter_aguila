@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'report_utils.dart';
 import '../utils/platform_utils.dart';
 
@@ -17,6 +18,7 @@ class GastosBuilder {
     String? filteringWord,
     String? selectedRubroCode,
     Function(String?)? onRubroSelected,
+    bool isLoadingDetail = false,
   }) {
     // summary 카드
     Widget? summaryCard;
@@ -49,7 +51,6 @@ class GastosBuilder {
     }
 
     // data.detail 테이블 (기존 구조)
-    // 서버에서 이미 rubro 필터링이 적용되어 있으므로 클라이언트 측 필터링 불필요
     Widget? detailTable;
     if (data.containsKey('data') && 
         data['data'] is Map &&
@@ -63,7 +64,6 @@ class GastosBuilder {
       debugPrint('   → filteringWord: $filteringWord');
       
       // filteringWord 필터 적용: tema 칼럼에서 대소문자 구분 없이 비교
-      // (서버에서 rubro 필터링은 이미 적용되었지만, filteringWord는 클라이언트에서 처리)
       if (filteringWord != null && filteringWord.isNotEmpty) {
         final filterLower = filteringWord.toLowerCase();
         final beforeFilterCount = detailList.length;
@@ -95,7 +95,6 @@ class GastosBuilder {
     }
 
     // data 배열이 직접 있는 경우 (새로운 구조)
-    // 서버에서 이미 rubro 필터링이 적용되어 있으므로 클라이언트 측 필터링 불필요
     Widget? dataTable;
     if (data.containsKey('data') && data['data'] is List) {
       var dataList = data['data'] as List;
@@ -106,7 +105,6 @@ class GastosBuilder {
       debugPrint('   → filteringWord: $filteringWord');
       
       // filteringWord 필터 적용: tema 칼럼에서 대소문자 구분 없이 비교
-      // (서버에서 rubro 필터링은 이미 적용되었지만, filteringWord는 클라이언트에서 처리)
       if (filteringWord != null && filteringWord.isNotEmpty) {
         final filterLower = filteringWord.toLowerCase();
         final beforeFilterCount = dataList.length;
@@ -182,61 +180,59 @@ class GastosBuilder {
                 summaryGrid,
                 const SizedBox(height: 24),
               ],
-              // 좌우 분할 레이아웃
-              Expanded(
-                child: Row(
+            // 좌우 분할 레이아웃 (크기 조정 가능)
+            Expanded(
+              child: _ResizableSplitView(
+                leftChild: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 왼쪽: summary_by_rubro (오른쪽의 절반 가량 폭)
-                    Expanded(
-                      flex: 1,
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Resumen por Rubro',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Expanded(
-                              child: SingleChildScrollView(
-                                scrollDirection: Axis.vertical,
-                                child: SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  child: splitSummaryByRubroTable,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                    const Text(
+                      'Resumen por Rubro',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    // 오른쪽: 세부 내용 (detail table)
-                    Expanded(
-                      flex: 2,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Detalle de Gastos',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Expanded(child: tableWidget),
-                        ],
+                    const SizedBox(height: 12),
+                    splitSummaryByRubroTable,
+                  ],
+                ),
+                rightChild: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Detalle de Gastos',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                       ),
+                    ),
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: isLoadingDetail
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  CircularProgressIndicator(
+                                    color: Colors.red,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'Cargando detalles...',
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : tableWidget,
                     ),
                   ],
                 ),
               ),
+            ),
             ],
           ),
         );
@@ -682,9 +678,9 @@ class GastosBuilder {
       scrollDirection: Axis.horizontal,
       child: DataTable(
         columnSpacing: 12,
-        dataRowMinHeight: 48,
-        dataRowMaxHeight: 56,
-        headingRowHeight: 56,
+        dataRowMinHeight: 32,  // items 보고서와 동일하게 2/3로 조정 (48 * 2/3 = 32)
+        dataRowMaxHeight: 37,  // items 보고서와 동일하게 2/3로 조정 (56 * 2/3 ≈ 37)
+        headingRowHeight: 37,  // items 보고서와 동일하게 조정
         headingRowColor: MaterialStateProperty.all(
           reportColor.withOpacity(0.1),
         ),
@@ -969,9 +965,9 @@ class GastosBuilder {
               scrollDirection: Axis.horizontal,
               child: DataTable(
                 columnSpacing: 12,
-                dataRowMinHeight: 48,
-                dataRowMaxHeight: 56,
-                headingRowHeight: 56,
+                dataRowMinHeight: 32,  // items 보고서와 동일하게 2/3로 조정 (48 * 2/3 = 32)
+                dataRowMaxHeight: 37,  // items 보고서와 동일하게 2/3로 조정 (56 * 2/3 ≈ 37)
+                headingRowHeight: 37,  // items 보고서와 동일하게 조정
                 headingRowColor: MaterialStateProperty.all(
                   reportColor.withOpacity(0.1),
                 ),
@@ -1114,22 +1110,23 @@ class GastosBuilder {
             final columnWidth = columnWidths[key] ?? 150.0;
             
             if (isExcludedColumn) {
-              return SizedBox(
-                width: columnWidth + (index < keys.length - 1 ? 12 : 0), // DataTable의 columnSpacing(12)과 일치
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Total',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
+            return SizedBox(
+              width: columnWidth + (index < keys.length - 1 ? 12 : 0), // DataTable의 columnSpacing(12)과 일치
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), // items 보고서와 동일하게 vertical: 8
+                height: 37, // items 보고서와 동일하게 37
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Total',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-              );
+              ),
+            );
             }
             
             final total = totals[key] ?? 0;
@@ -1145,8 +1142,9 @@ class GastosBuilder {
             
             return SizedBox(
               width: columnWidth + (index < keys.length - 1 ? 12 : 0), // DataTable의 columnSpacing(12)과 일치
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), // items 보고서와 동일하게 vertical: 8
+                height: 37, // items 보고서와 동일하게 37
                 child: Align(
                   alignment: Alignment.centerRight,
                   child: Text(
@@ -1162,6 +1160,133 @@ class GastosBuilder {
           }).toList(),
         ),
       ),
+    );
+  }
+}
+
+/// 크기 조정 가능한 분할 뷰 위젯 (Gastos용)
+class _ResizableSplitView extends StatefulWidget {
+  final Widget leftChild;
+  final Widget rightChild;
+
+  const _ResizableSplitView({
+    required this.leftChild,
+    required this.rightChild,
+  });
+
+  @override
+  State<_ResizableSplitView> createState() => _ResizableSplitViewState();
+}
+
+class _ResizableSplitViewState extends State<_ResizableSplitView> {
+  static const String _prefsKey = 'gastos_report_left_panel_width';
+  static const double _defaultLeftWidth = 350.0;
+  static const double _minLeftWidth = 200.0;
+  static const double _maxLeftWidth = 800.0;
+  static const double _dividerWidth = 4.0;
+
+  double _leftWidth = _defaultLeftWidth;
+  bool _isDragging = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedWidth();
+  }
+
+  Future<void> _loadSavedWidth() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedWidth = prefs.getDouble(_prefsKey);
+      if (savedWidth != null && savedWidth >= _minLeftWidth && savedWidth <= _maxLeftWidth) {
+        setState(() {
+          _leftWidth = savedWidth;
+        });
+      }
+    } catch (e) {
+      debugPrint('⚠️ 왼쪽 패널 폭 로드 실패: $e');
+    }
+  }
+
+  Future<void> _saveWidth(double width) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble(_prefsKey, width);
+    } catch (e) {
+      debugPrint('⚠️ 왼쪽 패널 폭 저장 실패: $e');
+    }
+  }
+
+  void _onPanStart(DragStartDetails details) {
+    setState(() {
+      _isDragging = true;
+    });
+  }
+
+  void _onPanUpdate(DragUpdateDetails details, double maxWidth) {
+    final newWidth = _leftWidth + details.delta.dx;
+    final clampedWidth = newWidth.clamp(_minLeftWidth, _maxLeftWidth);
+    
+    if (clampedWidth != _leftWidth) {
+      setState(() {
+        _leftWidth = clampedWidth;
+      });
+    }
+  }
+
+  void _onPanEnd(DragEndDetails details) {
+    setState(() {
+      _isDragging = false;
+    });
+    _saveWidth(_leftWidth);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 왼쪽 패널
+            SizedBox(
+              width: _leftWidth,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: SingleChildScrollView(
+                  child: widget.leftChild,
+                ),
+              ),
+            ),
+            // 구분선 (드래그 가능)
+            GestureDetector(
+              onPanStart: _onPanStart,
+              onPanUpdate: (details) => _onPanUpdate(details, constraints.maxWidth),
+              onPanEnd: _onPanEnd,
+              child: MouseRegion(
+                cursor: SystemMouseCursors.resizeColumn,
+                child: Container(
+                  width: _dividerWidth,
+                  color: _isDragging 
+                      ? Theme.of(context).colorScheme.primary.withOpacity(0.5)
+                      : Colors.grey[300],
+                  child: Center(
+                    child: Container(
+                      width: 2,
+                      height: double.infinity,
+                      color: Colors.grey[400],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            // 오른쪽 패널
+            Expanded(
+              child: widget.rightChild,
+            ),
+          ],
+        );
+      },
     );
   }
 }

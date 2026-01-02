@@ -472,6 +472,10 @@ class _ItemsDateRangeSelectorState extends State<ItemsDateRangeSelector> {
         return Dialog(
           child: Container(
             width: 750,
+            constraints: const BoxConstraints(
+              minHeight: 500,
+              maxHeight: 600,
+            ),
             padding: const EdgeInsets.all(16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -489,142 +493,148 @@ class _ItemsDateRangeSelectorState extends State<ItemsDateRangeSelector> {
                   ),
                 ),
                 // 두 개의 달력
-                StatefulBuilder(
-                  builder: (context, setState) {
-                    return Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                    // 시작일 달력
-                    Expanded(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
+                Expanded(
+                  child: StatefulBuilder(
+                    builder: (context, setState) {
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 8.0),
-                            child: Text(
-                              'Desde',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: reportColor,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: reportColor.withOpacity(0.3),
-                                width: 2,
-                              ),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Theme(
-                              data: Theme.of(context).copyWith(
-                                colorScheme: ColorScheme.light(
-                                  primary: reportColor,
-                                  onPrimary: Colors.white,
-                                  surface: Colors.white,
-                                  onSurface: Colors.black,
-                                ),
-                              ),
-                              child: CalendarDatePicker(
-                                initialDate: selectedStartDate,
-                                firstDate: DateTime(2000),
-                                lastDate: today,
-                                onDateChanged: (date) {
-                                  setState(() {
-                                    selectedStartDate = date;
-                                    // 시작일이 종료일보다 늦으면 종료일도 업데이트
-                                    if (selectedEndDate != null && date.isAfter(selectedEndDate!)) {
-                                      selectedEndDate = date;
-                                    }
-                                  });
-                                },
-                              ),
-                            ),
-                          ),
-                          if (selectedStartDate != null)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8.0),
-                              child: Text(
-                                DateFormat('yyyy-MM-dd').format(selectedStartDate!),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                        const SizedBox(width: 16),
-                        // 종료일 달력
-                        Expanded(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 8.0),
-                                child: Text(
-                                  'Hasta',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: reportColor,
-                                  ),
-                                ),
-                              ),
-                              Container(
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: reportColor.withOpacity(0.3),
-                                    width: 2,
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Theme(
-                                  data: Theme.of(context).copyWith(
-                                    colorScheme: ColorScheme.light(
-                                      primary: reportColor,
-                                      onPrimary: Colors.white,
-                                      surface: Colors.white,
-                                      onSurface: Colors.black,
-                                    ),
-                                  ),
-                                  child: CalendarDatePicker(
-                                    initialDate: selectedEndDate,
-                                    firstDate: selectedStartDate ?? DateTime(2000),
-                                    lastDate: today,
-                                    onDateChanged: (date) {
-                                      setState(() {
-                                        selectedEndDate = date;
-                                        // 종료일이 시작일보다 이전이면 시작일도 업데이트
-                                        if (selectedStartDate != null && date.isBefore(selectedStartDate!)) {
-                                          selectedStartDate = date;
-                                        }
-                                      });
-                                    },
-                                  ),
-                                ),
-                              ),
-                              if (selectedEndDate != null)
+                          // 시작일 달력
+                          Expanded(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
                                 Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
+                                  padding: const EdgeInsets.only(bottom: 8.0),
                                   child: Text(
-                                    DateFormat('yyyy-MM-dd').format(selectedEndDate!),
+                                    'Desde',
                                     style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[600],
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: reportColor,
                                     ),
                                   ),
                                 ),
-                            ],
+                                Expanded(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: reportColor.withOpacity(0.3),
+                                        width: 2,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Theme(
+                                      data: Theme.of(context).copyWith(
+                                        colorScheme: ColorScheme.light(
+                                          primary: reportColor,
+                                          onPrimary: Colors.white,
+                                          surface: Colors.white,
+                                          onSurface: Colors.black,
+                                        ),
+                                      ),
+                                      child: CalendarDatePicker(
+                                        initialDate: selectedStartDate,
+                                        firstDate: DateTime(2000),
+                                        lastDate: today,
+                                        onDateChanged: (date) {
+                                          setState(() {
+                                            selectedStartDate = date;
+                                            // 시작일이 종료일보다 늦으면 종료일도 업데이트
+                                            if (selectedEndDate != null && date.isAfter(selectedEndDate!)) {
+                                              selectedEndDate = date;
+                                            }
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                if (selectedStartDate != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 8.0),
+                                    child: Text(
+                                      DateFormat('yyyy-MM-dd').format(selectedStartDate!),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
-                    );
-                  },
+                          const SizedBox(width: 16),
+                          // 종료일 달력
+                          Expanded(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 8.0),
+                                  child: Text(
+                                    'Hasta',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: reportColor,
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: reportColor.withOpacity(0.3),
+                                        width: 2,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Theme(
+                                      data: Theme.of(context).copyWith(
+                                        colorScheme: ColorScheme.light(
+                                          primary: reportColor,
+                                          onPrimary: Colors.white,
+                                          surface: Colors.white,
+                                          onSurface: Colors.black,
+                                        ),
+                                      ),
+                                      child: CalendarDatePicker(
+                                        initialDate: selectedEndDate,
+                                        firstDate: selectedStartDate ?? DateTime(2000),
+                                        lastDate: today,
+                                        onDateChanged: (date) {
+                                          setState(() {
+                                            selectedEndDate = date;
+                                            // 종료일이 시작일보다 이전이면 시작일도 업데이트
+                                            if (selectedStartDate != null && date.isBefore(selectedStartDate!)) {
+                                              selectedStartDate = date;
+                                            }
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                if (selectedEndDate != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 8.0),
+                                    child: Text(
+                                      DateFormat('yyyy-MM-dd').format(selectedEndDate!),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
                 ),
                 const SizedBox(height: 16),
                 // 버튼

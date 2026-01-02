@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, kDebugMode;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
@@ -8,9 +8,20 @@ import 'l10n/app_localizations.dart';
 import 'screens/main_connection_screen.dart';
 import 'screens/biometric_auth_screen.dart';
 import 'services/config_service.dart';
+import 'utils/log_file_writer.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // 로그 파일 작성자 초기화 (디버그 모드에서만)
+  if (kDebugMode) {
+    await LogFileWriter.initialize();
+    setupFileLogging();
+    final logPath = LogFileWriter.getLogFilePath();
+    if (logPath != null) {
+      debugPrint('📝 로그 파일 경로: $logPath');
+    }
+  }
   
   // ConfigService 초기화
   await ConfigService().initialize();
@@ -105,7 +116,7 @@ class _MyAppState extends State<MyApp> {
       ],
       locale: _locale ?? const Locale('es', ''),
       home: Builder(
-        builder: (context) => MainConnectionScreen(
+        builder: (context) => BiometricAuthScreen(
           onLanguageChanged: changeLocale,
           currentLocale: _locale ?? const Locale('es', ''),
         ),
