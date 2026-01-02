@@ -356,9 +356,48 @@ class ExcelService {
     } else {
       // 다른 보고서들은 기존 로직 사용
       
+      // clientes 보고서의 경우 top_localidades와 top_provincias 처리
+      Map<String, dynamic>? filteredData = data;
+      bool hasTopLocalidades = false;
+      bool hasTopProvincias = false;
+      List<dynamic>? topLocalidadesData;
+      List<dynamic>? topProvinciasData;
+      
+      if (reportType == ReportType.clientes && data != null) {
+        filteredData = Map<String, dynamic>.from(data);
+        
+        // top_localidades가 존재하고 비어있지 않으면 저장 후 제거
+        if (filteredData.containsKey('top_localidades') && 
+            filteredData['top_localidades'] != null &&
+            filteredData['top_localidades'] is List) {
+          final localidades = filteredData['top_localidades'] as List;
+          if (localidades.isNotEmpty) {
+            hasTopLocalidades = true;
+            topLocalidadesData = localidades;
+            print('📋 clientes 보고서 Excel 생성 - top_localidades 포함됨 (${localidades.length}개)');
+          }
+        }
+        
+        // top_provincias가 존재하고 비어있지 않으면 저장 후 제거
+        if (filteredData.containsKey('top_provincias') && 
+            filteredData['top_provincias'] != null &&
+            filteredData['top_provincias'] is List) {
+          final provincias = filteredData['top_provincias'] as List;
+          if (provincias.isNotEmpty) {
+            hasTopProvincias = true;
+            topProvinciasData = provincias;
+            print('📋 clientes 보고서 Excel 생성 - top_provincias 포함됨 (${provincias.length}개)');
+          }
+        }
+        
+        // filteredData에서 제거 (나중에 별도 섹션으로 추가)
+        filteredData.remove('top_localidades');
+        filteredData.remove('top_provincias');
+      }
+      
       // Summary 정보가 있으면 표시
-      if (data != null && data.containsKey('summary') && data['summary'] is Map) {
-        final summary = data['summary'] as Map<String, dynamic>;
+      if (filteredData != null && filteredData.containsKey('summary') && filteredData['summary'] is Map) {
+        final summary = filteredData['summary'] as Map<String, dynamic>;
         sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
             .value = TextCellValue('Resumen:');
         sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
@@ -385,8 +424,8 @@ class ExcelService {
       }
       
       // 데이터 리스트가 있으면 테이블로 표시
-      if (data != null && data.containsKey('data') && data['data'] is List) {
-        final dataList = data['data'] as List;
+      if (filteredData != null && filteredData.containsKey('data') && filteredData['data'] is List) {
+        final dataList = filteredData['data'] as List;
         
         if (dataList.isEmpty) {
           sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
@@ -422,6 +461,79 @@ class ExcelService {
                 _setCellValue(cell, key, value);
               }
               currentRow++;
+            }
+          }
+        }
+      }
+      
+      // clientes 보고서의 경우 top_localidades와 top_provincias 추가
+      if (reportType == ReportType.clientes) {
+        // top_localidades 추가
+        if (hasTopLocalidades && topLocalidadesData != null && topLocalidadesData.isNotEmpty) {
+          currentRow++; // 빈 줄
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+              .value = TextCellValue('Top Localidades:');
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+              .cellStyle = CellStyle(bold: true, fontSize: 14);
+          currentRow++;
+          
+          // 헤더 행
+          if (topLocalidadesData.first is Map) {
+            final firstItem = topLocalidadesData.first as Map<String, dynamic>;
+            final keys = firstItem.keys.toList();
+            for (int col = 0; col < keys.length; col++) {
+              final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: currentRow));
+              cell.value = TextCellValue(keys[col]);
+              cell.cellStyle = CellStyle(bold: true);
+            }
+            currentRow++;
+            
+            // 데이터 행들
+            for (var item in topLocalidadesData) {
+              if (item is Map<String, dynamic>) {
+                for (int col = 0; col < keys.length; col++) {
+                  final key = keys[col];
+                  final value = item[key];
+                  final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: currentRow));
+                  _setCellValue(cell, key, value);
+                }
+                currentRow++;
+              }
+            }
+          }
+        }
+        
+        // top_provincias 추가
+        if (hasTopProvincias && topProvinciasData != null && topProvinciasData.isNotEmpty) {
+          currentRow++; // 빈 줄
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+              .value = TextCellValue('Top Provincias:');
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+              .cellStyle = CellStyle(bold: true, fontSize: 14);
+          currentRow++;
+          
+          // 헤더 행
+          if (topProvinciasData.first is Map) {
+            final firstItem = topProvinciasData.first as Map<String, dynamic>;
+            final keys = firstItem.keys.toList();
+            for (int col = 0; col < keys.length; col++) {
+              final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: currentRow));
+              cell.value = TextCellValue(keys[col]);
+              cell.cellStyle = CellStyle(bold: true);
+            }
+            currentRow++;
+            
+            // 데이터 행들
+            for (var item in topProvinciasData) {
+              if (item is Map<String, dynamic>) {
+                for (int col = 0; col < keys.length; col++) {
+                  final key = keys[col];
+                  final value = item[key];
+                  final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: currentRow));
+                  _setCellValue(cell, key, value);
+                }
+                currentRow++;
+              }
             }
           }
         }

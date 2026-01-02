@@ -96,6 +96,7 @@ class _ReportScreenState extends State<ReportScreen> {
   bool _ventasCredito = false; // Ventas 보고서용 credito 필터
   bool _alertasVCancelado = false; // Alertas 보고서용 v_cancelado 필터
   bool _alertasJefe = false; // Alertas 보고서용 jefe 필터
+  bool _alertasWeb = false; // Alertas 보고서용 web 필터
   
   // Clientes 보고서용 필터 상태
   String? _clientesResponsableIns; // "Responsable Ins", "Monotributista", "Sin Rubro"
@@ -344,11 +345,14 @@ class _ReportScreenState extends State<ReportScreen> {
         
         _lastFilteringWord = currentWord;
         
-        // Alertas 보고서의 경우 VCancelado 및 Jefe 버튼 상태 동기화
+        // Alertas 보고서의 경우 VCancelado, Jefe 버튼 상태 동기화
+        // WEB 버튼은 filteringWord와 무관하므로 동기화하지 않음
         // setState를 debounce 후에만 호출하여 키보드 이벤트 충돌 방지
         if (widget.reportType == ReportType.alertas) {
-          final newVCancelado = currentWord.toLowerCase() == 'vcancelado';
-          final newJefe = currentWord.toLowerCase() == 'jefe';
+          final lowerWord = currentWord.toLowerCase();
+          final newVCancelado = lowerWord == 'vcancelado';
+          final newJefe = lowerWord == 'jefe';
+          // WEB은 filteringWord와 무관하므로 동기화하지 않음
           if (_alertasVCancelado != newVCancelado || _alertasJefe != newJefe) {
             setState(() {
               _alertasVCancelado = newVCancelado;
@@ -472,42 +476,63 @@ class _ReportScreenState extends State<ReportScreen> {
           widget.reportType == ReportType.gastos ||
           widget.reportType == ReportType.alertas ||
           widget.reportType == ReportType.ventas) {
-        final filteringWord = _filteringWordController.text.trim().toLowerCase();
-        if (filteringWord.isNotEmpty) {
+        // Alertas 보고서의 경우 WEB 버튼이 활성화되면 progname과 evento 필터 모두 적용
+        if (widget.reportType == ReportType.alertas && _alertasWeb) {
+          final filteringWord = _filteringWordController.text.trim().toLowerCase();
           dataList = dataList.where((item) {
             if (item is Map<String, dynamic>) {
-              if (widget.reportType == ReportType.items) {
-                final codigo1 = item['codigo1']?.toString().toLowerCase() ?? '';
-                final desc1 = item['desc1']?.toString().toLowerCase() ?? '';
-                return codigo1.contains(filteringWord) || desc1.contains(filteringWord);
-              } else if (widget.reportType == ReportType.ingresos) {
-                final codigo = item['codigo']?.toString().toLowerCase() ?? '';
-                final descripcion = item['descripcion']?.toString().toLowerCase() ?? '';
-                return codigo.contains(filteringWord) || descripcion.contains(filteringWord);
-              } else if (widget.reportType == ReportType.gastos) {
-                // gastos 필터링: tema 칼럼에서 대소문자 구분 없이 비교
-                final tema = item['tema']?.toString().toLowerCase() ?? '';
-                return tema.contains(filteringWord);
-              } else if (widget.reportType == ReportType.alertas) {
-                // alertas 필터링 로직: evento 필드에서 검색
-                final evento = item['evento']?.toString().toLowerCase() ?? '';
-                return evento.contains(filteringWord);
-              } else if (widget.reportType == ReportType.ventas) {
-                if (item.containsKey('clientenombre')) {
-                  final clientenombre = item['clientenombre']?.toString().toLowerCase() ?? '';
-                  return clientenombre.contains(filteringWord);
-                } else {
-                  final fecha = item['fecha']?.toString().toLowerCase() ?? '';
-                  final sucursal = item['sucursal']?.toString().toLowerCase() ?? '';
-                  final nencargado = item['nencargado']?.toString().toLowerCase() ?? '';
-                  return fecha.contains(filteringWord) || 
-                         sucursal.contains(filteringWord) ||
-                         nencargado.contains(filteringWord);
-                }
+              final progname = item['progname']?.toString().toLowerCase() ?? '';
+              final evento = item['evento']?.toString().toLowerCase() ?? '';
+              // progname에 'web'이 포함되어야 하고
+              final hasWeb = progname.contains('web');
+              // filteringWord가 비어있지 않으면 evento에도 포함되어야 함
+              if (filteringWord.isNotEmpty) {
+                return hasWeb && evento.contains(filteringWord);
+              } else {
+                return hasWeb;
               }
             }
             return false;
           }).toList();
+        } else {
+          // 일반 filteringWord 필터링
+          final filteringWord = _filteringWordController.text.trim().toLowerCase();
+          if (filteringWord.isNotEmpty) {
+            dataList = dataList.where((item) {
+              if (item is Map<String, dynamic>) {
+                if (widget.reportType == ReportType.items) {
+                  final codigo1 = item['codigo1']?.toString().toLowerCase() ?? '';
+                  final desc1 = item['desc1']?.toString().toLowerCase() ?? '';
+                  return codigo1.contains(filteringWord) || desc1.contains(filteringWord);
+                } else if (widget.reportType == ReportType.ingresos) {
+                  final codigo = item['codigo']?.toString().toLowerCase() ?? '';
+                  final descripcion = item['descripcion']?.toString().toLowerCase() ?? '';
+                  return codigo.contains(filteringWord) || descripcion.contains(filteringWord);
+                } else if (widget.reportType == ReportType.gastos) {
+                  // gastos 필터링: tema 칼럼에서 대소문자 구분 없이 비교
+                  final tema = item['tema']?.toString().toLowerCase() ?? '';
+                  return tema.contains(filteringWord);
+                } else if (widget.reportType == ReportType.alertas) {
+                  // alertas 필터링 로직: evento 필드에서 검색
+                  final evento = item['evento']?.toString().toLowerCase() ?? '';
+                  return evento.contains(filteringWord);
+                } else if (widget.reportType == ReportType.ventas) {
+                  if (item.containsKey('clientenombre')) {
+                    final clientenombre = item['clientenombre']?.toString().toLowerCase() ?? '';
+                    return clientenombre.contains(filteringWord);
+                  } else {
+                    final fecha = item['fecha']?.toString().toLowerCase() ?? '';
+                    final sucursal = item['sucursal']?.toString().toLowerCase() ?? '';
+                    final nencargado = item['nencargado']?.toString().toLowerCase() ?? '';
+                    return fecha.contains(filteringWord) || 
+                           sucursal.contains(filteringWord) ||
+                           nencargado.contains(filteringWord);
+                  }
+                }
+              }
+              return false;
+            }).toList();
+          }
         }
       }
       
@@ -2299,8 +2324,8 @@ class _ReportScreenState extends State<ReportScreen> {
       }
     } else {
       // 다른 보고서의 경우 기존 로직 사용
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent * 0.8) {
-      _loadMoreItems();
+      if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent * 0.8) {
+        _loadMoreItems();
       }
     }
   }
@@ -2833,7 +2858,7 @@ class _ReportScreenState extends State<ReportScreen> {
                                 ],
                               ),
                               const SizedBox(height: 4),
-                              // 두 번째 줄: 날짜 선택기, Sucursal 선택기, 필터링 단어 필드
+                              // 두 번째 줄: 날짜 선택기, 버튼들, Sucursal 선택기, 필터링 단어 필드
                               Row(
                                 children: [
                                   Flexible(
@@ -2853,6 +2878,51 @@ class _ReportScreenState extends State<ReportScreen> {
                                       },
                                     ),
                                   ),
+                                  // Alertas 보고서의 경우 VCancelado, Jefe, WEB 버튼 추가
+                                  if (widget.reportType == ReportType.alertas) ...[
+                                    const SizedBox(width: 8),
+                                    _buildAlertasFilterButton('VCancelado', _alertasVCancelado, () {
+                                      setState(() {
+                                        _alertasVCancelado = !_alertasVCancelado;
+                                        _alertasJefe = false;
+                                        _alertasWeb = false;
+                                        if (_alertasVCancelado) {
+                                          _filteringWordController.text = 'VCancelado';
+                                        } else {
+                                          _filteringWordController.text = '';
+                                        }
+                                      });
+                                      _loadData();
+                                    }),
+                                    const SizedBox(width: 4),
+                                    _buildAlertasFilterButton('Jefe', _alertasJefe, () {
+                                      setState(() {
+                                        _alertasJefe = !_alertasJefe;
+                                        _alertasVCancelado = false;
+                                        _alertasWeb = false;
+                                        if (_alertasJefe) {
+                                          _filteringWordController.text = 'Jefe';
+                                        } else {
+                                          _filteringWordController.text = '';
+                                        }
+                                      });
+                                      _loadData();
+                                    }),
+                                    const SizedBox(width: 4),
+                                    _buildAlertasFilterButton('WEB', _alertasWeb, () {
+                                      setState(() {
+                                        _alertasWeb = !_alertasWeb;
+                                        _alertasVCancelado = false;
+                                        _alertasJefe = false;
+                                        if (_alertasWeb) {
+                                          _filteringWordController.text = 'WEB';
+                                        } else {
+                                          _filteringWordController.text = '';
+                                        }
+                                      });
+                                      _loadData();
+                                    }),
+                                  ],
                                   if (_availableSucursales != null && _availableSucursales!.length > 1) ...[
                                     const SizedBox(width: 8),
                                     Flexible(
@@ -2892,27 +2962,27 @@ class _ReportScreenState extends State<ReportScreen> {
                             Row(
                               children: [
                                 Flexible(
-                              child: ItemsDateRangeSelector(
-                                reportType: widget.reportType,
+                                  child: ItemsDateRangeSelector(
+                                    reportType: widget.reportType,
                                     startDate: widget.reportType == ReportType.fventas ? _ventasStartDate : _itemsStartDate,
                                     endDate: widget.reportType == ReportType.fventas ? _ventasEndDate : _itemsEndDate,
-                                onDateRangeChanged: (startDate, endDate) {
-                                  setState(() {
+                                    onDateRangeChanged: (startDate, endDate) {
+                                      setState(() {
                                         if (widget.reportType == ReportType.fventas) {
                                           _ventasStartDate = startDate;
                                           _ventasEndDate = endDate;
                                         } else {
-                                    _itemsStartDate = startDate;
-                                    _itemsEndDate = endDate;
+                                          _itemsStartDate = startDate;
+                                          _itemsEndDate = endDate;
                                         }
-                                  });
+                                      });
                                       if (widget.onItemsDateRangeChanged != null && widget.reportType != ReportType.fventas) {
-                                    widget.onItemsDateRangeChanged!(startDate, endDate);
-                                  }
-                                  _loadData();
-                                },
-                              ),
-                            ),
+                                        widget.onItemsDateRangeChanged!(startDate, endDate);
+                                      }
+                                      _loadData();
+                                    },
+                                  ),
+                                ),
                             if (_availableSucursales != null && _availableSucursales!.length > 1) ...[
                                   const SizedBox(width: 8),
                                   Flexible(
@@ -4726,7 +4796,7 @@ class _ReportScreenState extends State<ReportScreen> {
                               ],
                             ),
                             const SizedBox(height: 4),
-                            // 두 번째 줄: 날짜 선택기, Sucursal 선택기, 필터링 단어 필드
+                            // 두 번째 줄: 날짜 선택기, 버튼들, Sucursal 선택기, 필터링 단어 필드
                             Row(
                               children: [
                                 Flexible(
@@ -4746,6 +4816,50 @@ class _ReportScreenState extends State<ReportScreen> {
                                     },
                                   ),
                                 ),
+                                // Alertas 보고서의 경우 VCancelado, Jefe, WEB 버튼 추가
+                                if (widget.reportType == ReportType.alertas) ...[
+                                  const SizedBox(width: 8),
+                                  _buildAlertasFilterButton('VCancelado', _alertasVCancelado, () {
+                                    setState(() {
+                                      _alertasVCancelado = !_alertasVCancelado;
+                                      _alertasJefe = false;
+                                      _alertasWeb = false;
+                                      if (_alertasVCancelado) {
+                                        _filteringWordController.text = 'VCancelado';
+                                      } else {
+                                        _filteringWordController.text = '';
+                                      }
+                                    });
+                                    _loadData();
+                                  }),
+                                  const SizedBox(width: 4),
+                                  _buildAlertasFilterButton('Jefe', _alertasJefe, () {
+                                    setState(() {
+                                      _alertasJefe = !_alertasJefe;
+                                      _alertasVCancelado = false;
+                                      _alertasWeb = false;
+                                      if (_alertasJefe) {
+                                        _filteringWordController.text = 'Jefe';
+                                      } else {
+                                        _filteringWordController.text = '';
+                                      }
+                                    });
+                                    _loadData();
+                                  }),
+                                  const SizedBox(width: 4),
+                                  _buildAlertasFilterButton('WEB', _alertasWeb, () {
+                                    setState(() {
+                                      _alertasWeb = !_alertasWeb;
+                                      _alertasVCancelado = false;
+                                      _alertasJefe = false;
+                                      // WEB 버튼은 filteringWord를 설정하지 않음
+                                      if (!_alertasWeb) {
+                                        _filteringWordController.text = '';
+                                      }
+                                    });
+                                    _loadData();
+                                  }),
+                                ],
                                 if (_availableSucursales != null && _availableSucursales!.length > 1) ...[
                                   const SizedBox(width: 8),
                                   Flexible(
@@ -5886,52 +6000,73 @@ class _ReportScreenState extends State<ReportScreen> {
         // Items, Ingresos, Gastos, Alertas 및 Ventas 보고서의 경우 filteringWord 필터 적용
         List<dynamic> filteredDataList = dataList;
         if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas || widget.reportType == ReportType.ventas) {
-          final filteringWord = _filteringWordController.text.trim().toLowerCase();
-          if (filteringWord.isNotEmpty) {
+          // Alertas 보고서의 경우 WEB 버튼이 활성화되면 progname과 evento 필터 모두 적용
+          if (widget.reportType == ReportType.alertas && _alertasWeb) {
+            final filteringWord = _filteringWordController.text.trim().toLowerCase();
             filteredDataList = dataList.where((item) {
               if (item is Map<String, dynamic>) {
-                // Items 보고서: codigo1, desc1 사용
-                // Ingresos 보고서: codigo, descripcion 사용
-                // Gastos 보고서: codigo, descripcion, concepto 사용
-                // Alertas 보고서: codigo, descripcion, mensaje, tipo 사용
-                // Ventas 보고서: vcode, vendedor, clientenombre 등 주요 필드에서 검색
-                if (widget.reportType == ReportType.items) {
-                  final codigo1 = item['codigo1']?.toString().toLowerCase() ?? '';
-                  final desc1 = item['desc1']?.toString().toLowerCase() ?? '';
-                  return codigo1.contains(filteringWord) || desc1.contains(filteringWord);
-                } else if (widget.reportType == ReportType.ingresos) {
-                  final codigo = item['codigo']?.toString().toLowerCase() ?? '';
-                  final descripcion = item['descripcion']?.toString().toLowerCase() ?? '';
-                  return codigo.contains(filteringWord) || descripcion.contains(filteringWord);
-                } else if (widget.reportType == ReportType.gastos) {
-                  // gastos 필터링: tema 칼럼에서 대소문자 구분 없이 비교
-                  final tema = item['tema']?.toString().toLowerCase() ?? '';
-                  return tema.contains(filteringWord);
-                } else if (widget.reportType == ReportType.alertas) {
-                  // alertas 필터링 로직: evento 필드에서 검색
-                  final evento = item['evento']?.toString().toLowerCase() ?? '';
-                  return evento.contains(filteringWord);
-                } else if (widget.reportType == ReportType.ventas) {
-                  // Ventas 보고서 필터링
-                  // vcode unit: clientenombre에서 검색
-                  // day/month/year unit: fecha, sucursal 등에서 검색
-                  if (item.containsKey('clientenombre')) {
-                    // vcode unit
-                    final clientenombre = item['clientenombre']?.toString().toLowerCase() ?? '';
-                    return clientenombre.contains(filteringWord);
-                  } else {
-                    // day/month/year unit: fecha, sucursal 등에서 검색
-                    final fecha = item['fecha']?.toString().toLowerCase() ?? '';
-                    final sucursal = item['sucursal']?.toString().toLowerCase() ?? '';
-                    final nencargado = item['nencargado']?.toString().toLowerCase() ?? '';
-                    return fecha.contains(filteringWord) || 
-                           sucursal.contains(filteringWord) ||
-                           nencargado.contains(filteringWord);
-                  }
+                final progname = item['progname']?.toString().toLowerCase() ?? '';
+                final evento = item['evento']?.toString().toLowerCase() ?? '';
+                // progname에 'web'이 포함되어야 하고
+                final hasWeb = progname.contains('web');
+                // filteringWord가 비어있지 않으면 evento에도 포함되어야 함
+                if (filteringWord.isNotEmpty) {
+                  return hasWeb && evento.contains(filteringWord);
+                } else {
+                  return hasWeb;
                 }
               }
               return false;
             }).toList();
+          } else {
+            // 일반 filteringWord 필터링
+            final filteringWord = _filteringWordController.text.trim().toLowerCase();
+            if (filteringWord.isNotEmpty) {
+              filteredDataList = dataList.where((item) {
+                if (item is Map<String, dynamic>) {
+                  // Items 보고서: codigo1, desc1 사용
+                  // Ingresos 보고서: codigo, descripcion 사용
+                  // Gastos 보고서: codigo, descripcion, concepto 사용
+                  // Alertas 보고서: codigo, descripcion, mensaje, tipo 사용
+                  // Ventas 보고서: vcode, vendedor, clientenombre 등 주요 필드에서 검색
+                  if (widget.reportType == ReportType.items) {
+                    final codigo1 = item['codigo1']?.toString().toLowerCase() ?? '';
+                    final desc1 = item['desc1']?.toString().toLowerCase() ?? '';
+                    return codigo1.contains(filteringWord) || desc1.contains(filteringWord);
+                  } else if (widget.reportType == ReportType.ingresos) {
+                    final codigo = item['codigo']?.toString().toLowerCase() ?? '';
+                    final descripcion = item['descripcion']?.toString().toLowerCase() ?? '';
+                    return codigo.contains(filteringWord) || descripcion.contains(filteringWord);
+                  } else if (widget.reportType == ReportType.gastos) {
+                    // gastos 필터링: tema 칼럼에서 대소문자 구분 없이 비교
+                    final tema = item['tema']?.toString().toLowerCase() ?? '';
+                    return tema.contains(filteringWord);
+                  } else if (widget.reportType == ReportType.alertas) {
+                    // alertas 필터링 로직: evento 필드에서 검색
+                    final evento = item['evento']?.toString().toLowerCase() ?? '';
+                    return evento.contains(filteringWord);
+                  } else if (widget.reportType == ReportType.ventas) {
+                    // Ventas 보고서 필터링
+                    // vcode unit: clientenombre에서 검색
+                    // day/month/year unit: fecha, sucursal 등에서 검색
+                    if (item.containsKey('clientenombre')) {
+                      // vcode unit
+                      final clientenombre = item['clientenombre']?.toString().toLowerCase() ?? '';
+                      return clientenombre.contains(filteringWord);
+                    } else {
+                      // day/month/year unit: fecha, sucursal 등에서 검색
+                      final fecha = item['fecha']?.toString().toLowerCase() ?? '';
+                      final sucursal = item['sucursal']?.toString().toLowerCase() ?? '';
+                      final nencargado = item['nencargado']?.toString().toLowerCase() ?? '';
+                      return fecha.contains(filteringWord) || 
+                             sucursal.contains(filteringWord) ||
+                             nencargado.contains(filteringWord);
+                    }
+                  }
+                }
+                return false;
+              }).toList();
+            }
           }
         }
         // Ventas 보고서의 경우 날짜 필터는 서버에서 처리되므로 클라이언트 측 필터링 제거
@@ -6994,6 +7129,29 @@ class _ReportScreenState extends State<ReportScreen> {
 
   // Ventas report 헤더 (날짜 범위 및 sucursal 선택)
   /// Ventas 보고서의 컨트롤을 AppBar에 표시 (오른쪽)
+  /// Alertas 보고서 필터 버튼 빌드
+  Widget _buildAlertasFilterButton(String label, bool isActive, VoidCallback onPressed) {
+    return TextButton(
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        backgroundColor: isActive 
+            ? Colors.white.withOpacity(0.3) 
+            : Colors.transparent,
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
+    );
+  }
+
   Widget _buildVentasControlsInAppBar() {
     final reportColor = _getReportColor();
     
