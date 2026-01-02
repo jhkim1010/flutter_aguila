@@ -905,6 +905,15 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
   String _formatValue(dynamic value, {bool isCurrency = false}) {
     if (value == null) return 'N/A';
     
+    // showTpago가 false이면 금액 정보를 ****로 표시
+    final configService = ConfigService();
+    final ventasConfig = configService.getVentasConfig();
+    final shouldHideAmount = ventasConfig?['showTpago'] == false;
+    
+    if (shouldHideAmount && isCurrency) {
+      return '****';
+    }
+    
     if (value is num) {
       // 통화 기호 없이 천 단위 구분자만 사용
       return NumberFormat('#,###').format(value);
@@ -915,6 +924,10 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       // 숫자로 변환 가능한 문자열인지 확인
       final numValue = num.tryParse(cleanedValue.replaceAll(',', '').replaceAll('.', ''));
       if (numValue != null) {
+        // 숫자 문자열인 경우에도 금액 숨김 처리
+        if (shouldHideAmount && isCurrency) {
+          return '****';
+        }
         return NumberFormat('#,###').format(numValue);
       }
       return cleanedValue;

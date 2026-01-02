@@ -47,13 +47,6 @@ class ConfigService {
             'showTefectivo': true,
             'showTreservado': true,
             'showTfavor': true,
-          },
-          'resumenDelDia': {
-            'showTotalVentaDay': true,
-            'showTotalEfectivoDay': true,
-            'showTotalCreditoDay': true,
-            'showTotalBancoDay': true,
-            'showTotalFavorDay': true,
           }
         }
       };
@@ -90,8 +83,9 @@ class ConfigService {
   }
   
   /// Resumen del Día 보고서 설정 가져오기
+  /// ventas 설정을 재사용함
   Map<String, dynamic>? getResumenDelDiaConfig() {
-    return _config?['report']?['resumenDelDia'] as Map<String, dynamic>?;
+    return getVentasConfig();
   }
   
   /// 특정 필드 표시 여부 확인 (Ventas 보고서용)
@@ -115,6 +109,7 @@ class ConfigService {
   
   /// Resumen del Día 보고서의 특정 필드 표시 여부 확인
   /// 항상 표시되어야 하는 필드: operation_count (evento de venta), total_count_ropas, last_venta_hour (ultima venta)
+  /// ventas 설정을 재사용함
   bool shouldShowResumenField(String fieldKey) {
     // 항상 표시되어야 하는 필드들
     if (fieldKey == 'operation_count' || 
@@ -123,20 +118,25 @@ class ConfigService {
       return true; // 항상 표시
     }
     
-    final resumenConfig = getResumenDelDiaConfig();
-    if (resumenConfig == null) return true; // 기본값: 표시
+    // ventas 설정을 재사용
+    final ventasConfig = getVentasConfig();
+    if (ventasConfig == null) return true; // 기본값: 표시
     
+    // 필드 키 매핑: resumenDelDia 필드를 ventas 설정으로 매핑
     switch (fieldKey) {
       case 'total_venta_day':
-        return resumenConfig['showTotalVentaDay'] as bool? ?? true;
+        // tpago는 전체 결제를 의미하므로 showTpago 사용
+        return ventasConfig['showTpago'] as bool? ?? true;
       case 'total_efectivo_day':
-        return resumenConfig['showTotalEfectivoDay'] as bool? ?? true;
+        return ventasConfig['showTefectivo'] as bool? ?? true;
       case 'total_credito_day':
-        return resumenConfig['showTotalCreditoDay'] as bool? ?? true;
+        // credito는 treservado와 유사하므로 showTreservado 사용
+        return ventasConfig['showTreservado'] as bool? ?? true;
       case 'total_banco_day':
-        return resumenConfig['showTotalBancoDay'] as bool? ?? true;
+        // banco는 treservado와 유사하므로 showTreservado 사용
+        return ventasConfig['showTreservado'] as bool? ?? true;
       case 'total_favor_day':
-        return resumenConfig['showTotalFavorDay'] as bool? ?? true;
+        return ventasConfig['showTfavor'] as bool? ?? true;
       default:
         return true;
     }
@@ -171,6 +171,7 @@ class ConfigService {
   }
   
   /// 설정 업데이트 및 저장 (Resumen del Día 보고서용)
+  /// ventas 설정을 업데이트함
   Future<void> updateResumenDelDiaConfig({
     bool? showTotalVentaDay,
     bool? showTotalEfectivoDay,
@@ -178,26 +179,30 @@ class ConfigService {
     bool? showTotalBancoDay,
     bool? showTotalFavorDay,
   }) async {
-    if (_config == null) {
-      await initialize();
-    }
-    
-    // 설정 업데이트
-    _config ??= {};
-    _config!['report'] ??= {};
-    _config!['report']!['resumenDelDia'] ??= {};
-    
-    final resumenConfig = _config!['report']!['resumenDelDia'] as Map<String, dynamic>;
-    
-    if (showTotalVentaDay != null) resumenConfig['showTotalVentaDay'] = showTotalVentaDay;
-    if (showTotalEfectivoDay != null) resumenConfig['showTotalEfectivoDay'] = showTotalEfectivoDay;
-    if (showTotalCreditoDay != null) resumenConfig['showTotalCreditoDay'] = showTotalCreditoDay;
-    if (showTotalBancoDay != null) resumenConfig['showTotalBancoDay'] = showTotalBancoDay;
-    if (showTotalFavorDay != null) resumenConfig['showTotalFavorDay'] = showTotalFavorDay;
-    
-    // SharedPreferences에 저장
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_prefsKey, json.encode(_config));
+    // ventas 설정을 업데이트
+    await updateVentasConfig(
+      showTpago: showTotalVentaDay,
+      showTefectivo: showTotalEfectivoDay,
+      showTreservado: showTotalCreditoDay ?? showTotalBancoDay,
+      showTfavor: showTotalFavorDay,
+    );
+  }
+  
+  /// 새롭게 기록한 내용을 적용할 변수
+  /// 이 변수는 향후 새로운 설정을 추가할 때 사용할 수 있습니다
+  Map<String, dynamic>? _newConfig;
+  
+  /// 새 설정 가져오기
+  Map<String, dynamic>? getNewConfig() => _newConfig;
+  
+  /// 새 설정 설정하기
+  void setNewConfig(Map<String, dynamic>? config) {
+    _newConfig = config;
+  }
+  
+  /// 새 설정 초기화
+  void initializeNewConfig() {
+    _newConfig = {};
   }
   
   /// 설정 초기화 (assets/config.json으로 되돌리기)

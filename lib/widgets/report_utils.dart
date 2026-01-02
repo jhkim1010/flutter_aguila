@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../services/config_service.dart';
 
 enum ReportType {
   stocks,
@@ -99,8 +100,22 @@ class ReportUtils {
     return false;
   }
 
-  static String formatValue(dynamic value, {String? fieldName, bool isCurrency = false}) {
+  static String formatValue(dynamic value, {String? fieldName, bool isCurrency = false, ReportType? reportType}) {
     if (value == null) return 'N/A';
+    
+    // showTpago가 false이고 ventas 보고서인 경우 금액을 ****로 표시
+    if (reportType == ReportType.ventas) {
+      final configService = ConfigService();
+      final ventasConfig = configService.getVentasConfig();
+      final shouldHideAmount = ventasConfig?['showTpago'] == false;
+      
+      if (shouldHideAmount) {
+        // 금액 필드인 경우에만 숨김 (갯수 필드는 제외)
+        if (isCurrency || (fieldName != null && isAmountField(fieldName))) {
+          return '****';
+        }
+      }
+    }
     
     if (value is num) {
       return NumberFormat('#,###').format(value);
@@ -113,6 +128,16 @@ class ReportUtils {
       
       final numValue = num.tryParse(cleanedValue.replaceAll(',', ''));
       if (numValue != null) {
+        // 숫자 문자열인 경우에도 금액 숨김 처리 (ventas 보고서만)
+        if (reportType == ReportType.ventas) {
+          final configService = ConfigService();
+          final ventasConfig = configService.getVentasConfig();
+          final shouldHideAmount = ventasConfig?['showTpago'] == false;
+          
+          if (shouldHideAmount && (isCurrency || (fieldName != null && isAmountField(fieldName)))) {
+            return '****';
+          }
+        }
         return NumberFormat('#,###').format(numValue);
       }
       
@@ -124,6 +149,24 @@ class ReportUtils {
     }
     String strValue = value.toString();
     return strValue.replaceAll('\$', '').trim();
+  }
+  
+  /// 필드명이 금액 필드인지 확인 (갯수 필드는 제외)
+  static bool isAmountField(String? fieldName) {
+    if (fieldName == null) return false;
+    final keyLower = fieldName.toLowerCase();
+    
+    // 금액 관련 키워드 (갯수 관련 키워드 제외)
+    final amountKeywords = ['costo', 'importe', 'ingreso', 'precio', 'pre', 'venta', 'total', 'pago', 'efectivo', 'credito', 'banco', 'favor', 'reservado', 'offset'];
+    final countKeywords = ['cantidad', 'count', 'prendas', 'ropas', 'items', 'event'];
+    
+    // 갯수 관련 키워드가 포함되어 있으면 금액 필드가 아님
+    if (countKeywords.any((keyword) => keyLower.contains(keyword))) {
+      return false;
+    }
+    
+    // 금액 관련 키워드가 포함되어 있으면 금액 필드
+    return amountKeywords.any((keyword) => keyLower.contains(keyword));
   }
 
   static Widget buildTextWidget(String text, {bool isNumeric = false}) {

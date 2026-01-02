@@ -1170,7 +1170,7 @@ class ReportTableBuilder {
                               if (isEventoColumn && value is String) {
                                 formattedValue = value.replaceAll('\$', '').trim();
                               } else {
-                                formattedValue = ReportUtils.formatValue(value);
+                                formattedValue = ReportUtils.formatValue(value, fieldName: key, reportType: reportType);
                               }
                               
                               final isAmountColumn = keyLower == 'sucursal';
@@ -1347,7 +1347,7 @@ class ReportTableBuilder {
                           } else {
                             formattedValue = isCodigoColumn 
                                 ? (value?.toString() ?? 'N/A')
-                                : ReportUtils.formatValue(value);
+                                : ReportUtils.formatValue(value, fieldName: key, reportType: reportType);
                           }
                           
                           // 디버깅: year 필드인데 포맷팅이 안 된 경우
@@ -1588,7 +1588,7 @@ class ReportTableBuilder {
                                 } else {
                                   formattedValue = isCodigoColumn 
                                       ? (value?.toString() ?? 'N/A')
-                                      : ReportUtils.formatValue(value);
+                                      : ReportUtils.formatValue(value, fieldName: key, reportType: reportType);
                                 }
                                 
                                 // 금액/숫자 관련 컬럼명 체크 (명시적으로 숫자로 처리)
@@ -2919,7 +2919,7 @@ class ReportTableBuilder {
                                   } else {
                                     formattedValue = isCodigoColumn 
                                         ? (value?.toString() ?? 'N/A')
-                                        : ReportUtils.formatValue(value);
+                                        : ReportUtils.formatValue(value, fieldName: key, reportType: reportType);
                                   }
                                 
     // 숫자 컬럼 체크

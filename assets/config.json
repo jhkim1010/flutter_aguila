@@ -1,17 +1,16 @@
 {
   "report": {
     "ventas": {
-      "showTpago": true,
-      "showTefectivo": true,
-      "showTreservado": true,
-      "showTfavor": true
+      "showTpago": false  
     },
-    "resumenDelDia": {
-      "showTotalVentaDay": true,
-      "showTotalEfectivoDay": true,
-      "showTotalCreditoDay": true,
-      "showTotalBancoDay": true,
-      "showTotalFavorDay": true
+    "gastos": {
+      "modificarGasto": true
+    },
+    "stocks": {
+      "modificarStock": true
+    },
+    "codigos_todocodigos": {
+      "modificarCodigo": true
     }
   }
 }
