@@ -24,6 +24,7 @@ import '../widgets/report_filters.dart';
 import '../widgets/report_header_builders.dart';
 import '../widgets/report_total_row_builder.dart';
 import '../widgets/report_filter_widgets.dart';
+import '../generated/build_info.dart';
 
 export '../widgets/report_utils.dart' show ReportType;
 
@@ -629,7 +630,7 @@ class _ReportScreenState extends State<ReportScreen> {
     return data;
   }
 
-  /// 보고서 공유 (macOS/Windows: PDF/Excel 선택, 기타: PDF만)
+  /// 보고서 공유 (macOS/Windows: Excel, 기타: PDF)
   Future<void> _shareReport() async {
     if (_data == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -641,51 +642,9 @@ class _ReportScreenState extends State<ReportScreen> {
       return;
     }
 
-    // macOS 또는 Windows인 경우 PDF/Excel 선택 다이얼로그 표시
+    // macOS 또는 Windows인 경우 Excel로 공유
     if (Platform.isMacOS || Platform.isWindows) {
-      if (!mounted) return;
-      
-      await showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Exportar reporte'),
-          content: const Text('¿En qué formato desea exportar el reporte?'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _shareAsPdf();
-              },
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.picture_as_pdf, color: Colors.red),
-                  SizedBox(width: 8),
-                  Text('PDF'),
-                ],
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _shareAsExcel();
-              },
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.table_chart, color: Colors.green),
-                  SizedBox(width: 8),
-                  Text('Excel'),
-                ],
-              ),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancelar'),
-            ),
-          ],
-        ),
-      );
+      _shareAsExcel();
     } else {
       // 모바일/태블릿: 기존대로 PDF만 공유
       _shareAsPdf();
@@ -2688,7 +2647,15 @@ class _ReportScreenState extends State<ReportScreen> {
                                         );
                                       }
                                     },
-                                    itemBuilder: (BuildContext context) => _buildReportMenuItems(),
+                                    itemBuilder: (BuildContext context) {
+                    debugPrint('🔍 [PopupMenuButton] itemBuilder 호출됨!');
+                    final items = _buildReportMenuItems();
+                    debugPrint('🔍 [PopupMenuButton] 메뉴 아이템 개수: ${items.length}');
+                    for (int i = 0; i < items.length; i++) {
+                      debugPrint('🔍 [PopupMenuButton] 아이템 #$i: ${items[i].runtimeType}');
+                    }
+                    return items;
+                  },
                                   ),
                                   // 공유 버튼
                                   if (_data != null)
@@ -2843,7 +2810,15 @@ class _ReportScreenState extends State<ReportScreen> {
                                         );
                                       }
                                     },
-                                    itemBuilder: (BuildContext context) => _buildReportMenuItems(),
+                                    itemBuilder: (BuildContext context) {
+                    debugPrint('🔍 [PopupMenuButton] itemBuilder 호출됨!');
+                    final items = _buildReportMenuItems();
+                    debugPrint('🔍 [PopupMenuButton] 메뉴 아이템 개수: ${items.length}');
+                    for (int i = 0; i < items.length; i++) {
+                      debugPrint('🔍 [PopupMenuButton] 아이템 #$i: ${items[i].runtimeType}');
+                    }
+                    return items;
+                  },
                                   ),
                                   // 공유 버튼
                                   if (_data != null)
@@ -3176,7 +3151,15 @@ class _ReportScreenState extends State<ReportScreen> {
                                           );
                                         }
                                       },
-                                      itemBuilder: (BuildContext context) => _buildReportMenuItems(),
+                                      itemBuilder: (BuildContext context) {
+                    debugPrint('🔍 [PopupMenuButton] itemBuilder 호출됨!');
+                    final items = _buildReportMenuItems();
+                    debugPrint('🔍 [PopupMenuButton] 메뉴 아이템 개수: ${items.length}');
+                    for (int i = 0; i < items.length; i++) {
+                      debugPrint('🔍 [PopupMenuButton] 아이템 #$i: ${items[i].runtimeType}');
+                    }
+                    return items;
+                  },
                                     ),
                                     // PDF 공유 버튼
                                     if (_data != null) ...[
@@ -3686,7 +3669,15 @@ class _ReportScreenState extends State<ReportScreen> {
                                           );
                                         }
                                       },
-                                      itemBuilder: (BuildContext context) => _buildReportMenuItems(),
+                                      itemBuilder: (BuildContext context) {
+                    debugPrint('🔍 [PopupMenuButton] itemBuilder 호출됨!');
+                    final items = _buildReportMenuItems();
+                    debugPrint('🔍 [PopupMenuButton] 메뉴 아이템 개수: ${items.length}');
+                    for (int i = 0; i < items.length; i++) {
+                      debugPrint('🔍 [PopupMenuButton] 아이템 #$i: ${items[i].runtimeType}');
+                    }
+                    return items;
+                  },
                                     ),
                                     // PDF 공유 버튼
                                     if (_data != null) ...[
@@ -4190,7 +4181,18 @@ class _ReportScreenState extends State<ReportScreen> {
                 PopupMenuButton<ReportType>(
                   icon: const Icon(Icons.assessment, color: Colors.white),
                   tooltip: 'Reportes',
+                  onOpened: () {
+                    debugPrint('🔍 [PopupMenuButton] 메뉴가 열렸습니다!');
+                  },
                   onSelected: (ReportType reportType) {
+                    debugPrint('🔍 [메뉴] onSelected 호출됨: reportType=$reportType, 현재 reportType=${widget.reportType}');
+                    // 빌드 날짜 항목은 무시 (alertas와 같은 value를 사용하지만, 이미 alertas 보고서인 경우)
+                    // 또는 빌드 날짜 항목을 선택했을 때는 항상 무시 (메뉴 아이템 리스트의 마지막 항목)
+                    if (reportType == ReportType.alertas && widget.reportType == ReportType.alertas) {
+                      // alertas 보고서에서 alertas를 선택한 경우, 빌드 날짜 항목일 가능성이 높음
+                      debugPrint('🔍 [메뉴] alertas 보고서에서 alertas 선택됨 - 빌드 날짜 항목일 가능성, 무시');
+                      return;
+                    }
                     if (reportType != widget.reportType) {
                       Navigator.pushReplacement(
                         context,
@@ -4212,7 +4214,15 @@ class _ReportScreenState extends State<ReportScreen> {
                       );
                     }
                   },
-                  itemBuilder: (BuildContext context) => _buildReportMenuItems(),
+                  itemBuilder: (BuildContext context) {
+                    debugPrint('🔍 [PopupMenuButton] itemBuilder 호출됨!');
+                    final items = _buildReportMenuItems();
+                    debugPrint('🔍 [PopupMenuButton] 메뉴 아이템 개수: ${items.length}');
+                    for (int i = 0; i < items.length; i++) {
+                      debugPrint('🔍 [PopupMenuButton] 아이템 #$i: ${items[i].runtimeType}');
+                    }
+                    return items;
+                  },
                 ),
                 // PDF 공유 버튼
                 if (_data != null)
@@ -4530,7 +4540,15 @@ class _ReportScreenState extends State<ReportScreen> {
                                       );
                                     }
                                   },
-                                  itemBuilder: (BuildContext context) => _buildReportMenuItems(),
+                                  itemBuilder: (BuildContext context) {
+                    debugPrint('🔍 [PopupMenuButton] itemBuilder 호출됨!');
+                    final items = _buildReportMenuItems();
+                    debugPrint('🔍 [PopupMenuButton] 메뉴 아이템 개수: ${items.length}');
+                    for (int i = 0; i < items.length; i++) {
+                      debugPrint('🔍 [PopupMenuButton] 아이템 #$i: ${items[i].runtimeType}');
+                    }
+                    return items;
+                  },
                                 ),
                                 // 공유 버튼
                                 if (_data != null)
@@ -4685,7 +4703,15 @@ class _ReportScreenState extends State<ReportScreen> {
                                       );
                                     }
                                   },
-                                  itemBuilder: (BuildContext context) => _buildReportMenuItems(),
+                                  itemBuilder: (BuildContext context) {
+                    debugPrint('🔍 [PopupMenuButton] itemBuilder 호출됨!');
+                    final items = _buildReportMenuItems();
+                    debugPrint('🔍 [PopupMenuButton] 메뉴 아이템 개수: ${items.length}');
+                    for (int i = 0; i < items.length; i++) {
+                      debugPrint('🔍 [PopupMenuButton] 아이템 #$i: ${items[i].runtimeType}');
+                    }
+                    return items;
+                  },
                                 ),
                                 // 공유 버튼
                                 if (_data != null)
@@ -5542,12 +5568,14 @@ class _ReportScreenState extends State<ReportScreen> {
                 },
                 itemBuilder: (BuildContext context) => _buildReportMenuItems(),
               ),
-              // PDF 공유 버튼
+              // 공유 버튼 (macOS/Windows: Excel, 기타: PDF)
               if (_data != null)
                 IconButton(
                   icon: const Icon(Icons.share, color: Colors.white),
-                  tooltip: 'Compartir como PDF',
-                  onPressed: () => _shareAsPdf(),
+                  tooltip: Platform.isMacOS || Platform.isWindows 
+                      ? 'Compartir como Excel' 
+                      : 'Compartir como PDF',
+                  onPressed: () => _shareReport(),
                 ),
             ],
     );
@@ -8426,53 +8454,11 @@ class _ReportScreenState extends State<ReportScreen> {
     );
   }
 
-  /// Cliente 상세 정보 공유 (PDF/Excel)
+  /// Cliente 상세 정보 공유 (macOS/Windows: Excel, 기타: PDF)
   Future<void> _shareClienteDetail(Map<String, dynamic> clienteDetailData) async {
-    // macOS 또는 Windows인 경우 PDF/Excel 선택 다이얼로그 표시
+    // macOS 또는 Windows인 경우 Excel로 공유
     if (Platform.isMacOS || Platform.isWindows) {
-      if (!mounted) return;
-      
-      await showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Exportar detalle del cliente'),
-          content: const Text('¿En qué formato desea exportar el detalle del cliente?'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _shareClienteDetailAsPdf(clienteDetailData);
-              },
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.picture_as_pdf, color: Colors.red),
-                  SizedBox(width: 8),
-                  Text('PDF'),
-                ],
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _shareClienteDetailAsExcel(clienteDetailData);
-              },
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.table_chart, color: Colors.green),
-                  SizedBox(width: 8),
-                  Text('Excel'),
-                ],
-              ),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancelar'),
-            ),
-          ],
-        ),
-      );
+      _shareClienteDetailAsExcel(clienteDetailData);
     } else {
       // 모바일/태블릿: PDF만 공유
       _shareClienteDetailAsPdf(clienteDetailData);
@@ -10098,7 +10084,24 @@ class _ReportScreenState extends State<ReportScreen> {
 
   // 보고서 메뉴 아이템 빌드
   List<PopupMenuEntry<ReportType>> _buildReportMenuItems() {
-    return [
+    debugPrint('🔍 [메뉴] _buildReportMenuItems 호출됨');
+    debugPrint('🔍 [메뉴] 현재 reportType: ${widget.reportType}');
+    
+    // 빌드 날짜 문자열 생성 및 디버깅
+    final buildDateString = _getBuildDateString();
+    debugPrint('🔍 [메뉴] 빌드 날짜 문자열: "$buildDateString"');
+    debugPrint('🔍 [메뉴] BuildInfo.buildDate: "${BuildInfo.buildDate}"');
+    debugPrint('🔍 [메뉴] BuildInfo.buildDateTime: "${BuildInfo.buildDateTime}"');
+    
+    try {
+      final buildDate = BuildInfo.buildDateAsDateTime;
+      debugPrint('🔍 [메뉴] buildDateAsDateTime: $buildDate');
+      debugPrint('🔍 [메뉴] year: ${buildDate.year}, month: ${buildDate.month}, day: ${buildDate.day}');
+    } catch (e) {
+      debugPrint('❌ [메뉴] buildDateAsDateTime 파싱 오류: $e');
+    }
+    
+    final menuItems = <PopupMenuEntry<ReportType>>[
       PopupMenuItem<ReportType>(
         value: ReportType.ventas,
         child: Row(
@@ -10307,7 +10310,81 @@ class _ReportScreenState extends State<ReportScreen> {
           ],
         ),
       ),
+      const PopupMenuDivider(),
+      PopupMenuItem<ReportType>(
+        value: ReportType.alertas, // value는 필수이지만 onSelected에서 무시됨
+        enabled: true, // enabled: true로 설정하여 항상 표시되도록 함
+        height: 40, // 높이 명시적으로 설정
+        child: Builder(
+          builder: (context) {
+            final dateString = _getBuildDateString();
+            debugPrint('🔍 [메뉴] 빌드 날짜 메뉴 아이템 빌드 중, 문자열: "$dateString"');
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, size: 14, color: Colors.grey[600]),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      dateString,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
     ];
+    
+    debugPrint('🔍 [메뉴] 메뉴 아이템 리스트 생성 완료, 총 ${menuItems.length}개');
+    debugPrint('🔍 [메뉴] 마지막 아이템 타입: ${menuItems.last.runtimeType}');
+    if (menuItems.last is PopupMenuItem) {
+      final lastItem = menuItems.last as PopupMenuItem<ReportType>;
+      debugPrint('🔍 [메뉴] 마지막 아이템 enabled: ${lastItem.enabled}');
+      debugPrint('🔍 [메뉴] 마지막 아이템 value: ${lastItem.value}');
+    }
+    
+    return menuItems;
+  }
+
+  /// 빌드 날짜를 스페인어 형식으로 반환 (예: "ver. 2026-Enero-02")
+  String _getBuildDateString() {
+    debugPrint('🔍 [빌드날짜] _getBuildDateString 호출됨');
+    try {
+      debugPrint('🔍 [빌드날짜] BuildInfo.buildDate: "${BuildInfo.buildDate}"');
+      final buildDate = BuildInfo.buildDateAsDateTime;
+      debugPrint('🔍 [빌드날짜] buildDate 파싱 성공: $buildDate');
+      debugPrint('🔍 [빌드날짜] year: ${buildDate.year}, month: ${buildDate.month}, day: ${buildDate.day}');
+      
+      final monthNames = [
+        'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+      ];
+      
+      if (buildDate.month < 1 || buildDate.month > 12) {
+        debugPrint('❌ [빌드날짜] 잘못된 월: ${buildDate.month}');
+        return 'ver. ${BuildInfo.buildDate}';
+      }
+      
+      final monthName = monthNames[buildDate.month - 1];
+      final day = buildDate.day.toString().padLeft(2, '0');
+      final result = 'ver. ${buildDate.year}-$monthName-$day';
+      debugPrint('✅ [빌드날짜] 최종 결과: "$result"');
+      return result;
+    } catch (e, stackTrace) {
+      debugPrint('❌ [빌드날짜] 오류 발생: $e');
+      debugPrint('❌ [빌드날짜] 스택 트레이스: $stackTrace');
+      final fallback = 'ver. ${BuildInfo.buildDate}';
+      debugPrint('🔍 [빌드날짜] 폴백 결과: "$fallback"');
+      return fallback;
+    }
   }
 
 }

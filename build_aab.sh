@@ -28,6 +28,10 @@ if [ ! -f "android/key.properties" ]; then
     exit 1
 fi
 
+# 빌드 날짜 주입
+echo -e "${YELLOW}📅 빌드 날짜 주입 중...${NC}"
+bash scripts/inject_build_date.sh
+
 # Flutter 의존성 확인
 echo -e "${YELLOW}📦 Flutter 의존성 확인 중...${NC}"
 flutter pub get

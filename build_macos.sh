@@ -17,6 +17,10 @@ if [[ "$OSTYPE" != "darwin"* ]]; then
     exit 1
 fi
 
+# 빌드 날짜 주입
+echo "📅 빌드 날짜 주입 중..."
+bash scripts/inject_build_date.sh
+
 # Flutter 의존성 확인 및 설치
 echo "📦 의존성 확인 중..."
 flutter pub get

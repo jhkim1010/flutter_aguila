@@ -13,6 +13,10 @@ export LANG=en_US.UTF-8
 # Flutter 프로젝트 디렉토리로 이동
 cd "$(dirname "$0")"
 
+# 빌드 날짜 주입
+echo "📅 빌드 날짜 주입 중..."
+bash scripts/inject_build_date.sh
+
 # Flutter 의존성 확인 및 설치
 echo "📦 의존성 확인 중..."
 flutter pub get

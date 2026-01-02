@@ -10,6 +10,7 @@ import '../services/config_service.dart';
 import '../models/connection_info.dart';
 import '../utils/platform_utils.dart';
 import '../widgets/report_utils.dart';
+import '../generated/build_info.dart';
 import 'main_connection_screen.dart' show ServerType, MainConnectionScreen;
 import 'celebration_screen.dart';
 import 'connection_screen.dart' hide ServerType;
@@ -1677,6 +1678,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
 
   // 왼쪽 패널용 보고서 메뉴 아이템 빌드
   List<Widget> _buildReportMenuItemsForPanel(BuildContext context) {
+    debugPrint('🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨');
     final items = <Widget>[];
     
     // Resumen del Día
@@ -1780,6 +1782,35 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       Colors.orange,
     ));
     
+    // Separator
+    items.add(const Divider(height: 1));
+    
+    // Build date
+    final dateString = _getBuildDateString();
+    debugPrint('🔍 [Resumen메뉴] 빌드 날짜 문자열: "$dateString"');
+    items.add(
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            Icon(Icons.info_outline, size: 14, color: Colors.grey[600]),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                dateString,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.grey[600],
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    
+    debugPrint('🔍 [Resumen메뉴] 메뉴 아이템 리스트 생성 완료, 총 ${items.length}개');
     return items;
   }
 
@@ -4340,7 +4371,24 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
 
   // 보고서 메뉴 아이템 빌드
   List<PopupMenuEntry<String>> _buildReportMenuItems() {
-    return [
+    debugPrint('🔍 [Resumen메뉴] _buildReportMenuItems 호출됨');
+    debugPrint('🔍 [Resumen메뉴] 현재 _currentReport: $_currentReport');
+    
+    // 빌드 날짜 문자열 생성 및 디버깅
+    final buildDateString = _getBuildDateString();
+    debugPrint('🔍 [Resumen메뉴] 빌드 날짜 문자열: "$buildDateString"');
+    debugPrint('🔍 [Resumen메뉴] BuildInfo.buildDate: "${BuildInfo.buildDate}"');
+    debugPrint('🔍 [Resumen메뉴] BuildInfo.buildDateTime: "${BuildInfo.buildDateTime}"');
+    
+    try {
+      final buildDate = BuildInfo.buildDateAsDateTime;
+      debugPrint('🔍 [Resumen메뉴] buildDateAsDateTime: $buildDate');
+      debugPrint('🔍 [Resumen메뉴] year: ${buildDate.year}, month: ${buildDate.month}, day: ${buildDate.day}');
+    } catch (e) {
+      debugPrint('❌ [Resumen메뉴] buildDateAsDateTime 파싱 오류: $e');
+    }
+    
+    final menuItems = <PopupMenuEntry<String>>[
       PopupMenuItem<String>(
         value: 'resumen',
         child: Row(
@@ -4589,7 +4637,82 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
           ],
         ),
       ),
+      const PopupMenuDivider(),
+      PopupMenuItem<String>(
+        value: 'build_date', // value는 필수이지만 onSelected에서 무시됨
+        enabled: true, // enabled: true로 설정하여 항상 표시되도록 함
+        height: 40, // 높이 명시적으로 설정
+        child: Builder(
+          builder: (context) {
+            debugPrint('🔍 [Resumen메뉴] 빌드 날짜 메뉴 아이템 빌드 중');
+            final dateString = _getBuildDateString();
+            debugPrint('🔍 [Resumen메뉴] 빌드 날짜 문자열: "$dateString"');
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, size: 14, color: Colors.grey[600]),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      dateString,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
     ];
+    
+    debugPrint('🔍 [Resumen메뉴] 메뉴 아이템 리스트 생성 완료, 총 ${menuItems.length}개');
+    debugPrint('🔍 [Resumen메뉴] 마지막 아이템 타입: ${menuItems.last.runtimeType}');
+    if (menuItems.last is PopupMenuItem) {
+      final lastItem = menuItems.last as PopupMenuItem<String>;
+      debugPrint('🔍 [Resumen메뉴] 마지막 아이템 enabled: ${lastItem.enabled}');
+      debugPrint('🔍 [Resumen메뉴] 마지막 아이템 value: ${lastItem.value}');
+    }
+    
+    return menuItems;
+  }
+
+  /// 빌드 날짜를 스페인어 형식으로 반환 (예: "ver. 2026-Enero-02")
+  String _getBuildDateString() {
+    debugPrint('🔍 [Resumen빌드날짜] _getBuildDateString 호출됨');
+    try {
+      debugPrint('🔍 [Resumen빌드날짜] BuildInfo.buildDate: "${BuildInfo.buildDate}"');
+      final buildDate = BuildInfo.buildDateAsDateTime;
+      debugPrint('🔍 [Resumen빌드날짜] buildDate 파싱 성공: $buildDate');
+      debugPrint('🔍 [Resumen빌드날짜] year: ${buildDate.year}, month: ${buildDate.month}, day: ${buildDate.day}');
+      
+      final monthNames = [
+        'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+      ];
+      
+      if (buildDate.month < 1 || buildDate.month > 12) {
+        debugPrint('❌ [Resumen빌드날짜] 잘못된 월: ${buildDate.month}');
+        return 'ver. ${BuildInfo.buildDate}';
+      }
+      
+      final monthName = monthNames[buildDate.month - 1];
+      final day = buildDate.day.toString().padLeft(2, '0');
+      final result = 'ver. ${buildDate.year}-$monthName-$day';
+      debugPrint('✅ [Resumen빌드날짜] 최종 결과: "$result"');
+      return result;
+    } catch (e, stackTrace) {
+      debugPrint('❌ [Resumen빌드날짜] 오류 발생: $e');
+      debugPrint('❌ [Resumen빌드날짜] 스택 트레이스: $stackTrace');
+      final fallback = 'ver. ${BuildInfo.buildDate}';
+      debugPrint('🔍 [Resumen빌드날짜] 폴백 결과: "$fallback"');
+      return fallback;
+    }
   }
 
   // 보고서로 이동하는 메서드

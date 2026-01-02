@@ -5,6 +5,40 @@ import 'package:intl/intl.dart';
 import '../widgets/report_utils.dart';
 
 class ExcelService {
+  /// 필드 이름이 code 관련인지 확인 (code로 끝나거나 code를 포함)
+  static bool _isCodeField(String fieldName) {
+    final lowerName = fieldName.toLowerCase();
+    return lowerName.contains('code') || lowerName.endsWith('code');
+  }
+  
+  /// 셀 값 설정 (code 필드는 항상 문자열로 처리)
+  static void _setCellValue(dynamic cell, String fieldName, dynamic value) {
+    // code 필드는 항상 문자열로 처리
+    if (_isCodeField(fieldName)) {
+      cell.value = TextCellValue(value?.toString() ?? '');
+      return;
+    }
+    
+    // 일반 필드는 숫자 형식 처리
+    if (value != null) {
+      if (value is num) {
+        cell.value = DoubleCellValue(value.toDouble());
+      } else if (value is String) {
+        // 숫자 문자열인지 확인
+        final numValue = num.tryParse(value);
+        if (numValue != null) {
+          cell.value = DoubleCellValue(numValue.toDouble());
+        } else {
+          cell.value = TextCellValue(value);
+        }
+      } else {
+        cell.value = TextCellValue(value.toString());
+      }
+    } else {
+      cell.value = TextCellValue('');
+    }
+  }
+  
   /// 보고서 데이터를 Excel로 변환하여 파일로 저장
   static Future<File> generateReportExcel({
     required ReportType reportType,
@@ -19,9 +53,20 @@ class ExcelService {
     final dateFormat = DateFormat('yyyy-MM-dd HH:mm');
     final now = DateTime.now();
     
-    // 첫 번째 시트 선택
-    excel.delete('Sheet1'); // 기본 시트 삭제
+    // 기본 Sheet1 삭제 (시트가 존재하는 경우에만)
+    // Excel.createExcel()은 기본적으로 'Sheet1'을 생성하므로 먼저 삭제
+    try {
+      if (excel.sheets.keys.contains('Sheet1')) {
+        excel.delete('Sheet1');
+        print('✅ Sheet1 삭제 완료');
+      }
+    } catch (e) {
+      print('⚠️ Sheet1 삭제 중 오류 (무시): $e');
+    }
+    
+    // 보고서 제목으로 새 시트 생성
     final sheet = excel[reportTitle];
+    print('✅ 시트 생성 완료: $reportTitle, 전체 시트: ${excel.sheets.keys.toList()}');
     
     int currentRow = 0;
     
@@ -63,91 +108,321 @@ class ExcelService {
       currentRow++; // 빈 줄
     }
     
-    // Summary 정보가 있으면 표시
-    if (data != null && data.containsKey('summary') && data['summary'] is Map) {
-      final summary = data['summary'] as Map<String, dynamic>;
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
-          .value = TextCellValue('Resumen:');
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
-          .cellStyle = CellStyle(bold: true);
-      currentRow++;
+    // ITEMS, INGRESOS, GASTOS 보고서의 경우 특별 처리
+    if (reportType == ReportType.items || reportType == ReportType.ingresos || reportType == ReportType.gastos) {
+      // 1. 먼저 모든 resumen 정보 기록
       
-      int summaryCol = 0;
-      for (var entry in summary.entries) {
-        sheet.cell(CellIndex.indexByColumnRow(columnIndex: summaryCol, rowIndex: currentRow))
-            .value = TextCellValue(entry.key);
-        sheet.cell(CellIndex.indexByColumnRow(columnIndex: summaryCol, rowIndex: currentRow))
-            .cellStyle = CellStyle(bold: true);
-        summaryCol++;
-        sheet.cell(CellIndex.indexByColumnRow(columnIndex: summaryCol, rowIndex: currentRow))
-            .value = TextCellValue(entry.value?.toString() ?? '');
-        summaryCol++;
-        if (summaryCol >= 2) {
-          summaryCol = 0;
+      // 1-1. 전체 Summary
+      if (data != null && data.containsKey('summary') && data['summary'] is Map) {
+        final summary = data['summary'] as Map<String, dynamic>;
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+            .value = TextCellValue('Resumen General:');
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+            .cellStyle = CellStyle(bold: true, fontSize: 14);
+        currentRow++;
+        
+        int summaryCol = 0;
+        for (var entry in summary.entries) {
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: summaryCol, rowIndex: currentRow))
+              .value = TextCellValue(entry.key);
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: summaryCol, rowIndex: currentRow))
+              .cellStyle = CellStyle(bold: true);
+          summaryCol++;
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: summaryCol, rowIndex: currentRow))
+              .value = TextCellValue(entry.value?.toString() ?? '');
+          summaryCol++;
+          if (summaryCol >= 2) {
+            summaryCol = 0;
+            currentRow++;
+          }
+        }
+        if (summaryCol > 0) currentRow++;
+        currentRow++; // 빈 줄
+      }
+      
+      // 1-2. INGRESOS/ITEMS: summary_by_company
+      if ((reportType == ReportType.ingresos || reportType == ReportType.items) &&
+          data != null && 
+          data.containsKey('data') && 
+          data['data'] is Map &&
+          (data['data'] as Map).containsKey('summary_by_company') &&
+          (data['data'] as Map)['summary_by_company'] is List) {
+        final summaryByCompany = (data['data'] as Map)['summary_by_company'] as List;
+        if (summaryByCompany.isNotEmpty) {
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+              .value = TextCellValue('Resumen por Empresa:');
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+              .cellStyle = CellStyle(bold: true, fontSize: 14);
           currentRow++;
+          
+          // 헤더 행
+          final firstItem = summaryByCompany.first as Map<String, dynamic>;
+          final keys = firstItem.keys.toList();
+          for (int col = 0; col < keys.length; col++) {
+            final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: currentRow));
+            cell.value = TextCellValue(keys[col]);
+            cell.cellStyle = CellStyle(bold: true);
+          }
+          currentRow++;
+          
+          // 데이터 행들
+          for (var item in summaryByCompany) {
+            if (item is Map<String, dynamic>) {
+              for (int col = 0; col < keys.length; col++) {
+                final key = keys[col];
+                final value = item[key];
+                final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: currentRow));
+                _setCellValue(cell, key, value);
+              }
+              currentRow++;
+            }
+          }
+          currentRow++; // 빈 줄
         }
       }
-      if (summaryCol > 0) currentRow++;
-      currentRow++; // 빈 줄
-    }
-    
-    // 데이터 리스트가 있으면 테이블로 표시
-    if (data != null && data.containsKey('data') && data['data'] is List) {
-      final dataList = data['data'] as List;
       
-      if (dataList.isEmpty) {
-        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
-            .value = TextCellValue('No hay datos disponibles');
-        currentRow++;
-      } else if (dataList.isNotEmpty && dataList.first is Map) {
-        final firstItem = dataList.first as Map<String, dynamic>;
-        
-        // 화면에 표시되는 컬럼만 사용 (없으면 모든 컬럼 사용)
-        final keys = displayedColumns != null && displayedColumns.isNotEmpty
-            ? displayedColumns.where((key) => firstItem.containsKey(key)).toList()
-            : firstItem.keys.toList();
-        
-        print('📋 Excel 생성 - 사용할 컬럼: $keys (총 ${keys.length}개)');
-        
-        // 헤더 행
-        for (int col = 0; col < keys.length; col++) {
-          final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: currentRow));
-          cell.value = TextCellValue(keys[col]);
-          cell.cellStyle = CellStyle(
-            bold: true,
-          );
-        }
-        currentRow++;
-        
-        // 데이터 행들
-        for (var item in dataList) {
-          if (item is Map<String, dynamic>) {
-            for (int col = 0; col < keys.length; col++) {
-              final key = keys[col];
-              final value = item[key];
-              
-              final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: currentRow));
-              
-              // 숫자 형식 처리
-              if (value != null) {
-                if (value is num) {
-                  cell.value = DoubleCellValue(value.toDouble());
-                } else if (value is String) {
-                  // 숫자 문자열인지 확인
-                  final numValue = num.tryParse(value);
-                  if (numValue != null) {
-                    cell.value = DoubleCellValue(numValue.toDouble());
-                  } else {
-                    cell.value = TextCellValue(value);
-                  }
-                } else {
-                  cell.value = TextCellValue(value.toString());
-                }
-              } else {
-                cell.value = TextCellValue('');
+      // 1-3. INGRESOS/ITEMS: summary_by_category
+      if ((reportType == ReportType.ingresos || reportType == ReportType.items) &&
+          data != null && 
+          data.containsKey('data') && 
+          data['data'] is Map &&
+          (data['data'] as Map).containsKey('summary_by_category') &&
+          (data['data'] as Map)['summary_by_category'] is List) {
+        final summaryByCategory = (data['data'] as Map)['summary_by_category'] as List;
+        if (summaryByCategory.isNotEmpty) {
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+              .value = TextCellValue('Resumen por Categoría:');
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+              .cellStyle = CellStyle(bold: true, fontSize: 14);
+          currentRow++;
+          
+          // 헤더 행
+          final firstItem = summaryByCategory.first as Map<String, dynamic>;
+          final keys = firstItem.keys.toList();
+          for (int col = 0; col < keys.length; col++) {
+            final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: currentRow));
+            cell.value = TextCellValue(keys[col]);
+            cell.cellStyle = CellStyle(bold: true);
+          }
+          currentRow++;
+          
+          // 데이터 행들
+          for (var item in summaryByCategory) {
+            if (item is Map<String, dynamic>) {
+              for (int col = 0; col < keys.length; col++) {
+                final key = keys[col];
+                final value = item[key];
+                final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: currentRow));
+                _setCellValue(cell, key, value);
               }
+              currentRow++;
             }
+          }
+          currentRow++; // 빈 줄
+        }
+      }
+      
+      // 1-4. GASTOS: summary_by_rubro
+      if (reportType == ReportType.gastos &&
+          data != null && 
+          data.containsKey('summary_by_rubro') &&
+          data['summary_by_rubro'] is List) {
+        final summaryByRubro = data['summary_by_rubro'] as List;
+        if (summaryByRubro.isNotEmpty) {
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+              .value = TextCellValue('Resumen por Rubro:');
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+              .cellStyle = CellStyle(bold: true, fontSize: 14);
+          currentRow++;
+          
+          // 헤더 행
+          final firstItem = summaryByRubro.first as Map<String, dynamic>;
+          final keys = firstItem.keys.toList();
+          for (int col = 0; col < keys.length; col++) {
+            final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: currentRow));
+            cell.value = TextCellValue(keys[col]);
+            cell.cellStyle = CellStyle(bold: true);
+          }
+          currentRow++;
+          
+          // 데이터 행들
+          for (var item in summaryByRubro) {
+            if (item is Map<String, dynamic>) {
+              for (int col = 0; col < keys.length; col++) {
+                final key = keys[col];
+                final value = item[key];
+                final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: currentRow));
+                _setCellValue(cell, key, value);
+              }
+              currentRow++;
+            }
+          }
+          currentRow++; // 빈 줄
+        }
+      }
+      
+      // 2. 그 아래에 세부 사항 기록
+      currentRow++; // resumen과 detail 사이 빈 줄
+      
+      // 2-1. INGRESOS/ITEMS: products
+      if ((reportType == ReportType.ingresos || reportType == ReportType.items) &&
+          data != null && 
+          data.containsKey('data') && 
+          data['data'] is Map &&
+          (data['data'] as Map).containsKey('products') &&
+          (data['data'] as Map)['products'] is List) {
+        final productsList = (data['data'] as Map)['products'] as List;
+        if (productsList.isNotEmpty) {
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+              .value = TextCellValue('Detalle de Productos:');
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+              .cellStyle = CellStyle(bold: true, fontSize: 14);
+          currentRow++;
+          
+          final firstItem = productsList.first as Map<String, dynamic>;
+          final keys = displayedColumns != null && displayedColumns.isNotEmpty
+              ? displayedColumns.where((key) => firstItem.containsKey(key)).toList()
+              : firstItem.keys.toList();
+          
+          print('📋 Excel 생성 - 사용할 컬럼: $keys (총 ${keys.length}개)');
+          
+          // 헤더 행
+          for (int col = 0; col < keys.length; col++) {
+            final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: currentRow));
+            cell.value = TextCellValue(keys[col]);
+            cell.cellStyle = CellStyle(bold: true);
+          }
+          currentRow++;
+          
+          // 데이터 행들
+          for (var item in productsList) {
+            if (item is Map<String, dynamic>) {
+              for (int col = 0; col < keys.length; col++) {
+                final key = keys[col];
+                final value = item[key];
+                final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: currentRow));
+                _setCellValue(cell, key, value);
+              }
+              currentRow++;
+            }
+          }
+        }
+      }
+      
+      // 2-2. GASTOS: detail
+      if (reportType == ReportType.gastos &&
+          data != null && 
+          data.containsKey('data') && 
+          data['data'] is Map &&
+          (data['data'] as Map).containsKey('detail') &&
+          (data['data'] as Map)['detail'] is List) {
+        final detailList = (data['data'] as Map)['detail'] as List;
+        if (detailList.isNotEmpty) {
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+              .value = TextCellValue('Detalle de Gastos:');
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+              .cellStyle = CellStyle(bold: true, fontSize: 14);
+          currentRow++;
+          
+          final firstItem = detailList.first as Map<String, dynamic>;
+          final keys = displayedColumns != null && displayedColumns.isNotEmpty
+              ? displayedColumns.where((key) => firstItem.containsKey(key)).toList()
+              : firstItem.keys.toList();
+          
+          print('📋 Excel 생성 - 사용할 컬럼: $keys (총 ${keys.length}개)');
+          
+          // 헤더 행
+          for (int col = 0; col < keys.length; col++) {
+            final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: currentRow));
+            cell.value = TextCellValue(keys[col]);
+            cell.cellStyle = CellStyle(bold: true);
+          }
+          currentRow++;
+          
+          // 데이터 행들
+          for (var item in detailList) {
+            if (item is Map<String, dynamic>) {
+              for (int col = 0; col < keys.length; col++) {
+                final key = keys[col];
+                final value = item[key];
+                final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: currentRow));
+                _setCellValue(cell, key, value);
+              }
+              currentRow++;
+            }
+          }
+        }
+      }
+    } else {
+      // 다른 보고서들은 기존 로직 사용
+      
+      // Summary 정보가 있으면 표시
+      if (data != null && data.containsKey('summary') && data['summary'] is Map) {
+        final summary = data['summary'] as Map<String, dynamic>;
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+            .value = TextCellValue('Resumen:');
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+            .cellStyle = CellStyle(bold: true);
+        currentRow++;
+        
+        int summaryCol = 0;
+        for (var entry in summary.entries) {
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: summaryCol, rowIndex: currentRow))
+              .value = TextCellValue(entry.key);
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: summaryCol, rowIndex: currentRow))
+              .cellStyle = CellStyle(bold: true);
+          summaryCol++;
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: summaryCol, rowIndex: currentRow))
+              .value = TextCellValue(entry.value?.toString() ?? '');
+          summaryCol++;
+          if (summaryCol >= 2) {
+            summaryCol = 0;
             currentRow++;
+          }
+        }
+        if (summaryCol > 0) currentRow++;
+        currentRow++; // 빈 줄
+      }
+      
+      // 데이터 리스트가 있으면 테이블로 표시
+      if (data != null && data.containsKey('data') && data['data'] is List) {
+        final dataList = data['data'] as List;
+        
+        if (dataList.isEmpty) {
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+              .value = TextCellValue('No hay datos disponibles');
+          currentRow++;
+        } else if (dataList.isNotEmpty && dataList.first is Map) {
+          final firstItem = dataList.first as Map<String, dynamic>;
+          
+          // 화면에 표시되는 컬럼만 사용 (없으면 모든 컬럼 사용)
+          final keys = displayedColumns != null && displayedColumns.isNotEmpty
+              ? displayedColumns.where((key) => firstItem.containsKey(key)).toList()
+              : firstItem.keys.toList();
+          
+          print('📋 Excel 생성 - 사용할 컬럼: $keys (총 ${keys.length}개)');
+          
+          // 헤더 행
+          for (int col = 0; col < keys.length; col++) {
+            final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: currentRow));
+            cell.value = TextCellValue(keys[col]);
+            cell.cellStyle = CellStyle(
+              bold: true,
+            );
+          }
+          currentRow++;
+          
+          // 데이터 행들
+          for (var item in dataList) {
+            if (item is Map<String, dynamic>) {
+              for (int col = 0; col < keys.length; col++) {
+                final key = keys[col];
+                final value = item[key];
+                final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: currentRow));
+                _setCellValue(cell, key, value);
+              }
+              currentRow++;
+            }
           }
         }
       }
@@ -164,6 +439,17 @@ class ExcelService {
     
     final fileName = '${reportTitle}_${DateFormat('yyyyMMdd_HHmmss').format(now)}.xlsx';
     final file = File('${directory.path}/$fileName');
+    
+    // Excel 저장 전에 Sheet1이 남아있는지 다시 확인하고 삭제
+    try {
+      if (excel.sheets.keys.contains('Sheet1')) {
+        excel.delete('Sheet1');
+        print('✅ 저장 전 Sheet1 삭제 완료');
+      }
+      print('📊 최종 시트 목록: ${excel.sheets.keys.toList()}');
+    } catch (e) {
+      print('⚠️ 저장 전 Sheet1 삭제 중 오류 (무시): $e');
+    }
     
     // Excel 저장
     try {
@@ -199,9 +485,20 @@ class ExcelService {
     final dateFormat = DateFormat('yyyy-MM-dd HH:mm');
     final now = DateTime.now();
     
-    // 첫 번째 시트 선택
-    excel.delete('Sheet1');
+    // 기본 Sheet1 삭제 (시트가 존재하는 경우에만)
+    // Excel.createExcel()은 기본적으로 'Sheet1'을 생성하므로 먼저 삭제
+    try {
+      if (excel.sheets.keys.contains('Sheet1')) {
+        excel.delete('Sheet1');
+        print('✅ Sheet1 삭제 완료');
+      }
+    } catch (e) {
+      print('⚠️ Sheet1 삭제 중 오류 (무시): $e');
+    }
+    
+    // Cliente 상세 정보 시트 생성
     final sheet = excel['Detalle del Cliente'];
+    print('✅ 시트 생성 완료: Detalle del Cliente, 전체 시트: ${excel.sheets.keys.toList()}');
     
     int currentRow = 0;
     
@@ -329,13 +626,8 @@ class ExcelService {
               col = 0;
               for (var key in columns) {
                 final value = item[key];
-                if (value is num) {
-                  sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: currentRow))
-                      .value = IntCellValue(value.toInt());
-                } else {
-                  sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: currentRow))
-                      .value = TextCellValue(value?.toString() ?? '');
-                }
+                final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: currentRow));
+                _setCellValue(cell, key, value);
                 col++;
               }
               currentRow++;
@@ -353,6 +645,17 @@ class ExcelService {
     
     final fileName = 'Detalle_Cliente_${clienteNombre.replaceAll(RegExp(r'[^\w\s-]'), '_')}_${DateFormat('yyyyMMdd_HHmmss').format(now)}.xlsx';
     final file = File('${directory.path}/$fileName');
+    
+    // Excel 저장 전에 Sheet1이 남아있는지 다시 확인하고 삭제
+    try {
+      if (excel.sheets.keys.contains('Sheet1')) {
+        excel.delete('Sheet1');
+        print('✅ 저장 전 Sheet1 삭제 완료');
+      }
+      print('📊 최종 시트 목록: ${excel.sheets.keys.toList()}');
+    } catch (e) {
+      print('⚠️ 저장 전 Sheet1 삭제 중 오류 (무시): $e');
+    }
     
     final excelBytes = excel.save();
     if (excelBytes != null) {
