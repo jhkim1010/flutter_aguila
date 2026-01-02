@@ -5,8 +5,12 @@ REM Double-click or run from command prompt: build_windows.bat
 
 echo Windows build starting...
 
-REM Run PowerShell script
-powershell.exe -ExecutionPolicy Bypass -File ".\scripts\inject_build_date.ps1"
+REM Run PowerShell script for build date injection
+if exist ".\scripts\inject_build_date_simple.ps1" (
+    powershell.exe -ExecutionPolicy Bypass -File ".\scripts\inject_build_date_simple.ps1"
+) else (
+    powershell.exe -ExecutionPolicy Bypass -File ".\scripts\inject_build_date.ps1"
+)
 if %ERRORLEVEL% NEQ 0 (
     echo Build date injection failed
     pause
