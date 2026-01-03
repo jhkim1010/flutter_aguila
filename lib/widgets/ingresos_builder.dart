@@ -88,16 +88,19 @@ class IngresosBuilder {
         (data['data'] as Map).containsKey('summary_by_company') &&
         (data['data'] as Map)['summary_by_company'] is List) {
       final summaryByCompanyList = (data['data'] as Map)['summary_by_company'] as List;
-      summaryByCompanyTable = _buildSummaryByCompanyTable(
-        summaryByCompanyList,
-        context,
-        onSort: onSort,
-        sortColumn: sortColumn,
-        sortAscending: sortAscending,
-        reportColor: reportColor,
-        selectedCompanyCode: selectedCompanyCode,
-        onCompanySelected: onCompanySelected,
-      );
+      // 데이터가 있을 때만 테이블 생성
+      if (summaryByCompanyList.isNotEmpty) {
+        summaryByCompanyTable = _buildSummaryByCompanyTable(
+          summaryByCompanyList,
+          context,
+          onSort: onSort,
+          sortColumn: sortColumn,
+          sortAscending: sortAscending,
+          reportColor: reportColor,
+          selectedCompanyCode: selectedCompanyCode,
+          onCompanySelected: onCompanySelected,
+        );
+      }
     }
 
     // summary_by_category 테이블
@@ -107,16 +110,39 @@ class IngresosBuilder {
         (data['data'] as Map).containsKey('summary_by_category') &&
         (data['data'] as Map)['summary_by_category'] is List) {
       final summaryByCategoryList = (data['data'] as Map)['summary_by_category'] as List;
-      summaryByCategoryTable = _buildSummaryByCategoryTable(
-        summaryByCategoryList,
-        context,
-        onSort: onSort,
-        sortColumn: sortColumn,
-        sortAscending: sortAscending,
-        reportColor: reportColor,
-        selectedCategoryCode: selectedCategoryCode,
-        onCategorySelected: onCategorySelected,
-      );
+      // 데이터가 있을 때만 테이블 생성
+      if (summaryByCategoryList.isNotEmpty) {
+        summaryByCategoryTable = _buildSummaryByCategoryTable(
+          summaryByCategoryList,
+          context,
+          onSort: onSort,
+          sortColumn: sortColumn,
+          sortAscending: sortAscending,
+          reportColor: reportColor,
+          selectedCategoryCode: selectedCategoryCode,
+          onCategorySelected: onCategorySelected,
+        );
+      }
+    }
+
+    // summary_by_color 테이블
+    Widget? summaryByColorTable;
+    if (data.containsKey('data') && 
+        data['data'] is Map &&
+        (data['data'] as Map).containsKey('summary_by_color') &&
+        (data['data'] as Map)['summary_by_color'] is List) {
+      final summaryByColorList = (data['data'] as Map)['summary_by_color'] as List;
+      // 데이터가 있을 때만 테이블 생성
+      if (summaryByColorList.isNotEmpty) {
+        summaryByColorTable = _buildSummaryByColorTable(
+          summaryByColorList,
+          context,
+          onSort: onSort,
+          sortColumn: sortColumn,
+          sortAscending: sortAscending,
+          reportColor: reportColor,
+        );
+      }
     }
 
     // products 테이블
@@ -234,14 +260,15 @@ class IngresosBuilder {
       summaryCard: summaryCard,
       summaryByCompanyTable: summaryByCompanyTable,
       summaryByCategoryTable: summaryByCategoryTable,
+      summaryByColorTable: summaryByColorTable,
       productsTable: productsTable,
     );
   }
 
   /// macOS/Windows 대형 화면용 레이아웃 (좌우 분할 레이아웃)
   static Widget _buildContentForDesktop(_ExtractedData data) {
-    // 좌우 분할 레이아웃이 가능한 경우
-    if ((data.summaryByCompanyTable != null || data.summaryByCategoryTable != null) && 
+    // summary 테이블이 하나라도 있는 경우: 좌우 분할 레이아웃
+    if ((data.summaryByCompanyTable != null || data.summaryByCategoryTable != null || data.summaryByColorTable != null) && 
         data.productsTable != null) {
       return Padding(
         padding: const EdgeInsets.all(16.0),
@@ -259,6 +286,7 @@ class IngresosBuilder {
                 leftChild: _buildLeftPanel(
                   summaryByCompanyTable: data.summaryByCompanyTable,
                   summaryByCategoryTable: data.summaryByCategoryTable,
+                  summaryByColorTable: data.summaryByColorTable,
                 ),
                 rightChild: _buildRightPanel(
                   productsTable: data.productsTable!,
@@ -270,7 +298,33 @@ class IngresosBuilder {
       );
     }
 
-    // summary 테이블이 없는 경우: 세로로 배치
+    // summary 테이블이 모두 없고 products 테이블만 있는 경우: 100% 폭으로 표시
+    if (data.summaryByCompanyTable == null && 
+        data.summaryByCategoryTable == null && 
+        data.summaryByColorTable == null && 
+        data.productsTable != null) {
+      return Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 헤더 부분 (summaryCard)
+            if (data.summaryCard != null) ...[
+              data.summaryCard!,
+              const SizedBox(height: 24),
+            ],
+            // products 테이블만 100% 폭으로 표시
+            Expanded(
+              child: _buildRightPanel(
+                productsTable: data.productsTable!,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // 그 외의 경우: 세로로 배치
     return _buildVerticalLayout(data);
   }
 
@@ -289,6 +343,7 @@ class IngresosBuilder {
   static Widget _buildLeftPanel({
     Widget? summaryByCompanyTable,
     Widget? summaryByCategoryTable,
+    Widget? summaryByColorTable,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -316,6 +371,18 @@ class IngresosBuilder {
           ),
           const SizedBox(height: 8),
           summaryByCategoryTable,
+          const SizedBox(height: 24),
+        ],
+        if (summaryByColorTable != null) ...[
+          const Text(
+            'Resumen x Color',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          summaryByColorTable,
         ],
       ],
     );
@@ -376,6 +443,31 @@ class IngresosBuilder {
 
   /// 세로 배치 레이아웃 (재사용 가능한 헬퍼 함수)
   static Widget _buildVerticalLayout(_ExtractedData data) {
+    // summary 테이블이 모두 없고 products 테이블만 있는 경우: 100% 폭으로 표시
+    if (data.summaryByCompanyTable == null && 
+        data.summaryByCategoryTable == null && 
+        data.summaryByColorTable == null && 
+        data.productsTable != null) {
+      return Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (data.summaryCard != null) ...[
+              data.summaryCard!,
+              const SizedBox(height: 24),
+            ],
+            Expanded(
+              child: _buildRightPanel(
+                productsTable: data.productsTable!,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // summary 테이블이 있는 경우: 세로로 배치
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -409,6 +501,18 @@ class IngresosBuilder {
             data.summaryByCategoryTable!,
             const SizedBox(height: 24),
           ],
+          if (data.summaryByColorTable != null) ...[
+            const Text(
+              'Resumen x Color',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            data.summaryByColorTable!,
+            const SizedBox(height: 24),
+          ],
           if (data.productsTable != null) ...[
             const Text(
               'Productos',
@@ -429,6 +533,7 @@ class IngresosBuilder {
   static Widget _buildSummaryCard(Map<String, dynamic> summary) {
     final totalCompanies = summary['total_companies']?.toString() ?? '0';
     final totalCategories = summary['total_categories']?.toString() ?? '0';
+    final totalColors = summary['total_colors']?.toString() ?? '0';
     final totalProducts = summary['total_products']?.toString() ?? '0';
     final totalCantidad = summary['total_cantidad']?.toString() ?? '0';
     
@@ -439,14 +544,49 @@ class IngresosBuilder {
       elevation: 2,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildSummaryItem('Total Empresas', totalCompanies, Icons.business, Colors.blue),
-            _buildSummaryItem('Total Categorías', totalCategories, Icons.category, Colors.green),
-            _buildSummaryItem('Total Productos', totalProducts, Icons.inventory, Colors.orange),
-            _buildSummaryItem('Total Cantidad', formattedCantidad, Icons.shopping_cart, Colors.purple),
-          ],
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // 화면이 좁으면 세로로 배치, 넓으면 가로로 배치
+            if (constraints.maxWidth < 800) {
+              return Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildSummaryItem('Total Empresas', totalCompanies, Icons.business, Colors.blue),
+                      _buildSummaryItem('Total Categorías', totalCategories, Icons.category, Colors.green),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildSummaryItem('Total Colores', totalColors, Icons.palette, Colors.pink),
+                      _buildSummaryItem('Total Productos', totalProducts, Icons.inventory, Colors.orange),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildSummaryItem('Total Cantidad', formattedCantidad, Icons.shopping_cart, Colors.purple),
+                    ],
+                  ),
+                ],
+              );
+            } else {
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildSummaryItem('Total Empresas', totalCompanies, Icons.business, Colors.blue),
+                  _buildSummaryItem('Total Categorías', totalCategories, Icons.category, Colors.green),
+                  _buildSummaryItem('Total Colores', totalColors, Icons.palette, Colors.pink),
+                  _buildSummaryItem('Total Productos', totalProducts, Icons.inventory, Colors.orange),
+                  _buildSummaryItem('Total Cantidad', formattedCantidad, Icons.shopping_cart, Colors.purple),
+                ],
+              );
+            }
+          },
         ),
       ),
     );
@@ -863,6 +1003,181 @@ class IngresosBuilder {
       ),
     );
   }
+
+  /// 색상별 요약 테이블 빌드
+  static Widget _buildSummaryByColorTable(
+    List summaryByColorList,
+    BuildContext context, {
+    Function(String?, bool)? onSort,
+    String? sortColumn,
+    bool sortAscending = true,
+    Color? reportColor,
+  }) {
+    if (summaryByColorList.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final color = reportColor ?? Colors.purple;
+    
+    // 정렬 적용
+    List<dynamic> sortedList = List.from(summaryByColorList);
+    if (sortColumn != null && onSort != null) {
+      sortedList.sort((a, b) {
+        if (a is! Map<String, dynamic> || b is! Map<String, dynamic>) {
+          return 0;
+        }
+
+        dynamic aValue;
+        dynamic bValue;
+
+        if (sortColumn == 'ColorCode') {
+          aValue = a['ColorCode'];
+          bValue = b['ColorCode'];
+        } else if (sortColumn == 'ColorName') {
+          aValue = a['ColorName']?.toString() ?? '';
+          bValue = b['ColorName']?.toString() ?? '';
+        } else if (sortColumn == 'totalCantidad') {
+          aValue = num.tryParse(a['totalCantidad']?.toString().replaceAll(',', '') ?? '0') ?? 0;
+          bValue = num.tryParse(b['totalCantidad']?.toString().replaceAll(',', '') ?? '0') ?? 0;
+        } else {
+          return 0;
+        }
+
+        if (aValue == null && bValue == null) return 0;
+        if (aValue == null) return sortAscending ? -1 : 1;
+        if (bValue == null) return sortAscending ? 1 : -1;
+
+        if (aValue is num && bValue is num) {
+          final comparison = aValue.compareTo(bValue);
+          return sortAscending ? comparison : -comparison;
+        }
+
+        final aStr = aValue.toString().toLowerCase();
+        final bStr = bValue.toString().toLowerCase();
+        final comparison = aStr.compareTo(bStr);
+        return sortAscending ? comparison : -comparison;
+      });
+    }
+    
+    // 컬럼 정의
+    final columns = [
+      DataColumn(
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Código',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            if (sortColumn == 'ColorCode' && onSort != null)
+              Icon(
+                sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                size: 16,
+                color: color,
+              ),
+          ],
+        ),
+        onSort: onSort != null ? (columnIndex, ascending) {
+          if (sortColumn == 'ColorCode') {
+            onSort('ColorCode', !sortAscending);
+          } else {
+            onSort('ColorCode', true);
+          }
+        } : null,
+      ),
+      DataColumn(
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Color',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            if (sortColumn == 'ColorName' && onSort != null)
+              Icon(
+                sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                size: 16,
+                color: color,
+              ),
+          ],
+        ),
+        onSort: onSort != null ? (columnIndex, ascending) {
+          if (sortColumn == 'ColorName') {
+            onSort('ColorName', !sortAscending);
+          } else {
+            onSort('ColorName', true);
+          }
+        } : null,
+      ),
+      DataColumn(
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Total Cantidad',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            if (sortColumn == 'totalCantidad' && onSort != null)
+              Icon(
+                sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                size: 16,
+                color: color,
+              ),
+          ],
+        ),
+        numeric: true,
+        onSort: onSort != null ? (columnIndex, ascending) {
+          if (sortColumn == 'totalCantidad') {
+            onSort('totalCantidad', !sortAscending);
+          } else {
+            onSort('totalCantidad', true);
+          }
+        } : null,
+      ),
+    ];
+
+    // 데이터 행 생성
+    final rows = sortedList.map<DataRow>((item) {
+      if (item is! Map<String, dynamic>) {
+        return DataRow(cells: columns.map((_) => const DataCell(Text(''))).toList());
+      }
+      
+      final colorCode = item['ColorCode']?.toString() ?? '';
+      final colorName = item['ColorName']?.toString() ?? '';
+      final totalCantidad = item['totalCantidad']?.toString() ?? '0';
+      
+      final cantidadNum = num.tryParse(totalCantidad.toString().replaceAll(',', '')) ?? 0;
+      final formattedCantidad = NumberFormat('#,##0').format(cantidadNum);
+
+      return DataRow(
+        cells: [
+          DataCell(Text(colorCode)),
+          DataCell(Text(colorName)),
+          DataCell(
+            Text(
+              formattedCantidad,
+              textAlign: TextAlign.right,
+            ),
+          ),
+        ],
+      );
+    }).toList();
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.vertical,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: DataTable(
+          columnSpacing: 8,
+          dataRowMinHeight: 32,
+          dataRowMaxHeight: 37,
+          headingRowColor: MaterialStateProperty.all(color.withOpacity(0.1)),
+          columns: columns,
+          rows: rows,
+        ),
+      ),
+    );
+  }
 }
 
 /// 추출된 데이터를 담는 클래스 (재사용 가능)
@@ -870,12 +1185,14 @@ class _ExtractedData {
   final Widget? summaryCard;
   final Widget? summaryByCompanyTable;
   final Widget? summaryByCategoryTable;
+  final Widget? summaryByColorTable;
   final Widget? productsTable;
 
   const _ExtractedData({
     this.summaryCard,
     this.summaryByCompanyTable,
     this.summaryByCategoryTable,
+    this.summaryByColorTable,
     this.productsTable,
   });
 }

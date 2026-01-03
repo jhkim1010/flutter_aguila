@@ -2429,7 +2429,7 @@ class ReportTableBuilder {
                         int childCount = 0;
                         tableBox!.visitChildren((child) {
                           if (child is RenderBox) {
-                            debugPrint('   → [DataTable] RenderTable 자식 #$childCount: 타입=${child.runtimeType}, width=${child.size.width}, height=${child.size.height}');
+                            // 디버그 로그 제거됨
                             childCount++;
                           }
                         });
