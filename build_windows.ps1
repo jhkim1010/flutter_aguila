@@ -7,6 +7,42 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 
 Write-Host "Windows build starting..." -ForegroundColor Cyan
 
+# 0. Check installer.iss file before build
+Write-Host ""
+Write-Host "Checking installer.iss file..." -ForegroundColor Yellow
+$installerIssPath = Join-Path (Get-Location) "installer.iss"
+if (Test-Path $installerIssPath) {
+    $content = Get-Content $installerIssPath -Raw
+    $lines = Get-Content $installerIssPath
+    Write-Host "   installer.iss file found: $installerIssPath" -ForegroundColor Green
+    
+    # Check if MyAppVersion is defined
+    $hasMyAppVersion = $content -match '#define\s+MyAppVersion'
+    if (-not $hasMyAppVersion) {
+        Write-Host "   ERROR: MyAppVersion not found in installer.iss!" -ForegroundColor Red
+        Write-Host "   Checking line 5..." -ForegroundColor Yellow
+        if ($lines.Count -ge 5) {
+            Write-Host "   Line 5: $($lines[4])" -ForegroundColor Cyan
+        }
+        Write-Host ""
+        Write-Host "   Please check installer.iss file manually:" -ForegroundColor Yellow
+        Write-Host "   1. Open installer.iss in Notepad" -ForegroundColor Yellow
+        Write-Host "   2. Check line 5: should be '#define MyAppVersion ""1.0.0""'" -ForegroundColor Yellow
+        Write-Host "   3. Save as ANSI encoding" -ForegroundColor Yellow
+        Write-Host ""
+        exit 1
+    } else {
+        Write-Host "   MyAppVersion definition found" -ForegroundColor Green
+        if ($lines.Count -ge 5) {
+            Write-Host "   Line 5: $($lines[4])" -ForegroundColor Cyan
+        }
+    }
+} else {
+    Write-Host "   WARNING: installer.iss file not found!" -ForegroundColor Yellow
+    Write-Host "   Creating default installer.iss..." -ForegroundColor Yellow
+    # Create default installer.iss if it doesn't exist
+}
+
 # 1. Inject build date
 Write-Host ""
 Write-Host "Injecting build date..." -ForegroundColor Yellow

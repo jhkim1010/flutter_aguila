@@ -54,4 +54,3 @@ function InitializeSetup(): Boolean;
 begin
   Result := True;
 end;
-
