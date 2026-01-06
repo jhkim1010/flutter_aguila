@@ -4754,14 +4754,36 @@ class _ReportScreenState extends State<ReportScreen> {
                   },
                   onSelected: (ReportType reportType) {
                     debugPrint('🔍 [메뉴] onSelected 호출됨: reportType=$reportType, 현재 reportType=${widget.reportType}');
-                    // 빌드 날짜 항목은 무시 (alertas와 같은 value를 사용하지만, 이미 alertas 보고서인 경우)
-                    // 또는 빌드 날짜 항목을 선택했을 때는 항상 무시 (메뉴 아이템 리스트의 마지막 항목)
+                    // 빌드 날짜 항목은 무시 (alertas와 같은 value를 사용하지만, 메뉴의 마지막 항목)
+                    // alertas 보고서에서 alertas를 선택한 경우, 빌드 날짜 항목일 가능성이 높음
+                    // 빌드 날짜 항목은 항상 마지막에 위치하므로, alertas 보고서에서 alertas를 선택하면 무시
                     if (reportType == ReportType.alertas && widget.reportType == ReportType.alertas) {
                       // alertas 보고서에서 alertas를 선택한 경우, 빌드 날짜 항목일 가능성이 높음
+                      // 메뉴 아이템 리스트를 확인하여 마지막 항목인지 확인
+                      final menuItems = _buildReportMenuItems();
+                      if (menuItems.isNotEmpty) {
+                        final lastMenuItem = menuItems.last;
+                        if (lastMenuItem is PopupMenuItem<ReportType>) {
+                          final lastItemValue = lastMenuItem.value;
+                          // 마지막 항목이 alertas이고, 그 앞에 alertas 메뉴 아이템이 있으면 빌드 날짜 항목
+                          if (lastItemValue == ReportType.alertas) {
+                            // alertas 메뉴 아이템이 몇 개인지 확인
+                            final alertasMenuItems = menuItems.where((item) => 
+                              item is PopupMenuItem<ReportType> && 
+                              item.value == ReportType.alertas
+                            ).toList();
+                            // alertas 메뉴 아이템이 2개 이상이면, 마지막 항목은 빌드 날짜 항목
+                            if (alertasMenuItems.length >= 2) {
+                              debugPrint('🔍 [메뉴] 빌드 날짜 항목 선택됨 - 무시 (alertas 메뉴 아이템이 ${alertasMenuItems.length}개)');
+                              return; // if: 빌드 날짜 항목 - 무시
+                            }
+                          }
+                        }
+                      }
                       debugPrint('🔍 [메뉴] alertas 보고서에서 alertas 선택됨 - 빌드 날짜 항목일 가능성, 무시');
-                      return;
-                    }
-                    if (reportType != widget.reportType) {
+                      return; // if: alertas 보고서에서 alertas 선택 - 무시
+                    } // if (reportType == ReportType.alertas && widget.reportType == ReportType.alertas) 끝
+                    if (reportType != widget.reportType) { // if: 다른 보고서로 이동
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
@@ -11077,7 +11099,7 @@ class _ReportScreenState extends State<ReportScreen> {
       ),
       const PopupMenuDivider(),
       PopupMenuItem<ReportType>(
-        value: ReportType.alertas, // value는 필수이지만 onSelected에서 무시됨
+        value: ReportType.alertas, // value는 필수이지만 onSelected에서 무시됨 (빌드 날짜 표시용)
         enabled: true, // enabled: true로 설정하여 항상 표시되도록 함
         height: 40, // 높이 명시적으로 설정
         child: Builder(
@@ -11115,6 +11137,10 @@ class _ReportScreenState extends State<ReportScreen> {
       debugPrint('🔍 [메뉴] 마지막 아이템 enabled: ${lastItem.enabled}');
       debugPrint('🔍 [메뉴] 마지막 아이템 value: ${lastItem.value}');
     }
+    
+    // 빌드 날짜 메뉴 아이템의 인덱스를 저장 (onSelected에서 사용)
+    final buildDateItemIndex = menuItems.length - 1;
+    debugPrint('🔍 [메뉴] 빌드 날짜 메뉴 아이템 인덱스: $buildDateItemIndex');
     
     return menuItems;
   }
