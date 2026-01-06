@@ -464,6 +464,8 @@ class _ItemsDateRangeSelectorState extends State<ItemsDateRangeSelector> {
     DateTime? selectedEndDate = endDate;
 
     debugPrint('🔍 _showDualCalendarPicker 호출: startDate=$startDate, endDate=$endDate');
+    debugPrint('   → 초기 selectedStartDate: $selectedStartDate');
+    debugPrint('   → 초기 selectedEndDate: $selectedEndDate');
 
     return showDialog<DateTimeRange>(
       context: context,
@@ -539,12 +541,15 @@ class _ItemsDateRangeSelectorState extends State<ItemsDateRangeSelector> {
                                         firstDate: DateTime(2000),
                                         lastDate: today,
                                         onDateChanged: (date) {
+                                          debugPrint('   → [첫 번째 달력] 날짜 선택: $date');
                                           setState(() {
                                             selectedStartDate = date;
                                             // 시작일이 종료일보다 늦으면 종료일도 업데이트
                                             if (selectedEndDate != null && date.isAfter(selectedEndDate!)) {
+                                              debugPrint('   → 시작일이 종료일보다 늦음, 종료일도 업데이트: $date');
                                               selectedEndDate = date;
                                             }
+                                            debugPrint('   → [첫 번째 달력] 업데이트 후: selectedStartDate=$selectedStartDate, selectedEndDate=$selectedEndDate');
                                           });
                                         },
                                       ),
@@ -605,12 +610,15 @@ class _ItemsDateRangeSelectorState extends State<ItemsDateRangeSelector> {
                                         firstDate: selectedStartDate ?? DateTime(2000),
                                         lastDate: today,
                                         onDateChanged: (date) {
+                                          debugPrint('   → [두 번째 달력] 날짜 선택: $date');
                                           setState(() {
                                             selectedEndDate = date;
                                             // 종료일이 시작일보다 이전이면 시작일도 업데이트
                                             if (selectedStartDate != null && date.isBefore(selectedStartDate!)) {
+                                              debugPrint('   → 종료일이 시작일보다 이전, 시작일도 업데이트: $date');
                                               selectedStartDate = date;
                                             }
+                                            debugPrint('   → [두 번째 달력] 업데이트 후: selectedStartDate=$selectedStartDate, selectedEndDate=$selectedEndDate');
                                           });
                                         },
                                       ),
@@ -649,13 +657,16 @@ class _ItemsDateRangeSelectorState extends State<ItemsDateRangeSelector> {
                     ElevatedButton(
                       onPressed: selectedStartDate != null && selectedEndDate != null
                           ? () {
-                              debugPrint('   → 확인 버튼 클릭: startDate=$selectedStartDate, endDate=$selectedEndDate');
+                              debugPrint('   → [확인 버튼] 클릭: startDate=$selectedStartDate, endDate=$selectedEndDate');
+                              debugPrint('   → [확인 버튼] DateTimeRange 생성: start=${selectedStartDate!}, end=${selectedEndDate!}');
+                              final dateRange = DateTimeRange(
+                                start: selectedStartDate!,
+                                end: selectedEndDate!,
+                              );
+                              debugPrint('   → [확인 버튼] 반환할 DateTimeRange: $dateRange');
                               Navigator.pop(
                                 dialogContext,
-                                DateTimeRange(
-                                  start: selectedStartDate!,
-                                  end: selectedEndDate!,
-                                ),
+                                dateRange,
                               );
                             }
                           : null,
