@@ -11,14 +11,43 @@ Write-Host "Windows build starting..." -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Injecting build date..." -ForegroundColor Yellow
 # Try simple version first, fallback to full version
+$buildDateInjected = $false
 if (Test-Path ".\scripts\inject_build_date_simple.ps1") {
-    & ".\scripts\inject_build_date_simple.ps1"
+    try {
+        & ".\scripts\inject_build_date_simple.ps1"
+        if ($LASTEXITCODE -eq 0 -or $LASTEXITCODE -eq $null) {
+            $buildDateInjected = $true
+            Write-Host "Build date injection completed successfully." -ForegroundColor Green
+        } else {
+            Write-Host "ERROR: Build date injection failed (exit code: $LASTEXITCODE)" -ForegroundColor Red
+            Write-Host "Please check the script manually:" -ForegroundColor Yellow
+            Write-Host "  .\scripts\inject_build_date_simple.ps1" -ForegroundColor Yellow
+            exit 1
+        }
+    } catch {
+        Write-Host "ERROR: Build date injection script failed: $_" -ForegroundColor Red
+        exit 1
+    }
+} elseif (Test-Path ".\scripts\inject_build_date.ps1") {
+    try {
+        & ".\scripts\inject_build_date.ps1"
+        if ($LASTEXITCODE -eq 0 -or $LASTEXITCODE -eq $null) {
+            $buildDateInjected = $true
+            Write-Host "Build date injection completed successfully." -ForegroundColor Green
+        } else {
+            Write-Host "ERROR: Build date injection failed (exit code: $LASTEXITCODE)" -ForegroundColor Red
+            Write-Host "Please check the script manually:" -ForegroundColor Yellow
+            Write-Host "  .\scripts\inject_build_date.ps1" -ForegroundColor Yellow
+            exit 1
+        }
+    } catch {
+        Write-Host "ERROR: Build date injection script failed: $_" -ForegroundColor Red
+        exit 1
+    }
 } else {
-    & ".\scripts\inject_build_date.ps1"
-}
-if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne $null) {
-    Write-Host "Build date injection failed" -ForegroundColor Red
-    exit 1
+    Write-Host "WARNING: Build date injection script not found!" -ForegroundColor Yellow
+    Write-Host "Skipping build date injection. Build will continue with old date." -ForegroundColor Yellow
+    Write-Host ""
 }
 
 # 2. Flutter build

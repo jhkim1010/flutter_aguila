@@ -5532,11 +5532,13 @@ class _ReportScreenState extends State<ReportScreen> {
                                   reportType: widget.reportType,
                                   startDate: widget.reportType == ReportType.fventas ? _ventasStartDate : _itemsStartDate,
                                   endDate: widget.reportType == ReportType.fventas ? _ventasEndDate : _itemsEndDate,
+                                  unit: widget.reportType == ReportType.fventas ? _ventasUnit : null, // fventas 보고서의 경우 unit 전달
                                   onDateRangeChanged: (startDate, endDate) {
                                     setState(() {
                                       if (widget.reportType == ReportType.fventas) {
                                         _ventasStartDate = startDate;
                                         _ventasEndDate = endDate;
+                                        debugPrint('📅 FVentas 날짜 범위 변경: ${DateFormat('yyyy-MM-dd').format(startDate)} ~ ${DateFormat('yyyy-MM-dd').format(endDate)}');
                                       } else {
                                         _itemsStartDate = startDate;
                                         _itemsEndDate = endDate;
