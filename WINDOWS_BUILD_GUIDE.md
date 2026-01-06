@@ -89,6 +89,72 @@ Flutter가 PATH에 없는 경우:
 build\windows\runner\Release\Be_Cool.exe
 ```
 
+## Windows 설치 파일 생성 (Inno Setup)
+
+실행 파일을 빌드한 후, Inno Setup을 사용하여 설치 파일(.exe)을 생성할 수 있습니다.
+
+### 사전 요구사항
+
+1. **Inno Setup 6 설치**
+   - 다운로드: https://jrsoftware.org/isdl.php
+   - 기본 설치 경로: `C:\Program Files (x86)\Inno Setup 6\`
+
+2. **Flutter Windows 빌드 완료**
+   - 위의 빌드 방법으로 실행 파일을 먼저 생성해야 합니다
+
+### 설치 파일 생성
+
+PowerShell에서 다음 명령어 실행:
+
+```powershell
+& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
+```
+
+### ⚠️ 중요: installer.iss 파일 확인
+
+**5번째 줄이 올바른지 반드시 확인하세요:**
+
+올바른 형식:
+```iss
+#define MyAppVersion "1.0.0"
+```
+
+잘못된 형식 (오류 발생):
+```iss
+$11.0.0"  // ❌ 잘못됨
+```
+
+### 문제 해결
+
+#### Inno Setup 컴파일 오류: MyAppVersion 선언 오류
+
+**증상:**
+- 컴파일 시 오류 발생
+- `installer.iss` 파일의 5번째 줄이 잘못됨
+
+**해결 방법:**
+
+1. **에디터에서 직접 수정**
+   - `installer.iss` 파일을 텍스트 에디터로 열기
+   - 5번째 줄 확인: `#define MyAppVersion "1.0.0"` 형식이어야 함
+   - 잘못된 경우 수정 후 저장
+
+2. **파일이 계속 되돌아가는 경우**
+   - 에디터에서 파일을 열어 5번째 줄을 직접 확인
+   - `#define MyAppVersion "1.0.0"` 형식으로 수정
+   - 저장 후 다시 컴파일 시도
+   - 일부 에디터는 자동 저장이나 인코딩 변환으로 인해 문제가 발생할 수 있음
+
+3. **수정 후 재컴파일**
+   ```powershell
+   & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
+   ```
+
+### 생성되는 설치 파일
+
+- **위치**: `build\installers\Be_COOL_Setup_1.0.0.exe`
+- 이 파일을 다른 Windows PC로 전송하여 설치할 수 있습니다
+
 ## 문제 해결
 
 ### "Flutter not found" 오류
