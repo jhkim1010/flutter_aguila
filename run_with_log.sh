@@ -12,10 +12,6 @@ mkdir -p "$LOG_DIR"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 LOG_FILE="$LOG_DIR/flutter_log_${TIMESTAMP}.txt"
 
-echo "📝 로그 파일: $LOG_FILE"
-echo "🚀 Flutter 앱 실행 중..."
-echo ""
-
 # 디바이스 ID가 제공되었는지 확인
 if [ -z "$1" ]; then
   # 디바이스 ID가 없으면 기본값 사용 (macos)
@@ -24,11 +20,36 @@ else
   DEVICE="$1"
 fi
 
+# 디바이스 ID를 기반으로 플랫폼 정보 추정
+PLATFORM_INFO=""
+case "$DEVICE" in
+  macos|windows|linux)
+    PLATFORM_INFO="대형화면 (Desktop: $DEVICE)"
+    ;;
+  ipad*|iPad*)
+    PLATFORM_INFO="대형화면 (Tablet: iPad)"
+    ;;
+  *)
+    PLATFORM_INFO="핸드폰 (Mobile: $DEVICE)"
+    ;;
+esac
+
+echo "📝 로그 파일: $LOG_FILE"
+echo "📱 플랫폼 정보: $PLATFORM_INFO"
+echo "🚀 Flutter 앱 실행 중..."
+echo ""
+
+# 플랫폼 정보를 로그 파일 첫 줄에 기록
+echo "=== 플랫폼 정보: $PLATFORM_INFO ===" > "$LOG_FILE"
+echo "" >> "$LOG_FILE"
+
 # Flutter 앱 실행 및 로그 저장
 # tee 명령어로 동시에 콘솔과 파일에 출력
 # 2>&1: stderr를 stdout으로 리다이렉션하여 모든 출력을 캡처
-flutter run -d "$DEVICE" 2>&1 | tee "$LOG_FILE"
+# -a 옵션으로 파일에 append (플랫폼 정보 다음에 추가)
+flutter run -d "$DEVICE" 2>&1 | tee -a "$LOG_FILE"
 
 echo ""
 echo "✅ 로그가 저장되었습니다: $LOG_FILE"
+echo "📱 플랫폼 정보: $PLATFORM_INFO"
 

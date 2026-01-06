@@ -69,9 +69,15 @@ class ItemsBuilder {
     String? selectedCategoryCode,
     Function(String?)? onCategorySelected,
   }) {
-    // summary 카드
+    // summary 카드 (모바일 폰에서는 표시하지 않음)
     Widget? summaryCard;
-    if (data.containsKey('summary') && data['summary'] is Map) {
+    final platformType = PlatformUtils.getPlatformType(context);
+    final isMobile = platformType == PlatformType.mobile;
+    final isTablet = PlatformUtils.isIPad(context) || 
+                     (platformType == PlatformType.mobile && MediaQuery.of(context).size.width >= 800);
+    final isMobilePhone = isMobile && !isTablet;
+    
+    if (!isMobilePhone && data.containsKey('summary') && data['summary'] is Map) {
       summaryCard = _buildSummaryCard(data['summary'] as Map<String, dynamic>);
     }
 
@@ -238,14 +244,25 @@ class ItemsBuilder {
       summaryByCategoryTable: summaryByCategoryTable,
       summaryByColorTable: summaryByColorTable,
       productsTable: productsTable,
+      scrollController: scrollController,
     );
   }
 
   /// macOS/Windows 대형 화면용 레이아웃 (좌우 분할 레이아웃)
   static Widget _buildContentForDesktop(_ExtractedData data) {
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [큰 화면 디버깅] _buildContentForDesktop 시작');
+    debugPrint('   → summaryCard != null: ${data.summaryCard != null}');
+    debugPrint('   → summaryByCompanyTable != null: ${data.summaryByCompanyTable != null}');
+    debugPrint('   → summaryByCategoryTable != null: ${data.summaryByCategoryTable != null}');
+    debugPrint('   → summaryByColorTable != null: ${data.summaryByColorTable != null}');
+    debugPrint('   → productsTable != null: ${data.productsTable != null}');
+    debugPrint('   → productsTable 타입: ${data.productsTable?.runtimeType}');
+    
     // summary 테이블이 하나라도 있는 경우: 좌우 분할 레이아웃
     if ((data.summaryByCompanyTable != null || data.summaryByCategoryTable != null || data.summaryByColorTable != null) && 
         data.productsTable != null) {
+      debugPrint('   → 좌우 분할 레이아웃 사용');
       return Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -279,6 +296,7 @@ class ItemsBuilder {
         data.summaryByCategoryTable == null && 
         data.summaryByColorTable == null && 
         data.productsTable != null) {
+      debugPrint('   → 100% 폭 레이아웃 사용 (summary 없음)');
       return Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -290,10 +308,9 @@ class ItemsBuilder {
               const SizedBox(height: 24),
             ],
             // products 테이블만 100% 폭으로 표시
-            Expanded(
-              child: _buildRightPanel(
-                productsTable: data.productsTable!,
-              ),
+            _buildRightPanel(
+              productsTable: data.productsTable!,
+              useExpanded: false,
             ),
           ],
         ),
@@ -301,6 +318,8 @@ class ItemsBuilder {
     }
 
     // 그 외의 경우: 세로로 배치
+    debugPrint('   → 세로 배치 레이아웃 사용 (기본)');
+    debugPrint('═══════════════════════════════════════════════════════');
     return _buildVerticalLayout(data);
   }
 
@@ -367,21 +386,25 @@ class ItemsBuilder {
   /// 오른쪽 패널 빌드 (재사용 가능한 헬퍼 함수)
   static Widget _buildRightPanel({
     required Widget productsTable,
+    bool useExpanded = true,
   }) {
     debugPrint('═══════════════════════════════════════════════════════');
-    debugPrint('📊 [ItemsBuilder] _buildRightPanel 시작');
+    debugPrint('🔍 [큰 화면 디버깅] _buildRightPanel 시작');
     debugPrint('   → productsTable 타입: ${productsTable.runtimeType}');
+    debugPrint('   → useExpanded: $useExpanded');
     debugPrint('═══════════════════════════════════════════════════════');
     
     return LayoutBuilder(
       builder: (context, constraints) {
-        debugPrint('📊 [ItemsBuilder] _buildRightPanel LayoutBuilder');
+        debugPrint('🔍 [큰 화면 디버깅] _buildRightPanel LayoutBuilder');
         debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
         debugPrint('   → constraints.maxHeight: ${constraints.maxHeight}');
+        debugPrint('   → constraints.minWidth: ${constraints.minWidth}');
+        debugPrint('   → constraints.minHeight: ${constraints.minHeight}');
         
-        return Column(
+        final content = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.max,
+          mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
               'Productos',
@@ -391,28 +414,45 @@ class ItemsBuilder {
               ),
             ),
             const SizedBox(height: 8),
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, expandedConstraints) {
-                  debugPrint('📊 [ItemsBuilder] _buildRightPanel Expanded LayoutBuilder');
-                  debugPrint('   → expandedConstraints.maxWidth: ${expandedConstraints.maxWidth}');
-                  debugPrint('   → expandedConstraints.maxHeight: ${expandedConstraints.maxHeight}');
-                  
-                  return ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minWidth: expandedConstraints.maxWidth,
-                      maxWidth: expandedConstraints.maxWidth,
-                    ),
-                    child: SizedBox(
-                      width: expandedConstraints.maxWidth,
-                      child: productsTable,
-                    ),
-                  );
-                },
-              ),
+            LayoutBuilder(
+              builder: (context, expandedConstraints) {
+                debugPrint('📊 [ItemsBuilder] _buildRightPanel LayoutBuilder');
+                debugPrint('   → expandedConstraints.maxWidth: ${expandedConstraints.maxWidth}');
+                debugPrint('   → expandedConstraints.maxHeight: ${expandedConstraints.maxHeight}');
+                
+                return ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minWidth: expandedConstraints.maxWidth,
+                    maxWidth: expandedConstraints.maxWidth,
+                  ),
+                  child: SizedBox(
+                    width: expandedConstraints.maxWidth,
+                    child: productsTable,
+                  ),
+                );
+              },
             ),
           ],
         );
+        
+        debugPrint('🔍 [큰 화면 디버깅] _buildRightPanel 최종 위젯');
+        debugPrint('   → useExpanded: $useExpanded');
+        debugPrint('   → content 타입: ${content.runtimeType}');
+        
+        final result = useExpanded
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.max,
+                children: [
+                  Expanded(child: content),
+                ],
+              )
+            : content;
+        
+        debugPrint('   → result 타입: ${result.runtimeType}');
+        debugPrint('═══════════════════════════════════════════════════════');
+        
+        return result;
       },
     );
   }
@@ -424,7 +464,31 @@ class ItemsBuilder {
         data.summaryByCategoryTable == null && 
         data.summaryByColorTable == null && 
         data.productsTable != null) {
-      return Padding(
+      return SingleChildScrollView(
+        controller: data.scrollController,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (data.summaryCard != null) ...[
+                data.summaryCard!,
+                const SizedBox(height: 24),
+              ],
+              _buildRightPanel(
+                productsTable: data.productsTable!,
+                useExpanded: false,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // summary 테이블이 있는 경우: 세로로 배치
+    return SingleChildScrollView(
+      controller: data.scrollController,
+      child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -433,74 +497,55 @@ class ItemsBuilder {
               data.summaryCard!,
               const SizedBox(height: 24),
             ],
-            Expanded(
-              child: _buildRightPanel(
-                productsTable: data.productsTable!,
+            if (data.summaryByCompanyTable != null) ...[
+              const Text(
+                'Resumen por Empresa',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
+              const SizedBox(height: 8),
+              data.summaryByCompanyTable!,
+              const SizedBox(height: 24),
+            ],
+            if (data.summaryByCategoryTable != null) ...[
+              const Text(
+                'Resumen por Categoría',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              data.summaryByCategoryTable!,
+              const SizedBox(height: 24),
+            ],
+            if (data.summaryByColorTable != null) ...[
+              const Text(
+                'Resumen x Color',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              data.summaryByColorTable!,
+              const SizedBox(height: 24),
+            ],
+            if (data.productsTable != null) ...[
+              const Text(
+                'Productos',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              data.productsTable!,
+            ],
           ],
         ),
-      );
-    }
-
-    // summary 테이블이 있는 경우: 세로로 배치
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (data.summaryCard != null) ...[
-            data.summaryCard!,
-            const SizedBox(height: 24),
-          ],
-          if (data.summaryByCompanyTable != null) ...[
-            const Text(
-              'Resumen por Empresa',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            data.summaryByCompanyTable!,
-            const SizedBox(height: 24),
-          ],
-          if (data.summaryByCategoryTable != null) ...[
-            const Text(
-              'Resumen por Categoría',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            data.summaryByCategoryTable!,
-            const SizedBox(height: 24),
-          ],
-          if (data.summaryByColorTable != null) ...[
-            const Text(
-              'Resumen x Color',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            data.summaryByColorTable!,
-            const SizedBox(height: 24),
-          ],
-          if (data.productsTable != null) ...[
-            const Text(
-              'Productos',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Expanded(child: data.productsTable!),
-          ],
-        ],
       ),
     );
   }
@@ -516,89 +561,79 @@ class ItemsBuilder {
     final cantidadNum = num.tryParse(totalCantidad.toString().replaceAll(',', '')) ?? 0;
     final formattedCantidad = NumberFormat('#,##0').format(cantidadNum);
 
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            // 화면이 좁으면 세로로 배치, 넓으면 가로로 배치
-            if (constraints.maxWidth < 800) {
-              return Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildSummaryItem('Total Empresas', totalCompanies, Icons.business, Colors.blue),
-                      _buildSummaryItem('Total Categorías', totalCategories, Icons.category, Colors.green),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildSummaryItem('Total Colores', totalColors, Icons.palette, Colors.pink),
-                      _buildSummaryItem('Total Productos', totalProducts, Icons.inventory, Colors.orange),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildSummaryItem('Total Cantidad', formattedCantidad, Icons.shopping_cart, Colors.purple),
-                    ],
-                  ),
-                ],
-              );
-            } else {
-              return Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildSummaryItem('Total Empresas', totalCompanies, Icons.business, Colors.blue),
-                  _buildSummaryItem('Total Categorías', totalCategories, Icons.category, Colors.green),
-                  _buildSummaryItem('Total Colores', totalColors, Icons.palette, Colors.pink),
-                  _buildSummaryItem('Total Productos', totalProducts, Icons.inventory, Colors.orange),
-                  _buildSummaryItem('Total Cantidad', formattedCantidad, Icons.shopping_cart, Colors.purple),
-                ],
-              );
-            }
-          },
-        ),
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // 모바일 폰 체크
+        final platformType = PlatformUtils.getPlatformType(context);
+        final isMobile = platformType == PlatformType.mobile;
+        final isTablet = PlatformUtils.isIPad(context) || 
+                         (platformType == PlatformType.mobile && constraints.maxWidth >= 800);
+        final isMobilePhone = isMobile && !isTablet;
+        
+        // 모바일 폰일 때 크기 조정
+        final itemSpacing = isMobilePhone ? 6.0 : 12.0;
+        
+        return Wrap(
+          spacing: itemSpacing,
+          runSpacing: itemSpacing,
+          alignment: WrapAlignment.spaceEvenly,
+          children: [
+            _buildSummaryBox('Total Empresas', totalCompanies, Icons.business, Colors.blue, isMobilePhone),
+            _buildSummaryBox('Total Categorías', totalCategories, Icons.category, Colors.green, isMobilePhone),
+            _buildSummaryBox('Total Colores', totalColors, Icons.palette, Colors.pink, isMobilePhone),
+            _buildSummaryBox('Total Productos', totalProducts, Icons.inventory, Colors.orange, isMobilePhone),
+            _buildSummaryBox('Total Cantidad', formattedCantidad, Icons.shopping_cart, Colors.purple, isMobilePhone),
+          ],
+        );
+      },
     );
   }
 
-  /// 요약 아이템 빌드
-  static Widget _buildSummaryItem(String label, String value, IconData icon, Color color) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: color, size: 28),
-        const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-          ],
+  /// 요약 박스 빌드 (개별 박스 형태)
+  static Widget _buildSummaryBox(String label, String value, IconData icon, Color color, bool isMobilePhone) {
+    // 모바일 폰일 때 크기를 절반으로 줄이기
+    final padding = isMobilePhone ? 8.0 : 16.0;
+    final iconSize = isMobilePhone ? 20.0 : 32.0;
+    final labelFontSize = isMobilePhone ? 10.0 : 12.0;
+    final valueFontSize = isMobilePhone ? 16.0 : 24.0;
+    final borderRadius = isMobilePhone ? 8.0 : 12.0;
+    
+    return Container(
+      padding: EdgeInsets.all(padding),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(borderRadius),
+        border: Border.all(
+          color: color.withOpacity(0.2),
+          width: 1,
         ),
-      ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: iconSize),
+          SizedBox(height: isMobilePhone ? 4.0 : 8.0),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: labelFontSize,
+              color: Colors.grey[700],
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: isMobilePhone ? 2.0 : 4.0),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: valueFontSize,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 
@@ -1149,6 +1184,7 @@ class _ExtractedData {
   final Widget? summaryByCategoryTable;
   final Widget? summaryByColorTable;
   final Widget? productsTable;
+  final ScrollController scrollController;
 
   const _ExtractedData({
     this.summaryCard,
@@ -1156,6 +1192,7 @@ class _ExtractedData {
     this.summaryByCategoryTable,
     this.summaryByColorTable,
     this.productsTable,
+    required this.scrollController,
   });
 }
 

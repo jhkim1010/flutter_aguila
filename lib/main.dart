@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, kDebugMode;
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 import 'dart:ui';
 import 'l10n/app_localizations.dart';
@@ -116,10 +115,30 @@ class _MyAppState extends State<MyApp> {
       ],
       locale: _locale ?? const Locale('es', ''),
       home: Builder(
-        builder: (context) => BiometricAuthScreen(
-          onLanguageChanged: changeLocale,
-          currentLocale: _locale ?? const Locale('es', ''),
-        ),
+        builder: (context) {
+          // context가 있으면 플랫폼 정보를 로그 파일에 기록
+          if (kDebugMode) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              LogFileWriter.initialize(context: context);
+            });
+          }
+          
+          // iPhone(iOS 모바일)이고 Release 모드일 때만 생체 인증 화면 표시
+          // Debug 모드에서는 생체 인증 건너뛰고 바로 메인 화면으로 이동
+          if (defaultTargetPlatform == TargetPlatform.iOS && 
+              !isDesktop() && 
+              !kDebugMode) {
+            return BiometricAuthScreen(
+              onLanguageChanged: changeLocale,
+              currentLocale: _locale ?? const Locale('es', ''),
+            );
+          }
+          // 그 외의 경우 (Android, 데스크톱, Debug 모드 등)는 바로 메인 화면으로 이동
+          return MainConnectionScreen(
+            onLanguageChanged: changeLocale,
+            currentLocale: _locale ?? const Locale('es', ''),
+          );
+        },
       ),
     );
   }

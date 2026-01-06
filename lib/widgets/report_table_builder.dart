@@ -527,25 +527,26 @@ class ReportTableBuilder {
       keys = firstItem.keys.toList();
     }
     // 컬럼별 기본 너비 설정 (헤더와 일치하도록)
+    // 넓은 화면에서 모든 칼럼이 보이도록 크기 조정
     final columnWidths = <String, double>{
       // Items 보고서
-      'codigo1': 150,
-      'desc1': 300,
-      'ProductName': 450,  // ProductName 칼럼을 충분히 넓게 설정
-      'totalCantidad': 150,  // totalCantidad 칼럼 너비 추가
-      'CategoryCode': 120,  // CategoryCode 칼럼 너비 추가
-      'CompanyCode': 120,  // CompanyCode 칼럼 너비 추가
-      'tprendas': 120,
-      'timporte': 150,
+      'codigo1': 200,  // codigo1 칼럼 너비 증가 (120 -> 200)
+      'desc1': 200,
+      'ProductName': 400,  // ProductName 칼럼 너비 증가 (250 -> 400)
+      'totalCantidad': 120,  // totalCantidad 칼럼 너비 추가
+      'CategoryCode': 100,  // CategoryCode 칼럼 너비 추가
+      'CompanyCode': 100,  // CompanyCode 칼럼 너비 추가
+      'tprendas': 100,
+      'timporte': 120,
       // Ingresos 보고서
-      'codigo': 150,
-      'descripcion': 300,
-      'tevent': 120,
-      'tcant': 150,
-      'tIngreso': 150,
-      'tingreso': 150,
-      'cntEvent': 120,
-      'cntevent': 120,
+      'codigo': 120,
+      'descripcion': 200,
+      'tevent': 100,
+      'tcant': 120,
+      'tIngreso': 120,
+      'tingreso': 120,
+      'cntEvent': 100,
+      'cntevent': 100,
       // Alertas 보고서
       'fecha': 120,
       'hora': 100,
@@ -1923,6 +1924,15 @@ class ReportTableBuilder {
             ),
           ),
         ),
+        // 푸터 (화면 하단에 고정)
+        buildFixedTotalRow(
+          keys, 
+          displayedList, 
+          color,
+          columnWidths: columnWidths,
+          dataList: dataList,
+          reportType: reportType,
+        ),
       ],
     );
   }
@@ -2213,22 +2223,26 @@ class ReportTableBuilder {
     final isItemsOrIngresos = reportType == ReportType.items || reportType == ReportType.ingresos;
     
     // 칼럼 너비 설정 (기본값)
+    // 넓은 화면에서 모든 칼럼이 보이도록 크기 조정
     final defaultColumnWidths = <String, double>{
       // Items 보고서
-      'codigo1': 150,
-      'desc1': 300,
-      'ProductName': 450,  // ProductName 칼럼을 충분히 넓게 설정
-      'tprendas': 120,
-      'timporte': 150,
+      'codigo1': 200,  // codigo1 칼럼 너비 증가 (120 -> 200)
+      'desc1': 200,
+      'ProductName': 400,  // ProductName 칼럼 너비 증가 (250 -> 400)
+      'totalCantidad': 120,  // totalCantidad 칼럼 너비 추가
+      'CategoryCode': 100,  // CategoryCode 칼럼 너비 추가
+      'CompanyCode': 100,  // CompanyCode 칼럼 너비 추가
+      'tprendas': 100,
+      'timporte': 120,
       // Ingresos 보고서
-      'codigo': 150,
-      'descripcion': 300,
-      'tevent': 120,
-      'tcant': 150,
-      'tIngreso': 150,
-      'tingreso': 150,
-      'cntEvent': 120,
-      'cntevent': 120,
+      'codigo': 120,
+      'descripcion': 200,
+      'tevent': 100,
+      'tcant': 120,
+      'tIngreso': 120,
+      'tingreso': 120,
+      'cntEvent': 100,
+      'cntevent': 100,
       // Alertas 보고서
       'fecha': 120,
       'hora': 100,
@@ -2768,9 +2782,9 @@ class ReportTableBuilder {
     final isItemsOrIngresos = reportType == ReportType.items || reportType == ReportType.ingresos;
     final isAlertas = reportType == ReportType.alertas;
     final defaultColumnWidths = <String, double>{
-      'codigo1': 150,
+      'codigo1': 200,  // codigo1 칼럼 너비 증가 (150 -> 200)
       'desc1': 300,
-      'ProductName': 450,  // ProductName 칼럼을 충분히 넓게 설정
+      'ProductName': 450,  // ProductName 칼럼을 충분히 넓게 설정 (유지)
       'tprendas': 120,
       'timporte': 150,
       'codigo': 150,
@@ -3066,22 +3080,26 @@ class ReportTableBuilder {
     }
     
     // 컬럼별 고정 너비 설정 (헤더와 일치) - 파라미터로 받은 columnWidths 사용, 없으면 기본값 사용
+    // 넓은 화면에서 모든 칼럼이 보이도록 크기 조정
     final defaultColumnWidths = <String, double>{
       // Items 보고서
-      'codigo1': 150,
-      'desc1': 300,
-      'ProductName': 450,  // ProductName 칼럼을 충분히 넓게 설정
-      'tprendas': 120,
-      'timporte': 150,
+      'codigo1': 200,  // codigo1 칼럼 너비 증가 (120 -> 200)
+      'desc1': 200,
+      'ProductName': 400,  // ProductName 칼럼 너비 증가 (250 -> 400)
+      'totalCantidad': 120,  // totalCantidad 칼럼 너비 추가
+      'CategoryCode': 100,  // CategoryCode 칼럼 너비 추가
+      'CompanyCode': 100,  // CompanyCode 칼럼 너비 추가
+      'tprendas': 100,
+      'timporte': 120,
       // Ingresos 보고서
-      'codigo': 150,
-      'descripcion': 300,
-      'tevent': 120,
-      'tcant': 150,
-      'tIngreso': 150,
-      'tingreso': 150,
-      'cntEvent': 120,
-      'cntevent': 120,
+      'codigo': 120,
+      'descripcion': 200,
+      'tevent': 100,
+      'tcant': 120,
+      'tIngreso': 120,
+      'tingreso': 120,
+      'cntEvent': 100,
+      'cntevent': 100,
     };
     
     final finalColumnWidths = columnWidths ?? defaultColumnWidths;
@@ -3117,12 +3135,34 @@ class ReportTableBuilder {
           ),
         ),
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: UnconstrainedBox(
-          constrainedAxis: Axis.vertical,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
+      child: Builder(
+        builder: (context) {
+          // 푸터 렌더링 후 실제 크기 측정
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+            if (renderBox != null) {
+              debugPrint('═══════════════════════════════════════════════════════');
+              debugPrint('🔍 [오버랩 디버깅] buildFixedTotalRow 실제 렌더링 크기');
+              debugPrint('   → 푸터 실제 width: ${renderBox.size.width}');
+              debugPrint('   → 푸터 실제 height: ${renderBox.size.height}');
+              debugPrint('   → 계산된 총 너비: $footerCumulativeX');
+              final parentBox = renderBox.parent as RenderBox?;
+              if (parentBox != null) {
+                debugPrint('   → 부모 실제 width: ${parentBox.size.width}');
+                final footerOverflow = renderBox.size.width - parentBox.size.width;
+                if (footerOverflow > 0) {
+                  debugPrint('   ⚠️ 푸터 오버랩: ${footerOverflow.toStringAsFixed(1)}px');
+                } else {
+                  debugPrint('   ✅ 푸터 오버랩 없음. 여유: ${(-footerOverflow).toStringAsFixed(1)}px');
+                }
+              }
+              debugPrint('═══════════════════════════════════════════════════════');
+            }
+          });
+          
+          // Footer는 수평 스크롤 컨트롤러를 사용하지 않음 (전체가 하나의 스크롤로 동기화됨)
+          return Row(
+            mainAxisSize: MainAxisSize.min,
             children: keys.asMap().entries.expand((entry) {
             final index = entry.key;
             final key = entry.value;
@@ -3140,6 +3180,12 @@ class ReportTableBuilder {
             final isExcludedColumn = isCodigoColumn || isDateColumn || isTextColumn;
             final total = isExcludedColumn ? null : (totals.containsKey(key) ? totals[key] ?? 0 : null);
             
+            // 첫 칼럼(codigo1 또는 codigo)에 총 개수 표시 (items/ingresos 보고서만)
+            final isFirstColumn = index == 0;
+            final shouldShowTotalCount = (reportType == ReportType.items || reportType == ReportType.ingresos) && 
+                                        isFirstColumn && isCodigoColumn;
+            final totalCount = shouldShowTotalCount ? listForTotal.length : null;
+            
             // DataTable의 DataCell과 동일한 구조로 만들기
             // 헤더와 동일한 구조 사용: Container + padding
             // DataTable은 각 DataCell에 horizontal: 16 padding을 추가함
@@ -3156,26 +3202,37 @@ class ReportTableBuilder {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), // 테이블 행 높이에 맞춰 vertical: 8로 조정 (32-37 높이)
                   height: footerHeight, // items/ingresos는 37, 다른 보고서는 56
-                  child: total != null
+                  child: shouldShowTotalCount && totalCount != null
                       ? Align(
-                          alignment: isNumericColumn ? Alignment.centerRight : Alignment.centerLeft, // 숫자 칼럼은 오른쪽 정렬
-                  child: Text(
-                    ReportUtils.formatValue(total),
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Total: $totalCount',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         )
-                      : const SizedBox.shrink(),
+                      : total != null
+                          ? Align(
+                              alignment: isNumericColumn ? Alignment.centerRight : Alignment.centerLeft, // 숫자 칼럼은 오른쪽 정렬
+                              child: Text(
+                                ReportUtils.formatValue(total),
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            )
+                          : const SizedBox.shrink(),
                 ),
               ),
               // 마지막 칼럼이 아니면 columnSpacing(8px) 추가
               if (index < keys.length - 1) const SizedBox(width: 8),
             ];
           }).toList(),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
@@ -3200,22 +3257,26 @@ class ReportTableBuilder {
     debugPrint('   → columnWidths 전달됨: ${columnWidths != null}');
     
     // 컬럼별 고정 너비 설정 (DataTable과 일치)
+    // 넓은 화면에서 모든 칼럼이 보이도록 크기 조정
     final defaultColumnWidths = <String, double>{
       // Items 보고서
-      'codigo1': 150,
-      'desc1': 300,
-      'ProductName': 450,  // ProductName 칼럼을 충분히 넓게 설정
-      'tprendas': 120,
-      'timporte': 150,
+      'codigo1': 200,  // codigo1 칼럼 너비 증가 (120 -> 200)
+      'desc1': 200,
+      'ProductName': 400,  // ProductName 칼럼 너비 증가 (250 -> 400)
+      'totalCantidad': 120,  // totalCantidad 칼럼 너비 추가
+      'CategoryCode': 100,  // CategoryCode 칼럼 너비 추가
+      'CompanyCode': 100,  // CompanyCode 칼럼 너비 추가
+      'tprendas': 100,
+      'timporte': 120,
       // Ingresos 보고서
-      'codigo': 150,
-      'descripcion': 300,
-      'tevent': 120,
-      'tcant': 150,
-      'tIngreso': 150,
-      'tingreso': 150,
-      'cntEvent': 120,
-      'cntevent': 120,
+      'codigo': 120,
+      'descripcion': 200,
+      'tevent': 100,
+      'tcant': 120,
+      'tIngreso': 120,
+      'tingreso': 120,
+      'cntEvent': 100,
+      'cntevent': 100,
       // Alertas 보고서
       'fecha': 120,
       'hora': 100,
@@ -3261,11 +3322,35 @@ class ReportTableBuilder {
           ),
         ),
       ),
-      child: UnconstrainedBox(
-        constrainedAxis: Axis.vertical,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: columns.asMap().entries.expand((entry) {
+      child: Builder(
+        builder: (context) {
+          // 헤더 렌더링 후 실제 크기 측정
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+            if (renderBox != null) {
+              debugPrint('═══════════════════════════════════════════════════════');
+              debugPrint('🔍 [오버랩 디버깅] buildHeaderRow 실제 렌더링 크기');
+              debugPrint('   → 헤더 실제 width: ${renderBox.size.width}');
+              debugPrint('   → 헤더 실제 height: ${renderBox.size.height}');
+              debugPrint('   → 계산된 총 너비: $headerCumulativeX');
+              final parentBox = renderBox.parent as RenderBox?;
+              if (parentBox != null) {
+                debugPrint('   → 부모 실제 width: ${parentBox.size.width}');
+                final headerOverflow = renderBox.size.width - parentBox.size.width;
+                if (headerOverflow > 0) {
+                  debugPrint('   ⚠️ 헤더 오버랩: ${headerOverflow.toStringAsFixed(1)}px');
+                } else {
+                  debugPrint('   ✅ 헤더 오버랩 없음. 여유: ${(-headerOverflow).toStringAsFixed(1)}px');
+                }
+              }
+              debugPrint('═══════════════════════════════════════════════════════');
+            }
+          });
+          
+          // 헤더는 수평 스크롤 컨트롤러를 사용하지 않음 (전체가 하나의 스크롤로 동기화됨)
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: columns.asMap().entries.expand((entry) {
           final index = entry.key;
           final column = entry.value;
           final key = keys[index];
@@ -3352,7 +3437,8 @@ class ReportTableBuilder {
             if (index < columns.length - 1) const SizedBox(width: 8),
           ];
         }).toList(),
-        ),
+          );
+        },
       ),
     );
   }
@@ -3632,9 +3718,9 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
 
     // 기본 칼럼 너비 (최대값 제한용)
     final defaultColumnWidths = widget.columnWidths ?? <String, double>{
-      'codigo1': 150,
+      'codigo1': 200,  // codigo1 칼럼 너비 증가 (150 -> 200)
       'desc1': 300,
-      'ProductName': 450,
+      'ProductName': 450,  // ProductName 칼럼 너비 유지
       'totalCantidad': 150,
       'CategoryCode': 120,
       'CompanyCode': 120,
@@ -3721,8 +3807,23 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [큰 화면 디버깅] _ItemsTableWithMeasuredColumns build 시작');
+    debugPrint('   → reportType: ${widget.reportType}');
+    debugPrint('   → displayedList.length: ${widget.displayedList.length}');
+    debugPrint('   → dataList.length: ${widget.dataList.length}');
+    debugPrint('   → keys.length: ${widget.keys.length}');
+    debugPrint('   → scrollController: ${widget.scrollController != null}');
+    debugPrint('   → horizontalScrollController: ${widget.horizontalScrollController != null}');
+    
     return LayoutBuilder(
       builder: (context, constraints) {
+        debugPrint('🔍 [큰 화면 디버깅] LayoutBuilder constraints');
+        debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
+        debugPrint('   → constraints.maxHeight: ${constraints.maxHeight}');
+        debugPrint('   → constraints.minWidth: ${constraints.minWidth}');
+        debugPrint('   → constraints.minHeight: ${constraints.minHeight}');
+        
         // ProductName은 항상 기본값 사용하도록 보장
         final defaultColumnWidths = widget.columnWidths ?? <String, double>{
           'ProductName': 450,
@@ -3736,6 +3837,8 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
         } else {
           columnWidthsForHeader['ProductName'] = defaultColumnWidths['ProductName'] ?? 450.0;
         }
+        
+        debugPrint('   → columnWidthsForHeader: $columnWidthsForHeader');
         
         // 헤더와 푸터는 측정된 칼럼 너비 사용 (ProductName은 항상 기본값)
         final headerRow = ReportTableBuilder.buildHeaderRow(
@@ -3751,79 +3854,209 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
 
         // constraints.maxWidth가 Infinity인 경우 ConstrainedBox를 사용하지 않음
         final hasValidWidth = constraints.maxWidth.isFinite && constraints.maxWidth > 0;
+        // constraints.maxHeight가 bounded인지 확인 (Expanded 사용 가능 여부)
+        final hasBoundedHeight = constraints.maxHeight.isFinite && constraints.maxHeight > 0;
+        // 큰 화면인지 확인 (너비가 800 이상이면 큰 화면으로 간주)
+        final isLargeScreen = constraints.maxWidth.isFinite && constraints.maxWidth >= 800;
         
-        final content = Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-                // 헤더
-                if (headerRow != null) headerRow,
-                // 테이블 내용
-                Expanded(
-                  child: Builder(
-                    builder: (context) {
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        _measureColumnWidths();
-                      });
-                      
-                      return SingleChildScrollView(
-                        controller: widget.scrollController,
-                        child: Builder(
-                          builder: (context) {
-                            return Scrollbar(
-                              controller: widget.scrollController,
-                              child: SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                controller: widget.horizontalScrollController,
-                                child: Builder(
-                                  key: _dataTableKey,
-                                  builder: (context) {
-                                    return ReportTableBuilder.buildDataTable(
-                                      reportType: widget.reportType,
-                                      displayedList: widget.displayedList,
-                                      keys: widget.keys,
-                                      columns: widget.columns,
-                                      dataList: widget.dataList,
-                                      color: widget.color,
-                                      onRowDoubleTap: widget.onRowDoubleTap,
-                                      onRowTap: widget.onRowTap,
-                                      unit: widget.unit,
-                                      columnWidths: columnWidthsForHeader,
-                                    );
-                                  },
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                // 푸터
-                ReportTableBuilder.buildFixedTotalRow(
-                  widget.keys,
-                  widget.displayedList,
-                  widget.color,
-                  columnWidths: columnWidthsForHeader,
-                  dataList: widget.dataList,
+        // MediaQuery를 사용하여 화면 높이 확인 (footer 고정을 위해)
+        // 단, constraints.maxHeight가 bounded이면 그것을 우선 사용 (resumen이 있을 때 패널 높이 사용)
+        final mediaQuery = MediaQuery.of(context);
+        final screenHeight = mediaQuery.size.height;
+        final availableHeight = screenHeight - mediaQuery.padding.top - mediaQuery.padding.bottom;
+        
+        // 오버랩 디버깅: 화면 너비와 테이블 총 너비 비교
+        double totalTableWidth = 0.0;
+        for (int i = 0; i < widget.keys.length; i++) {
+          final key = widget.keys[i];
+          final columnWidth = columnWidthsForHeader[key] ?? 150.0;
+          totalTableWidth += columnWidth;
+          if (i < widget.keys.length - 1) {
+            totalTableWidth += 8; // columnSpacing
+          }
+        }
+        debugPrint('═══════════════════════════════════════════════════════');
+        debugPrint('🔍 [오버랩 디버깅] _ItemsTableWithMeasuredColumns build');
+        debugPrint('   → 화면 너비 (constraints.maxWidth): ${constraints.maxWidth}');
+        debugPrint('   → 테이블 총 너비 (계산): $totalTableWidth');
+        debugPrint('   → 칼럼 개수: ${widget.keys.length}');
+        debugPrint('   → 각 칼럼 너비:');
+        double cumulativeX = 0.0;
+        for (int i = 0; i < widget.keys.length; i++) {
+          final key = widget.keys[i];
+          final columnWidth = columnWidthsForHeader[key] ?? 150.0;
+          debugPrint('      칼럼 #$i ($key): width=$columnWidth, x=$cumulativeX');
+          cumulativeX += columnWidth;
+          if (i < widget.keys.length - 1) {
+            cumulativeX += 8; // columnSpacing
+          }
+        }
+        if (hasValidWidth) { // if: hasValidWidth
+          final overflow = totalTableWidth - constraints.maxWidth;
+          if (overflow > 0) { // if: overflow > 0
+            debugPrint('   ⚠️ 오버랩 발생! 테이블이 화면보다 ${overflow.toStringAsFixed(1)}px 더 넓음');
+            debugPrint('   → 오버랩 비율: ${(overflow / constraints.maxWidth * 100).toStringAsFixed(1)}%');
+          } else { // if (overflow > 0) - else
+            debugPrint('   ✅ 오버랩 없음. 여유 공간: ${(-overflow).toStringAsFixed(1)}px');
+          } // if (overflow > 0) - else 끝
+        } else { // if (hasValidWidth) - else
+          debugPrint('   ⚠️ 화면 너비가 unbounded (Infinity)');
+        } // if (hasValidWidth) - else 끝
+        debugPrint('═══════════════════════════════════════════════════════');
+        
+        // 테이블 내용 위젯 생성
+        // hasBoundedHeight가 true이면 수직 스크롤 포함 (데스크톱/패널)
+        // false이면 수직 스크롤 제거 (모바일, 부모의 SingleChildScrollView가 처리)
+        final tableContent = Builder(
+          builder: (context) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _measureColumnWidths();
+            });
+            
+            final dataTable = Builder(
+              key: _dataTableKey,
+              builder: (context) {
+                return ReportTableBuilder.buildDataTable(
                   reportType: widget.reportType,
-                ),
-              ],
+                  displayedList: widget.displayedList,
+                  keys: widget.keys,
+                  columns: widget.columns,
+                  dataList: widget.dataList,
+                  color: widget.color,
+                  onRowDoubleTap: widget.onRowDoubleTap,
+                  onRowTap: widget.onRowTap,
+                  unit: widget.unit,
+                  columnWidths: columnWidthsForHeader,
+                );
+              },
             );
+            
+            // 수평 스크롤은 전체 Column에서 처리하므로 여기서는 제거
+            // bounded height일 때만 수직 스크롤 포함 (데스크톱/패널)
+            if (hasBoundedHeight) {
+              return Scrollbar(
+                controller: widget.scrollController,
+                thumbVisibility: true,
+                child: SingleChildScrollView(
+                  controller: widget.scrollController,
+                  scrollDirection: Axis.vertical,
+                  child: dataTable,
+                ),
+              );
+            } else { // if (hasBoundedHeight) - else: 모바일
+              // 모바일: 수직 스크롤 없이 반환 (부모의 SingleChildScrollView가 처리)
+              return dataTable;
+            } // if (hasBoundedHeight) - else 끝
+          },
+        );
+        
+        // 푸터 위젯 생성
+        final footer = ReportTableBuilder.buildFixedTotalRow(
+          widget.keys,
+          widget.displayedList,
+          widget.color,
+          columnWidths: columnWidthsForHeader,
+          dataList: widget.dataList,
+          reportType: widget.reportType,
+        );
+        
+        // 항상 footer를 화면/패널 하단에 고정하기 위해 높이 제약 사용
+        // hasBoundedHeight가 true이면 constraints.maxHeight 사용 (resumen이 있을 때 패널 높이)
+        // 아니면 MediaQuery의 availableHeight 사용 (전체 화면 높이)
+        final effectiveMaxHeight = hasBoundedHeight 
+            ? constraints.maxHeight // if: hasBoundedHeight
+            : (availableHeight > 0 ? availableHeight : double.infinity); // else: hasBoundedHeight
+        
+        debugPrint('🔍 [Footer 고정] 높이 계산');
+        debugPrint('   → hasBoundedHeight: $hasBoundedHeight');
+        debugPrint('   → constraints.maxHeight: ${constraints.maxHeight}');
+        debugPrint('   → availableHeight: $availableHeight');
+        debugPrint('   → effectiveMaxHeight: $effectiveMaxHeight');
+        
+        // 전체를 하나의 수평 스크롤 컨테이너로 감싸서 헤더, 테이블, footer가 함께 스크롤되도록 함
+        // 큰 화면(macOS, Windows, iPad)에서만: SingleChildScrollView(scrollDirection: Axis.horizontal) 안의 Column은 무한 너비를 받으므로
+        // crossAxisAlignment를 CrossAxisAlignment.start로 변경하고 최소 너비를 설정
+        // 모바일에서는 기존 로직 유지 (CrossAxisAlignment.stretch)
+        // 큰 화면이면 항상 width를 설정하고 crossAxisAlignment를 start로 설정
+        // 큰 화면에서 effectiveMaxHeight가 유효하면 높이 제약 설정 (오버플로우 방지)
+        final shouldUseSizedBox = (effectiveMaxHeight.isFinite && effectiveMaxHeight > 0 && hasBoundedHeight) || 
+                                   (isLargeScreen && effectiveMaxHeight.isFinite && effectiveMaxHeight > 0);
+        final columnContent = shouldUseSizedBox
+            ? SizedBox( // if: 큰 화면 또는 bounded height (높이 제약 필요)
+                height: effectiveMaxHeight.isFinite && effectiveMaxHeight > 0 ? effectiveMaxHeight : null,
+                width: totalTableWidth > 0 ? totalTableWidth : null, // 큰 화면: 명시적 너비 설정
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start, // 큰 화면: 무한 너비 문제 해결
+                  mainAxisSize: hasBoundedHeight ? MainAxisSize.max : MainAxisSize.min,
+                  children: [
+                    // 헤더
+                    if (headerRow != null) headerRow, // if (headerRow != null)
+                    // 테이블 내용 (hasBoundedHeight일 때만 Expanded 사용, 아니면 수직 스크롤 필요)
+                    hasBoundedHeight
+                        ? Expanded(child: tableContent) // if: hasBoundedHeight
+                        : Expanded( // else: hasBoundedHeight (큰 화면이지만 높이 제약이 있을 때)
+                            child: SingleChildScrollView(
+                              controller: widget.scrollController,
+                              scrollDirection: Axis.vertical,
+                              child: tableContent,
+                            ),
+                          ), // Expanded 끝 - else: hasBoundedHeight
+                    // 푸터 (화면 하단에 고정)
+                    footer,
+                  ], // Column children 끝
+                ), // Column 끝
+              ) // SizedBox 끝 - if: 큰 화면 또는 bounded height
+            : Column( // else: 모바일 (작은 화면)
+                crossAxisAlignment: CrossAxisAlignment.stretch, // 모바일: 기존 로직 유지
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 헤더
+                  if (headerRow != null) headerRow, // if (headerRow != null)
+                  // 테이블 내용 (Expanded 없이, SingleChildScrollView가 스크롤 처리)
+                  tableContent,
+                  // 푸터 (테이블 내용 다음에 표시)
+                  footer,
+                ], // Column children 끝
+              ); // Column 끝 - else: 모바일
+        
+        // 전체를 하나의 수평 스크롤 컨테이너로 감싸기 (헤더, 테이블, footer 동기화)
+        // 큰 화면이거나 horizontalScrollController가 있으면 SingleChildScrollView로 감싸기
+        final horizontallyScrollableContent = (widget.horizontalScrollController != null && isLargeScreen) || widget.horizontalScrollController != null
+            ? SingleChildScrollView( // if: horizontalScrollController가 있고 (큰 화면이거나 항상)
+                scrollDirection: Axis.horizontal,
+                controller: widget.horizontalScrollController,
+                child: columnContent,
+              ) // SingleChildScrollView 끝 - if: horizontalScrollController
+            : columnContent; // else: horizontalScrollController 없음
+        
+        debugPrint('🔍 [큰 화면 디버깅] 최종 위젯 구조');
+        debugPrint('   → hasValidWidth: $hasValidWidth');
+        debugPrint('   → hasBoundedHeight: $hasBoundedHeight');
+        debugPrint('   → isLargeScreen: $isLargeScreen');
+        debugPrint('   → effectiveMaxHeight: $effectiveMaxHeight');
+        debugPrint('   → headerRow != null: ${headerRow != null}');
+        debugPrint('   → footer != null: ${footer != null}');
+        debugPrint('   → tableContent != null: ${tableContent != null}');
+        debugPrint('   → horizontallyScrollableContent 타입: ${horizontallyScrollableContent.runtimeType}');
         
         // constraints.maxWidth가 유효한 경우에만 ConstrainedBox로 감싸기
-        return hasValidWidth
-            ? ConstrainedBox(
+        final finalWidget = hasValidWidth
+            ? ConstrainedBox( // if: hasValidWidth
                 constraints: BoxConstraints(
                   minWidth: constraints.maxWidth,
                   maxWidth: constraints.maxWidth,
                 ),
                 child: SizedBox(
                   width: constraints.maxWidth,
-                  child: content,
-                ),
-              )
-            : content; // Infinity인 경우 제약 없이 반환
+                  child: horizontallyScrollableContent,
+                ), // SizedBox 끝
+              ) // ConstrainedBox 끝 - if: hasValidWidth
+            : horizontallyScrollableContent; // else: hasValidWidth (Infinity인 경우 제약 없이 반환)
+        
+        debugPrint('   → finalWidget 타입: ${finalWidget.runtimeType}');
+        debugPrint('═══════════════════════════════════════════════════════');
+        
+        return finalWidget;
       },
     );
   }

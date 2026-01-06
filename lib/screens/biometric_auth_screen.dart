@@ -2,7 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, debugPrint;
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, debugPrint, kDebugMode;
+import 'package:device_info_plus/device_info_plus.dart';
 import 'main_connection_screen.dart';
 
 class BiometricAuthScreen extends StatefulWidget {
@@ -34,7 +35,53 @@ class _BiometricAuthScreenState extends State<BiometricAuthScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeBiometrics();
+    // Debug 모드에서는 생체 인증 건너뛰고 바로 메인 화면으로 이동
+    if (kDebugMode) {
+      debugPrint('🔍 [지문인식] Debug 모드이므로 생체 인증 건너뛰고 메인 화면으로 이동');
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) {
+          _navigateToMain();
+        }
+      });
+      return;
+    }
+    
+    // iPhone이 아닌 경우 바로 메인 화면으로 이동
+    _checkIfIPhone().then((isIPhone) {
+      if (!isIPhone && mounted) {
+        debugPrint('🔍 [지문인식] iPhone이 아니므로 메인 화면으로 이동');
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) {
+            _navigateToMain();
+          }
+        });
+        return;
+      }
+      // iPhone인 경우 생체 인증 초기화
+      _initializeBiometrics();
+    });
+  }
+
+  /// iPhone인지 확인 (iPad 제외)
+  Future<bool> _checkIfIPhone() async {
+    if (defaultTargetPlatform != TargetPlatform.iOS) {
+      return false;
+    }
+    
+    try {
+      final deviceInfo = DeviceInfoPlugin();
+      final iosInfo = await deviceInfo.iosInfo;
+      // iPhone인지 확인 (iPad는 제외)
+      // iOS 기기에서 model이 'iPhone'을 포함하면 iPhone
+      final isIPhone = iosInfo.model.toLowerCase().contains('iphone') ||
+          iosInfo.name.toLowerCase().contains('iphone');
+      debugPrint('🔍 [지문인식] iOS 기기 확인: model=${iosInfo.model}, name=${iosInfo.name}, isIPhone=$isIPhone');
+      return isIPhone;
+    } catch (e) {
+      debugPrint('❌ [지문인식] 기기 정보 확인 에러: $e');
+      // 에러 발생 시 iOS이면 iPhone으로 간주 (안전한 기본값)
+      return defaultTargetPlatform == TargetPlatform.iOS;
+    }
   }
 
   Future<void> _initializeBiometrics() async {
@@ -217,14 +264,15 @@ class _BiometricAuthScreenState extends State<BiometricAuthScreen> {
       _authCompleter = Completer<bool>();
       debugPrint('🔍 [지문인식] Completer 생성 완료');
       
-      // macOS에서는 biometricOnly: true로 설정하여 시스템이 자동으로 다시 요청하는 것을 방지
+      // macOS에서는 biometricOnly를 true로 설정하여 시스템이 자동으로 다시 요청하는 것을 방지
+      // iPhone에서는 biometricOnly를 false로 설정하여 암호 입력 옵션 제공
       final bool biometricOnly = isMacOS ? true : false;
       debugPrint('🔍 [지문인식] biometricOnly=$biometricOnly, authenticate 호출 시작...');
       
       final bool didAuthenticate = await _localAuth.authenticate(
-        localizedReason: 'Se requiere autenticación biométrica para usar la aplicación',
+        localizedReason: 'Se requiere autenticación biométrica o contraseña para usar la aplicación',
         options: AuthenticationOptions(
-          biometricOnly: biometricOnly, // macOS에서는 true로 설정하여 중복 다이얼로그 방지
+          biometricOnly: biometricOnly, // iPhone에서는 false로 설정하여 암호 입력 옵션 제공
           stickyAuth: false, // stickyAuth를 false로 설정하여 중복 다이얼로그 방지
         ),
       );
