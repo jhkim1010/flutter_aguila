@@ -1,5 +1,5 @@
-; Inno Setup 스크립트 파일
-; Flutter 앱 Windows 설치 파일 생성용
+; Inno Setup script file
+; For creating Windows installer for Flutter app
 
 #define MyAppName "Be COOL"
 #define MyAppVersion "1.0.0"
@@ -8,7 +8,7 @@
 #define MyAppExeName "flutter_app.exe"
 
 [Setup]
-; 앱 정보
+; App information
 AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
