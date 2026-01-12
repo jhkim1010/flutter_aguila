@@ -403,8 +403,8 @@ class ItemsBuilder {
         debugPrint('   → constraints.minHeight: ${constraints.minHeight}');
         
         final content = Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: useExpanded ? MainAxisSize.max : MainAxisSize.min,
           children: [
             const Text(
               'Productos',
@@ -414,24 +414,12 @@ class ItemsBuilder {
               ),
             ),
             const SizedBox(height: 8),
-            LayoutBuilder(
-              builder: (context, expandedConstraints) {
-                debugPrint('📊 [ItemsBuilder] _buildRightPanel LayoutBuilder');
-                debugPrint('   → expandedConstraints.maxWidth: ${expandedConstraints.maxWidth}');
-                debugPrint('   → expandedConstraints.maxHeight: ${expandedConstraints.maxHeight}');
-                
-                return ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minWidth: expandedConstraints.maxWidth,
-                    maxWidth: expandedConstraints.maxWidth,
-                  ),
-                  child: SizedBox(
-                    width: expandedConstraints.maxWidth,
-                    child: productsTable,
-                  ),
-                );
-              },
-            ),
+            if (useExpanded)
+              Expanded(
+                child: productsTable,
+              )
+            else
+              productsTable,
           ],
         );
         

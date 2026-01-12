@@ -502,6 +502,7 @@ class _ReportScreenState extends State<ReportScreen> {
             dataList = dataList.where((item) {
               if (item is Map<String, dynamic>) {
                 if (widget.reportType == ReportType.items) {
+                  // codigo1 또는 desc1(제품 이름)에서 검색
                   final codigo1 = item['codigo1']?.toString().toLowerCase() ?? '';
                   final desc1 = item['desc1']?.toString().toLowerCase() ?? '';
                   return codigo1.contains(filteringWord) || desc1.contains(filteringWord);
@@ -529,6 +530,16 @@ class _ReportScreenState extends State<ReportScreen> {
                            sucursal.contains(filteringWord) ||
                            nencargado.contains(filteringWord);
                   }
+                } else if (widget.reportType == ReportType.fventas) {
+                  // fventas 필터링: cuit, cliente, clientenombre, numfactura 필드에서 검색
+                  final cuit = item['cuit']?.toString().toLowerCase() ?? '';
+                  final cliente = item['cliente']?.toString().toLowerCase() ?? '';
+                  final clientenombre = item['clientenombre']?.toString().toLowerCase() ?? '';
+                  final numfactura = item['numfactura']?.toString().toLowerCase() ?? '';
+                  return cuit.contains(filteringWord) || 
+                         cliente.contains(filteringWord) ||
+                         clientenombre.contains(filteringWord) ||
+                         numfactura.contains(filteringWord);
                 }
               }
               return false;
@@ -1571,6 +1582,13 @@ class _ReportScreenState extends State<ReportScreen> {
           final endDate = _itemsEndDate ?? now;
           final currentFilteringWord = filteringWord ?? _filteringWordController.text.trim();
           
+          // 날짜 범위 디버깅 로그
+          debugPrint('📅 [Items Report] 날짜 범위 필터링:');
+          debugPrint('   → _itemsStartDate: $_itemsStartDate');
+          debugPrint('   → _itemsEndDate: $_itemsEndDate');
+          debugPrint('   → 사용할 startDate: $startDate (${DateFormat('yyyy-MM-dd').format(startDate)})');
+          debugPrint('   → 사용할 endDate: $endDate (${DateFormat('yyyy-MM-dd').format(endDate)})');
+          
           final filters = <String, dynamic>{
             'fecha_inicio': DateFormat('yyyy-MM-dd').format(startDate),
             'fecha_fin': DateFormat('yyyy-MM-dd').format(endDate),
@@ -1581,10 +1599,16 @@ class _ReportScreenState extends State<ReportScreen> {
           if (_selectedTemporadaId != null) {
             filters['temporada_id'] = _selectedTemporadaId;
           }
+          
+          debugPrint('   → 전달할 filters: $filters');
+          debugPrint('   → filteringWord: ${currentFilteringWord.isNotEmpty ? currentFilteringWord : null}');
+          
           data = await _databaseService.getItemsReport(
             filteringWord: currentFilteringWord.isNotEmpty ? currentFilteringWord : null,
             filters: filters,
           );
+          
+          debugPrint('   → API 응답 받음: ${data.containsKey('data') ? (data['data'] as List).length : 0}개 항목');
           break;
         case ReportType.clientes:
           final currentFilteringWord = filteringWord ?? _filteringWordController.text.trim();
@@ -1751,12 +1775,20 @@ class _ReportScreenState extends State<ReportScreen> {
           var endDate = _ventasEndDate ?? now;
           final currentFilteringWord = filteringWord ?? _filteringWordController.text.trim();
           
+          print('📅 FVentas 보고서 - 초기 날짜 상태:');
+          print('  - _ventasStartDate: $_ventasStartDate');
+          print('  - _ventasEndDate: $_ventasEndDate');
+          print('  - startDate (사용할 값): $startDate');
+          print('  - endDate (사용할 값): $endDate');
+          print('  - unit: $_ventasUnit');
+          
           // month unit일 때 날짜 범위를 정확히 설정
           if (_ventasUnit == 'month') {
             // 시작 날짜: 해당 월의 1일
             startDate = DateTime(startDate.year, startDate.month, 1);
             // 종료 날짜: 해당 월의 마지막 날 (다음 달의 0일 = 이번 달의 마지막 날)
             endDate = DateTime(endDate.year, endDate.month + 1, 0);
+            print('  - month unit 적용 후: startDate=$startDate, endDate=$endDate');
           }
           // year unit일 때 날짜 범위를 정확히 설정
           else if (_ventasUnit == 'year') {
@@ -1766,6 +1798,7 @@ class _ReportScreenState extends State<ReportScreen> {
             // 종료 날짜: 종료 연도의 12월 31일
             final endYear = endDate.year;
             endDate = DateTime(endYear, 12, 31);
+            print('  - year unit 적용 후: startDate=$startDate, endDate=$endDate');
             // 연도 범위가 여러 연도에 걸쳐 있으면, 각 연도별로 1월 1일~12월 31일 범위를 보장
             // (서버가 unit=year일 때 자동으로 연도별 그룹화하므로, fecha_inicio와 fecha_fin만 정확히 설정하면 됨)
           }
@@ -1775,13 +1808,50 @@ class _ReportScreenState extends State<ReportScreen> {
             'fecha_inicio': DateFormat('yyyy-MM-dd').format(startDate),
             'fecha_fin': DateFormat('yyyy-MM-dd').format(endDate),
           };
-          print('📅 FVentas 보고서 요청 - 날짜 범위: ${filters['fecha_inicio']} ~ ${filters['fecha_fin']}, filteringWord: $currentFilteringWord, unit: $_ventasUnit');
+          print('📅 FVentas 보고서 요청 - 최종 날짜 범위: ${filters['fecha_inicio']} ~ ${filters['fecha_fin']}, filteringWord: $currentFilteringWord, unit: $_ventasUnit');
+          // fventas 보고서의 filteringWord는 클라이언트 측에서만 필터링 (cuit, cliente 필드)
+          // 서버로 전달하지 않음
           data = await _databaseService.getFVentasReport(
-            filteringWord: currentFilteringWord.isNotEmpty ? currentFilteringWord : null,
+            filteringWord: null, // 서버로 전달하지 않음 (클라이언트 측에서만 필터링)
             currentDate: null, // currentDate를 null로 설정하여 fecha 파라미터가 추가되지 않도록 함
             unit: _ventasUnit,
             filters: filters,
           );
+          
+          // fventas 데이터 디버깅
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [FVentas Report] API 응답 데이터 확인');
+          debugPrint('   → data 타입: ${data.runtimeType}');
+          debugPrint('   → data 키: ${data.keys.toList()}');
+          if (data.containsKey('data') && data['data'] is List) {
+            final dataList = data['data'] as List;
+            debugPrint('   → data[\'data\'] 타입: List, 길이: ${dataList.length}');
+            if (dataList.isNotEmpty) {
+              debugPrint('   → 첫 번째 항목: ${dataList.first}');
+              if (dataList.first is Map<String, dynamic>) {
+                final firstItem = dataList.first as Map<String, dynamic>;
+                debugPrint('   → 첫 번째 항목 키: ${firstItem.keys.toList()}');
+                debugPrint('   → 첫 번째 항목 샘플: fecha=${firstItem['fecha']}, numfactura=${firstItem['numfactura']}, tipofactura=${firstItem['tipofactura']}');
+              }
+            } else {
+              debugPrint('   ⚠️ data[\'data\']가 비어있습니다!');
+            }
+          } else {
+            debugPrint('   ⚠️ data[\'data\']가 없거나 List가 아닙니다!');
+            debugPrint('   → data[\'data\']: ${data['data']}');
+          }
+          if (data.containsKey('pagination') && data['pagination'] is Map) {
+            final pagination = data['pagination'] as Map<String, dynamic>;
+            debugPrint('   → pagination 정보:');
+            debugPrint('      - count: ${pagination['count']}');
+            debugPrint('      - total: ${pagination['total']}');
+            debugPrint('      - hasMore: ${pagination['hasMore']}');
+            debugPrint('      - offset: ${pagination['offset']}');
+            debugPrint('      - limit: ${pagination['limit']}');
+          } else {
+            debugPrint('   ⚠️ pagination 정보가 없습니다.');
+          }
+          debugPrint('═══════════════════════════════════════════════════════');
           break;
         case ReportType.alertas:
           // alertas 보고서는 날짜 범위 필터 사용 (기본값: 오늘부터 오늘까지)
@@ -2389,6 +2459,7 @@ class _ReportScreenState extends State<ReportScreen> {
       if (filteringWord.isNotEmpty) {
         filteredCount = dataList.where((item) {
           if (item is Map<String, dynamic>) {
+            // codigo1 또는 desc1(제품 이름)에서 검색
             final codigo1 = item['codigo1']?.toString().toLowerCase() ?? '';
             final desc1 = item['desc1']?.toString().toLowerCase() ?? '';
             return codigo1.contains(filteringWord) || desc1.contains(filteringWord);
@@ -2710,6 +2781,9 @@ class _ReportScreenState extends State<ReportScreen> {
                                       startDate: _itemsStartDate,
                                       endDate: _itemsEndDate,
                                       onDateRangeChanged: (startDate, endDate) {
+                                        debugPrint('📅 [Items Report] 날짜 범위 변경 이벤트:');
+                                        debugPrint('   → 변경 전: startDate=$_itemsStartDate, endDate=$_itemsEndDate');
+                                        debugPrint('   → 변경 후: startDate=$startDate, endDate=$endDate');
                                         setState(() {
                                           _itemsStartDate = startDate;
                                           _itemsEndDate = endDate;
@@ -2717,6 +2791,7 @@ class _ReportScreenState extends State<ReportScreen> {
                                         if (widget.onItemsDateRangeChanged != null) {
                                           widget.onItemsDateRangeChanged!(startDate, endDate);
                                         }
+                                        debugPrint('   → _loadData() 호출하여 데이터 다시 로드');
                                         _loadData();
                                       },
                                     ),
@@ -2874,6 +2949,9 @@ class _ReportScreenState extends State<ReportScreen> {
                                       startDate: _itemsStartDate,
                                       endDate: _itemsEndDate,
                                       onDateRangeChanged: (startDate, endDate) {
+                                        debugPrint('📅 [Items Report] 날짜 범위 변경 이벤트:');
+                                        debugPrint('   → 변경 전: startDate=$_itemsStartDate, endDate=$_itemsEndDate');
+                                        debugPrint('   → 변경 후: startDate=$startDate, endDate=$endDate');
                                         setState(() {
                                           _itemsStartDate = startDate;
                                           _itemsEndDate = endDate;
@@ -2881,6 +2959,7 @@ class _ReportScreenState extends State<ReportScreen> {
                                         if (widget.onItemsDateRangeChanged != null) {
                                           widget.onItemsDateRangeChanged!(startDate, endDate);
                                         }
+                                        debugPrint('   → _loadData() 호출하여 데이터 다시 로드');
                                         _loadData();
                                       },
                                     ),
@@ -6465,6 +6544,7 @@ class _ReportScreenState extends State<ReportScreen> {
             filteringWord: filteringWord.isNotEmpty ? filteringWord : null,
             selectedRubroCode: _selectedRubroCode,
             isLoadingDetail: _isLoadingGastosDetail,
+            horizontalScrollController: _horizontalScrollController,
             onRubroSelected: (rubroCode) {
               debugPrint('🔍 [ReportScreen] Rubro 선택 콜백 호출: $rubroCode');
               setState(() {
@@ -6503,6 +6583,7 @@ class _ReportScreenState extends State<ReportScreen> {
             filteringWord: filteringWord.isNotEmpty ? filteringWord : null,
             selectedRubroCode: _selectedRubroCode,
             isLoadingDetail: _isLoadingGastosDetail,
+            horizontalScrollController: _horizontalScrollController,
             onRubroSelected: (rubroCode) {
               debugPrint('🔍 [ReportScreen] Rubro 선택 콜백 호출: $rubroCode');
               setState(() {
@@ -6628,9 +6709,27 @@ class _ReportScreenState extends State<ReportScreen> {
       
       // 첫 번째 항목이 맵이고 여러 키를 가지고 있으면 테이블로 표시
       if (dataList.isNotEmpty && dataList.first is Map) {
-        // Items, Ingresos, Gastos, Alertas 및 Ventas 보고서의 경우 filteringWord 필터 적용
+        // Items, Ingresos, Gastos, Alertas, Ventas 및 FVentas 보고서의 경우 filteringWord 필터 적용
         List<dynamic> filteredDataList = dataList;
-        if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas || widget.reportType == ReportType.ventas) {
+        
+        // fventas 데이터 디버깅
+        if (widget.reportType == ReportType.fventas) {
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [FVentas Report] 필터링 전 데이터 확인');
+          debugPrint('   → dataList 타입: ${dataList.runtimeType}');
+          debugPrint('   → dataList.length: ${dataList.length}');
+          if (dataList.isNotEmpty) {
+            debugPrint('   → 첫 번째 항목: ${dataList.first}');
+            if (dataList.first is Map<String, dynamic>) {
+              debugPrint('   → 첫 번째 항목 키: ${(dataList.first as Map<String, dynamic>).keys.toList()}');
+            }
+          }
+          debugPrint('   → filteringWord: "${_filteringWordController.text.trim()}"');
+          debugPrint('   → _selectedSucursal: $_selectedSucursal');
+          debugPrint('═══════════════════════════════════════════════════════');
+        }
+        
+        if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas || widget.reportType == ReportType.ventas || widget.reportType == ReportType.fventas) {
           // Alertas 보고서의 경우 WEB 버튼이 활성화되면 progname과 evento 필터 모두 적용
           if (widget.reportType == ReportType.alertas && _alertasWeb) {
             final filteringWord = _filteringWordController.text.trim().toLowerCase();
@@ -6661,6 +6760,7 @@ class _ReportScreenState extends State<ReportScreen> {
                   // Alertas 보고서: codigo, descripcion, mensaje, tipo 사용
                   // Ventas 보고서: vcode, vendedor, clientenombre 등 주요 필드에서 검색
                   if (widget.reportType == ReportType.items) {
+                    // codigo1 또는 desc1(제품 이름)에서 검색
                     final codigo1 = item['codigo1']?.toString().toLowerCase() ?? '';
                     final desc1 = item['desc1']?.toString().toLowerCase() ?? '';
                     return codigo1.contains(filteringWord) || desc1.contains(filteringWord);
@@ -6693,6 +6793,16 @@ class _ReportScreenState extends State<ReportScreen> {
                              sucursal.contains(filteringWord) ||
                              nencargado.contains(filteringWord);
                     }
+                  } else if (widget.reportType == ReportType.fventas) {
+                    // fventas 필터링: cuit, cliente, clientenombre, numfactura 필드에서 검색
+                    final cuit = item['cuit']?.toString().toLowerCase() ?? '';
+                    final cliente = item['cliente']?.toString().toLowerCase() ?? '';
+                    final clientenombre = item['clientenombre']?.toString().toLowerCase() ?? '';
+                    final numfactura = item['numfactura']?.toString().toLowerCase() ?? '';
+                    return cuit.contains(filteringWord) || 
+                           cliente.contains(filteringWord) ||
+                           clientenombre.contains(filteringWord) ||
+                           numfactura.contains(filteringWord);
                   }
                 }
                 return false;
@@ -7011,6 +7121,23 @@ class _ReportScreenState extends State<ReportScreen> {
             final comparison = aStr.compareTo(bStr);
             return _sortAscending ? comparison : -comparison;
           });
+        }
+        
+        // fventas 데이터 디버깅 (buildTableFromList 호출 전)
+        if (widget.reportType == ReportType.fventas) {
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [FVentas Report] buildTableFromList 호출 전 데이터 확인');
+          debugPrint('   → filteredDataList.length: ${filteredDataList.length}');
+          debugPrint('   → sortedDataList.length: ${sortedDataList.length}');
+          debugPrint('   → _displayedItemsCount: $_displayedItemsCount');
+          debugPrint('   → _itemsPerPage: $_itemsPerPage');
+          debugPrint('   → horizontalScrollController: ${_horizontalScrollController != null}');
+          if (filteredDataList.isNotEmpty) {
+            debugPrint('   → filteredDataList 첫 번째 항목: ${filteredDataList.first}');
+          } else {
+            debugPrint('   ⚠️ filteredDataList가 비어있습니다!');
+          }
+          debugPrint('═══════════════════════════════════════════════════════');
         }
         
         // 성능 최적화: RepaintBoundary로 감싸서 불필요한 리페인트 방지
@@ -8885,32 +9012,64 @@ class _ReportScreenState extends State<ReportScreen> {
   void _handleVcodeRowTap(Map<String, dynamic> rowData) async {
     if (widget.reportType != ReportType.ventas || _ventasUnit != 'vcode') return;
     
-    print('🔍 vcode 행 탭 - rowData: $rowData');
+    print('🔍 vcode 행 더블 클릭 - rowData: $rowData');
+    print('🔍 rowData의 모든 키: ${rowData.keys.toList()}');
     
-    // id와 sucursal 추출 (서버에 id와 sucursal 파라미터로 전송)
-    final vcodeId = rowData['id'] ?? rowData['vcode_id'] ?? rowData['Id'] ?? rowData['Vcode_id'];
-    final sucursal = rowData['sucursal'] ?? rowData['Sucursal'];
+    // vcode_id와 sucursal 추출 (대소문자 구분 없이 찾기)
+    dynamic vcodeId;
+    dynamic sucursal;
+    
+    // vcode_id 찾기 (여러 가능한 키 이름 시도)
+    for (var key in rowData.keys) {
+      final lowerKey = key.toLowerCase();
+      if (lowerKey == 'id' || lowerKey == 'vcode_id' || lowerKey == 'vcodeid') {
+        vcodeId = rowData[key];
+        print('✅ vcode_id 찾음: key=$key, value=$vcodeId');
+        break;
+      }
+    }
+    
+    // sucursal 찾기 (대소문자 구분 없이)
+    for (var key in rowData.keys) {
+      final lowerKey = key.toLowerCase();
+      if (lowerKey == 'sucursal') {
+        sucursal = rowData[key];
+        print('✅ sucursal 찾음: key=$key, value=$sucursal');
+        break;
+      }
+    }
     
     if (vcodeId == null || sucursal == null) {
-      print('❌ id 또는 sucursal이 없습니다. id: $vcodeId, sucursal: $sucursal');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('id 또는 sucursal 정보를 찾을 수 없습니다.')),
-      );
+      print('❌ vcode_id 또는 sucursal이 없습니다.');
+      print('   - vcode_id: $vcodeId');
+      print('   - sucursal: $sucursal');
+      print('   - rowData의 모든 키: ${rowData.keys.toList()}');
+      print('   - rowData의 모든 값: ${rowData.values.toList()}');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('vcode_id 또는 sucursal 정보를 찾을 수 없습니다.')),
+        );
+      }
       return;
     }
     
+    // 정수로 변환
     final vcodeIdInt = vcodeId is int ? vcodeId : int.tryParse(vcodeId.toString());
     final sucursalInt = sucursal is int ? sucursal : int.tryParse(sucursal.toString());
     
     if (vcodeIdInt == null || sucursalInt == null) {
-      print('❌ id 또는 sucursal을 정수로 변환할 수 없습니다.');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('id 또는 sucursal 형식이 올바르지 않습니다.')),
-      );
+      print('❌ vcode_id 또는 sucursal을 정수로 변환할 수 없습니다.');
+      print('   - vcode_id 원본: $vcodeId (타입: ${vcodeId.runtimeType})');
+      print('   - sucursal 원본: $sucursal (타입: ${sucursal.runtimeType})');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('vcode_id 또는 sucursal 형식이 올바르지 않습니다.')),
+        );
+      }
       return;
     }
     
-    print('✅ vdetalles 요청 - id: $vcodeIdInt, sucursal: $sucursalInt');
+    print('✅ vdetalles 요청 - vcode_id: $vcodeIdInt, sucursal: $sucursalInt');
     
     // 로딩 다이얼로그 표시
     showDialog(

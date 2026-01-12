@@ -193,6 +193,17 @@ class ReportTableBuilder {
     Function(Map<String, dynamic>)? onRowDoubleTap, // 행 더블 클릭 콜백
     Function(Map<String, dynamic>)? onRowTap, // 행 단일 클릭 콜백
   }) {
+    // 디버깅: buildTableFromList 시작
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [${reportType.name}] buildTableFromList 시작');
+    debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
+    if (horizontalScrollController != null) {
+      debugPrint('   → horizontalScrollController.hasClients: ${horizontalScrollController.hasClients}');
+      if (horizontalScrollController.hasClients) {
+        debugPrint('   → horizontalScrollController.position.pixels: ${horizontalScrollController.position.pixels}');
+        debugPrint('   → horizontalScrollController.position.maxScrollExtent: ${horizontalScrollController.position.maxScrollExtent}');
+      }
+    }
     debugPrint('═══════════════════════════════════════════════════════');
     debugPrint('📊 [ReportTableBuilder:176] buildTableFromList 함수 시작');
     debugPrint('   → 파일: report_table_builder.dart');
@@ -694,9 +705,21 @@ class ReportTableBuilder {
                       });
                       
                       // 헤더 생성 (ventas/clientes는 제외)
-                      final headerRow = (reportType == ReportType.ventas || reportType == ReportType.clientes)
+                      final headerRow = (reportType == ReportType.ventas || reportType == ReportType.clientes || reportType == ReportType.fventas)
                           ? null 
                           : buildHeaderRow(keys, columns, color, sortColumn, sortAscending, onSort, columnWidths: columnWidths, reportType: reportType);
+                      
+                      // fventas 디버깅
+                      if (reportType == ReportType.fventas) {
+                        debugPrint('═══════════════════════════════════════════════════════');
+                        debugPrint('🔍 [FVentas Report] report_table_builder.dart에서 처리');
+                        debugPrint('   → keys.length: ${keys.length}');
+                        debugPrint('   → keys: $keys');
+                        debugPrint('   → displayedList.length: ${displayedList.length}');
+                        debugPrint('   → headerRow: ${headerRow != null ? "생성됨" : "null (fventas는 헤더 없음)"}');
+                        debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
+                        debugPrint('═══════════════════════════════════════════════════════');
+                      }
                       
                       debugPrint('   → [ReportTableBuilder:650] Column 생성 시작');
                       return Column(
@@ -861,57 +884,155 @@ class ReportTableBuilder {
                                 return Scrollbar(
                                   controller: scrollController,
                                   thumbVisibility: true,
-                                  child: SingleChildScrollView(
-                                    controller: scrollController,
-                                    scrollDirection: Axis.vertical,
-                                    child: Builder(
-                                      builder: (context) {
-                                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                                          final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
-                                          if (renderBox != null) {
-                                            debugPrint('═══════════════════════════════════════════════════════');
-                                            debugPrint('📊 [ReportTableBuilder:708] buildTableFromList 실제 렌더링 크기 (PostFrameCallback)');
-                                            debugPrint('   → 파일: report_table_builder.dart');
-                                            debugPrint('   → 라인: 708');
-                                            debugPrint('   → width: ${renderBox.size.width}');
-                                            debugPrint('   → height: ${renderBox.size.height}');
-                                            debugPrint('   → 예상 width: ${innerConstraints.maxWidth}');
-                                            debugPrint('   → 차이: ${renderBox.size.width - innerConstraints.maxWidth}');
+                                  child: NotificationListener<ScrollNotification>(
+                                    onNotification: (notification) {
+                                      // 디버깅: items/ingresos 스크롤 이벤트 감지
+                                      debugPrint('🔍 [${reportType.name}] Items/Ingresos NotificationListener 스크롤 이벤트');
+                                      debugPrint('   → notification 타입: ${notification.runtimeType}');
+                                      debugPrint('   → notification.depth: ${notification.depth}');
+                                      
+                                      // 테이블의 수평 스크롤 이벤트를 헤더와 푸터에 전달
+                                      if (notification is ScrollUpdateNotification) {
+                                        debugPrint('   → ScrollUpdateNotification 감지');
+                                        debugPrint('   → metrics.axis: ${notification.metrics.axis}');
+                                        debugPrint('   → metrics.pixels: ${notification.metrics.pixels}');
+                                        debugPrint('   → metrics.maxScrollExtent: ${notification.metrics.maxScrollExtent}');
+                                        debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
+                                        
+                                        if (notification.metrics.axis == Axis.horizontal) {
+                                          debugPrint('   ✅ 수평 스크롤 이벤트 확인');
+                                          debugPrint('   → horizontalScrollController.hasClients: ${horizontalScrollController?.hasClients ?? false}');
+                                          
+                                          if (horizontalScrollController != null && horizontalScrollController.hasClients) {
+                                            final tableScrollPosition = notification.metrics.pixels;
+                                            final headerScrollPosition = horizontalScrollController.position.pixels;
+                                            final difference = (tableScrollPosition - headerScrollPosition).abs();
                                             
-                                            // 자식 위젯 크기 확인
-                                            int childIndex = 0;
-                                            renderBox.visitChildren((child) {
-                                              if (child is RenderBox) {
-                                                debugPrint('   → [ReportTableBuilder:720] 자식 RenderBox #$childIndex');
-                                                debugPrint('      → width: ${child.size.width}');
-                                                debugPrint('      → height: ${child.size.height}');
-                                                childIndex++;
-                                              }
-                                            });
+                                            debugPrint('   → 테이블 스크롤 위치: $tableScrollPosition');
+                                            debugPrint('   → 헤더/푸터 스크롤 위치: $headerScrollPosition');
+                                            debugPrint('   → 위치 차이: $difference');
                                             
-                                            if (childIndex == 0) {
-                                              debugPrint('   ⚠️ [ReportTableBuilder:720] 자식 RenderBox가 없습니다!');
+                                            if (difference > 0.1) {
+                                              debugPrint('   ✅ 위치 차이 > 0.1, jumpTo 호출: $tableScrollPosition');
+                                              horizontalScrollController.jumpTo(tableScrollPosition);
+                                            } else {
+                                              debugPrint('   ⚠️ 위치 차이 <= 0.1, 동기화 스킵');
                                             }
                                           } else {
-                                            debugPrint('   ⚠️ [ReportTableBuilder:708] RenderBox를 찾을 수 없습니다!');
+                                            debugPrint('   ⚠️ horizontalScrollController가 없거나 클라이언트가 없음');
                                           }
-                                        });
-                                        debugPrint('   → [ReportTableBuilder:730] tableContent 반환');
-                                        return tableContent;
-                                      },
+                                        } else {
+                                          debugPrint('   ⚠️ 수직 스크롤 이벤트 (무시)');
+                                        }
+                                      } else if (notification is ScrollStartNotification) {
+                                        debugPrint('   → ScrollStartNotification 감지');
+                                        debugPrint('   → metrics.axis: ${notification.metrics.axis}');
+                                      } else if (notification is ScrollEndNotification) {
+                                        debugPrint('   → ScrollEndNotification 감지');
+                                        debugPrint('   → metrics.axis: ${notification.metrics.axis}');
+                                      }
+                                      return false;
+                                    },
+                                    child: SingleChildScrollView(
+                                      controller: scrollController,
+                                      scrollDirection: Axis.vertical,
+                                      child: Builder(
+                                        builder: (context) {
+                                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                                            final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+                                            if (renderBox != null) {
+                                              debugPrint('═══════════════════════════════════════════════════════');
+                                              debugPrint('📊 [ReportTableBuilder:708] buildTableFromList 실제 렌더링 크기 (PostFrameCallback)');
+                                              debugPrint('   → 파일: report_table_builder.dart');
+                                              debugPrint('   → 라인: 708');
+                                              debugPrint('   → width: ${renderBox.size.width}');
+                                              debugPrint('   → height: ${renderBox.size.height}');
+                                              debugPrint('   → 예상 width: ${innerConstraints.maxWidth}');
+                                              debugPrint('   → 차이: ${renderBox.size.width - innerConstraints.maxWidth}');
+                                              
+                                              // 자식 위젯 크기 확인
+                                              int childIndex = 0;
+                                              renderBox.visitChildren((child) {
+                                                if (child is RenderBox) {
+                                                  debugPrint('   → [ReportTableBuilder:720] 자식 RenderBox #$childIndex');
+                                                  debugPrint('      → width: ${child.size.width}');
+                                                  debugPrint('      → height: ${child.size.height}');
+                                                  childIndex++;
+                                                }
+                                              });
+                                              
+                                              if (childIndex == 0) {
+                                                debugPrint('   ⚠️ [ReportTableBuilder:720] 자식 RenderBox가 없습니다!');
+                                              }
+                                            } else {
+                                              debugPrint('   ⚠️ [ReportTableBuilder:708] RenderBox를 찾을 수 없습니다!');
+                                            }
+                                          });
+                                          debugPrint('   → [ReportTableBuilder:730] tableContent 반환');
+                                          return tableContent;
+                                        },
+                                      ),
                                     ),
                                   ),
                                 );
                               },
                             ),
                           ),
-                          // Footer (화면 하단에 고정)
+                          // Footer (화면 하단에 고정, 수평 스크롤 동기화)
                           Builder(
                             builder: (context) {
+                              // 디버깅: items/ingresos 푸터 생성 시점 로깅
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                debugPrint('🔍 [${reportType.name}] Items/Ingresos 푸터 생성 완료');
+                                debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
+                                if (horizontalScrollController != null) {
+                                  debugPrint('   → horizontalScrollController.hasClients: ${horizontalScrollController.hasClients}');
+                                  if (horizontalScrollController.hasClients) {
+                                    debugPrint('   → horizontalScrollController.position.pixels: ${horizontalScrollController.position.pixels}');
+                                    debugPrint('   → horizontalScrollController.position.maxScrollExtent: ${horizontalScrollController.position.maxScrollExtent}');
+                                  }
+                                }
+                              });
+                              
                               debugPrint('═══════════════════════════════════════════════════════');
                               debugPrint('📊 [buildTableFromList] 푸터 생성 시작');
                               debugPrint('   → keys: $keys');
                               debugPrint('   → columnWidths 전달: ${columnWidths != null}');
+                              debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
+                              
+                              // fventas/ventas의 경우 테이블 너비 계산
+                              double? footerWidth;
+                              if (reportType == ReportType.fventas || reportType == ReportType.ventas) {
+                                final defaultColumnWidths = <String, double>{
+                                  'codigo1': 200, 'desc1': 200, 'ProductName': 400, 'totalCantidad': 120,
+                                  'CategoryCode': 100, 'CompanyCode': 100, 'tprendas': 100, 'timporte': 120,
+                                  'codigo': 120, 'descripcion': 200, 'tevent': 100, 'tcant': 120,
+                                  'tIngreso': 120, 'tingreso': 120, 'cntEvent': 100, 'cntevent': 100,
+                                  'fecha': 120, 'hora': 100, 'evento': 500, 'progname': 150,
+                                  'alerta': 80, 'sucursal': 100,
+                                  // ventas/fventas 보고서용 컬럼 너비
+                                  'vcode': 100, 'tpago': 120, 'cntropas': 100, 'clientenombre': 200,
+                                  'id_fventa': 150, 'numfactura': 150, 'tipofactura': 150, 'dni': 150,
+                                  'monto': 150, 'xefectivo': 150, 'xbanco': 150, 'xcheque': 150,
+                                  'numcheque': 150, 'utime': 150, 'borrado': 150, 'ref_num': 150,
+                                  'cae': 150, 'vencimiento_cae': 150, 'punto_venta': 150, 'afip_number': 150,
+                                  'tipo_pago': 150, 'b_impreso_x_comandera': 150, 'terminal': 150,
+                                  'ref_id_vcode': 150, 'b_sincronizado_node_svr': 150,
+                                };
+                                final finalColumnWidths = columnWidths ?? defaultColumnWidths;
+                                double calculatedWidth = 0.0;
+                                for (int i = 0; i < keys.length; i++) {
+                                  final key = keys[i];
+                                  final columnWidth = finalColumnWidths[key] ?? 150.0;
+                                  calculatedWidth += columnWidth;
+                                  if (i < keys.length - 1) {
+                                    calculatedWidth += 8; // columnSpacing
+                                  }
+                                }
+                                footerWidth = calculatedWidth;
+                                debugPrint('   → [fventas/ventas] 계산된 footerWidth: $footerWidth');
+                              }
+                              
                               final footer = buildFixedTotalRow(
                                 keys, 
                                 displayedList, 
@@ -919,8 +1040,21 @@ class ReportTableBuilder {
                                 columnWidths: columnWidths,
                                 dataList: dataList,
                                 reportType: reportType,
+                                explicitWidth: footerWidth, // fventas/ventas의 경우 명시적 너비 전달
                               );
                               debugPrint('   → 푸터 생성 완료');
+                              
+                              // horizontalScrollController가 있으면 SingleChildScrollView로 감싸기
+                              if (horizontalScrollController != null) {
+                                return SingleChildScrollView(
+                                  controller: horizontalScrollController,
+                                  scrollDirection: Axis.horizontal,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  child: footer,
+                                );
+                              }
+                              
+                              return footer;
                               
                               // 푸터의 실제 렌더링 위치 측정
                               WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1860,33 +1994,343 @@ class ReportTableBuilder {
     debugPrint('   → 라인: 1491');
     debugPrint('   → reportType: $reportType');
     
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // 헤더 (수평 스크롤 동기화) - ventas는 제외
-        if (headerRow != null)
-          if (horizontalScrollController != null)
+    // fventas 및 ventas 보고서의 경우 헤더, 테이블, 푸터를 하나의 수평 스크롤 컨테이너로 감싸서 동기화
+    if ((reportType == ReportType.fventas || reportType == ReportType.ventas) && horizontalScrollController != null) {
+      // 테이블의 실제 너비 계산 (buildHeaderRow와 동일한 방식)
+      double calculateTableWidth() {
+        // buildHeaderRow에서 사용하는 기본 columnWidths 가져오기
+        final defaultColumnWidths = <String, double>{
+          'codigo1': 200,
+          'desc1': 200,
+          'ProductName': 400,
+          'totalCantidad': 120,
+          'CategoryCode': 100,
+          'CompanyCode': 100,
+          'tprendas': 100,
+          'timporte': 120,
+          'codigo': 120,
+          'descripcion': 200,
+          'tevent': 100,
+          'tcant': 120,
+          'tIngreso': 120,
+          'tingreso': 120,
+          'cntEvent': 100,
+          'cntevent': 100,
+          'fecha': 120,
+          'hora': 100,
+          'evento': 500,
+          'progname': 150,
+          'alerta': 80,
+          'sucursal': 100,
+          // ventas 보고서용 컬럼 너비
+          'vcode': 100,
+          'tpago': 120,
+          'cntropas': 100,
+          'clientenombre': 200,
+          'tefectivo': 120,
+          'tcredito': 120,
+          'tbanco': 120,
+          'treservado': 120,
+          'tfavor': 120,
+          'vendedor': 150,
+          'tipo': 80,
+          'dni': 120,
+          'resiva': 100,
+          'casoesp': 150,
+          'nencargado': 150,
+          'cretmp': 100,
+          'ntiqrepetir': 100,
+          'b_mercadopago': 100,
+          'd_num_caja': 100,
+          'd_num_terminal': 100,
+          'id': 80,
+        };
+        final finalColumnWidths = columnWidths ?? defaultColumnWidths;
+        
+        double totalWidth = 0.0;
+        for (int i = 0; i < keys.length; i++) {
+          final key = keys[i];
+          final width = finalColumnWidths[key] ?? 150.0;
+          totalWidth += width;
+          if (i < keys.length - 1) {
+            totalWidth += 8; // columnSpacing
+          }
+        }
+        return totalWidth;
+      }
+      
+      final tableWidth = calculateTableWidth();
+      
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 헤더 (수평 스크롤 컨테이너로 감싸기) - fventas만, ventas는 헤더 없음
+          if (reportType == ReportType.fventas && headerRow != null)
             SingleChildScrollView(
               controller: horizontalScrollController,
               scrollDirection: Axis.horizontal,
               physics: const NeverScrollableScrollPhysics(),
-              child: headerRow,
-            )
-          else
-            headerRow,
+              child: SizedBox(
+                width: tableWidth,
+                child: buildHeaderRow(
+                  keys,
+                  columns,
+                  color,
+                  sortColumn,
+                  sortAscending,
+                  onSort,
+                  columnWidths: columnWidths,
+                  reportType: reportType,
+                  explicitWidth: tableWidth, // 명시적 너비 전달
+                ),
+              ),
+            ),
+          Expanded(
+            child: Scrollbar(
+              controller: scrollController,
+              thumbVisibility: true,
+              child: NotificationListener<ScrollNotification>(
+                onNotification: (notification) {
+                  // 디버깅: 스크롤 이벤트 감지
+                  debugPrint('🔍 [${reportType.name}] 외부 NotificationListener 스크롤 이벤트');
+                  debugPrint('   → notification 타입: ${notification.runtimeType}');
+                  debugPrint('   → notification.depth: ${notification.depth}');
+                  
+                  // 데이터 부분의 수평 스크롤 이벤트를 헤더와 푸터에 전달
+                  if (notification is ScrollUpdateNotification) {
+                    debugPrint('   → ScrollUpdateNotification 감지');
+                    debugPrint('   → metrics.axis: ${notification.metrics.axis}');
+                    debugPrint('   → metrics.pixels: ${notification.metrics.pixels}');
+                    debugPrint('   → metrics.maxScrollExtent: ${notification.metrics.maxScrollExtent}');
+                    debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
+                    
+                    if (notification.metrics.axis == Axis.horizontal) {
+                      debugPrint('   ✅ 수평 스크롤 이벤트 확인');
+                      debugPrint('   → horizontalScrollController.hasClients: ${horizontalScrollController?.hasClients ?? false}');
+                      
+                      if (horizontalScrollController != null && horizontalScrollController.hasClients) {
+                        // 위치가 다를 때만 업데이트 (무한 루프 방지)
+                        final tableScrollPosition = notification.metrics.pixels;
+                        final footerScrollPosition = horizontalScrollController.position.pixels;
+                        final difference = (tableScrollPosition - footerScrollPosition).abs();
+                        
+                        debugPrint('   → 테이블 스크롤 위치: $tableScrollPosition');
+                        debugPrint('   → 푸터 스크롤 위치: $footerScrollPosition');
+                        debugPrint('   → 위치 차이: $difference');
+                        
+                        if (difference > 0.1) {
+                          debugPrint('   ✅ 위치 차이 > 0.1, jumpTo 호출: $tableScrollPosition');
+                          horizontalScrollController.jumpTo(tableScrollPosition);
+                        } else {
+                          debugPrint('   ⚠️ 위치 차이 <= 0.1, 동기화 스킵');
+                        }
+                      } else {
+                        debugPrint('   ⚠️ horizontalScrollController가 없거나 클라이언트가 없음');
+                      }
+                    } else {
+                      debugPrint('   ⚠️ 수직 스크롤 이벤트 (무시)');
+                    }
+                  } else if (notification is ScrollStartNotification) {
+                    debugPrint('   → ScrollStartNotification 감지');
+                    debugPrint('   → metrics.axis: ${notification.metrics.axis}');
+                  } else if (notification is ScrollEndNotification) {
+                    debugPrint('   → ScrollEndNotification 감지');
+                    debugPrint('   → metrics.axis: ${notification.metrics.axis}');
+                  }
+                  return false;
+                },
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  scrollDirection: Axis.vertical,
+                  child: NotificationListener<ScrollNotification>(
+                    onNotification: (notification) {
+                      // 디버깅: 내부 스크롤 이벤트 감지
+                      debugPrint('🔍 [${reportType.name}] 내부 NotificationListener 스크롤 이벤트');
+                      debugPrint('   → notification 타입: ${notification.runtimeType}');
+                      debugPrint('   → notification.depth: ${notification.depth}');
+                      
+                      // 데이터 부분의 수평 스크롤 이벤트를 헤더와 푸터에 전달
+                      if (notification is ScrollUpdateNotification) {
+                        debugPrint('   → ScrollUpdateNotification 감지');
+                        debugPrint('   → metrics.axis: ${notification.metrics.axis}');
+                        debugPrint('   → metrics.pixels: ${notification.metrics.pixels}');
+                        debugPrint('   → metrics.maxScrollExtent: ${notification.metrics.maxScrollExtent}');
+                        debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
+                        
+                        if (notification.metrics.axis == Axis.horizontal) {
+                          debugPrint('   ✅ 수평 스크롤 이벤트 확인');
+                          debugPrint('   → horizontalScrollController.hasClients: ${horizontalScrollController?.hasClients ?? false}');
+                          
+                          if (horizontalScrollController != null && horizontalScrollController.hasClients) {
+                            // 위치가 다를 때만 업데이트 (무한 루프 방지)
+                            final tableScrollPosition = notification.metrics.pixels;
+                            final footerScrollPosition = horizontalScrollController.position.pixels;
+                            final difference = (tableScrollPosition - footerScrollPosition).abs();
+                            
+                            debugPrint('   → 테이블 스크롤 위치: $tableScrollPosition');
+                            debugPrint('   → 푸터 스크롤 위치: $footerScrollPosition');
+                            debugPrint('   → 위치 차이: $difference');
+                            
+                            if (difference > 0.1) {
+                              debugPrint('   ✅ 위치 차이 > 0.1, jumpTo 호출: $tableScrollPosition');
+                              horizontalScrollController.jumpTo(tableScrollPosition);
+                            } else {
+                              debugPrint('   ⚠️ 위치 차이 <= 0.1, 동기화 스킵');
+                            }
+                          } else {
+                            debugPrint('   ⚠️ horizontalScrollController가 없거나 클라이언트가 없음');
+                          }
+                        } else {
+                          debugPrint('   ⚠️ 수직 스크롤 이벤트 (무시)');
+                        }
+                      } else if (notification is ScrollStartNotification) {
+                        debugPrint('   → ScrollStartNotification 감지');
+                        debugPrint('   → metrics.axis: ${notification.metrics.axis}');
+                      } else if (notification is ScrollEndNotification) {
+                        debugPrint('   → ScrollEndNotification 감지');
+                        debugPrint('   → metrics.axis: ${notification.metrics.axis}');
+                      }
+                      return false;
+                    },
+                    child: LayoutBuilder(
+                      builder: (context, innerConstraints) {
+                        // fventas/ventas의 경우 헤더와 푸터는 이미 외부에서 처리되므로 테이블만 반환
+                        return SingleChildScrollView(
+                          controller: horizontalScrollController,
+                          scrollDirection: Axis.horizontal,
+                          child: SizedBox(
+                            width: tableWidth,
+                            child: buildDataTable(
+                              reportType: reportType,
+                              displayedList: displayedList,
+                              keys: keys,
+                              columns: columns,
+                              dataList: dataList,
+                              color: color,
+                              onRowDoubleTap: onRowDoubleTap,
+                              onRowTap: onRowTap,
+                              unit: unit,
+                              columnWidths: columnWidths,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // 푸터 (수평 스크롤 컨테이너로 감싸기)
+          SingleChildScrollView(
+            controller: horizontalScrollController,
+            scrollDirection: Axis.horizontal,
+            physics: const NeverScrollableScrollPhysics(),
+            child: SizedBox(
+              width: tableWidth,
+              child: buildFixedTotalRow(
+                keys, 
+                displayedList, 
+                color,
+                columnWidths: columnWidths,
+                dataList: dataList,
+                reportType: reportType,
+                explicitWidth: tableWidth, // 명시적 너비 전달
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+    
+    // 다른 보고서는 기존 방식 유지
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 헤더 (수평 스크롤 동기화) - ventas는 제외
+        Builder(
+          builder: (context) {
+            // 디버깅: 헤더 생성 시점 로깅
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              debugPrint('🔍 [${reportType.name}] 다른 보고서 헤더 생성 완료');
+              debugPrint('   → headerRow: ${headerRow != null}');
+              debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
+              if (horizontalScrollController != null) {
+                debugPrint('   → horizontalScrollController.hasClients: ${horizontalScrollController.hasClients}');
+                if (horizontalScrollController.hasClients) {
+                  debugPrint('   → horizontalScrollController.position.pixels: ${horizontalScrollController.position.pixels}');
+                  debugPrint('   → horizontalScrollController.position.maxScrollExtent: ${horizontalScrollController.position.maxScrollExtent}');
+                }
+              }
+            });
+            
+            if (headerRow != null) {
+              if (horizontalScrollController != null) {
+                return SingleChildScrollView(
+                  controller: horizontalScrollController,
+                  scrollDirection: Axis.horizontal,
+                  physics: const NeverScrollableScrollPhysics(),
+                  child: headerRow,
+                );
+              } else {
+                return headerRow;
+              }
+            }
+            return const SizedBox.shrink();
+          },
+        ),
         Expanded(
           child: Scrollbar(
             controller: scrollController,
             thumbVisibility: true,
             child: NotificationListener<ScrollNotification>(
               onNotification: (notification) {
-                // 데이터 부분의 수평 스크롤 이벤트를 헤더에 전달
-                if (notification is ScrollUpdateNotification && 
-                    notification.depth == 0 && 
-                    notification.metrics.axis == Axis.horizontal &&
-                    horizontalScrollController != null &&
-                    horizontalScrollController.hasClients) {
-                  horizontalScrollController.jumpTo(notification.metrics.pixels);
+                // 디버깅: 다른 보고서 스크롤 이벤트 감지
+                debugPrint('🔍 [${reportType.name}] 다른 보고서 NotificationListener 스크롤 이벤트');
+                debugPrint('   → notification 타입: ${notification.runtimeType}');
+                debugPrint('   → notification.depth: ${notification.depth}');
+                
+                // 데이터 부분의 수평 스크롤 이벤트를 헤더와 푸터에 전달
+                if (notification is ScrollUpdateNotification) {
+                  debugPrint('   → ScrollUpdateNotification 감지');
+                  debugPrint('   → metrics.axis: ${notification.metrics.axis}');
+                  debugPrint('   → metrics.pixels: ${notification.metrics.pixels}');
+                  debugPrint('   → metrics.maxScrollExtent: ${notification.metrics.maxScrollExtent}');
+                  debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
+                  
+                  if (notification.metrics.axis == Axis.horizontal) {
+                    debugPrint('   ✅ 수평 스크롤 이벤트 확인');
+                    debugPrint('   → depth == 0: ${notification.depth == 0}');
+                    debugPrint('   → horizontalScrollController.hasClients: ${horizontalScrollController?.hasClients ?? false}');
+                    
+                    // depth == 0 조건 제거 (더 많은 이벤트 캡처)
+                    if (horizontalScrollController != null && horizontalScrollController.hasClients) {
+                      final tableScrollPosition = notification.metrics.pixels;
+                      final headerScrollPosition = horizontalScrollController.position.pixels;
+                      final difference = (tableScrollPosition - headerScrollPosition).abs();
+                      
+                      debugPrint('   → 테이블 스크롤 위치: $tableScrollPosition');
+                      debugPrint('   → 헤더 스크롤 위치: $headerScrollPosition');
+                      debugPrint('   → 위치 차이: $difference');
+                      
+                      if (difference > 0.1) {
+                        debugPrint('   ✅ 위치 차이 > 0.1, jumpTo 호출: $tableScrollPosition');
+                        horizontalScrollController.jumpTo(tableScrollPosition);
+                      } else {
+                        debugPrint('   ⚠️ 위치 차이 <= 0.1, 동기화 스킵');
+                      }
+                    } else {
+                      debugPrint('   ⚠️ horizontalScrollController가 없거나 클라이언트가 없음');
+                    }
+                  } else {
+                    debugPrint('   ⚠️ 수직 스크롤 이벤트 (무시)');
+                  }
+                } else if (notification is ScrollStartNotification) {
+                  debugPrint('   → ScrollStartNotification 감지');
+                  debugPrint('   → metrics.axis: ${notification.metrics.axis}');
+                } else if (notification is ScrollEndNotification) {
+                  debugPrint('   → ScrollEndNotification 감지');
+                  debugPrint('   → metrics.axis: ${notification.metrics.axis}');
                 }
                 return false;
               },
@@ -1924,14 +2368,86 @@ class ReportTableBuilder {
             ),
           ),
         ),
-        // 푸터 (화면 하단에 고정)
-        buildFixedTotalRow(
-          keys, 
-          displayedList, 
-          color,
-          columnWidths: columnWidths,
-          dataList: dataList,
-          reportType: reportType,
+        // 푸터 (화면 하단에 고정, 수평 스크롤 동기화)
+        Builder(
+          builder: (context) {
+            // 테이블 너비 계산 (ventas 등에서 explicitWidth 전달을 위해)
+            double calculateFooterWidth() {
+              final defaultColumnWidths = <String, double>{
+                'codigo1': 200, 'desc1': 200, 'ProductName': 400, 'totalCantidad': 120,
+                'CategoryCode': 100, 'CompanyCode': 100, 'tprendas': 100, 'timporte': 120,
+                'codigo': 120, 'descripcion': 200, 'tevent': 100, 'tcant': 120,
+                'tIngreso': 120, 'tingreso': 120, 'cntEvent': 100, 'cntevent': 100,
+                'fecha': 120, 'hora': 100, 'evento': 500, 'progname': 150,
+                'alerta': 80, 'sucursal': 100,
+                // ventas 보고서용 컬럼 너비
+                'vcode': 100, 'tpago': 120, 'cntropas': 100, 'clientenombre': 200,
+                'tefectivo': 120, 'tcredito': 120, 'tbanco': 120, 'treservado': 120,
+                'tfavor': 120, 'vendedor': 150, 'tipo': 80, 'dni': 120,
+                'resiva': 100, 'casoesp': 150, 'nencargado': 150, 'cretmp': 100,
+                'ntiqrepetir': 100, 'b_mercadopago': 100, 'd_num_caja': 100,
+                'd_num_terminal': 100, 'id': 80,
+              };
+              final finalColumnWidths = columnWidths ?? defaultColumnWidths;
+              
+              double totalWidth = 0.0;
+              for (int i = 0; i < keys.length; i++) {
+                final key = keys[i];
+                final width = finalColumnWidths[key] ?? 150.0;
+                totalWidth += width;
+                if (i < keys.length - 1) {
+                  totalWidth += 8; // columnSpacing
+                }
+              }
+              return totalWidth;
+            }
+            
+            final footerWidth = calculateFooterWidth();
+            
+            // 디버깅: 푸터 생성 시점 로깅
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              debugPrint('🔍 [${reportType.name}] 다른 보고서 푸터 생성 완료');
+              debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
+              debugPrint('   → 계산된 footerWidth: $footerWidth');
+              if (horizontalScrollController != null) {
+                debugPrint('   → horizontalScrollController.hasClients: ${horizontalScrollController.hasClients}');
+                if (horizontalScrollController.hasClients) {
+                  debugPrint('   → horizontalScrollController.position.pixels: ${horizontalScrollController.position.pixels}');
+                  debugPrint('   → horizontalScrollController.position.maxScrollExtent: ${horizontalScrollController.position.maxScrollExtent}');
+                }
+              }
+            });
+            
+            if (horizontalScrollController != null) {
+              return SingleChildScrollView(
+                controller: horizontalScrollController,
+                scrollDirection: Axis.horizontal,
+                physics: const NeverScrollableScrollPhysics(),
+                child: SizedBox(
+                  width: footerWidth,
+                  child: buildFixedTotalRow(
+                    keys, 
+                    displayedList, 
+                    color,
+                    columnWidths: columnWidths,
+                    dataList: dataList,
+                    reportType: reportType,
+                    explicitWidth: footerWidth, // 명시적 너비 전달
+                  ),
+                ),
+              );
+            } else {
+              return buildFixedTotalRow(
+                keys, 
+                displayedList, 
+                color,
+                columnWidths: columnWidths,
+                dataList: dataList,
+                reportType: reportType,
+                explicitWidth: footerWidth, // 명시적 너비 전달
+              );
+            }
+          },
         ),
       ],
     );
@@ -1966,6 +2482,7 @@ class ReportTableBuilder {
     
     final needsHorizontalScroll = horizontalScrollController != null || 
                                   reportType == ReportType.ventas || 
+                                  reportType == ReportType.fventas ||
                                   reportType == ReportType.clientes;
     
     debugPrint('   → [ReportTableBuilder:1522] needsHorizontalScroll: $needsHorizontalScroll');
@@ -2059,28 +2576,65 @@ class ReportTableBuilder {
     String? unit,
     Map<String, double>? columnWidths,
   }) {
+    // 테이블의 실제 너비 계산 (columnWidths 기반)
+    double calculateTableWidth() {
+      final defaultColumnWidths = <String, double>{
+        'codigo1': 200,
+        'desc1': 200,
+        'ProductName': 400,
+        'totalCantidad': 120,
+        'CategoryCode': 100,
+        'CompanyCode': 100,
+        'tprendas': 100,
+        'timporte': 120,
+        'codigo': 120,
+        'descripcion': 200,
+        'tevent': 100,
+        'tcant': 120,
+        'tIngreso': 120,
+        'tingreso': 120,
+        'cntEvent': 100,
+        'cntevent': 100,
+        'fecha': 120,
+        'hora': 100,
+        'evento': 500,
+        'progname': 150,
+        'alerta': 80,
+        'sucursal': 100,
+      };
+      final finalColumnWidths = columnWidths ?? defaultColumnWidths;
+      
+      double totalWidth = 0.0;
+      for (int i = 0; i < keys.length; i++) {
+        final key = keys[i];
+        final width = finalColumnWidths[key] ?? 150.0;
+        totalWidth += width;
+        if (i < keys.length - 1) {
+          totalWidth += 8; // columnSpacing
+        }
+      }
+      // 최소 너비는 화면 너비보다 크게 설정하여 스크롤 가능하도록 함
+      return totalWidth > constraints.maxWidth ? totalWidth : constraints.maxWidth + 100;
+    }
+    
+    final tableWidth = calculateTableWidth();
+    
     return SingleChildScrollView(
-                        controller: horizontalScrollController,
-                        scrollDirection: Axis.horizontal,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          minWidth: constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity,
-          maxWidth: constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity,
-        ),
-        child: SizedBox(
-          width: constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity,
-          child: buildDataTable(
-            reportType: reportType,
-            displayedList: displayedList,
-            keys: keys,
-                          columns: columns,
-            dataList: dataList,
-            color: color,
-            onRowDoubleTap: onRowDoubleTap,
-            onRowTap: onRowTap,
-            unit: unit,
-            columnWidths: columnWidths,
-          ),
+      controller: horizontalScrollController,
+      scrollDirection: Axis.horizontal,
+      child: SizedBox(
+        width: tableWidth,
+        child: buildDataTable(
+          reportType: reportType,
+          displayedList: displayedList,
+          keys: keys,
+          columns: columns,
+          dataList: dataList,
+          color: color,
+          onRowDoubleTap: onRowDoubleTap,
+          onRowTap: onRowTap,
+          unit: unit,
+          columnWidths: columnWidths,
         ),
       ),
     );
@@ -2276,8 +2830,8 @@ class ReportTableBuilder {
         debugPrint('   → constraints.minHeight: ${constraints.minHeight}');
         
         debugPrint('   → [ReportTableBuilder:1789] DataTable 생성 시작');
-        // items/ingresos/alertas는 별도 헤더를 사용하므로 DataTable 헤더 높이를 0으로 설정
-        final headingRowHeight = (isItemsOrIngresos || reportType == ReportType.alertas)
+        // items/ingresos/alertas/fventas는 별도 헤더를 사용하므로 DataTable 헤더 높이를 0으로 설정
+        final headingRowHeight = (isItemsOrIngresos || reportType == ReportType.alertas || reportType == ReportType.fventas)
             ? 0.0 
             : ((reportType == ReportType.ventas || reportType == ReportType.clientes) ? 40.0 : 56.0);
         
@@ -2355,7 +2909,7 @@ class ReportTableBuilder {
             unit: unit,
             dataList: dataList,
             color: color,
-            includeTotalRow: !isItemsOrIngresos && reportType != ReportType.alertas, // items/ingresos/alertas는 footer를 별도로 표시
+            includeTotalRow: !isItemsOrIngresos && reportType != ReportType.alertas && reportType != ReportType.fventas, // items/ingresos/alertas/fventas는 footer를 별도로 표시
             columnWidths: finalColumnWidths,
           ),
         );
@@ -3031,7 +3585,7 @@ class ReportTableBuilder {
   }
 
   // 고정된 합계 행 빌드 (화면 하단에 고정, 현재 보이는 항목들의 합계)
-  static Widget buildFixedTotalRow(List<String> keys, List<dynamic> displayedList, Color reportColor, {Map<String, double>? columnWidths, List<dynamic>? dataList, ReportType? reportType}) {
+  static Widget buildFixedTotalRow(List<String> keys, List<dynamic> displayedList, Color reportColor, {Map<String, double>? columnWidths, List<dynamic>? dataList, ReportType? reportType, double? explicitWidth}) {
     // 디버깅: 함수 진입 확인 (가장 먼저 실행)
     debugPrint('═══════════════════════════════════════════════════════');
     debugPrint('🔍 [_buildFixedTotalRow] 함수 진입');
@@ -3050,33 +3604,69 @@ class ReportTableBuilder {
     
     debugPrint('   → 합계 계산에 사용할 리스트 길이: ${listForTotal.length}');
     
-    // 각 칼럼별 합계 계산
-    final totals = <String, num>{};
-    
-    for (var key in keys) {
-      // 합계를 계산하지 않아야 하는 컬럼들
-      final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1' || key == 'vcode' || key == 'id';
-      final isDateColumn = key == 'fecha' || key == 'month' || key == 'year' || key == 'hora';
-      final isTextColumn = key == 'dni' || key == 'DNI' || key == 'clientenombre' || key == 'vendedor' || 
-                          key == 'tipo' || key == 'nencargado' || key == 'casoesp' || key == 'resiva' || 
-                          key == 'cretmp' || key == 'sucursal' || key == 'ntiqrepetir' || key == 'b_mercadopago' ||
-                          key == 'd_num_caja' || key == 'd_num_terminal' || key == 'ProductName' || key == 'desc1' || 
-                          key == 'descripcion' || key == 'CategoryCode' || key == 'CompanyCode'; // CategoryCode, CompanyCode 추가
-      if (isCodigoColumn || isDateColumn || isTextColumn) continue; // 합계 계산 제외
+    // fventas 보고서의 경우 factura A와 B 각각의 개수와 monto 합계만 계산
+    Map<String, dynamic>? fventasSummary;
+    if (reportType == ReportType.fventas) {
+      int countA = 0;
+      int countB = 0;
+      double montoA = 0.0;
+      double montoB = 0.0;
       
-      num sum = 0;
       for (var item in listForTotal) {
-        if (item is Map<String, dynamic> && item.containsKey(key)) {
-          final value = item[key];
-          if (ReportUtils.isNumeric(value)) {
-            final numValue = num.tryParse(value.toString().replaceAll(',', '').replaceAll('\$', '').trim());
-            if (numValue != null) {
-              sum += numValue;
-            }
+        if (item is Map<String, dynamic>) {
+          final tipofactura = item['tipofactura']?.toString() ?? '';
+          final monto = (item['monto'] as num?)?.toDouble() ?? 0.0;
+          
+          if (tipofactura == 'A') {
+            countA++;
+            montoA += monto;
+          } else if (tipofactura == 'B') {
+            countB++;
+            montoB += monto;
           }
         }
       }
-      totals[key] = sum;
+      
+      fventasSummary = {
+        'countA': countA,
+        'countB': countB,
+        'montoA': montoA,
+        'montoB': montoB,
+      };
+      
+      debugPrint('   → [FVentas] Factura A: $countA개, Monto: $montoA');
+      debugPrint('   → [FVentas] Factura B: $countB개, Monto: $montoB');
+    }
+    
+    // 각 칼럼별 합계 계산 (fventas가 아닌 경우에만)
+    final totals = <String, num>{};
+    
+    if (reportType != ReportType.fventas) {
+      for (var key in keys) {
+        // 합계를 계산하지 않아야 하는 컬럼들
+        final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1' || key == 'vcode' || key == 'id';
+        final isDateColumn = key == 'fecha' || key == 'month' || key == 'year' || key == 'hora';
+        final isTextColumn = key == 'dni' || key == 'DNI' || key == 'clientenombre' || key == 'vendedor' || 
+                            key == 'tipo' || key == 'nencargado' || key == 'casoesp' || key == 'resiva' || 
+                            key == 'cretmp' || key == 'sucursal' || key == 'ntiqrepetir' || key == 'b_mercadopago' ||
+                            key == 'd_num_caja' || key == 'd_num_terminal' || key == 'ProductName' || key == 'desc1' || 
+                            key == 'descripcion' || key == 'CategoryCode' || key == 'CompanyCode'; // CategoryCode, CompanyCode 추가
+        if (isCodigoColumn || isDateColumn || isTextColumn) continue; // 합계 계산 제외
+        
+        num sum = 0;
+        for (var item in listForTotal) {
+          if (item is Map<String, dynamic> && item.containsKey(key)) {
+            final value = item[key];
+            if (ReportUtils.isNumeric(value)) {
+              final numValue = num.tryParse(value.toString().replaceAll(',', '').replaceAll('\$', '').trim());
+              if (numValue != null) {
+                sum += numValue;
+              }
+            }
+          }
+        }
+        totals[key] = sum;
+      }
     }
     
     // 컬럼별 고정 너비 설정 (헤더와 일치) - 파라미터로 받은 columnWidths 사용, 없으면 기본값 사용
@@ -3124,8 +3714,11 @@ class ReportTableBuilder {
     }
     debugPrint('   → [푸터] 총 너비: $footerCumulativeX');
     
+    // fventas의 경우 명시적 너비 사용, 다른 보고서는 double.infinity 사용
+    final containerWidth = explicitWidth ?? double.infinity;
+    
     return Container(
-      width: double.infinity, // 전체 폭 차지
+      width: containerWidth, // 명시적 너비가 있으면 사용, 없으면 전체 폭 차지
       decoration: BoxDecoration(
         color: reportColor.withOpacity(0.1),
         border: Border(
@@ -3161,6 +3754,89 @@ class ReportTableBuilder {
           });
           
           // Footer는 수평 스크롤 컨트롤러를 사용하지 않음 (전체가 하나의 스크롤로 동기화됨)
+          
+          // fventas 보고서의 경우 factura A와 B 각각의 개수와 monto 합계만 표시
+          if (reportType == ReportType.fventas && fventasSummary != null) {
+            // tipofactura와 monto 컬럼의 위치 찾기
+            int tipofacturaIndex = keys.indexOf('tipofactura');
+            int montoIndex = keys.indexOf('monto');
+            
+            if (tipofacturaIndex == -1) tipofacturaIndex = 0;
+            if (montoIndex == -1) montoIndex = keys.length - 1;
+            
+            // 두 개의 행을 만들어서 표시
+            Widget buildFventasRow(String label, int count, double monto) {
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: keys.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final key = entry.value;
+                  final columnWidth = finalColumnWidths[key] ?? 150.0;
+                  
+                  // tipofactura 컬럼에 라벨과 개수 표시
+                  if (index == tipofacturaIndex) {
+                    return SizedBox(
+                      width: columnWidth,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        height: 56.0,
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            '$label: $count',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                  // monto 컬럼에 monto 합계 표시
+                  else if (index == montoIndex) {
+                    return SizedBox(
+                      width: columnWidth,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        height: 56.0,
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            ReportUtils.formatValue(monto),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                  // 다른 컬럼은 빈 칸
+                  else {
+                    return SizedBox(
+                      width: columnWidth,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        height: 56.0,
+                        child: const SizedBox.shrink(),
+                      ),
+                    );
+                  }
+                }).toList(),
+              );
+            }
+            
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                buildFventasRow('Factura A', fventasSummary!['countA'] as int, fventasSummary!['montoA'] as double),
+                buildFventasRow('Factura B', fventasSummary!['countB'] as int, fventasSummary!['montoB'] as double),
+              ],
+            );
+          }
+          
           return Row(
             mainAxisSize: MainAxisSize.min,
             children: keys.asMap().entries.expand((entry) {
@@ -3247,6 +3923,7 @@ class ReportTableBuilder {
     Function(int columnIndex, bool ascending)? onSort, {
     Map<String, double>? columnWidths,
     ReportType? reportType,
+    double? explicitWidth,
   }) {
     // 디버깅: 함수 진입 확인 (가장 먼저 실행)
     debugPrint('═══════════════════════════════════════════════════════');
@@ -3312,6 +3989,7 @@ class ReportTableBuilder {
     // DataTable의 헤더와 동일한 스타일로 헤더 행 생성
     // DataTable의 columnSpacing(8)을 고려하여 각 컬럼에 동일한 간격 적용
     return Container(
+      width: explicitWidth, // 명시적 너비가 있으면 사용, 없으면 null (자동 크기)
       padding: EdgeInsets.zero, // padding 제거하여 DataTable과 정확히 일치
       decoration: BoxDecoration(
         color: reportColor.withOpacity(0.1),
@@ -3974,58 +4652,48 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
         debugPrint('   → effectiveMaxHeight: $effectiveMaxHeight');
         
         // 전체를 하나의 수평 스크롤 컨테이너로 감싸서 헤더, 테이블, footer가 함께 스크롤되도록 함
-        // 큰 화면(macOS, Windows, iPad)에서만: SingleChildScrollView(scrollDirection: Axis.horizontal) 안의 Column은 무한 너비를 받으므로
-        // crossAxisAlignment를 CrossAxisAlignment.start로 변경하고 최소 너비를 설정
-        // 모바일에서는 기존 로직 유지 (CrossAxisAlignment.stretch)
-        // 큰 화면이면 항상 width를 설정하고 crossAxisAlignment를 start로 설정
-        // 큰 화면에서 effectiveMaxHeight가 유효하면 높이 제약 설정 (오버플로우 방지)
-        final shouldUseSizedBox = (effectiveMaxHeight.isFinite && effectiveMaxHeight > 0 && hasBoundedHeight) || 
-                                   (isLargeScreen && effectiveMaxHeight.isFinite && effectiveMaxHeight > 0);
-        final columnContent = shouldUseSizedBox
-            ? SizedBox( // if: 큰 화면 또는 bounded height (높이 제약 필요)
-                height: effectiveMaxHeight.isFinite && effectiveMaxHeight > 0 ? effectiveMaxHeight : null,
-                width: totalTableWidth > 0 ? totalTableWidth : null, // 큰 화면: 명시적 너비 설정
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start, // 큰 화면: 무한 너비 문제 해결
-                  mainAxisSize: hasBoundedHeight ? MainAxisSize.max : MainAxisSize.min,
-                  children: [
-                    // 헤더
-                    if (headerRow != null) headerRow, // if (headerRow != null)
-                    // 테이블 내용 (hasBoundedHeight일 때만 Expanded 사용, 아니면 수직 스크롤 필요)
-                    hasBoundedHeight
-                        ? Expanded(child: tableContent) // if: hasBoundedHeight
-                        : Expanded( // else: hasBoundedHeight (큰 화면이지만 높이 제약이 있을 때)
-                            child: SingleChildScrollView(
-                              controller: widget.scrollController,
-                              scrollDirection: Axis.vertical,
-                              child: tableContent,
-                            ),
-                          ), // Expanded 끝 - else: hasBoundedHeight
-                    // 푸터 (화면 하단에 고정)
-                    footer,
-                  ], // Column children 끝
-                ), // Column 끝
-              ) // SizedBox 끝 - if: 큰 화면 또는 bounded height
-            : Column( // else: 모바일 (작은 화면)
-                crossAxisAlignment: CrossAxisAlignment.stretch, // 모바일: 기존 로직 유지
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // 헤더
-                  if (headerRow != null) headerRow, // if (headerRow != null)
-                  // 테이블 내용 (Expanded 없이, SingleChildScrollView가 스크롤 처리)
-                  tableContent,
-                  // 푸터 (테이블 내용 다음에 표시)
-                  footer,
-                ], // Column children 끝
-              ); // Column 끝 - else: 모바일
+        // SingleChildScrollView 안의 Column은 무한 너비를 받으므로 crossAxisAlignment를 start로 설정하고 명시적 너비 설정
+        // 모든 경우에 SizedBox로 감싸서 명시적 너비 설정 (무한 너비 문제 해결)
+        final columnContent = SizedBox(
+          height: (effectiveMaxHeight.isFinite && effectiveMaxHeight > 0 && hasBoundedHeight) 
+              ? effectiveMaxHeight 
+              : null,
+          width: totalTableWidth > 0 ? totalTableWidth : null, // 명시적 너비 설정 (무한 너비 방지)
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start, // 무한 너비 문제 해결
+            mainAxisSize: hasBoundedHeight ? MainAxisSize.max : MainAxisSize.min,
+            children: [
+              // 헤더
+              if (headerRow != null) headerRow,
+              // 테이블 내용 (hasBoundedHeight일 때만 Expanded 사용)
+              hasBoundedHeight
+                  ? Expanded(child: tableContent)
+                  : tableContent, // Expanded 없이 직접 표시
+              // 푸터 (화면 하단에 고정)
+              if (widget.horizontalScrollController != null)
+                SingleChildScrollView(
+                  controller: widget.horizontalScrollController,
+                  scrollDirection: Axis.horizontal,
+                  physics: const NeverScrollableScrollPhysics(),
+                  child: SizedBox(
+                    width: totalTableWidth,
+                    child: footer,
+                  ),
+                )
+              else
+                footer,
+            ],
+          ),
+        );
         
         // 전체를 하나의 수평 스크롤 컨테이너로 감싸기 (헤더, 테이블, footer 동기화)
-        // 큰 화면이거나 horizontalScrollController가 있으면 SingleChildScrollView로 감싸기
-        final horizontallyScrollableContent = (widget.horizontalScrollController != null && isLargeScreen) || widget.horizontalScrollController != null
-            ? SingleChildScrollView( // if: horizontalScrollController가 있고 (큰 화면이거나 항상)
+        // horizontalScrollController가 있으면 SingleChildScrollView로 감싸기
+        // SingleChildScrollView 안의 child는 너비 제약을 받지 않아야 하므로 columnContent를 직접 사용
+        final horizontallyScrollableContent = widget.horizontalScrollController != null
+            ? SingleChildScrollView( // if: horizontalScrollController가 있음
                 scrollDirection: Axis.horizontal,
                 controller: widget.horizontalScrollController,
-                child: columnContent,
+                child: columnContent, // columnContent는 이미 적절한 너비를 가지고 있음
               ) // SingleChildScrollView 끝 - if: horizontalScrollController
             : columnContent; // else: horizontalScrollController 없음
         
@@ -4039,19 +4707,17 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
         debugPrint('   → tableContent != null: ${tableContent != null}');
         debugPrint('   → horizontallyScrollableContent 타입: ${horizontallyScrollableContent.runtimeType}');
         
-        // constraints.maxWidth가 유효한 경우에만 ConstrainedBox로 감싸기
-        final finalWidget = hasValidWidth
-            ? ConstrainedBox( // if: hasValidWidth
+        // constraints.maxWidth가 유효한 경우에만 외부 너비 제약 설정
+        // SingleChildScrollView가 있으면 내부는 스크롤 가능하므로 외부만 제약
+        final finalWidget = hasValidWidth && widget.horizontalScrollController == null
+            ? ConstrainedBox( // if: hasValidWidth이고 horizontalScrollController가 없음 (스크롤 없을 때만 제약)
                 constraints: BoxConstraints(
                   minWidth: constraints.maxWidth,
                   maxWidth: constraints.maxWidth,
                 ),
-                child: SizedBox(
-                  width: constraints.maxWidth,
-                  child: horizontallyScrollableContent,
-                ), // SizedBox 끝
+                child: horizontallyScrollableContent,
               ) // ConstrainedBox 끝 - if: hasValidWidth
-            : horizontallyScrollableContent; // else: hasValidWidth (Infinity인 경우 제약 없이 반환)
+            : horizontallyScrollableContent; // else: horizontalScrollController가 있으면 제약 없이 (스크롤 가능)
         
         debugPrint('   → finalWidget 타입: ${finalWidget.runtimeType}');
         debugPrint('═══════════════════════════════════════════════════════');

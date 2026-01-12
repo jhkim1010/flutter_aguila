@@ -2249,6 +2249,45 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                           ),
                         ],
 
+                        // Ingresos 통계 - 여러 sucursal이 있으면 합산
+                        if (_data!.containsKey('ingresos')) ...[
+                          Builder(
+                            builder: (context) {
+                              final aggregatedIngresos = _getAggregatedIngresos();
+                              final ingresosWidgets = _buildIngresosSection(aggregatedIngresos);
+                              
+                              if (ingresosWidgets.isNotEmpty) {
+                                return _buildSection(
+                                  'Ingresos',
+                                  ingresosWidgets,
+                                  onTap: () {
+                                    if (_isLargeScreen(context)) {
+                                      setState(() {
+                                        _selectedReportType = ReportType.ingresos;
+                                        _currentReport = 'ingresos';
+                                      });
+                                    } else {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => ReportScreen(
+                                            serverUrl: widget.serverUrl,
+                                            reportType: ReportType.ingresos,
+                                            initialItemsStartDate: _selectedDate,
+                                            initialItemsEndDate: _selectedDate,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                );
+                              } else {
+                                return const SizedBox.shrink();
+                              }
+                            },
+                          ),
+                        ],
+
                         // FVentas 통계 - 여러 sucursal이 있으면 합산
                         if (_data!.containsKey('fventas')) ...[
                           Builder(
@@ -2258,8 +2297,27 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                               
                               if (fventasWidgets.isNotEmpty) {
                                 return _buildSection(
-                                  'FVentas',
+                                  'FVentas del Día',
                                   fventasWidgets,
+                                );
+                              } else {
+                                return const SizedBox.shrink();
+                              }
+                            },
+                          ),
+                        ],
+
+                        // FVentas Mes 통계
+                        if (_data!.containsKey('fventas_mes')) ...[
+                          Builder(
+                            builder: (context) {
+                              final aggregatedFventasMes = _getAggregatedFventasMes();
+                              final fventasMesWidgets = _buildFventasMesSection(aggregatedFventasMes);
+                              
+                              if (fventasMesWidgets.isNotEmpty) {
+                                return _buildSection(
+                                  'FVentas del Mes',
+                                  fventasMesWidgets,
                                 );
                               } else {
                                 return const SizedBox.shrink();
@@ -2644,21 +2702,21 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     return aggregated;
   }
   
-  // 여러 sucursal의 fventas 데이터를 합산 (선택된 sucursal에 따라 필터링)
-  Map<String, dynamic> _getAggregatedFventas() {
-    if (_data == null || !_data!.containsKey('fventas')) {
+  // 여러 sucursal의 ingresos 데이터를 합산 (선택된 sucursal에 따라 필터링)
+  Map<String, dynamic> _getAggregatedIngresos() {
+    if (_data == null || !_data!.containsKey('ingresos')) {
       return <String, dynamic>{};
     }
     
-    final fventas = _data!['fventas'];
-    if (fventas is! List || fventas.isEmpty) {
-      return <String, dynamic>{};
+    final ingresos = _data!['ingresos'];
+    if (ingresos is! List || ingresos.isEmpty) {
+      return ingresos is Map<String, dynamic> ? ingresos : <String, dynamic>{};
     }
     
     // 선택된 sucursal에 따라 필터링
-    List<dynamic> filteredFventas = fventas;
+    List<dynamic> filteredIngresos = ingresos;
     if (_selectedSucursal != null && _selectedSucursal!.isNotEmpty) {
-      filteredFventas = fventas.where((item) {
+      filteredIngresos = ingresos.where((item) {
         if (item is Map<String, dynamic> && item.containsKey('sucursal')) {
           final sucursal = item['sucursal'] is int 
               ? item['sucursal'].toString()
@@ -2669,34 +2727,101 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       }).toList();
     }
     
-    // tipofactura별로 그룹화하여 합산
-    final Map<String, Map<String, dynamic>> grouped = {};
+    final aggregated = <String, dynamic>{
+      'ingreso_events': 0,
+      'ingreso_total_ropas': 0,
+    };
     
-    for (var item in filteredFventas) {
+    for (var item in filteredIngresos) {
       if (item is Map<String, dynamic>) {
-        final tipofactura = item['tipofactura']?.toString() ?? 'Unknown';
-        
-        if (!grouped.containsKey(tipofactura)) {
-          grouped[tipofactura] = {
-            'tipofactura': tipofactura,
-            'count': 0,
-            'sum_monto': 0.0,
-          };
-        }
-        
-        grouped[tipofactura]!['count'] = (grouped[tipofactura]!['count'] as int) + 
-            (item['count'] as int? ?? 0);
-        grouped[tipofactura]!['sum_monto'] = (grouped[tipofactura]!['sum_monto'] as double) + 
-            ((item['sum_monto'] as num?)?.toDouble() ?? 0.0);
+        aggregated['ingreso_events'] = (aggregated['ingreso_events'] as int) + 
+            (item['ingreso_events'] as int? ?? 0);
+        aggregated['ingreso_total_ropas'] = (aggregated['ingreso_total_ropas'] as int) + 
+            (item['ingreso_total_ropas'] as int? ?? 0);
       }
     }
     
-    // 리스트로 변환
-    return {
-      'items': grouped.values.toList(),
-      'total_count': grouped.values.fold<int>(0, (sum, item) => sum + (item['count'] as int? ?? 0)),
-      'total_sum_monto': grouped.values.fold<double>(0.0, (sum, item) => sum + ((item['sum_monto'] as num?)?.toDouble() ?? 0.0)),
-    };
+    return aggregated;
+  }
+
+  // 여러 sucursal의 fventas 데이터를 합산 (sucursal 필터링 없음 - fventas는 sucursal 정보 없음)
+  Map<String, dynamic> _getAggregatedFventas() {
+    final result = <String, dynamic>{};
+    
+    // fventas 데이터 처리
+    if (_data != null && _data!.containsKey('fventas')) {
+      final fventas = _data!['fventas'];
+      if (fventas is List && fventas.isNotEmpty) {
+        // tipofactura별로 그룹화하여 합산
+        final Map<String, Map<String, dynamic>> grouped = {};
+        
+        for (var item in fventas) {
+          if (item is Map<String, dynamic>) {
+            final tipofactura = item['tipofactura']?.toString() ?? 'Unknown';
+            
+            if (!grouped.containsKey(tipofactura)) {
+              grouped[tipofactura] = {
+                'tipofactura': tipofactura,
+                'count': 0,
+                'sum_monto': 0.0,
+              };
+            }
+            
+            grouped[tipofactura]!['count'] = (grouped[tipofactura]!['count'] as int) + 
+                (item['count'] as int? ?? 0);
+            grouped[tipofactura]!['sum_monto'] = (grouped[tipofactura]!['sum_monto'] as double) + 
+                ((item['sum_monto'] as num?)?.toDouble() ?? 0.0);
+          }
+        }
+        
+        // 리스트로 변환
+        result['items'] = grouped.values.toList();
+        result['total_count'] = grouped.values.fold<int>(0, (sum, item) => sum + (item['count'] as int? ?? 0));
+        result['total_sum_monto'] = grouped.values.fold<double>(0.0, (sum, item) => sum + ((item['sum_monto'] as num?)?.toDouble() ?? 0.0));
+      }
+    }
+    
+    return result;
+  }
+
+  // fventas_mes 데이터 합산
+  Map<String, dynamic> _getAggregatedFventasMes() {
+    final result = <String, dynamic>{};
+    
+    // fventas_mes 데이터 처리
+    if (_data != null && _data!.containsKey('fventas_mes')) {
+      final fventasMes = _data!['fventas_mes'];
+      if (fventasMes is List && fventasMes.isNotEmpty) {
+        // tipofactura별로 그룹화하여 합산
+        final Map<String, Map<String, dynamic>> groupedMes = {};
+        
+        for (var item in fventasMes) {
+          if (item is Map<String, dynamic>) {
+            final tipofactura = item['tipofactura']?.toString() ?? 'Unknown';
+            
+            if (!groupedMes.containsKey(tipofactura)) {
+              groupedMes[tipofactura] = {
+                'tipofactura': tipofactura,
+                'total_ventas_mes': 0.0,
+              };
+            }
+            
+            groupedMes[tipofactura]!['total_ventas_mes'] = 
+                (groupedMes[tipofactura]!['total_ventas_mes'] as double) + 
+                ((item['total_ventas_mes'] as num?)?.toDouble() ?? 0.0);
+          }
+        }
+        
+        // 리스트로 변환
+        result['items'] = groupedMes.values.toList();
+        result['total_ventas_mes'] = groupedMes.values.fold<double>(
+          0.0, 
+          (sum, item) => sum + ((item['total_ventas_mes'] as num?)?.toDouble() ?? 0.0)
+        );
+      }
+    }
+    
+    return result;
   }
 
   List<Widget> _buildVcodesSection(Map<String, dynamic> vcodes) {
@@ -2908,255 +3033,124 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         return cards;
       }
       
-      // tipofactura별 항목들 표시
+      // 첫 번째 카드: 오늘 날짜의 factura 타입별 합계
       if (fventas.containsKey('items') && fventas['items'] is List) {
         final items = fventas['items'] as List;
         
-        for (var item in items) {
-          if (item is Map<String, dynamic>) {
-            final tipofactura = item['tipofactura']?.toString() ?? 'Unknown';
-            final count = item['count'] as int? ?? 0;
-            final sumMonto = item['sum_monto'] as num? ?? 0.0;
-            
-            // tipofactura별 카드 추가
-            cards.add(
-              InkWell(
-                onTap: () {
-                  // 해당 날짜의 fventas 보고서로 이동
-                  if (_isLargeScreen(context)) {
-                    setState(() {
-                      _selectedReportType = ReportType.fventas;
-                      _currentReport = 'fventas';
-                    });
-                  } else {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ReportScreen(
-                          serverUrl: widget.serverUrl,
-                          reportType: ReportType.fventas,
-                          initialDate: _selectedDate,
-                          initialItemsStartDate: _selectedDate,
-                          initialItemsEndDate: _selectedDate,
-                        ),
+        if (items.isNotEmpty) {
+          cards.add(
+            InkWell(
+              onTap: () {
+                // 해당 날짜의 fventas 보고서로 이동
+                if (_isLargeScreen(context)) {
+                  setState(() {
+                    _selectedReportType = ReportType.fventas;
+                    _currentReport = 'fventas';
+                  });
+                } else {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ReportScreen(
+                        serverUrl: widget.serverUrl,
+                        reportType: ReportType.fventas,
+                        initialDate: _selectedDate,
+                        initialItemsStartDate: _selectedDate,
+                        initialItemsEndDate: _selectedDate,
                       ),
-                    );
-                  }
-                },
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.receipt, color: Colors.deepPurple, size: 20),
-                            const SizedBox(width: 8),
-                            Flexible(
-                              child: Text(
-                                'Factura Tipo $tipofactura',
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Text(
-                                    'Cantidad',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    count.toString(),
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Text(
-                                    'Total Monto',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Flexible(
-                                    child: Text(
-                                      _formatValue(sumMonto.toDouble(), isCurrency: true),
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.deepPurple,
-                                      ),
-                                      textAlign: TextAlign.end,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
                     ),
-                  ),
-                ),
-              ),
-            );
-          }
-        }
-      }
-      
-      // 전체 합계 카드 추가
-      if (fventas.containsKey('total_count') || fventas.containsKey('total_sum_monto')) {
-        final totalCount = fventas['total_count'] as int? ?? 0;
-        final totalSumMonto = (fventas['total_sum_monto'] as num?)?.toDouble() ?? 0.0;
-        
-        cards.add(
-          InkWell(
-            onTap: () {
-              // 해당 날짜의 fventas 보고서로 이동
-              if (_isLargeScreen(context)) {
-                setState(() {
-                  _selectedReportType = ReportType.fventas;
-                  _currentReport = 'fventas';
-                });
-              } else {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ReportScreen(
-                      serverUrl: widget.serverUrl,
-                      reportType: ReportType.fventas,
-                      initialDate: _selectedDate,
-                      initialItemsStartDate: _selectedDate,
-                      initialItemsEndDate: _selectedDate,
-                    ),
-                  ),
-                );
-              }
-            },
-            child: Card(
-              color: Colors.deepPurple.withOpacity(0.1),
-              child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Flexible(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.receipt_long, color: Colors.deepPurple, size: 20),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            'Total FVentas',
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Flexible(
-                    flex: 2,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text(
-                              'Cantidad',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              totalCount.toString(),
+                  );
+                }
+              },
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.receipt, color: Colors.deepPurple, size: 20),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              'FVentas del Día',
                               style: const TextStyle(
-                                fontSize: 16,
+                                fontSize: 15,
                                 fontWeight: FontWeight.bold,
                               ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ],
-                        ),
-                        const SizedBox(width: 16),
-                            Flexible(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Text(
-                                    'Monto Total',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                              const SizedBox(height: 4),
-                              Flexible(
-                                child: Text(
-                                  _formatValue(totalSumMonto, isCurrency: true),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      // 각 factura 타입별로 표시
+                      ...items.map<Widget>((item) {
+                        if (item is Map<String, dynamic>) {
+                          final tipofactura = item['tipofactura']?.toString() ?? 'Unknown';
+                          final sumMonto = (item['sum_monto'] as num?)?.toDouble() ?? 0.0;
+                          
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Factura Tipo $tipofactura',
                                   style: const TextStyle(
-                                    fontSize: 16,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                Text(
+                                  _formatValue(sumMonto, isCurrency: true),
+                                  style: const TextStyle(
+                                    fontSize: 14,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.deepPurple,
                                   ),
-                                  textAlign: TextAlign.end,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                              ],
+                            ),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      }).toList(),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
-          ),
-          ),
-        );
+          );
+        }
+      }
+      
+      // count 필드도 표시
+      if (fventas.containsKey('total_count')) {
+        final totalCount = fventas['total_count'] as int? ?? 0;
+        if (totalCount > 0) {
+          cards.add(_buildDataCard(
+            'Total Facturas',
+            totalCount,
+            Icons.receipt_long,
+          ));
+        }
+      }
+      
+      // total_sum_monto 필드도 표시
+      if (fventas.containsKey('total_sum_monto')) {
+        final totalSumMonto = (fventas['total_sum_monto'] as num?)?.toDouble() ?? 0.0;
+        if (totalSumMonto > 0) {
+          cards.add(_buildDataCard(
+            'Total Monto',
+            totalSumMonto,
+            Icons.attach_money,
+            isCurrency: true,
+          ));
+        }
       }
 
       return cards;
@@ -3244,6 +3238,300 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       return cards;
     } catch (e) {
       debugPrint('Error building Vdetalle section: $e');
+      return [];
+    }
+  }
+
+  List<Widget> _buildIngresosSection(Map<String, dynamic> ingresos) {
+    try {
+      final cards = <Widget>[];
+      
+      // 빈 Map인 경우 빈 리스트 반환
+      if (ingresos.isEmpty) {
+        return cards;
+      }
+      
+      // ingreso_events 필드 표시
+      if (ingresos.containsKey('ingreso_events')) {
+        cards.add(_buildDataCard(
+          'Eventos de Ingreso',
+          ingresos['ingreso_events'],
+          Icons.inventory,
+          onTap: () {
+            // 해당 날짜의 ingresos 보고서로 이동
+            if (_isLargeScreen(context)) {
+              setState(() {
+                _selectedReportType = ReportType.ingresos;
+                _currentReport = 'ingresos';
+              });
+            } else {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ReportScreen(
+                    serverUrl: widget.serverUrl,
+                    reportType: ReportType.ingresos,
+                    initialItemsStartDate: _selectedDate,
+                    initialItemsEndDate: _selectedDate,
+                  ),
+                ),
+              );
+            }
+          },
+        ));
+      }
+      
+      // ingreso_total_ropas 필드 표시
+      if (ingresos.containsKey('ingreso_total_ropas')) {
+        cards.add(_buildDataCard(
+          'Total de Ropas Ingresadas',
+          ingresos['ingreso_total_ropas'],
+          Icons.checkroom,
+        ));
+      }
+
+      return cards;
+    } catch (e) {
+      debugPrint('❌ Error building Ingresos section: $e');
+      debugPrint('   Stack trace: ${StackTrace.current}');
+      return [];
+    }
+  }
+
+  List<Widget> _buildFventasMesSection(Map<String, dynamic> fventasMes) {
+    try {
+      final cards = <Widget>[];
+      
+      // 빈 Map인 경우 빈 리스트 반환
+      if (fventasMes.isEmpty) {
+        return cards;
+      }
+      
+      // IVA 계산 비율
+      const double ivaRate = 0.173553719;
+      
+      // fventas_mes 카드: 각 factura 타입별로 별도 카드 생성
+      if (fventasMes.containsKey('items') && fventasMes['items'] is List) {
+        final items = fventasMes['items'] as List;
+        
+        // Factura A, B의 합계와 Nota de Credito (C) 계산을 위한 변수
+        double totalFacturaAB = 0.0;
+        double totalNotaCredito = 0.0;
+        
+        // 각 factura 타입별로 별도 카드 생성
+        for (var item in items) {
+          if (item is Map<String, dynamic>) {
+            final tipofactura = item['tipofactura']?.toString() ?? 'Unknown';
+            final totalVentasMes = (item['total_ventas_mes'] as num?)?.toDouble() ?? 0.0;
+            
+            // Factura A, B 합계 계산 (Nota de Credito 제외)
+            if (tipofactura == 'A' || tipofactura == 'B') {
+              totalFacturaAB += totalVentasMes;
+            } else if (tipofactura == 'C') {
+              // Nota de Credito는 빼야 하므로 음수로 처리
+              totalNotaCredito = totalVentasMes;
+            }
+            
+            if (totalVentasMes > 0) {
+              // IVA 계산
+              final ivaAmount = totalVentasMes * ivaRate;
+              
+              cards.add(
+                InkWell(
+                  onTap: () {
+                    // 해당 날짜의 fventas 보고서로 이동
+                    if (_isLargeScreen(context)) {
+                      setState(() {
+                        _selectedReportType = ReportType.fventas;
+                        _currentReport = 'fventas';
+                      });
+                    } else {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ReportScreen(
+                            serverUrl: widget.serverUrl,
+                            reportType: ReportType.fventas,
+                            initialDate: _selectedDate,
+                            initialItemsStartDate: _selectedDate,
+                            initialItemsEndDate: _selectedDate,
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  child: Card(
+                    color: Colors.blue.withOpacity(0.1),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.calendar_month, color: Colors.blue, size: 20),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  'FVentas del Mes - Tipo $tipofactura',
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              _formatValue(totalVentasMes, isCurrency: true),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
+                              textAlign: TextAlign.right,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'IVA',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              Text(
+                                _formatValue(ivaAmount, isCurrency: true),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
+                                textAlign: TextAlign.right,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }
+          }
+        }
+        
+        // 마지막 카드: Factura A + B - Nota de Credito = 총 factura 금액
+        final totalFacturaMes = totalFacturaAB - totalNotaCredito;
+        if (totalFacturaMes > 0 || totalFacturaAB > 0) {
+          final totalIvaAmount = totalFacturaMes * ivaRate;
+          
+          cards.add(
+            InkWell(
+              onTap: () {
+                // 해당 날짜의 fventas 보고서로 이동
+                if (_isLargeScreen(context)) {
+                  setState(() {
+                    _selectedReportType = ReportType.fventas;
+                    _currentReport = 'fventas';
+                  });
+                } else {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ReportScreen(
+                        serverUrl: widget.serverUrl,
+                        reportType: ReportType.fventas,
+                        initialDate: _selectedDate,
+                        initialItemsStartDate: _selectedDate,
+                        initialItemsEndDate: _selectedDate,
+                      ),
+                    ),
+                  );
+                }
+              },
+              child: Card(
+                color: Colors.green.withOpacity(0.1),
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.calendar_today, color: Colors.green, size: 20),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              'Total Facturas del Mes',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          _formatValue(totalFacturaMes, isCurrency: true),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                          textAlign: TextAlign.right,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'IVA',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          Text(
+                            _formatValue(totalIvaAmount, isCurrency: true),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                            textAlign: TextAlign.right,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+      }
+
+      return cards;
+    } catch (e) {
+      debugPrint('❌ Error building FventasMes section: $e');
+      debugPrint('   Stack trace: ${StackTrace.current}');
       return [];
     }
   }

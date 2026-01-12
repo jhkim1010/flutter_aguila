@@ -72,6 +72,7 @@ class ReportFilters {
         
         switch (reportType) {
           case ReportType.items:
+            // codigo1 또는 desc1(제품 이름)에서 검색
             final codigo1 = item['codigo1']?.toString().toLowerCase() ?? '';
             final desc1 = item['desc1']?.toString().toLowerCase() ?? '';
             return codigo1.contains(filterLower) || desc1.contains(filterLower);

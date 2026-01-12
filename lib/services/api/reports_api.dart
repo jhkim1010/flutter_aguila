@@ -374,6 +374,18 @@ class ReportsApi {
       queryParams['last_id_fventa'] = lastIdFventa;
     }
     
+    // 디버깅: fventas 요청 파라미터 로깅
+    print('📋 FVentas 요청 파라미터:');
+    print('  - filteringWord: $filteringWord');
+    print('  - currentDate: $currentDate');
+    print('  - unit: $unit');
+    print('  - filters: $filters');
+    print('  - queryParams: $queryParams');
+    if (filters != null) {
+      print('  - filters[fecha_inicio]: ${filters['fecha_inicio']}');
+      print('  - filters[fecha_fin]: ${filters['fecha_fin']}');
+    }
+    
     // FVentas 요청: 필요한 헤더만 필터링
     try {
       final allHeaders = await _httpHandler.getDatabaseHeaders();
@@ -392,6 +404,23 @@ class ReportsApi {
           fventasHeaders['x-db-name']!.isEmpty) {
         throw Exception('필수 헤더 정보가 없습니다: x-db-user, x-db-password, x-db-name');
       }
+      
+      // 디버깅: 헤더 정보 로깅 (비밀번호는 마스킹)
+      print('📋 FVentas 요청 헤더:');
+      fventasHeaders.forEach((key, value) {
+        if (key.toLowerCase().contains('password')) {
+          print('  - $key: ${'*' * (value.length > 0 ? value.length : 8)}');
+        } else {
+          print('  - $key: $value');
+        }
+      });
+      
+      // 최종 요청 URL 구성
+      final uri = Uri.parse('${_httpHandler.serverUrl}$endpoint');
+      final finalUri = queryParams.isNotEmpty
+          ? uri.replace(queryParameters: queryParams)
+          : uri;
+      print('📋 FVentas 최종 요청 URL: $finalUri');
       
       // 필터링된 헤더로 직접 GET 요청 수행
       final response = await _httpHandler.performGetRequestWithHeaders(
