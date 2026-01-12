@@ -1,0 +1,333 @@
+=== 플랫폼 정보: 대형화면 (Desktop: macos) ===
+
+Launching lib/main.dart on macOS in debug mode...
+Building macOS application...                                   
+✓ Built build/macos/Build/Products/Debug/Be_Cool.app
+2026-01-12 17:01:05.861 Be_Cool[70168:1275773] Running with merged UI and platform thread. Experimental.
+Failed to foreground app; open returned 1
+Syncing files to device macOS...                                
+flutter: 📝 로그 파일 초기화 완료: /Users/marcoskim/Documents/logs/app_log_2026-01-12T17-01-06.txt
+flutter: 📝 로그 파일 경로: /Users/marcoskim/Documents/logs/app_log_2026-01-12T17-01-06.txt
+Syncing files to device macOS...                                   125ms
+
+Flutter run key commands.
+r Hot reload. 🔥🔥🔥
+R Hot restart.
+h List all available interactive commands.
+d Detach (terminate "flutter run" but leave application running).
+c Clear the screen
+q Quit (terminate the application on the device).
+
+A Dart VM Service on macOS is available at: http://127.0.0.1:59319/rbQ-_aKGUTM=/
+The Flutter DevTools debugger and profiler on macOS is available at: http://127.0.0.1:59319/rbQ-_aKGUTM=/devtools/?uri=ws://127.0.0.1:59319/rbQ-_aKGUTM=/ws
+flutter: 🔄 저장된 연결 리스트 로드 시작...
+flutter: 📖 연결 정보 읽기 시작... (macOS: true)
+flutter: 📖 SharedPreferences에서 읽기 완료
+flutter: 📖 JSON 데이터 읽기 완료 (길이: 645)
+flutter: ✅ 연결 정보 파싱 완료: 4개 연결
+flutter:    - inquieta (ID: 1765666561277)
+flutter:    - ace (ID: 1765984612266)
+flutter:    - jol-test (ID: 1767153069054)
+flutter:    - el-test (ID: 1768240976895)
+flutter: ✅ 저장된 연결 리스트 로드 완료: 4개 연결
+flutter:    - inquieta (ID: 1765666561277, DB: inquieta14)
+flutter:    - ace (ID: 1765984612266, DB: ace17)
+flutter:    - jol-test (ID: 1767153069054, DB: jolues37)
+flutter:    - el-test (ID: 1768240976895, DB: ellui48_2)
+flutter: ℹ️ disconnect 요청을 보내지 않습니다. (disconnectExisting=false)
+flutter: === 연결 시도 ===
+flutter: URL: https://sync.coolsistema.com/api/health
+flutter: Request Body: {"databaseName":"inquieta14","username":"inquieta","password":"se2021mi09"}
+flutter: Headers: Content-Type: application/json
+flutter: 📱 플랫폼 정보: 대형화면 (Desktop: macOS/Windows/Linux)
+flutter: === 응답 정보 ===
+flutter: Status Code: 200
+flutter: ✅ 연결 성공
+flutter: 💾 데이터베이스 정보 저장 시도:
+flutter:    database_name: inquieta14
+flutter:    username: inquieta
+flutter:    password: *** (길이: 10)
+flutter: 🍎 macOS 개발 환경: 모든 데이터를 SharedPreferences에 저장
+flutter: 📝 [1/3] database_name 저장 시도...
+flutter:    📝 SharedPreferences 저장 시작: key="database_name", value="inquieta14"
+flutter:    ✅ SharedPreferences 저장 결과: true
+flutter:    ✅ SharedPreferences 저장 확인 성공
+flutter: ✅ [1/3] database_name 저장 성공
+flutter: 📝 [2/3] username 저장 시도...
+flutter:    📝 SharedPreferences 저장 시작: key="username", value="inquieta"
+flutter:    ✅ SharedPreferences 저장 결과: true
+flutter:    ✅ SharedPreferences 저장 확인 성공
+flutter: ✅ [2/3] username 저장 성공
+flutter: 📝 [3/3] password 저장 시도...
+flutter:    📝 SharedPreferences 저장 시작: key="password", value="se2021mi09"
+flutter:    ✅ SharedPreferences 저장 결과: true
+flutter:    ✅ SharedPreferences 저장 확인 성공
+flutter: ✅ [3/3] password 저장 성공
+flutter: 🔍 저장 확인 단계 시작...
+flutter: ✅ [확인 1/3] database_name 확인 완료: "inquieta14"
+flutter: ✅ [확인 2/3] username 확인 완료: "inquieta"
+flutter: ✅ [확인 3/3] password 확인 완료: 길이 10
+flutter: ✅ 데이터베이스 정보 저장 완료
+flutter: 🍎 macOS 저장 프로세스 완료!
+flutter: ✅ 자동 연결 성공
+flutter: === GET /api/tipos 요청 ===
+flutter: URL: https://sync.coolsistema.com/api/tipos
+flutter: Headers: {Content-Type: application/json, x-db-name: inquieta14, x-db-user: inquieta, x-db-password: se2021mi09, x-db-ssl: false, Connection: keep-alive}
+flutter: === GET /api/temporadas 요청 ===
+flutter: URL: https://sync.coolsistema.com/api/temporadas
+flutter: Headers: {Content-Type: application/json, x-db-name: inquieta14, x-db-user: inquieta, x-db-password: se2021mi09, x-db-ssl: false, Connection: keep-alive}
+flutter: 🔄 ResumenDelDiaScreen: 연결 목록 로드 시작...
+flutter: 📖 연결 정보 읽기 시작... (macOS: true)
+flutter: 🔄 ResumenDelDiaScreen: didChangeDependencies 호출, 연결 리스트 갱신
+flutter: 🔄 ResumenDelDiaScreen: 연결 목록 로드 시작...
+flutter: 📖 연결 정보 읽기 시작... (macOS: true)
+flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
+flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
+flutter: 🔍 [Resumen빌드날짜] 오늘 날짜: 2026-01-12 17:01:08.645662
+flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 12
+flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-12"
+flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-12"
+flutter: 🔍 [Resumen메뉴] 메뉴 아이템 리스트 생성 완료, 총 14개
+flutter: 🔍 _buildReportContent 호출: _selectedReportType=null, _currentReport=resumen
+flutter: 🔍 _buildResumenContent 호출됨
+flutter:    - _isLoading: true
+flutter:    - _errorMessage: null
+flutter:    - _data: null
+flutter:    → 로딩 상태 반환
+flutter: 📖 SharedPreferences에서 읽기 완료
+flutter: 📖 JSON 데이터 읽기 완료 (길이: 645)
+flutter: ✅ 연결 정보 파싱 완료: 4개 연결
+flutter:    - inquieta (ID: 1765666561277)
+flutter:    - ace (ID: 1765984612266)
+flutter:    - jol-test (ID: 1767153069054)
+flutter:    - el-test (ID: 1768240976895)
+flutter: ✅ ResumenDelDiaScreen: 4개 연결 로드 완료
+flutter:    - inquieta (ID: 1765666561277, DB: inquieta14)
+flutter:    - ace (ID: 1765984612266, DB: ace17)
+flutter:    - jol-test (ID: 1767153069054, DB: jolues37)
+flutter:    - el-test (ID: 1768240976895, DB: ellui48_2)
+flutter: 🔄 ResumenDelDiaScreen: UI 업데이트 완료 (4개 연결 표시)
+flutter: 📖 SharedPreferences에서 읽기 완료
+flutter: 📖 JSON 데이터 읽기 완료 (길이: 645)
+flutter: ✅ 연결 정보 파싱 완료: 4개 연결
+flutter:    - inquieta (ID: 1765666561277)
+flutter:    - ace (ID: 1765984612266)
+flutter:    - jol-test (ID: 1767153069054)
+flutter:    - el-test (ID: 1768240976895)
+flutter: ✅ ResumenDelDiaScreen: 4개 연결 로드 완료
+flutter:    - inquieta (ID: 1765666561277, DB: inquieta14)
+flutter:    - ace (ID: 1765984612266, DB: ace17)
+flutter:    - jol-test (ID: 1767153069054, DB: jolues37)
+flutter:    - el-test (ID: 1768240976895, DB: ellui48_2)
+flutter: 🔄 ResumenDelDiaScreen: UI 업데이트 완료 (4개 연결 표시)
+flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
+flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
+flutter: 🔍 [Resumen빌드날짜] 오늘 날짜: 2026-01-12 17:01:08.965501
+flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 12
+flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-12"
+flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-12"
+flutter: 🔍 [Resumen메뉴] 메뉴 아이템 리스트 생성 완료, 총 14개
+flutter: 🔍 _buildReportContent 호출: _selectedReportType=null, _currentReport=resumen
+flutter: 🔍 _buildResumenContent 호출됨
+flutter:    - _isLoading: true
+flutter:    - _errorMessage: null
+flutter:    - _data: null
+flutter:    → 로딩 상태 반환
+flutter: === 응답 정보 ===
+flutter: Status Code: 200
+flutter: Response Body Length: 419 bytes
+flutter: ✅ 응답 성공: 3개 항목
+flutter: ✅ Tipos: 3개, 콤보박스 표시: 예
+flutter: === 응답 정보 ===
+flutter: Status Code: 200
+flutter: Response Body Length: 476 bytes
+flutter: ✅ 응답 성공: 4개 항목
+flutter: ✅ Temporadas: 4개, 콤보박스 표시: 예
+flutter: 🍎 macOS: secure storage 읽기 전 대기 중...
+flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
+flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
+flutter: 🔍 [Resumen빌드날짜] 오늘 날짜: 2026-01-12 17:01:09.469920
+flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 12
+flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-12"
+flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-12"
+flutter: 🔍 [Resumen메뉴] 메뉴 아이템 리스트 생성 완료, 총 14개
+flutter: 🔍 _buildReportContent 호출: _selectedReportType=null, _currentReport=resumen
+flutter: 🔍 _buildResumenContent 호출됨
+flutter:    - _isLoading: true
+flutter:    - _errorMessage: null
+flutter:    - _data: null
+flutter:    → 로딩 상태 반환
+flutter:   - 서버 URL: https://sync.coolsistema.com
+flutter:   - 사용 날짜: 2026-01-12 17:01:08.634149
+flutter:   - Sucursal: 없음
+flutter:    - 날짜: 2026-01-12 17:01:08.634149
+flutter:    - Sucursal: 없음
+flutter: === Reports API 요청 ===
+flutter:   - 엔드포인트: /api/resumen_del_dia
+flutter:   - 요청 방식: POST (다른 보고서는 GET 사용)
+flutter:   - 타임아웃: 60초 (다른 보고서는 10초)
+flutter:   - 날짜: 2026-01-12
+flutter: === POST /api/resumen_del_dia 요청 ===
+flutter: URL: https://sync.coolsistema.com/api/resumen_del_dia
+flutter: Headers: {Content-Type: application/json, x-db-name: inquieta14, x-db-user: inquieta, x-db-password: se2021mi09, x-db-ssl: false, Connection: keep-alive}
+flutter: Timeout: 60초
+flutter: Request Body Length: 21 bytes
+flutter: ⏱️ 요청 완료 시간: 834ms
+flutter: === 응답 정보 ===
+flutter: Status Code: 200
+flutter: Response Body Length: 1426 bytes
+flutter: Response Body: {"fecha":"2026-01-12","fecha_vcodes":"2026-01-12","fecha_otros":"2026-01-12","vcodes":[{"sucursal":2,"operation_count":59,"total_venta_day":22596730,"total_efectivo_day":16670200,"total_credito_day":0,"total_banco_day":3949730,"total_favor_day":0,"last_venta_hour":"16:07:25","total_count_ropas":1120}],"gastos":[{"sucursal":2,"gasto_count":6,"total_gasto_day":749730}],"vdetalle":[{"sucursal":2,"count_discount_event":11,"total_discount_day":-447240}],"vcodes_mpago":[{"sucursal":2,"count_mpago_tota... (1426 bytes total)
+flutter: 📋 resumen_del_dia 원본 응답 데이터:
+flutter:   - fecha: String = 2026-01-12
+flutter:   - fecha_vcodes: String = 2026-01-12
+flutter:   - fecha_otros: String = 2026-01-12
+flutter:   - vcodes: List (1개 항목)
+flutter:   - gastos: List (1개 항목)
+flutter:   - vdetalle: List (1개 항목)
+flutter:   - vcodes_mpago: List (1개 항목)
+flutter:   - ingresos: List (0개 항목)
+flutter:   - stocks: List (4개 항목)
+flutter:   - fventas: List (3개 항목)
+flutter:   - fventas_mes: List (4개 항목)
+flutter: ✅ 응답 성공: 11개 항목
+flutter:    - 응답 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes]
+flutter:    - 응답 데이터 상세:
+flutter:      - fecha: String = 2026-01-12
+flutter:      - fecha_vcodes: String = 2026-01-12
+flutter:      - fecha_otros: String = 2026-01-12
+flutter:      - vcodes: List (1개 항목)
+flutter:        첫 번째 항목: {sucursal: 2, operation_count: 59, total_venta_day: 22596730, total_efectivo_day: 16670200, total_credito_day: 0, total_banco_day: 3949730, total_favor_day: 0, last_venta_hour: 16:07:25, total_count_ropas: 1120}
+flutter:      - gastos: List (1개 항목)
+flutter:        첫 번째 항목: {sucursal: 2, gasto_count: 6, total_gasto_day: 749730}
+flutter:      - vdetalle: List (1개 항목)
+flutter:        첫 번째 항목: {sucursal: 2, count_discount_event: 11, total_discount_day: -447240}
+flutter:      - vcodes_mpago: List (1개 항목)
+flutter:        첫 번째 항목: {sucursal: 2, count_mpago_total: 1, total_mpago_day: 50500}
+flutter:      - ingresos: List (0개 항목)
+flutter:      - stocks: List (4개 항목)
+flutter:        첫 번째 항목: {sucursal: 2, item_count: 808, tVentas: 947556, tIngresos: 1467482, tOffset: 15573, hVentas: 1071, hIngresos: 0, finalStock: 535499}
+flutter:      - fventas: List (3개 항목)
+flutter:        첫 번째 항목: {tipofactura: A, count: 12, sum_monto: 3293176.21}
+flutter:      - fventas_mes: List (4개 항목)
+flutter:        첫 번째 항목: {tipofactura: A, total_ventas_mes: 36762066.93}
+flutter: 
+
+flutter: ═══════════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════════
+flutter: 🌐 URL: https://sync.coolsistema.com/api/reporte/stocks?date=2026-01-12
+flutter: 
+flutter: 📋 Headers:
+flutter:    Content-Type: application/json
+flutter:    x-db-name: inquieta14
+flutter:    x-db-user: inquieta
+flutter:    x-db-password: ***
+flutter:    x-db-ssl: false
+flutter:    Connection: keep-alive
+flutter: 
+flutter: 🔍 Query Parameters:
+flutter:    date: 2026-01-12
+flutter: ═══════════════════════════════════════════════════════════
+flutter: 
+
+flutter: === GET /api/reporte/stocks 요청 ===
+flutter: URL: https://sync.coolsistema.com/api/reporte/stocks?date=2026-01-12
+flutter: Headers: {Content-Type: application/json, x-db-name: inquieta14, x-db-user: inquieta, x-db-password: se2021mi09, x-db-ssl: false, Connection: keep-alive}
+flutter: Query Parameters: {date: 2026-01-12}
+flutter: === 응답 정보 ===
+flutter: Status Code: 200
+flutter: Response Body Length: 36109 bytes
+flutter: ✅ 응답 성공: 100개 항목
+flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
+flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
+flutter: 🔍 [Resumen빌드날짜] 오늘 날짜: 2026-01-12 17:01:11.519881
+flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 12
+flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-12"
+flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-12"
+flutter: 🔍 [Resumen메뉴] 메뉴 아이템 리스트 생성 완료, 총 14개
+flutter: 🔍 _buildReportContent 호출: _selectedReportType=null, _currentReport=resumen
+flutter: 🔍 _buildResumenContent 호출됨
+flutter:    - _isLoading: false
+flutter:    - _errorMessage: null
+flutter:    - _data: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [_hasMultipleSucursales] 체크 시작
+flutter:    → _data 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter:    → vcodes는 List: 1개 항목
+flutter:    → vcodes 항목 순회 시작...
+flutter:       - 항목 #0: _Map<String, dynamic>
+flutter:          → 키: [sucursal, operation_count, total_venta_day, total_efectivo_day, total_credito_day, total_banco_day, total_favor_day, last_venta_hour, total_count_ropas]
+flutter:          → sucursal 값: 2 (타입: int)
+flutter:          → 파싱된 sucursal: 2
+flutter:          → sucursal 추가됨: 2 (현재 집합: {2})
+flutter:    → 최종 고유한 sucursal 개수: 1 - {2}
+flutter:    → 결과 (sucursales.length > 1): false
+flutter: ═══════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [Resumen del Dia] 여러 sucursal 체크
+flutter:    → _hasMultipleSucursales() 결과: false
+flutter:    → _data 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter:    → vcodes 데이터 타입: List<dynamic>
+flutter:    → vcodes List 길이: 1
+flutter:    → 추출된 고유 sucursal: {2} (1개)
+flutter: ═══════════════════════════════════════════════════════
+flutter:    → 단일 sucursal 뷰 렌더링 (섹션 형태)
+flutter:    → Resumen del Dia 섹션 뷰 렌더링 (항상 섹션 형태로 표시)
+flutter:    → 단일 sucursal 뷰 렌더링
+flutter:    - vcodes 데이터 타입: List<dynamic>
+flutter:    - vcodes List 길이: 1
+flutter: 🔍 _buildVcodesSection 호출됨
+flutter:    - vcodes 키: [operation_count, total_venta_day, total_efectivo_day, total_credito_day, total_banco_day, total_favor_day, total_count_ropas, last_venta_hour]
+flutter:    ✅ Vcodes 섹션 카드 생성 완료: 8개
+flutter: 🔍 _getAggregatedGastos: gastos 타입=List<dynamic>, 값=[{sucursal: 2, gasto_count: 6, total_gasto_day: 749730}]
+flutter:    → List 형태 (1개 항목), 합산 시작
+flutter:      - 항목: gasto_count=6, total_gasto_day=749730.0
+flutter:    → 합산 결과: gasto_count=6, total_gasto_day=749730.0
+flutter: 🔍 _buildGastosSection 호출: gastos={gasto_count: 6, total_gasto_day: 749730.0}
+flutter:    → gasto_count 카드 추가: 6
+flutter:    → total_gasto_day 카드 추가: 749730.0
+flutter:    → 총 2개 카드 생성
+flutter:    → FVentas 계산: totalCount=15, notaCreditoCount=0, 최종 count=15
+flutter:    → FVentas 계산: totalSumMonto=3774861.77, notaCreditoSumMonto=0.0, 최종 sum_monto=3774861.77
+flutter: 🔍 Stock 섹션 체크: stock_resumen=true, stocks=true
+flutter:    - hasStockResumen: true
+flutter:    - hasStocks: true
+flutter:    - stockData 키: [stocks]
+flutter:    - stockWidgets 개수: 1
+
+══╡ EXCEPTION CAUGHT BY RENDERING LIBRARY ╞═════════════════════════════════════════════════════════
+The following assertion was thrown during layout:
+A RenderFlex overflowed by 43 pixels on the bottom.
+
+The relevant error-causing widget was:
+  Column
+  Column:file:///Users/marcoskim/Trabajos_Programming/flutter_aguila/lib/screens/resumen_del_dia_screen.dart:3141:26
+
+To inspect this widget in Flutter DevTools, visit:
+http://127.0.0.1:59319/rbQ-_aKGUTM=/devtools//#/inspector?uri=http%3A%2F%2F127.0.0.1%3A59319%2FrbQ-_aKGUTM%3D%2F&inspectorRef=inspector-0
+
+The overflowing RenderFlex has an orientation of Axis.vertical.
+The edge of the RenderFlex that is overflowing has been marked in the rendering with a yellow and
+black striped pattern. This is usually caused by the contents being too big for the RenderFlex.
+Consider applying a flex factor (e.g. using an Expanded widget) to force the children of the
+RenderFlex to fit within the available space instead of being sized to their natural size.
+This is considered an error condition because it indicates that there is content that cannot be
+seen. If the content is legitimately bigger than the available space, consider clipping it with a
+ClipRect widget before putting it in the flex, or using a scrollable container rather than a Flex,
+like a ListView.
+The specific RenderFlex in question is: RenderFlex#26dab OVERFLOWING:
+  creator: Column ← Padding ← Semantics ← DefaultTextStyle ← AnimatedDefaultTextStyle ←
+    _InkFeatures-[GlobalKey#57bbd ink renderer] ← NotificationListener<LayoutChangedNotification> ←
+    CustomPaint ← _ShapeBorderPaint ← PhysicalShape ← _MaterialInterior ← Material ← ⋯
+  parentData: offset=Offset(16.0, 16.0) (can use size)
+  constraints: BoxConstraints(w=325.0, h=90.4)
+  size: Size(325.0, 90.4)
+  direction: vertical
+  mainAxisAlignment: start
+  mainAxisSize: min
+  crossAxisAlignment: start
+  textDirection: ltr
+  verticalDirection: down
+  spacing: 0.0
+◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤
+════════════════════════════════════════════════════════════════════════════════════════════════════
+

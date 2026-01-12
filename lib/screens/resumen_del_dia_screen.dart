@@ -15,6 +15,8 @@ import 'main_connection_screen.dart' show ServerType, MainConnectionScreen;
 import 'celebration_screen.dart';
 import 'connection_screen.dart' hide ServerType;
 import 'report_screen.dart';
+import 'resumen_del_dia_single_sucursal_view.dart';
+import 'resumen_del_dia_multiple_sucursales_view.dart';
 
 class ResumenDelDiaScreen extends StatefulWidget {
   final String serverUrl;
@@ -2032,418 +2034,64 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     
     // 여러 sucursal이 있으면 비교 테이블 뷰 표시
     if (hasMultipleSucursales) {
-      debugPrint('   ✅ 여러 sucursal 감지 → 비교 테이블 뷰 렌더링');
-      return RefreshIndicator(
+      debugPrint('═══════════════════════════════════════════════════════');
+      debugPrint('🔍 [여러 Sucursal 뷰] 렌더링 시작');
+      debugPrint('   → hasMultipleSucursales: true');
+      debugPrint('   → ResumenDelDiaMultipleSucursalesView 사용');
+      debugPrint('   → data 키: ${_data!.keys.toList()}');
+      debugPrint('═══════════════════════════════════════════════════════');
+      
+      return ResumenDelDiaMultipleSucursalesView(
+        data: _data!,
+        selectedDate: _selectedDate,
+        serverUrl: widget.serverUrl,
         onRefresh: _loadData,
-        child: SingleChildScrollView(
-          padding: EdgeInsets.zero,
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: _buildComparisonView(l10n),
-          ),
-        ),
+        onSelectDate: _selectDate,
+        onReportTypeSelected: (reportType) {
+          setState(() {
+            _selectedReportType = reportType;
+            _currentReport = reportType.toString().split('.').last;
+          });
+        },
       );
     }
     
     // 단일 sucursal인 경우 섹션 형태로 표시
-    debugPrint('   → 단일 sucursal 뷰 렌더링 (섹션 형태)');
-    debugPrint('   → Resumen del Dia 섹션 뷰 렌더링 (항상 섹션 형태로 표시)');
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [단일 Sucursal 뷰] 렌더링 시작');
+    debugPrint('   → hasMultipleSucursales: false');
+    debugPrint('   → ResumenDelDiaSingleSucursalView 사용');
+    debugPrint('   → _data 키: ${_data!.keys.toList()}');
+    debugPrint('═══════════════════════════════════════════════════════');
     
-    return RefreshIndicator(
+    return ResumenDelDiaSingleSucursalView(
+      data: _data!,
+      selectedDate: _selectedDate,
+      serverUrl: widget.serverUrl,
       onRefresh: _loadData,
-      child: Center(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: maxWidth),
-          child: Builder(
-                  builder: (context) {
-                    debugPrint('   → 단일 sucursal 뷰 렌더링');
-                    // 안전한 데이터 접근 (디버깅용)
-                    if (_data!.containsKey('vcodes')) {
-                      final vcodesData = _data!['vcodes'];
-                      debugPrint('   - vcodes 데이터 타입: ${vcodesData.runtimeType}');
-                      if (vcodesData is List) {
-                        debugPrint('   - vcodes List 길이: ${vcodesData.length}');
-                      }
-                    }
-                    
-                    return SingleChildScrollView(
-                      child: Container(
-                        width: double.infinity,
-                        padding: padding,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            // 날짜 선택 버튼 (맨 윗줄)
-                            Container(
-                              margin: const EdgeInsets.only(bottom: 16),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  ElevatedButton.icon(
-                                    onPressed: _selectDate,
-                                    icon: const Icon(Icons.calendar_today),
-                                    label: Text(
-                                      _selectedDate != null
-                                          ? DateFormat('yyyy-MM-dd').format(_selectedDate!)
-                                          : DateFormat('yyyy-MM-dd').format(DateTime.now()),
-                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                                    ),
-                                    style: ElevatedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                                      backgroundColor: Colors.blue[700],
-                                      foregroundColor: Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            // 에러가 있지만 데이터도 있는 경우 경고 배너 표시
-                            if (_errorMessage != null && _data != null && _data!.isNotEmpty)
-                              Container(
-                                margin: const EdgeInsets.only(bottom: 16),
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.orange[50],
-                                  border: Border.all(color: Colors.orange[300]!),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.warning_amber_rounded, color: Colors.orange[700], size: 20),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        '데이터를 새로고침하는 중 오류가 발생했습니다. 이전 데이터를 표시합니다.',
-                                        style: TextStyle(color: Colors.orange[900], fontSize: 12),
-                                      ),
-                                    ),
-                                    TextButton(
-                                      onPressed: _loadData,
-                                      child: const Text('다시 시도', style: TextStyle(fontSize: 12)),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            // 날짜 표시는 AppBar에 있으므로 본문에서는 제거
-
-                            // 판매 통계 (vcodes) - 여러 sucursal이 있으면 합산
-                            if (_data!.containsKey('vcodes')) ...[
-                              Builder(
-                                builder: (context) {
-                                  final aggregatedVcodes = _getAggregatedVcodes();
-                                  final vcodesWidgets = _buildVcodesSection(aggregatedVcodes);
-                                  
-                                  if (vcodesWidgets.isNotEmpty) {
-                                    return _buildSection(
-                                      l10n.salesStatistics,
-                                      vcodesWidgets,
-                                      onTap: () {
-                                        if (_isLargeScreen(context)) {
-                                          setState(() {
-                                            _selectedReportType = ReportType.ventas;
-                                            _currentReport = 'ventas';
-                                          });
-                                        } else {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) => ReportScreen(
-                                                serverUrl: widget.serverUrl,
-                                                reportType: ReportType.ventas,
-                                                initialDate: _selectedDate,
-                                              ),
-                                            ),
-                                          );
-                                        }
-                                      },
-                                    );
-                                  } else {
-                                    return const SizedBox.shrink();
-                                  }
-                                },
-                              ),
-                            ],
-
-                        // 지출 통계 (gastos)와 할인 통계 (vdetalle) - 큰 화면에서는 1줄에 배치
-                        Builder(
-                          builder: (context) {
-                            final isLarge = _isLargeScreen(context);
-                            final hasGastos = _data!.containsKey('gastos');
-                            final hasVdetalle = _data!.containsKey('vdetalle');
-                            
-                            // 둘 다 없으면 빈 위젯 반환
-                            if (!hasGastos && !hasVdetalle) {
-                              return const SizedBox.shrink();
-                            }
-                            
-                            // 큰 화면: Row로 1줄에 배치
-                            if (isLarge) {
-                              return Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // 지출 통계 (gastos)
-                                  if (hasGastos)
-                                    Flexible(
-                                      flex: 1,
-                                      child: ConstrainedBox(
-                                        constraints: const BoxConstraints(minWidth: 400),
-                                        child: Builder(
-                                          builder: (context) {
-                                            final aggregatedGastos = _getAggregatedGastos();
-                                            final gastosWidgets = _buildGastosSection(aggregatedGastos);
-                                            
-                                            if (gastosWidgets.isNotEmpty) {
-                                              return _buildSection(
-                                                l10n.expenseStatistics,
-                                                gastosWidgets,
-                                              );
-                                            } else {
-                                              return const SizedBox.shrink();
-                                            }
-                                          },
-                                        ),
-                                      ),
-                                    ),
-                                  if (hasGastos && hasVdetalle)
-                                    const SizedBox(width: 16),
-                                  // 할인 통계 (vdetalle)
-                                  if (hasVdetalle)
-                                    Flexible(
-                                      flex: 1,
-                                      child: ConstrainedBox(
-                                        constraints: const BoxConstraints(minWidth: 400),
-                                        child: Builder(
-                                          builder: (context) {
-                                            final aggregatedVdetalle = _getAggregatedVdetalle();
-                                            final vdetalleWidgets = _buildVdetalleSection(aggregatedVdetalle);
-                                            
-                                            if (vdetalleWidgets.isNotEmpty) {
-                                              return _buildSection(
-                                                l10n.discountStatistics,
-                                                vdetalleWidgets,
-                                              );
-                                            } else {
-                                              return const SizedBox.shrink();
-                                            }
-                                          },
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              );
-                            }
-                            
-                            // 작은 화면: 기존대로 세로로 배치
-                            return Column(
-                              children: [
-                                // 지출 통계 (gastos)
-                                if (hasGastos)
-                                  Builder(
-                                    builder: (context) {
-                                      final aggregatedGastos = _getAggregatedGastos();
-                                      final gastosWidgets = _buildGastosSection(aggregatedGastos);
-                                      
-                                      if (gastosWidgets.isNotEmpty) {
-                                        return _buildSection(
-                                          l10n.expenseStatistics,
-                                          gastosWidgets,
-                                        );
-                                      } else {
-                                        return const SizedBox.shrink();
-                                      }
-                                    },
-                                  ),
-                                // 할인 통계 (vdetalle)
-                                if (hasVdetalle)
-                                  Builder(
-                                    builder: (context) {
-                                      final aggregatedVdetalle = _getAggregatedVdetalle();
-                                      final vdetalleWidgets = _buildVdetalleSection(aggregatedVdetalle);
-                                      
-                                      if (vdetalleWidgets.isNotEmpty) {
-                                        return _buildSection(
-                                          l10n.discountStatistics,
-                                          vdetalleWidgets,
-                                        );
-                                      } else {
-                                        return const SizedBox.shrink();
-                                      }
-                                    },
-                                  ),
-                              ],
-                            );
-                          },
-                        ),
-
-                        // 결제 통계 (vcodes_mpago) - 여러 sucursal이 있으면 합산
-                        if (_data!.containsKey('vcodes_mpago')) ...[
-                          Builder(
-                            builder: (context) {
-                              final aggregatedMpago = _getAggregatedMpago();
-                              final mpagoWidgets = _buildMpagoSection(aggregatedMpago);
-                              
-                              if (mpagoWidgets.isNotEmpty) {
-                                return _buildSection(
-                                  l10n.mercadoPagoStatistics,
-                                  mpagoWidgets,
-                                );
-                              } else {
-                                return const SizedBox.shrink();
-                              }
-                            },
-                          ),
-                        ],
-
-                        // Ingresos 통계 - 여러 sucursal이 있으면 합산
-                        if (_data!.containsKey('ingresos')) ...[
-                          Builder(
-                            builder: (context) {
-                              final aggregatedIngresos = _getAggregatedIngresos();
-                              final ingresosWidgets = _buildIngresosSection(aggregatedIngresos);
-                              
-                              if (ingresosWidgets.isNotEmpty) {
-                                return _buildSection(
-                                  'Ingresos',
-                                  ingresosWidgets,
-                                  onTap: () {
-                                    if (_isLargeScreen(context)) {
-                                      setState(() {
-                                        _selectedReportType = ReportType.ingresos;
-                                        _currentReport = 'ingresos';
-                                      });
-                                    } else {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => ReportScreen(
-                                            serverUrl: widget.serverUrl,
-                                            reportType: ReportType.ingresos,
-                                            initialItemsStartDate: _selectedDate,
-                                            initialItemsEndDate: _selectedDate,
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  },
-                                );
-                              } else {
-                                return const SizedBox.shrink();
-                              }
-                            },
-                          ),
-                        ],
-
-                        // FVentas 통계 - 여러 sucursal이 있으면 합산
-                        if (_data!.containsKey('fventas')) ...[
-                          Builder(
-                            builder: (context) {
-                              final aggregatedFventas = _getAggregatedFventas();
-                              final fventasWidgets = _buildFventasSection(aggregatedFventas);
-                              
-                              if (fventasWidgets.isNotEmpty) {
-                                return _buildSection(
-                                  'FVentas del Día',
-                                  fventasWidgets,
-                                );
-                              } else {
-                                return const SizedBox.shrink();
-                              }
-                            },
-                          ),
-                        ],
-
-                        // FVentas Mes 통계
-                        if (_data!.containsKey('fventas_mes')) ...[
-                          Builder(
-                            builder: (context) {
-                              final aggregatedFventasMes = _getAggregatedFventasMes();
-                              final fventasMesWidgets = _buildFventasMesSection(aggregatedFventasMes);
-                              
-                              if (fventasMesWidgets.isNotEmpty) {
-                                return _buildSection(
-                                  'FVentas del Mes',
-                                  fventasMesWidgets,
-                                );
-                              } else {
-                                return const SizedBox.shrink();
-                              }
-                            },
-                          ),
-                        ],
-
-                        // Stock Resumen (stock_resumen 또는 stocks 키 확인)
-                        // useGrid: false로 설정하여 자체 GridView 사용 (중복 방지)
-                        // stocks 데이터가 있으면 항상 표시
-                          Builder(
-                            builder: (context) {
-                            debugPrint('🔍 Stock 섹션 체크: stock_resumen=${_data!.containsKey('stock_resumen')}, stocks=${_data!.containsKey('stocks')}');
-                            
-                            // stock_resumen 또는 stocks 키 확인
-                            final hasStockResumen = _data!.containsKey('stock_resumen') && _data!['stock_resumen'] != null;
-                            final hasStocks = _data!.containsKey('stocks') && _data!['stocks'] != null;
-                            
-                            debugPrint('   - hasStockResumen: $hasStockResumen');
-                            debugPrint('   - hasStocks: $hasStocks');
-                            
-                            if (!hasStockResumen && !hasStocks) {
-                              debugPrint('   → Stock 데이터 없음');
-                              return const SizedBox.shrink();
-                            }
-                            
-                            final stockData = hasStocks && _data!['stocks'] != null
-                                  ? {'stocks': _data!['stocks']}
-                                : (hasStockResumen && _data!['stock_resumen'] != null
-                                    ? (_data!['stock_resumen'] is Map<String, dynamic>
-                                        ? _data!['stock_resumen'] as Map<String, dynamic>
-                                        : <String, dynamic>{})
-                                      : <String, dynamic>{});
-                            
-                            debugPrint('   - stockData 키: ${stockData.keys.toList()}');
-                              
-                              final stockWidgets = _buildStockResumenSection(stockData);
-                            
-                            debugPrint('   - stockWidgets 개수: ${stockWidgets.length}');
-                              
-                              if (stockWidgets.isNotEmpty) {
-                                return _buildSection(
-                                  'Stock Resumen',
-                                  stockWidgets,
-                                  useGrid: false,
-                                  onTap: () {
-                                    if (_isLargeScreen(context)) {
-                                      setState(() {
-                                        _selectedReportType = ReportType.stocks;
-                                        _currentReport = 'stocks';
-                                      });
-                                    } else {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => ReportScreen(
-                                            serverUrl: widget.serverUrl,
-                                            reportType: ReportType.stocks,
-                                            initialDate: _selectedDate,
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  },
-                                );
-                              } else {
-                              debugPrint('   → stockWidgets가 비어있음');
-                                return const SizedBox.shrink();
-                              }
-                            },
-                          ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-        ),
-      ),
+      onSelectDate: _selectDate,
+      onReportTypeSelected: (reportType) {
+        if (_isLargeScreen(context)) {
+          setState(() {
+            _selectedReportType = reportType;
+            _currentReport = reportType.toString().split('.').last;
+          });
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ReportScreen(
+                serverUrl: widget.serverUrl,
+                reportType: reportType,
+                initialDate: _selectedDate,
+                initialItemsStartDate: _selectedDate,
+                initialItemsEndDate: _selectedDate,
+              ),
+            ),
+          );
+        }
+      },
+      errorMessage: _errorMessage,
     );
   }
 
@@ -2822,8 +2470,42 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         
         // 리스트로 변환
         result['items'] = grouped.values.toList();
-        result['total_count'] = grouped.values.fold<int>(0, (sum, item) => sum + (item['count'] as int? ?? 0));
-        result['total_sum_monto'] = grouped.values.fold<double>(0.0, (sum, item) => sum + ((item['sum_monto'] as num?)?.toDouble() ?? 0.0));
+        
+        // total_count와 total_sum_monto 계산 시 Nota de Credito ('C', 'NCA', 'NCB', 'NCM') 제외
+        int totalCount = 0;
+        double totalSumMonto = 0.0;
+        int notaCreditoCount = 0;
+        double notaCreditoSumMonto = 0.0;
+        
+        // Nota de Credito 타입 목록
+        const notaCreditoTypes = ['C', 'NCA', 'NCB', 'NCM'];
+        
+        for (var item in grouped.values) {
+          final tipofactura = item['tipofactura']?.toString() ?? '';
+          final count = item['count'] as int? ?? 0;
+          final sumMonto = (item['sum_monto'] as num?)?.toDouble() ?? 0.0;
+          
+          if (notaCreditoTypes.contains(tipofactura)) {
+            // Nota de Credito는 별도로 저장
+            notaCreditoCount += count;
+            notaCreditoSumMonto += sumMonto;
+            debugPrint('   → Nota de Credito ($tipofactura) 발견: count=$count, sum_monto=$sumMonto');
+          } else {
+            // Factura A, B 등은 합산
+            totalCount += count;
+            totalSumMonto += sumMonto;
+          }
+        }
+        
+        // 총계에서 Nota de Credito 빼기 (음수 방지)
+        final finalCount = (totalCount - notaCreditoCount) < 0 ? 0 : (totalCount - notaCreditoCount);
+        final finalSumMonto = (totalSumMonto - notaCreditoSumMonto) < 0.0 ? 0.0 : (totalSumMonto - notaCreditoSumMonto);
+        
+        debugPrint('   → FVentas 계산: totalCount=$totalCount, notaCreditoCount=$notaCreditoCount, 최종 count=$finalCount');
+        debugPrint('   → FVentas 계산: totalSumMonto=$totalSumMonto, notaCreditoSumMonto=$notaCreditoSumMonto, 최종 sum_monto=$finalSumMonto');
+        
+        result['total_count'] = finalCount;
+        result['total_sum_monto'] = finalSumMonto;
       }
     }
     
@@ -3109,21 +2791,28 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                 }
               },
               child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
+                child: Container(
+                  constraints: _isLargeScreen(context) 
+                      ? const BoxConstraints(minHeight: 140.0)
+                      : const BoxConstraints(minHeight: 100.0),
+                  padding: EdgeInsets.all(_isLargeScreen(context) ? 18.0 : 12.0),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.receipt, color: Colors.deepPurple, size: 20),
-                          const SizedBox(width: 8),
+                          Icon(
+                            Icons.receipt, 
+                            color: Colors.deepPurple, 
+                            size: _isLargeScreen(context) ? 24.0 : 20.0,
+                          ),
+                          SizedBox(width: _isLargeScreen(context) ? 10.0 : 8.0),
                           Flexible(
                             child: Text(
                               'FVentas del Día',
-                              style: const TextStyle(
-                                fontSize: 15,
+                              style: TextStyle(
+                                fontSize: _isLargeScreen(context) ? 18.0 : 15.0,
                                 fontWeight: FontWeight.bold,
                               ),
                               overflow: TextOverflow.ellipsis,
@@ -3131,7 +2820,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: _isLargeScreen(context) ? 18.0 : 12.0),
                       // 각 factura 타입별로 표시
                       ...items.map<Widget>((item) {
                         if (item is Map<String, dynamic>) {
@@ -3139,22 +2828,22 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                           final sumMonto = (item['sum_monto'] as num?)?.toDouble() ?? 0.0;
                           
                           return Padding(
-                            padding: const EdgeInsets.only(bottom: 8.0),
+                            padding: EdgeInsets.only(bottom: _isLargeScreen(context) ? 12.0 : 8.0),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
                                 Text(
                                   'Factura Tipo $tipofactura',
-                                  style: const TextStyle(
-                                    fontSize: 13,
+                                  style: TextStyle(
+                                    fontSize: _isLargeScreen(context) ? 15.0 : 13.0,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
                                 Text(
                                   _formatValue(sumMonto, isCurrency: true),
-                                  style: const TextStyle(
-                                    fontSize: 14,
+                                  style: TextStyle(
+                                    fontSize: _isLargeScreen(context) ? 16.0 : 14.0,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.deepPurple,
                                   ),
@@ -4450,23 +4139,317 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     }
 
     debugPrint('   ✅ 비교 뷰 렌더링 시작: ${sucursalesData.length}개 sucursal');
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // 날짜 표시
-        if (_data!.containsKey('fecha'))
-          _buildDateHeader(_data!['fecha']),
-        
-        // 비교 테이블 섹션
-        _buildSection(
-          l10n.branchComparison,
-          [
-            _buildComparisonTable(sucursalesData, l10n),
-          ],
-        ),
-      ],
+    final isLarge = _isLargeScreen(context);
+    debugPrint('   → 대형화면 여부: $isLarge');
+    debugPrint('   → context: ${context.runtimeType}');
+    
+    // 대형화면: 왼쪽 테이블, 오른쪽 카드
+    if (isLarge) {
+      debugPrint('   → 대형화면 레이아웃: Row로 분할 (왼쪽: 테이블, 오른쪽: 카드)');
+      debugPrint('   → LayoutBuilder로 constraints 확인 시작');
+      
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [LayoutBuilder] constraints 확인');
+          debugPrint('   → width: ${constraints.minWidth} ~ ${constraints.maxWidth}');
+          debugPrint('   → height: ${constraints.minHeight} ~ ${constraints.maxHeight}');
+          debugPrint('   → constraints.isTight: ${constraints.isTight}');
+          debugPrint('   → constraints.hasBoundedHeight: ${constraints.hasBoundedHeight}');
+          debugPrint('   → constraints.hasBoundedWidth: ${constraints.hasBoundedWidth}');
+          debugPrint('   → constraints.isNormalized: ${constraints.isNormalized}');
+          
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            final renderObject = context.findRenderObject();
+            if (renderObject != null && renderObject is RenderBox) {
+              debugPrint('   → LayoutBuilder 실제 렌더링 크기: width=${renderObject.size.width}, height=${renderObject.size.height}');
+            }
+          });
+          debugPrint('═══════════════════════════════════════════════════════');
+          
+          debugPrint('   → Column 생성: mainAxisSize=max, children 개수 계산 중...');
+          final columnChildren = <Widget>[];
+          
+          // 날짜 표시
+          if (_data!.containsKey('fecha')) {
+            debugPrint('   → 날짜 헤더 추가');
+            columnChildren.add(
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: _buildDateHeader(_data!['fecha']),
+              ),
+            );
+          }
+          
+          // 비교 테이블 제목
+          debugPrint('   → 비교 테이블 제목 추가');
+          columnChildren.add(
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: Text(
+                l10n.branchComparison,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[800],
+                ),
+              ),
+            ),
+          );
+          
+          // 왼쪽/오른쪽 분할 레이아웃
+          debugPrint('   → Row 분할 레이아웃 추가 (Expanded 사용)');
+          debugPrint('   → constraints.maxHeight: ${constraints.maxHeight}');
+          debugPrint('   → constraints.hasBoundedHeight: ${constraints.hasBoundedHeight}');
+          
+          columnChildren.add(
+            Expanded(
+              child: Builder(
+                builder: (context) {
+                  debugPrint('   → Expanded 내부 Row 렌더링 시작');
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 왼쪽: 비교 테이블 (60% 너비)
+                      Expanded(
+                        flex: 6,
+                        child: Builder(
+                          builder: (context) {
+                            debugPrint('   → 왼쪽 테이블 영역 렌더링 시작');
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              final renderObject = context.findRenderObject();
+                              if (renderObject != null && renderObject is RenderBox) {
+                                debugPrint('   → 왼쪽 테이블 영역 실제 크기: width=${renderObject.size.width}, height=${renderObject.size.height}');
+                              }
+                            });
+                            return SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.vertical,
+                                child: _buildComparisonTable(sucursalesData, l10n),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      
+                      const SizedBox(width: 16),
+                      
+                      // 오른쪽: 카드 섹션 (40% 너비)
+                      Expanded(
+                        flex: 4,
+                        child: Builder(
+                          builder: (context) {
+                            debugPrint('   → 오른쪽 카드 영역 렌더링 시작');
+                            final cards = _buildRightSideCards(l10n);
+                            debugPrint('   → 오른쪽 카드 개수: ${cards.length}');
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              final renderObject = context.findRenderObject();
+                              if (renderObject != null && renderObject is RenderBox) {
+                                debugPrint('   → 오른쪽 카드 영역 실제 크기: width=${renderObject.size.width}, height=${renderObject.size.height}');
+                              }
+                            });
+                            return SingleChildScrollView(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                mainAxisSize: MainAxisSize.min,
+                                children: cards,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          );
+          
+          debugPrint('   → Column children 개수: ${columnChildren.length}');
+          
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: columnChildren,
+          );
+        },
+      );
+    }
+    
+    // 작은 화면: 기존 레이아웃 (세로로 배치)
+    debugPrint('   → 작은 화면 레이아웃: Column으로 세로 배치');
+    debugPrint('   → SingleChildScrollView로 감싸서 스크롤 가능하게');
+    
+    return SingleChildScrollView(
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 날짜 표시
+          if (_data!.containsKey('fecha'))
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: _buildDateHeader(_data!['fecha']),
+            ),
+          
+          // 비교 테이블 제목
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Text(
+              l10n.branchComparison,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
+              ),
+            ),
+          ),
+          
+          // 비교 테이블 (전체 너비로 표시, 수평 스크롤 가능)
+          _buildComparisonTable(sucursalesData, l10n),
+          
+          // 카드 섹션 (작은 화면에서는 테이블 아래에 표시)
+          ..._buildRightSideCards(l10n),
+        ],
+      ),
     );
+  }
+
+  // 오른쪽 카드 섹션 생성 (여러 sucursal일 때 사용)
+  List<Widget> _buildRightSideCards(AppLocalizations l10n) {
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [_buildRightSideCards] 호출됨');
+    final cards = <Widget>[];
+    
+    // FVentas 섹션
+    try {
+      debugPrint('   → FVentas 섹션 생성 시작');
+      final aggregatedFventas = _getAggregatedFventas();
+      debugPrint('   → aggregatedFventas: $aggregatedFventas');
+      final fventasWidgets = _buildFventasSection(aggregatedFventas);
+      debugPrint('   → fventasWidgets 개수: ${fventasWidgets.length}');
+      
+      if (fventasWidgets.isNotEmpty) {
+        cards.addAll([
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Text(
+              'FVentas del Día',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
+              ),
+            ),
+          ),
+          ...fventasWidgets,
+          const SizedBox(height: 16),
+        ]);
+        debugPrint('   ✅ FVentas 섹션 추가 완료');
+      } else {
+        debugPrint('   ⚠️ FVentas 위젯이 비어있음');
+      }
+    } catch (e) {
+      debugPrint('   ❌ FVentas 섹션 생성 오류: $e');
+    }
+    
+    // Gastos 섹션
+    try {
+      debugPrint('   → Gastos 섹션 생성 시작');
+      final aggregatedGastos = _getAggregatedGastos();
+      debugPrint('   → aggregatedGastos: $aggregatedGastos');
+      final gastosWidgets = _buildGastosSection(aggregatedGastos);
+      debugPrint('   → gastosWidgets 개수: ${gastosWidgets.length}');
+      
+      if (gastosWidgets.isNotEmpty) {
+        cards.addAll([
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Text(
+              l10n.expenseStatistics,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
+              ),
+            ),
+          ),
+          ...gastosWidgets,
+          const SizedBox(height: 16),
+        ]);
+        debugPrint('   ✅ Gastos 섹션 추가 완료');
+      } else {
+        debugPrint('   ⚠️ Gastos 위젯이 비어있음');
+      }
+    } catch (e) {
+      debugPrint('   ❌ Gastos 섹션 생성 오류: $e');
+    }
+    
+    // Stock Resumen 섹션
+    try {
+      debugPrint('   → Stock Resumen 섹션 생성 시작');
+      final stockData = <String, dynamic>{};
+      
+      if (_data != null) {
+        if (_data!.containsKey('stock_resumen') && _data!['stock_resumen'] is Map) {
+          stockData.addAll(_data!['stock_resumen'] as Map<String, dynamic>);
+          debugPrint('   → stock_resumen 키 발견');
+        }
+        
+        if (_data!.containsKey('stocks')) {
+          stockData['stocks'] = _data!['stocks'];
+          debugPrint('   → stocks 키 발견');
+        }
+      }
+      
+      debugPrint('   → stockData 키: ${stockData.keys.toList()}');
+      final stockWidgets = _buildStockResumenSection(stockData);
+      debugPrint('   → stockWidgets 개수: ${stockWidgets.length}');
+      
+      if (stockWidgets.isNotEmpty) {
+        cards.addAll([
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Text(
+              'Stock Resumen',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
+              ),
+            ),
+          ),
+          ...stockWidgets,
+        ]);
+        debugPrint('   ✅ Stock Resumen 섹션 추가 완료');
+      } else {
+        debugPrint('   ⚠️ Stock Resumen 위젯이 비어있음');
+      }
+    } catch (e) {
+      debugPrint('   ❌ Stock Resumen 섹션 생성 오류: $e');
+    }
+    
+    debugPrint('   → 최종 카드 개수: ${cards.length}');
+    debugPrint('═══════════════════════════════════════════════════════');
+    
+    if (cards.isEmpty) {
+      return [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text(
+              '추가 정보가 없습니다.',
+              style: TextStyle(color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ];
+    }
+    
+    return cards;
   }
 
   // 비교 테이블 생성

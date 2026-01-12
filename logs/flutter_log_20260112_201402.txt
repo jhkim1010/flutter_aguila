@@ -1,0 +1,9 @@
+=== 플랫폼 정보: 대형화면 (Desktop: macos) ===
+
+Launching lib/main.dart on macOS in debug mode...
+Building macOS application...                                   
+✓ Built build/macos/Build/Products/Debug/Be_Cool.app
+2026-01-12 20:14:30.753 Be_Cool[10125:1716130] Running with merged UI and platform thread. Experimental.
+Failed to foreground app; open returned 1
+flutter: 📝 로그 파일 초기화 완료: /Users/marcoskim/Documents/logs/app_log_2026-01-12T20-14-34.txt
+flutter: 📝 로그 파일 경로: /Users/marcoskim/Documents/logs/app_log_2026-01-12T20-14-34.txt
