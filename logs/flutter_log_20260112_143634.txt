@@ -1,0 +1,913 @@
+=== 플랫폼 정보: 대형화면 (Desktop: macos) ===
+
+Launching lib/main.dart on macOS in debug mode...
+Building macOS application...                                   
+✓ Built build/macos/Build/Products/Debug/Be_Cool.app
+2026-01-12 14:37:03.421 Be_Cool[63713:907638] Running with merged UI and platform thread. Experimental.
+Failed to foreground app; open returned 1
+Syncing files to device macOS...                                 1,429ms
+
+Flutter run key commands.
+r Hot reload. 🔥🔥🔥
+R Hot restart.
+h List all available interactive commands.
+d Detach (terminate "flutter run" but leave application running).
+c Clear the screen
+q Quit (terminate the application on the device).
+
+A Dart VM Service on macOS is available at: http://127.0.0.1:49563/ajeMX2as5gw=/
+The Flutter DevTools debugger and profiler on macOS is available at: http://127.0.0.1:49563/ajeMX2as5gw=/devtools/?uri=ws://127.0.0.1:49563/ajeMX2as5gw=/ws
+flutter: 📝 로그 파일 초기화 완료: /Users/marcoskim/Documents/logs/app_log_2026-01-12T14-37-10.txt
+flutter: 📝 로그 파일 경로: /Users/marcoskim/Documents/logs/app_log_2026-01-12T14-37-10.txt
+flutter: 🔄 저장된 연결 리스트 로드 시작...
+flutter: 📖 연결 정보 읽기 시작... (macOS: true)
+flutter: 📖 SharedPreferences에서 읽기 완료
+flutter: 📖 JSON 데이터 읽기 완료 (길이: 483)
+flutter: ✅ 연결 정보 파싱 완료: 3개 연결
+flutter:    - inquieta (ID: 1765666561277)
+flutter:    - ace (ID: 1765984612266)
+flutter:    - jol-test (ID: 1767153069054)
+flutter: ✅ 저장된 연결 리스트 로드 완료: 3개 연결
+flutter:    - inquieta (ID: 1765666561277, DB: inquieta14)
+flutter:    - ace (ID: 1765984612266, DB: ace17)
+flutter:    - jol-test (ID: 1767153069054, DB: jolues37)
+flutter: ℹ️ disconnect 요청을 보내지 않습니다. (disconnectExisting=false)
+flutter: === 연결 시도 ===
+flutter: URL: https://sync.coolsistema.com/api/health
+flutter: Request Body: {"databaseName":"inquieta14","username":"inquieta","password":"se2021mi09"}
+flutter: Headers: Content-Type: application/json
+flutter: 📱 플랫폼 정보: 대형화면 (Desktop: macOS/Windows/Linux)
+flutter: === 응답 정보 ===
+flutter: Status Code: 200
+flutter: ✅ 연결 성공
+flutter: 💾 데이터베이스 정보 저장 시도:
+flutter:    database_name: inquieta14
+flutter:    username: inquieta
+flutter:    password: *** (길이: 10)
+flutter: 🍎 macOS 개발 환경: 모든 데이터를 SharedPreferences에 저장
+flutter: 📝 [1/3] database_name 저장 시도...
+flutter:    📝 SharedPreferences 저장 시작: key="database_name", value="inquieta14"
+flutter:    ✅ SharedPreferences 저장 결과: true
+flutter:    ✅ SharedPreferences 저장 확인 성공
+flutter: ✅ [1/3] database_name 저장 성공
+flutter: 📝 [2/3] username 저장 시도...
+flutter:    📝 SharedPreferences 저장 시작: key="username", value="inquieta"
+flutter:    ✅ SharedPreferences 저장 결과: true
+flutter:    ✅ SharedPreferences 저장 확인 성공
+flutter: ✅ [2/3] username 저장 성공
+flutter: 📝 [3/3] password 저장 시도...
+flutter:    📝 SharedPreferences 저장 시작: key="password", value="se2021mi09"
+flutter:    ✅ SharedPreferences 저장 결과: true
+flutter:    ✅ SharedPreferences 저장 확인 성공
+flutter: ✅ [3/3] password 저장 성공
+flutter: 🔍 저장 확인 단계 시작...
+flutter: ✅ [확인 1/3] database_name 확인 완료: "inquieta14"
+flutter: ✅ [확인 2/3] username 확인 완료: "inquieta"
+flutter: ✅ [확인 3/3] password 확인 완료: 길이 10
+flutter: ✅ 데이터베이스 정보 저장 완료
+flutter: 🍎 macOS 저장 프로세스 완료!
+flutter: ✅ 자동 연결 성공
+flutter: === GET /api/tipos 요청 ===
+flutter: URL: https://sync.coolsistema.com/api/tipos
+flutter: Headers: {Content-Type: application/json, x-db-name: inquieta14, x-db-user: inquieta, x-db-password: se2021mi09, x-db-ssl: false, Connection: keep-alive}
+flutter: === GET /api/temporadas 요청 ===
+flutter: URL: https://sync.coolsistema.com/api/temporadas
+flutter: Headers: {Content-Type: application/json, x-db-name: inquieta14, x-db-user: inquieta, x-db-password: se2021mi09, x-db-ssl: false, Connection: keep-alive}
+flutter: 🔄 ResumenDelDiaScreen: 연결 목록 로드 시작...
+flutter: 📖 연결 정보 읽기 시작... (macOS: true)
+flutter: 🔄 ResumenDelDiaScreen: didChangeDependencies 호출, 연결 리스트 갱신
+flutter: 🔄 ResumenDelDiaScreen: 연결 목록 로드 시작...
+flutter: 📖 연결 정보 읽기 시작... (macOS: true)
+flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
+flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
+flutter: 🔍 [Resumen빌드날짜] BuildInfo.buildDate: "2026-01-06"
+flutter: 🔍 [Resumen빌드날짜] buildDate 파싱 성공: 2026-01-06 00:00:00.000
+flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 6
+flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-06"
+flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-06"
+flutter: 🔍 [Resumen메뉴] 메뉴 아이템 리스트 생성 완료, 총 14개
+flutter: 🔍 _buildReportContent 호출: _selectedReportType=null, _currentReport=resumen
+flutter: 🔍 _buildResumenContent 호출됨
+flutter:    - _isLoading: true
+flutter:    - _errorMessage: null
+flutter:    - _data: null
+flutter:    → 로딩 상태 반환
+flutter: 📖 SharedPreferences에서 읽기 완료
+flutter: 📖 JSON 데이터 읽기 완료 (길이: 483)
+flutter: ✅ 연결 정보 파싱 완료: 3개 연결
+flutter:    - inquieta (ID: 1765666561277)
+flutter:    - ace (ID: 1765984612266)
+flutter:    - jol-test (ID: 1767153069054)
+flutter: ✅ ResumenDelDiaScreen: 3개 연결 로드 완료
+flutter:    - inquieta (ID: 1765666561277, DB: inquieta14)
+flutter:    - ace (ID: 1765984612266, DB: ace17)
+flutter:    - jol-test (ID: 1767153069054, DB: jolues37)
+flutter: 🔄 ResumenDelDiaScreen: UI 업데이트 완료 (3개 연결 표시)
+flutter: 📖 SharedPreferences에서 읽기 완료
+flutter: 📖 JSON 데이터 읽기 완료 (길이: 483)
+flutter: ✅ 연결 정보 파싱 완료: 3개 연결
+flutter:    - inquieta (ID: 1765666561277)
+flutter:    - ace (ID: 1765984612266)
+flutter:    - jol-test (ID: 1767153069054)
+flutter: ✅ ResumenDelDiaScreen: 3개 연결 로드 완료
+flutter:    - inquieta (ID: 1765666561277, DB: inquieta14)
+flutter:    - ace (ID: 1765984612266, DB: ace17)
+flutter:    - jol-test (ID: 1767153069054, DB: jolues37)
+flutter: 🔄 ResumenDelDiaScreen: UI 업데이트 완료 (3개 연결 표시)
+flutter: === 응답 정보 ===
+flutter: Status Code: 200
+flutter: Response Body Length: 419 bytes
+flutter: ✅ 응답 성공: 3개 항목
+flutter: ✅ Tipos: 3개, 콤보박스 표시: 예
+flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
+flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
+flutter: 🔍 [Resumen빌드날짜] BuildInfo.buildDate: "2026-01-06"
+flutter: 🔍 [Resumen빌드날짜] buildDate 파싱 성공: 2026-01-06 00:00:00.000
+flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 6
+flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-06"
+flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-06"
+flutter: 🔍 [Resumen메뉴] 메뉴 아이템 리스트 생성 완료, 총 14개
+flutter: 🔍 _buildReportContent 호출: _selectedReportType=null, _currentReport=resumen
+flutter: 🔍 _buildResumenContent 호출됨
+flutter:    - _isLoading: true
+flutter:    - _errorMessage: null
+flutter:    - _data: null
+flutter:    → 로딩 상태 반환
+flutter: === 응답 정보 ===
+flutter: Status Code: 200
+flutter: Response Body Length: 476 bytes
+flutter: ✅ 응답 성공: 4개 항목
+flutter: ✅ Temporadas: 4개, 콤보박스 표시: 예
+flutter: 🍎 macOS: secure storage 읽기 전 대기 중...
+flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
+flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
+flutter: 🔍 [Resumen빌드날짜] BuildInfo.buildDate: "2026-01-06"
+flutter: 🔍 [Resumen빌드날짜] buildDate 파싱 성공: 2026-01-06 00:00:00.000
+flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 6
+flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-06"
+flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-06"
+flutter: 🔍 [Resumen메뉴] 메뉴 아이템 리스트 생성 완료, 총 14개
+flutter: 🔍 _buildReportContent 호출: _selectedReportType=null, _currentReport=resumen
+flutter: 🔍 _buildResumenContent 호출됨
+flutter:    - _isLoading: true
+flutter:    - _errorMessage: null
+flutter:    - _data: null
+flutter:    → 로딩 상태 반환
+flutter:   - 서버 URL: https://sync.coolsistema.com
+flutter:   - 사용 날짜: 2026-01-12 14:37:12.406983
+flutter:   - Sucursal: 없음
+flutter:    - 날짜: 2026-01-12 14:37:12.406983
+flutter:    - Sucursal: 없음
+flutter: === Reports API 요청 ===
+flutter:   - 엔드포인트: /api/resumen_del_dia
+flutter:   - 요청 방식: POST (다른 보고서는 GET 사용)
+flutter:   - 타임아웃: 60초 (다른 보고서는 10초)
+flutter:   - 날짜: 2026-01-12
+flutter: === POST /api/resumen_del_dia 요청 ===
+flutter: URL: https://sync.coolsistema.com/api/resumen_del_dia
+flutter: Headers: {Content-Type: application/json, x-db-name: inquieta14, x-db-user: inquieta, x-db-password: se2021mi09, x-db-ssl: false, Connection: keep-alive}
+flutter: Timeout: 60초
+flutter: Request Body Length: 21 bytes
+flutter: ⏱️ 요청 완료 시간: 1082ms
+flutter: === 응답 정보 ===
+flutter: Status Code: 200
+flutter: Response Body Length: 1317 bytes
+flutter: Response Body: {"fecha":"2026-01-12","fecha_vcodes":"2026-01-12","fecha_otros":"2026-01-12","vcodes":[{"sucursal":2,"operation_count":49,"total_venta_day":17549230,"total_efectivo_day":14029200,"total_credito_day":0,"total_banco_day":3520030,"total_favor_day":0,"last_venta_hour":"14:18:28","total_count_ropas":858}],"gastos":[{"sucursal":2,"gasto_count":5,"total_gasto_day":737830}],"vdetalle":[{"sucursal":2,"count_discount_event":8,"total_discount_day":-419440}],"vcodes_mpago":[{"sucursal":2,"count_mpago_total"... (1317 bytes total)
+flutter: 📋 resumen_del_dia 원본 응답 데이터:
+flutter:   - fecha: String = 2026-01-12
+flutter:   - fecha_vcodes: String = 2026-01-12
+flutter:   - fecha_otros: String = 2026-01-12
+flutter:   - vcodes: List (1개 항목)
+flutter:   - gastos: List (1개 항목)
+flutter:   - vdetalle: List (1개 항목)
+flutter:   - vcodes_mpago: List (1개 항목)
+flutter:   - ingresos: List (0개 항목)
+flutter:   - stocks: List (4개 항목)
+flutter:   - fventas: List (2개 항목)
+flutter:   - fventas_mes: List (3개 항목)
+flutter: ✅ 응답 성공: 11개 항목
+flutter:    - 응답 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes]
+flutter:    - 응답 데이터 상세:
+flutter:      - fecha: String = 2026-01-12
+flutter:      - fecha_vcodes: String = 2026-01-12
+flutter:      - fecha_otros: String = 2026-01-12
+flutter:      - vcodes: List (1개 항목)
+flutter:        첫 번째 항목: {sucursal: 2, operation_count: 49, total_venta_day: 17549230, total_efectivo_day: 14029200, total_credito_day: 0, total_banco_day: 3520030, total_favor_day: 0, last_venta_hour: 14:18:28, total_count_ropas: 858}
+flutter:      - gastos: List (1개 항목)
+flutter:        첫 번째 항목: {sucursal: 2, gasto_count: 5, total_gasto_day: 737830}
+flutter:      - vdetalle: List (1개 항목)
+flutter:        첫 번째 항목: {sucursal: 2, count_discount_event: 8, total_discount_day: -419440}
+flutter:      - vcodes_mpago: List (1개 항목)
+flutter:        첫 번째 항목: {sucursal: 2, count_mpago_total: 1, total_mpago_day: 50500}
+flutter:      - ingresos: List (0개 항목)
+flutter:      - stocks: List (4개 항목)
+flutter:        첫 번째 항목: {sucursal: 2, item_count: 808, tVentas: 947332, tIngresos: 1467482, tOffset: 15573, hVentas: 856, hIngresos: 0, finalStock: 532972}
+flutter:      - fventas: List (2개 항목)
+flutter:        첫 번째 항목: {tipofactura: A, count: 9, sum_monto: 2817986.17}
+flutter:      - fventas_mes: List (3개 항목)
+flutter:        첫 번째 항목: {tipofactura: A, total_ventas_mes: 36286876.89}
+flutter: 
+
+flutter: ═══════════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════════
+flutter: 🌐 URL: https://sync.coolsistema.com/api/reporte/stocks?date=2026-01-12
+flutter: 
+flutter: 📋 Headers:
+flutter:    Content-Type: application/json
+flutter:    x-db-name: inquieta14
+flutter:    x-db-user: inquieta
+flutter:    x-db-password: ***
+flutter:    x-db-ssl: false
+flutter:    Connection: keep-alive
+flutter: 
+flutter: 🔍 Query Parameters:
+flutter:    date: 2026-01-12
+flutter: ═══════════════════════════════════════════════════════════
+flutter: 
+
+flutter: === GET /api/reporte/stocks 요청 ===
+flutter: URL: https://sync.coolsistema.com/api/reporte/stocks?date=2026-01-12
+flutter: Headers: {Content-Type: application/json, x-db-name: inquieta14, x-db-user: inquieta, x-db-password: se2021mi09, x-db-ssl: false, Connection: keep-alive}
+flutter: Query Parameters: {date: 2026-01-12}
+flutter: === 응답 정보 ===
+flutter: Status Code: 200
+flutter: Response Body Length: 36109 bytes
+flutter: ✅ 응답 성공: 100개 항목
+flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
+flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
+flutter: 🔍 [Resumen빌드날짜] BuildInfo.buildDate: "2026-01-06"
+flutter: 🔍 [Resumen빌드날짜] buildDate 파싱 성공: 2026-01-06 00:00:00.000
+flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 6
+flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-06"
+flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-06"
+flutter: 🔍 [Resumen메뉴] 메뉴 아이템 리스트 생성 완료, 총 14개
+flutter: 🔍 _buildReportContent 호출: _selectedReportType=null, _currentReport=resumen
+flutter: 🔍 _buildResumenContent 호출됨
+flutter:    - _isLoading: false
+flutter:    - _errorMessage: null
+flutter:    - _data: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter:    → Resumen del Dia 섹션 뷰 렌더링 (항상 섹션 형태로 표시)
+flutter:    → 단일 sucursal 뷰 렌더링
+flutter:    - vcodes 데이터 타입: List<dynamic>
+flutter:    - vcodes List 길이: 1
+flutter: 🔍 _buildVcodesSection 호출됨
+flutter:    - vcodes 키: [operation_count, total_venta_day, total_efectivo_day, total_credito_day, total_banco_day, total_favor_day, total_count_ropas, last_venta_hour]
+flutter:    ✅ Vcodes 섹션 카드 생성 완료: 8개
+flutter: 🔍 _getAggregatedGastos: gastos 타입=List<dynamic>, 값=[{sucursal: 2, gasto_count: 5, total_gasto_day: 737830}]
+flutter:    → List 형태 (1개 항목), 합산 시작
+flutter:      - 항목: gasto_count=5, total_gasto_day=737830.0
+flutter:    → 합산 결과: gasto_count=5, total_gasto_day=737830.0
+flutter: 🔍 _buildGastosSection 호출: gastos={gasto_count: 5, total_gasto_day: 737830.0}
+flutter:    → gasto_count 카드 추가: 5
+flutter:    → total_gasto_day 카드 추가: 737830.0
+flutter:    → 총 2개 카드 생성
+flutter: 🔍 Stock 섹션 체크: stock_resumen=true, stocks=true
+flutter:    - hasStockResumen: true
+flutter:    - hasStocks: true
+flutter:    - stockData 키: [stocks]
+flutter:    - stockWidgets 개수: 1
+flutter: 🔍 _navigateToReport 호출: reportType=ventas, 현재 _currentReport=resumen, _selectedReportType=null
+flutter:    → reportTypeEnum=ReportType.ventas, _isLargeScreen=true
+flutter:    → 큰 화면: setState로 _currentReport=ventas, _selectedReportType=ReportType.ventas 설정
+flutter:    → setState 완료 후: _currentReport=ventas, _selectedReportType=ReportType.ventas
+flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
+flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
+flutter: 🔍 [Resumen빌드날짜] BuildInfo.buildDate: "2026-01-06"
+flutter: 🔍 [Resumen빌드날짜] buildDate 파싱 성공: 2026-01-06 00:00:00.000
+flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 6
+flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-06"
+flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-06"
+flutter: 🔍 [Resumen메뉴] 메뉴 아이템 리스트 생성 완료, 총 14개
+flutter: 🔍 _buildReportContent 호출: _selectedReportType=ReportType.ventas, _currentReport=ventas
+flutter:    → ReportScreen 반환: reportType=ReportType.ventas
+flutter: 🔍 _buildReportContent: _selectedReportType=ReportType.ventas, _currentVentasDescontado=null
+flutter: 📅 Ventas 보고서 초기 날짜 범위 설정: 2026-01-12 ~ 2026-01-12
+flutter:    → ReportType.ventas 케이스 실행
+flutter:       - 현재 _ventasUnit: vcode
+flutter:       - 초기 날짜 범위: startDate=2026-01-12 14:37:12.406983, endDate=2026-01-12 14:37:12.406983
+flutter:       - 필터링 단어: 
+flutter:       - vcode/day unit: 날짜 범위 유지
+flutter:       - API 요청 파라미터:
+flutter:          * currentDate: 2026-01-12
+flutter:          * fecha_inicio: 2026-01-12
+flutter:          * fecha_fin: 2026-01-12
+flutter:          * filteringWord: 
+flutter:          * unit: vcode
+flutter:          * descontado: false
+flutter:          * reservado: false
+flutter:          * credito: false
+flutter:       → getVentasReport API 호출 시작
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📅 [_buildAppBar] Ventas AppBar title 렌더링
+flutter:    → 파일: report_screen.dart
+flutter:    → 라인: ~5098
+flutter:    → constraints.maxWidth: 1660.0
+flutter:    → isLargeScreen: true
+flutter:    → orientation: Orientation.landscape
+flutter:    → platformType: PlatformType.desktop
+flutter:    → isMobile: false
+flutter:    → isMobilePortrait: false
+flutter:    → isDesktopOrTablet: true
+flutter:    ✅ isDesktopOrTablet = true → 달력 버튼 2개 포함 Row 반환
+flutter: 🔵 _buildCompactUnitButton 호출: label=VCode, value=vcode, isSelected=true, 현재 _ventasUnit=vcode
+flutter: 🔵 _buildCompactUnitButton 호출: label=Day, value=day, isSelected=false, 현재 _ventasUnit=vcode
+flutter: 🔵 _buildCompactUnitButton 호출: label=Month, value=month, isSelected=false, 현재 _ventasUnit=vcode
+flutter: 🔵 _buildCompactUnitButton 호출: label=Year, value=year, isSelected=false, 현재 _ventasUnit=vcode
+flutter: 
+═══════════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════════
+flutter: === Ventas 보고서 요청 (descontado 포함) ===
+flutter: ═══════════════════════════════════════════════════════════
+flutter: 📡 요청 메서드: GET
+flutter: 🔗 최종 URL: https://sync.coolsistema.com/api/reporte/ventas?current_date=2026-01-12&unit=vcode&fecha_inicio=2026-01-12&fecha_fin=2026-01-12
+flutter: 
+📋 요청 헤더:
+flutter:   Content-Type: application/json
+flutter:   x-db-user: inquieta
+flutter:   x-db-password: se******09
+flutter:   x-db-name: inquieta14
+flutter: 
+📝 Query Parameters (URL에 포함됨):
+flutter:   current_date: 2026-01-12
+flutter:   unit: vcode
+flutter:   fecha_inicio: 2026-01-12
+flutter:   fecha_fin: 2026-01-12
+flutter: 
+💡 참고: GET 요청이므로 Request Body는 없습니다.
+flutter:    모든 파라미터는 URL의 Query String으로 전송됩니다.
+flutter: ═══════════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════════
+
+flutter: === GET /api/reporte/ventas 요청 ===
+flutter: URL: https://sync.coolsistema.com/api/reporte/ventas?current_date=2026-01-12&unit=vcode&fecha_inicio=2026-01-12&fecha_fin=2026-01-12
+flutter: Headers: {Content-Type: application/json, x-db-user: inquieta, x-db-password: se2021mi09, x-db-name: inquieta14}
+flutter: Query Parameters: {current_date: 2026-01-12, unit: vcode, fecha_inicio: 2026-01-12, fecha_fin: 2026-01-12}
+flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
+flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
+flutter: 🔍 [Resumen빌드날짜] BuildInfo.buildDate: "2026-01-06"
+flutter: 🔍 [Resumen빌드날짜] buildDate 파싱 성공: 2026-01-06 00:00:00.000
+flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 6
+flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-06"
+flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-06"
+flutter: 🔍 [Resumen메뉴] 메뉴 아이템 리스트 생성 완료, 총 14개
+flutter: 🔍 _buildReportContent 호출: _selectedReportType=ReportType.ventas, _currentReport=ventas
+flutter:    → ReportScreen 반환: reportType=ReportType.ventas
+flutter: 🔍 _buildReportContent: _selectedReportType=ReportType.ventas, _currentVentasDescontado=null
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📅 [_buildAppBar] Ventas AppBar title 렌더링
+flutter:    → 파일: report_screen.dart
+flutter:    → 라인: ~5098
+flutter:    → constraints.maxWidth: 1660.0
+flutter:    → isLargeScreen: true
+flutter:    → orientation: Orientation.landscape
+flutter:    → platformType: PlatformType.desktop
+flutter:    → isMobile: false
+flutter:    → isMobilePortrait: false
+flutter:    → isDesktopOrTablet: true
+flutter:    ✅ isDesktopOrTablet = true → 달력 버튼 2개 포함 Row 반환
+flutter: 🔵 _buildCompactUnitButton 호출: label=VCode, value=vcode, isSelected=true, 현재 _ventasUnit=vcode
+flutter: 🔵 _buildCompactUnitButton 호출: label=Day, value=day, isSelected=false, 현재 _ventasUnit=vcode
+flutter: 🔵 _buildCompactUnitButton 호출: label=Month, value=month, isSelected=false, 현재 _ventasUnit=vcode
+flutter: 🔵 _buildCompactUnitButton 호출: label=Year, value=year, isSelected=false, 현재 _ventasUnit=vcode
+flutter: === 응답 정보 ===
+flutter: Status Code: 200
+flutter: Response Body Length: 21506 bytes
+flutter: ✅ 응답 성공: 52개 항목
+flutter:       → getVentasReport API 호출 완료
+flutter:       - 응답 데이터 타입: _Map<String, dynamic>
+flutter:       - 응답 데이터 키: [filters, summary, data]
+flutter:       - 응답 데이터 개수: 52
+flutter:    → 데이터 로딩 완료
+flutter:    - 데이터 타입: _Map<String, dynamic>
+flutter:    - 데이터 키: [filters, summary, data]
+flutter:    - 응답 데이터 개수: 52
+flutter:    - 사용 가능한 sucursales: [2]
+flutter:    → setState: _data 업데이트, _isLoading=false, _displayedItemsCount=52
+flutter: 📊 _loadData() 완료
+flutter: ═══════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📅 [_buildAppBar] Ventas AppBar title 렌더링
+flutter:    → 파일: report_screen.dart
+flutter:    → 라인: ~5098
+flutter:    → constraints.maxWidth: 1620.0
+flutter:    → isLargeScreen: true
+flutter:    → orientation: Orientation.landscape
+flutter:    → platformType: PlatformType.desktop
+flutter:    → isMobile: false
+flutter:    → isMobilePortrait: false
+flutter:    → isDesktopOrTablet: true
+flutter:    ✅ isDesktopOrTablet = true → 달력 버튼 2개 포함 Row 반환
+flutter: 🔵 _buildCompactUnitButton 호출: label=VCode, value=vcode, isSelected=true, 현재 _ventasUnit=vcode
+flutter: 🔵 _buildCompactUnitButton 호출: label=Day, value=day, isSelected=false, 현재 _ventasUnit=vcode
+flutter: 🔵 _buildCompactUnitButton 호출: label=Month, value=month, isSelected=false, 현재 _ventasUnit=vcode
+flutter: 🔵 _buildCompactUnitButton 호출: label=Year, value=year, isSelected=false, 현재 _ventasUnit=vcode
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [ventas] buildTableFromList 시작
+flutter:    → horizontalScrollController: true
+flutter:    → horizontalScrollController.hasClients: false
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [ReportTableBuilder:176] buildTableFromList 함수 시작
+flutter:    → 파일: report_table_builder.dart
+flutter:    → 라인: 176
+flutter:    → reportType: ReportType.ventas
+flutter:    → dataList.length: 52
+flutter:    → displayedItemsCount: 52
+flutter:    → itemsPerPage: 100
+flutter:    → displayedList.length: 52
+flutter:    → totalCount: 52
+flutter: 📊 Ventas vcode columns 순서: [vcode, tpago, cntropas, clientenombre, tefectivo, tcredito, tbanco, treservado, tfavor, vendedor, tipo, dni, hora, fecha, resiva, casoesp, nencargado, cretmp, sucursal, ntiqrepetir, b_mercadopago, d_num_caja, d_num_terminal, id]
+flutter:    → [ReportTableBuilder:593] isItemsOrIngresos 계산 (조기 확인)
+flutter:       → reportType == ReportType.items: false
+flutter:       → reportType == ReportType.ingresos: false
+flutter:       → isItemsOrIngresos: false
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [ReportTableBuilder:610] buildTableFromList Column LayoutBuilder 시작
+flutter:    → 파일: report_table_builder.dart
+flutter:    → 라인: 610
+flutter:    → reportType: ReportType.ventas
+flutter:    → constraints.maxWidth: 1732.0
+flutter:    → constraints.maxHeight: 933.0
+flutter:    → constraints.minWidth: 0.0
+flutter:    → constraints.minHeight: 0.0
+flutter:    → [ReportTableBuilder:620] ConstrainedBox 생성 시작
+flutter:       → minWidth: 1732.0
+flutter:       → maxWidth: 1732.0
+flutter:    → [ReportTableBuilder:650] Column 생성 시작
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [buildTableFromList] 푸터 생성 시작
+flutter:    → keys: [vcode, tpago, cntropas, clientenombre, tefectivo, tcredito, tbanco, treservado, tfavor, vendedor, tipo, dni, hora, fecha, resiva, casoesp, nencargado, cretmp, sucursal, ntiqrepetir, b_mercadopago, d_num_caja, d_num_terminal, id]
+flutter:    → columnWidths 전달: true
+flutter:    → horizontalScrollController: true
+flutter:    → [fventas/ventas] 계산된 footerWidth: 3654.0
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [_buildFixedTotalRow] 함수 진입
+flutter:    → keys: [vcode, tpago, cntropas, clientenombre, tefectivo, tcredito, tbanco, treservado, tfavor, vendedor, tipo, dni, hora, fecha, resiva, casoesp, nencargado, cretmp, sucursal, ntiqrepetir, b_mercadopago, d_num_caja, d_num_terminal, id]
+flutter:    → keys.length: 24
+flutter:    → columnWidths 전달됨: true
+flutter:    → displayedList.length: 52
+flutter:    → dataList.length: 52
+flutter:    → reportType: ReportType.ventas
+flutter:    → 합계 계산에 사용할 리스트 길이: 52
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [푸터] _buildFixedTotalRow 칼럼 너비 정보
+flutter:    → keys: [vcode, tpago, cntropas, clientenombre, tefectivo, tcredito, tbanco, treservado, tfavor, vendedor, tipo, dni, hora, fecha, resiva, casoesp, nencargado, cretmp, sucursal, ntiqrepetir, b_mercadopago, d_num_caja, d_num_terminal, id]
+flutter:    → keys.length: 24
+flutter:    → columnWidths 전달됨: true
+flutter:    → finalColumnWidths: {codigo1: 200.0, desc1: 200.0, ProductName: 400.0, totalCantidad: 120.0, CategoryCode: 100.0, CompanyCode: 100.0, tprendas: 100.0, timporte: 120.0, codigo: 120.0, descripcion: 200.0, tevent: 100.0, tcant: 120.0, tIngreso: 120.0, tingreso: 120.0, cntEvent: 100.0, cntevent: 100.0, fecha: 120.0, hora: 100.0, evento: 500.0, progname: 150.0, alerta: 80.0, sucursal: 100.0, start_date: 120.0, end_date: 120.0}
+flutter:    → [푸터] 칼럼 #0: key="vcode", width=150.0, x=0.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=158.0
+flutter:    → [푸터] 칼럼 #1: key="tpago", width=150.0, x=158.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=316.0
+flutter:    → [푸터] 칼럼 #2: key="cntropas", width=150.0, x=316.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=474.0
+flutter:    → [푸터] 칼럼 #3: key="clientenombre", width=150.0, x=474.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=632.0
+flutter:    → [푸터] 칼럼 #4: key="tefectivo", width=150.0, x=632.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=790.0
+flutter:    → [푸터] 칼럼 #5: key="tcredito", width=150.0, x=790.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=948.0
+flutter:    → [푸터] 칼럼 #6: key="tbanco", width=150.0, x=948.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=1106.0
+flutter:    → [푸터] 칼럼 #7: key="treservado", width=150.0, x=1106.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=1264.0
+flutter:    → [푸터] 칼럼 #8: key="tfavor", width=150.0, x=1264.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=1422.0
+flutter:    → [푸터] 칼럼 #9: key="vendedor", width=150.0, x=1422.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=1580.0
+flutter:    → [푸터] 칼럼 #10: key="tipo", width=150.0, x=1580.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=1738.0
+flutter:    → [푸터] 칼럼 #11: key="dni", width=150.0, x=1738.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=1896.0
+flutter:    → [푸터] 칼럼 #12: key="hora", width=100.0, x=1896.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=2004.0
+flutter:    → [푸터] 칼럼 #13: key="fecha", width=120.0, x=2004.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=2132.0
+flutter:    → [푸터] 칼럼 #14: key="resiva", width=150.0, x=2132.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=2290.0
+flutter:    → [푸터] 칼럼 #15: key="casoesp", width=150.0, x=2290.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=2448.0
+flutter:    → [푸터] 칼럼 #16: key="nencargado", width=150.0, x=2448.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=2606.0
+flutter:    → [푸터] 칼럼 #17: key="cretmp", width=150.0, x=2606.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=2764.0
+flutter:    → [푸터] 칼럼 #18: key="sucursal", width=100.0, x=2764.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=2872.0
+flutter:    → [푸터] 칼럼 #19: key="ntiqrepetir", width=150.0, x=2872.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=3030.0
+flutter:    → [푸터] 칼럼 #20: key="b_mercadopago", width=150.0, x=3030.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=3188.0
+flutter:    → [푸터] 칼럼 #21: key="d_num_caja", width=150.0, x=3188.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=3346.0
+flutter:    → [푸터] 칼럼 #22: key="d_num_terminal", width=150.0, x=3346.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=3504.0
+flutter:    → [푸터] 칼럼 #23: key="id", width=150.0, x=3504.0, padding=16
+flutter:    → [푸터] 총 너비: 3654.0
+flutter:    → 푸터 생성 완료
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [ReportTableBuilder:680] buildTableFromList 내부 LayoutBuilder 시작
+flutter:    → 파일: report_table_builder.dart
+flutter:    → 라인: 680
+flutter:    → reportType: ReportType.ventas
+flutter:    → innerConstraints.maxWidth: 1732.0
+flutter:    → innerConstraints.maxHeight: 875.0
+flutter:    → innerConstraints.minWidth: 1732.0
+flutter:    → innerConstraints.minHeight: 875.0
+flutter:    → [ReportTableBuilder:690] Items/Ingresos: SingleChildScrollView로 수직 스크롤 추가
+flutter:    → [ReportTableBuilder:691] _buildTableContent 호출 시작
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [ReportTableBuilder:1512] _buildTableContent 시작
+flutter:    → 파일: report_table_builder.dart
+flutter:    → 라인: 1512
+flutter:    → reportType: ReportType.ventas
+flutter:    → constraints.maxWidth: 1732.0
+flutter:    → constraints.maxHeight: 875.0
+flutter:    → constraints.minWidth: 1732.0
+flutter:    → constraints.minHeight: 875.0
+flutter:    → horizontalScrollController: true
+flutter:    → [ReportTableBuilder:1522] needsHorizontalScroll: true
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [ReportTableBuilder:1772] _buildDataTable 시작
+flutter:    → 파일: report_table_builder.dart
+flutter:    → 라인: 1772
+flutter:    → reportType: ReportType.ventas
+flutter:    → isItemsOrIngresos: false
+flutter:    → columns.length: 24
+flutter:    → displayedList.length: 52
+flutter:    → keys.length: 24
+flutter:    → [ReportTableBuilder:705] _buildTableContent 호출 완료, Scrollbar + SingleChildScrollView로 감싸기
+flutter:    → [ReportTableBuilder:730] tableContent 반환
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [ReportTableBuilder:1781] _buildDataTable LayoutBuilder 시작
+flutter:    → 파일: report_table_builder.dart
+flutter:    → 라인: 1781
+flutter:    → constraints.maxWidth: 3654.0
+flutter:    → constraints.maxHeight: Infinity
+flutter:    → constraints.minWidth: 3654.0
+flutter:    → constraints.minHeight: 0.0
+flutter:    → [ReportTableBuilder:1789] DataTable 생성 시작
+flutter:    → [ReportTableBuilder:1808] SizedBox 생성 시작
+flutter:       → width: 3654.0
+flutter:    → [ReportTableBuilder:1832] sizedBox 반환
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [ReportTableBuilder:625] ConstrainedBox 실제 렌더링 크기 (PostFrameCallback)
+flutter:    → 파일: report_table_builder.dart
+flutter:    → 라인: 625
+flutter:    → ConstrainedBox width: 1732.0
+flutter:    → ConstrainedBox height: 933.0
+flutter:    → 예상 width: 1732.0
+flutter:    → [ReportTableBuilder:640] SizedBox 실제 렌더링 크기 (PostFrameCallback)
+flutter:       → 파일: report_table_builder.dart
+flutter:       → 라인: 640
+flutter:       → SizedBox width: 1732.0
+flutter:       → SizedBox height: 933.0
+flutter: 🔍 [ventas] Items/Ingresos 푸터 생성 완료
+flutter:    → horizontalScrollController: true
+flutter:    → horizontalScrollController.hasClients: true
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [오버랩 디버깅] buildFixedTotalRow 실제 렌더링 크기
+flutter:    → 푸터 실제 width: 3654.0
+flutter:    → 푸터 실제 height: 56.0
+flutter:    → 계산된 총 너비: 3654.0
+flutter:    → 부모 실제 width: 3654.0
+flutter:    ✅ 푸터 오버랩 없음. 여유: -0.0px
+flutter: ═══════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [ReportTableBuilder:708] buildTableFromList 실제 렌더링 크기 (PostFrameCallback)
+flutter:    → 파일: report_table_builder.dart
+flutter:    → 라인: 708
+flutter:    → width: 1732.0
+flutter:    → height: 2160.0
+flutter:    → 예상 width: 1732.0
+flutter:    → 차이: 0.0
+flutter:    → [ReportTableBuilder:720] 자식 RenderBox #0
+flutter:       → width: 1732.0
+flutter:       → height: 2160.0
+flutter: ═══════════════════════════════════════════════════════
+
+══╡ EXCEPTION CAUGHT BY SCHEDULER LIBRARY ╞═════════════════════════════════════════════════════════
+The following assertion was thrown during a scheduler callback:
+ScrollController attached to multiple scroll views.
+'package:flutter/src/widgets/scroll_controller.dart':
+Failed assertion: line 172 pos 12: '_positions.length == 1'
+
+When the exception was thrown, this was the stack:
+#2      ScrollController.position (package:flutter/src/widgets/scroll_controller.dart:172:12)
+#3      ReportTableBuilder.buildTableFromList.<anonymous closure>.<anonymous closure>.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:flutter_app/widgets/report_table_builder.dart:991:127)
+#4      SchedulerBinding._invokeFrameCallback (package:flutter/src/scheduler/binding.dart:1434:15)
+#5      SchedulerBinding.handleDrawFrame (package:flutter/src/scheduler/binding.dart:1361:11)
+#6      SchedulerBinding._handleDrawFrame (package:flutter/src/scheduler/binding.dart:1200:5)
+#7      _invoke (dart:ui/hooks.dart:356:13)
+#8      PlatformDispatcher._drawFrame (dart:ui/platform_dispatcher.dart:444:5)
+#9      _drawFrame (dart:ui/hooks.dart:328:31)
+(elided 2 frames from class _AssertionError)
+════════════════════════════════════════════════════════════════════════════════════════════════════
+
+flutter: 📊 [ReportTableBuilder:1815] _buildDataTable 실제 렌더링 크기 (PostFrameCallback)
+flutter:    → 파일: report_table_builder.dart
+flutter:    → 라인: 1815
+flutter:    → SizedBox width: 3654.0
+flutter:    → SizedBox height: 2160.0
+flutter:    → 예상 width: 3654.0
+flutter:    → 차이: 0.0
+flutter:    → [ReportTableBuilder:1824] 자식 RenderBox #0
+flutter:       → width: 3654.0
+flutter:       → height: 2160.0
+flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
+flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
+flutter: 🔍 [Resumen빌드날짜] BuildInfo.buildDate: "2026-01-06"
+flutter: 🔍 [Resumen빌드날짜] buildDate 파싱 성공: 2026-01-06 00:00:00.000
+flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 6
+flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-06"
+flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-06"
+flutter: 🔍 [Resumen메뉴] 메뉴 아이템 리스트 생성 완료, 총 14개
+flutter: 🔍 _buildReportContent 호출: _selectedReportType=ReportType.ventas, _currentReport=ventas
+flutter:    → ReportScreen 반환: reportType=ReportType.ventas
+flutter: 🔍 _buildReportContent: _selectedReportType=ReportType.ventas, _currentVentasDescontado=null
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📅 [_buildAppBar] Ventas AppBar title 렌더링
+flutter:    → 파일: report_screen.dart
+flutter:    → 라인: ~5098
+flutter:    → constraints.maxWidth: 1620.0
+flutter:    → isLargeScreen: true
+flutter:    → orientation: Orientation.landscape
+flutter:    → platformType: PlatformType.desktop
+flutter:    → isMobile: false
+flutter:    → isMobilePortrait: false
+flutter:    → isDesktopOrTablet: true
+flutter:    ✅ isDesktopOrTablet = true → 달력 버튼 2개 포함 Row 반환
+flutter: 🔵 _buildCompactUnitButton 호출: label=VCode, value=vcode, isSelected=true, 현재 _ventasUnit=vcode
+flutter: 🔵 _buildCompactUnitButton 호출: label=Day, value=day, isSelected=false, 현재 _ventasUnit=vcode
+flutter: 🔵 _buildCompactUnitButton 호출: label=Month, value=month, isSelected=false, 현재 _ventasUnit=vcode
+flutter: 🔵 _buildCompactUnitButton 호출: label=Year, value=year, isSelected=false, 현재 _ventasUnit=vcode
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [ventas] buildTableFromList 시작
+flutter:    → horizontalScrollController: true
+flutter:    → horizontalScrollController.hasClients: true
+Another exception was thrown: ScrollController attached to multiple scroll views.
+flutter: 🔄 ResumenDelDiaScreen: didChangeDependencies 호출, 연결 리스트 갱신
+flutter: 🔄 ResumenDelDiaScreen: 연결 목록 로드 시작...
+flutter: 📖 연결 정보 읽기 시작... (macOS: true)
+flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
+flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
+flutter: 🔍 [Resumen빌드날짜] BuildInfo.buildDate: "2026-01-06"
+flutter: 🔍 [Resumen빌드날짜] buildDate 파싱 성공: 2026-01-06 00:00:00.000
+flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 6
+flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-06"
+flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-06"
+flutter: 🔍 [Resumen메뉴] 메뉴 아이템 리스트 생성 완료, 총 14개
+flutter: 🔍 _buildReportContent 호출: _selectedReportType=ReportType.ventas, _currentReport=ventas
+flutter:    → ReportScreen 반환: reportType=ReportType.ventas
+flutter: 🔍 _buildReportContent: _selectedReportType=ReportType.ventas, _currentVentasDescontado=null
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📅 [_buildAppBar] Ventas AppBar title 렌더링
+flutter:    → 파일: report_screen.dart
+flutter:    → 라인: ~5098
+flutter:    → constraints.maxWidth: 1620.0
+flutter:    → isLargeScreen: true
+flutter:    → orientation: Orientation.landscape
+flutter:    → platformType: PlatformType.desktop
+flutter:    → isMobile: false
+flutter:    → isMobilePortrait: false
+flutter:    → isDesktopOrTablet: true
+flutter:    ✅ isDesktopOrTablet = true → 달력 버튼 2개 포함 Row 반환
+flutter: 🔵 _buildCompactUnitButton 호출: label=VCode, value=vcode, isSelected=true, 현재 _ventasUnit=vcode
+flutter: 🔵 _buildCompactUnitButton 호출: label=Day, value=day, isSelected=false, 현재 _ventasUnit=vcode
+flutter: 🔵 _buildCompactUnitButton 호출: label=Month, value=month, isSelected=false, 현재 _ventasUnit=vcode
+flutter: 🔵 _buildCompactUnitButton 호출: label=Year, value=year, isSelected=false, 현재 _ventasUnit=vcode
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [ventas] buildTableFromList 시작
+flutter:    → horizontalScrollController: true
+flutter:    → horizontalScrollController.hasClients: false
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [ReportTableBuilder:176] buildTableFromList 함수 시작
+flutter:    → 파일: report_table_builder.dart
+flutter:    → 라인: 176
+flutter:    → reportType: ReportType.ventas
+flutter:    → dataList.length: 52
+flutter:    → displayedItemsCount: 52
+flutter:    → itemsPerPage: 100
+flutter:    → displayedList.length: 52
+flutter:    → totalCount: 52
+flutter: 📊 Ventas vcode columns 순서: [vcode, tpago, cntropas, clientenombre, tefectivo, tcredito, tbanco, treservado, tfavor, vendedor, tipo, dni, hora, fecha, resiva, casoesp, nencargado, cretmp, sucursal, ntiqrepetir, b_mercadopago, d_num_caja, d_num_terminal, id]
+flutter:    → [ReportTableBuilder:593] isItemsOrIngresos 계산 (조기 확인)
+flutter:       → reportType == ReportType.items: false
+flutter:       → reportType == ReportType.ingresos: false
+flutter:       → isItemsOrIngresos: false
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [ReportTableBuilder:610] buildTableFromList Column LayoutBuilder 시작
+flutter:    → 파일: report_table_builder.dart
+flutter:    → 라인: 610
+flutter:    → reportType: ReportType.ventas
+flutter:    → constraints.maxWidth: 1732.0
+flutter:    → constraints.maxHeight: 933.0
+flutter:    → constraints.minWidth: 0.0
+flutter:    → constraints.minHeight: 0.0
+flutter:    → [ReportTableBuilder:620] ConstrainedBox 생성 시작
+flutter:       → minWidth: 1732.0
+flutter:       → maxWidth: 1732.0
+flutter:    → [ReportTableBuilder:650] Column 생성 시작
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [buildTableFromList] 푸터 생성 시작
+flutter:    → keys: [vcode, tpago, cntropas, clientenombre, tefectivo, tcredito, tbanco, treservado, tfavor, vendedor, tipo, dni, hora, fecha, resiva, casoesp, nencargado, cretmp, sucursal, ntiqrepetir, b_mercadopago, d_num_caja, d_num_terminal, id]
+flutter:    → columnWidths 전달: true
+flutter:    → horizontalScrollController: true
+flutter:    → [fventas/ventas] 계산된 footerWidth: 3654.0
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [_buildFixedTotalRow] 함수 진입
+flutter:    → keys: [vcode, tpago, cntropas, clientenombre, tefectivo, tcredito, tbanco, treservado, tfavor, vendedor, tipo, dni, hora, fecha, resiva, casoesp, nencargado, cretmp, sucursal, ntiqrepetir, b_mercadopago, d_num_caja, d_num_terminal, id]
+flutter:    → keys.length: 24
+flutter:    → columnWidths 전달됨: true
+flutter:    → displayedList.length: 52
+flutter:    → dataList.length: 52
+flutter:    → reportType: ReportType.ventas
+flutter:    → 합계 계산에 사용할 리스트 길이: 52
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [푸터] _buildFixedTotalRow 칼럼 너비 정보
+flutter:    → keys: [vcode, tpago, cntropas, clientenombre, tefectivo, tcredito, tbanco, treservado, tfavor, vendedor, tipo, dni, hora, fecha, resiva, casoesp, nencargado, cretmp, sucursal, ntiqrepetir, b_mercadopago, d_num_caja, d_num_terminal, id]
+flutter:    → keys.length: 24
+flutter:    → columnWidths 전달됨: true
+flutter:    → finalColumnWidths: {codigo1: 200.0, desc1: 200.0, ProductName: 400.0, totalCantidad: 120.0, CategoryCode: 100.0, CompanyCode: 100.0, tprendas: 100.0, timporte: 120.0, codigo: 120.0, descripcion: 200.0, tevent: 100.0, tcant: 120.0, tIngreso: 120.0, tingreso: 120.0, cntEvent: 100.0, cntevent: 100.0, fecha: 120.0, hora: 100.0, evento: 500.0, progname: 150.0, alerta: 80.0, sucursal: 100.0, start_date: 120.0, end_date: 120.0}
+flutter:    → [푸터] 칼럼 #0: key="vcode", width=150.0, x=0.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=158.0
+flutter:    → [푸터] 칼럼 #1: key="tpago", width=150.0, x=158.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=316.0
+flutter:    → [푸터] 칼럼 #2: key="cntropas", width=150.0, x=316.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=474.0
+flutter:    → [푸터] 칼럼 #3: key="clientenombre", width=150.0, x=474.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=632.0
+flutter:    → [푸터] 칼럼 #4: key="tefectivo", width=150.0, x=632.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=790.0
+flutter:    → [푸터] 칼럼 #5: key="tcredito", width=150.0, x=790.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=948.0
+flutter:    → [푸터] 칼럼 #6: key="tbanco", width=150.0, x=948.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=1106.0
+flutter:    → [푸터] 칼럼 #7: key="treservado", width=150.0, x=1106.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=1264.0
+flutter:    → [푸터] 칼럼 #8: key="tfavor", width=150.0, x=1264.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=1422.0
+flutter:    → [푸터] 칼럼 #9: key="vendedor", width=150.0, x=1422.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=1580.0
+flutter:    → [푸터] 칼럼 #10: key="tipo", width=150.0, x=1580.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=1738.0
+flutter:    → [푸터] 칼럼 #11: key="dni", width=150.0, x=1738.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=1896.0
+flutter:    → [푸터] 칼럼 #12: key="hora", width=100.0, x=1896.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=2004.0
+flutter:    → [푸터] 칼럼 #13: key="fecha", width=120.0, x=2004.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=2132.0
+flutter:    → [푸터] 칼럼 #14: key="resiva", width=150.0, x=2132.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=2290.0
+flutter:    → [푸터] 칼럼 #15: key="casoesp", width=150.0, x=2290.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=2448.0
+flutter:    → [푸터] 칼럼 #16: key="nencargado", width=150.0, x=2448.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=2606.0
+flutter:    → [푸터] 칼럼 #17: key="cretmp", width=150.0, x=2606.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=2764.0
+flutter:    → [푸터] 칼럼 #18: key="sucursal", width=100.0, x=2764.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=2872.0
+flutter:    → [푸터] 칼럼 #19: key="ntiqrepetir", width=150.0, x=2872.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=3030.0
+flutter:    → [푸터] 칼럼 #20: key="b_mercadopago", width=150.0, x=3030.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=3188.0
+flutter:    → [푸터] 칼럼 #21: key="d_num_caja", width=150.0, x=3188.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=3346.0
+flutter:    → [푸터] 칼럼 #22: key="d_num_terminal", width=150.0, x=3346.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=3504.0
+flutter:    → [푸터] 칼럼 #23: key="id", width=150.0, x=3504.0, padding=16
+flutter:    → [푸터] 총 너비: 3654.0
+flutter:    → 푸터 생성 완료
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [ReportTableBuilder:680] buildTableFromList 내부 LayoutBuilder 시작
+flutter:    → 파일: report_table_builder.dart
+flutter:    → 라인: 680
+flutter:    → reportType: ReportType.ventas
+flutter:    → innerConstraints.maxWidth: 1732.0
+flutter:    → innerConstraints.maxHeight: 875.0
+flutter:    → innerConstraints.minWidth: 1732.0
+flutter:    → innerConstraints.minHeight: 875.0
+flutter:    → [ReportTableBuilder:690] Items/Ingresos: SingleChildScrollView로 수직 스크롤 추가
+flutter:    → [ReportTableBuilder:691] _buildTableContent 호출 시작
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [ReportTableBuilder:1512] _buildTableContent 시작
+flutter:    → 파일: report_table_builder.dart
+flutter:    → 라인: 1512
+flutter:    → reportType: ReportType.ventas
+flutter:    → constraints.maxWidth: 1732.0
+flutter:    → constraints.maxHeight: 875.0
+flutter:    → constraints.minWidth: 1732.0
+flutter:    → constraints.minHeight: 875.0
+flutter:    → horizontalScrollController: true
+flutter:    → [ReportTableBuilder:1522] needsHorizontalScroll: true
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [ReportTableBuilder:1772] _buildDataTable 시작
+flutter:    → 파일: report_table_builder.dart
+flutter:    → 라인: 1772
+flutter:    → reportType: ReportType.ventas
+flutter:    → isItemsOrIngresos: false
+flutter:    → columns.length: 24
+flutter:    → displayedList.length: 52
+flutter:    → keys.length: 24
+flutter:    → [ReportTableBuilder:705] _buildTableContent 호출 완료, Scrollbar + SingleChildScrollView로 감싸기
+flutter:    → [ReportTableBuilder:730] tableContent 반환
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [ReportTableBuilder:1781] _buildDataTable LayoutBuilder 시작
+flutter:    → 파일: report_table_builder.dart
+flutter:    → 라인: 1781
+flutter:    → constraints.maxWidth: 3654.0
+flutter:    → constraints.maxHeight: Infinity
+flutter:    → constraints.minWidth: 3654.0
+flutter:    → constraints.minHeight: 0.0
+flutter:    → [ReportTableBuilder:1789] DataTable 생성 시작
+flutter:    → [ReportTableBuilder:1808] SizedBox 생성 시작
+flutter:       → width: 3654.0
+flutter:    → [ReportTableBuilder:1832] sizedBox 반환
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [ReportTableBuilder:625] ConstrainedBox 실제 렌더링 크기 (PostFrameCallback)
+flutter:    → 파일: report_table_builder.dart
+flutter:    → 라인: 625
+flutter:    → ConstrainedBox width: 1732.0
+flutter:    → ConstrainedBox height: 933.0
+flutter:    → 예상 width: 1732.0
+flutter:    → [ReportTableBuilder:640] SizedBox 실제 렌더링 크기 (PostFrameCallback)
+flutter:       → 파일: report_table_builder.dart
+flutter:       → 라인: 640
+flutter:       → SizedBox width: 1732.0
+flutter:       → SizedBox height: 933.0
+flutter: 🔍 [ventas] Items/Ingresos 푸터 생성 완료
+flutter:    → horizontalScrollController: true
+flutter:    → horizontalScrollController.hasClients: true
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [오버랩 디버깅] buildFixedTotalRow 실제 렌더링 크기
+flutter:    → 푸터 실제 width: 3654.0
+flutter:    → 푸터 실제 height: 56.0
+flutter:    → 계산된 총 너비: 3654.0
+flutter:    → 부모 실제 width: 3654.0
+flutter:    ✅ 푸터 오버랩 없음. 여유: -0.0px
+flutter: ═══════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [ReportTableBuilder:708] buildTableFromList 실제 렌더링 크기 (PostFrameCallback)
+flutter:    → 파일: report_table_builder.dart
+flutter:    → 라인: 708
+flutter:    → width: 1732.0
+flutter:    → height: 2160.0
+flutter:    → 예상 width: 1732.0
+flutter:    → 차이: 0.0
+flutter:    → [ReportTableBuilder:720] 자식 RenderBox #0
+flutter:       → width: 1732.0
+flutter:       → height: 2160.0
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [ReportTableBuilder:1815] _buildDataTable 실제 렌더링 크기 (PostFrameCallback)
+flutter:    → 파일: report_table_builder.dart
+flutter:    → 라인: 1815
+flutter:    → SizedBox width: 3654.0
+flutter:    → SizedBox height: 2160.0
+flutter:    → 예상 width: 3654.0
+flutter:    → 차이: 0.0
+flutter:    → [ReportTableBuilder:1824] 자식 RenderBox #0
+flutter:       → width: 3654.0
+flutter:       → height: 2160.0
+flutter: 📖 SharedPreferences에서 읽기 완료
+flutter: 📖 JSON 데이터 읽기 완료 (길이: 483)
+flutter: ✅ 연결 정보 파싱 완료: 3개 연결
+flutter:    - inquieta (ID: 1765666561277)
+flutter:    - ace (ID: 1765984612266)
+flutter:    - jol-test (ID: 1767153069054)
+flutter: ✅ ResumenDelDiaScreen: 3개 연결 로드 완료
+flutter:    - inquieta (ID: 1765666561277, DB: inquieta14)
+flutter:    - ace (ID: 1765984612266, DB: ace17)
+flutter:    - jol-test (ID: 1767153069054, DB: jolues37)
+flutter: 🔄 ResumenDelDiaScreen: UI 업데이트 완료 (3개 연결 표시)
+Another exception was thrown: ScrollController attached to multiple scroll views.
+flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
+flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
+flutter: 🔍 [Resumen빌드날짜] BuildInfo.buildDate: "2026-01-06"
+flutter: 🔍 [Resumen빌드날짜] buildDate 파싱 성공: 2026-01-06 00:00:00.000
+flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 6
+flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-06"
+flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-06"
+flutter: 🔍 [Resumen메뉴] 메뉴 아이템 리스트 생성 완료, 총 14개
+flutter: 🔍 _buildReportContent 호출: _selectedReportType=ReportType.ventas, _currentReport=ventas
+flutter:    → ReportScreen 반환: reportType=ReportType.ventas
+flutter: 🔍 _buildReportContent: _selectedReportType=ReportType.ventas, _currentVentasDescontado=null
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📅 [_buildAppBar] Ventas AppBar title 렌더링
+flutter:    → 파일: report_screen.dart
+flutter:    → 라인: ~5098
+flutter:    → constraints.maxWidth: 1620.0
+flutter:    → isLargeScreen: true
+flutter:    → orientation: Orientation.landscape
+flutter:    → platformType: PlatformType.desktop
+flutter:    → isMobile: false
+flutter:    → isMobilePortrait: false
+flutter:    → isDesktopOrTablet: true
+flutter:    ✅ isDesktopOrTablet = true → 달력 버튼 2개 포함 Row 반환
+flutter: 🔵 _buildCompactUnitButton 호출: label=VCode, value=vcode, isSelected=true, 현재 _ventasUnit=vcode
+flutter: 🔵 _buildCompactUnitButton 호출: label=Day, value=day, isSelected=false, 현재 _ventasUnit=vcode
+flutter: 🔵 _buildCompactUnitButton 호출: label=Month, value=month, isSelected=false, 현재 _ventasUnit=vcode
+flutter: 🔵 _buildCompactUnitButton 호출: label=Year, value=year, isSelected=false, 현재 _ventasUnit=vcode
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [ventas] buildTableFromList 시작
+flutter:    → horizontalScrollController: true
+flutter:    → horizontalScrollController.hasClients: true
+Another exception was thrown: ScrollController attached to multiple scroll views.
+Lost connection to device.

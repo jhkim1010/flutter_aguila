@@ -4970,34 +4970,35 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     return menuItems;
   }
 
-  /// 빌드 날짜를 스페인어 형식으로 반환 (예: "ver. 2026-Enero-02")
+  /// 오늘 날짜를 스페인어 형식으로 반환 (예: "ver. 2026-Enero-02")
   String _getBuildDateString() {
     debugPrint('🔍 [Resumen빌드날짜] _getBuildDateString 호출됨');
     try {
-      debugPrint('🔍 [Resumen빌드날짜] BuildInfo.buildDate: "${BuildInfo.buildDate}"');
-      final buildDate = BuildInfo.buildDateAsDateTime;
-      debugPrint('🔍 [Resumen빌드날짜] buildDate 파싱 성공: $buildDate');
-      debugPrint('🔍 [Resumen빌드날짜] year: ${buildDate.year}, month: ${buildDate.month}, day: ${buildDate.day}');
+      // 오늘 날짜 사용
+      final today = DateTime.now();
+      debugPrint('🔍 [Resumen빌드날짜] 오늘 날짜: $today');
+      debugPrint('🔍 [Resumen빌드날짜] year: ${today.year}, month: ${today.month}, day: ${today.day}');
       
       final monthNames = [
         'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
         'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
       ];
       
-      if (buildDate.month < 1 || buildDate.month > 12) {
-        debugPrint('❌ [Resumen빌드날짜] 잘못된 월: ${buildDate.month}');
-        return 'ver. ${BuildInfo.buildDate}';
+      if (today.month < 1 || today.month > 12) {
+        debugPrint('❌ [Resumen빌드날짜] 잘못된 월: ${today.month}');
+        return 'ver. ${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
       }
       
-      final monthName = monthNames[buildDate.month - 1];
-      final day = buildDate.day.toString().padLeft(2, '0');
-      final result = 'ver. ${buildDate.year}-$monthName-$day';
+      final monthName = monthNames[today.month - 1];
+      final day = today.day.toString().padLeft(2, '0');
+      final result = 'ver. ${today.year}-$monthName-$day';
       debugPrint('✅ [Resumen빌드날짜] 최종 결과: "$result"');
       return result;
     } catch (e, stackTrace) {
       debugPrint('❌ [Resumen빌드날짜] 오류 발생: $e');
       debugPrint('❌ [Resumen빌드날짜] 스택 트레이스: $stackTrace');
-      final fallback = 'ver. ${BuildInfo.buildDate}';
+      final today = DateTime.now();
+      final fallback = 'ver. ${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
       debugPrint('🔍 [Resumen빌드날짜] 폴백 결과: "$fallback"');
       return fallback;
     }

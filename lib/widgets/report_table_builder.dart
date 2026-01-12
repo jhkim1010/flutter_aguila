@@ -1381,12 +1381,17 @@ class ReportTableBuilder {
       // 헤더를 별도로 분리하여 수평 스크롤 동기화
       final headerRow = buildHeaderRow(keys, columns, color, sortColumn, sortAscending, onSort, reportType: reportType);
       
+      // 헤더와 푸터용 별도 컨트롤러 생성 (데이터 테이블과 동기화)
+      final headerFooterScrollController = horizontalScrollController != null
+          ? ScrollController()
+          : null;
+      
       return Column(
         children: [
-          // 헤더 (수평 스크롤 동기화)
-          if (horizontalScrollController != null)
+          // 헤더 (수평 스크롤 동기화 - 별도 컨트롤러 사용)
+          if (horizontalScrollController != null && headerFooterScrollController != null)
             SingleChildScrollView(
-              controller: horizontalScrollController,
+              controller: headerFooterScrollController,
               scrollDirection: Axis.horizontal,
               physics: const NeverScrollableScrollPhysics(),
               child: headerRow,
@@ -1995,6 +2000,11 @@ class ReportTableBuilder {
     debugPrint('   → reportType: $reportType');
     
     // fventas 및 ventas 보고서의 경우 헤더, 테이블, 푸터를 하나의 수평 스크롤 컨테이너로 감싸서 동기화
+    // 헤더와 푸터용 별도 컨트롤러 생성 (데이터 테이블과 동기화)
+    final headerFooterScrollController = (reportType == ReportType.fventas || reportType == ReportType.ventas) && horizontalScrollController != null
+        ? ScrollController()
+        : null;
+    
     if ((reportType == ReportType.fventas || reportType == ReportType.ventas) && horizontalScrollController != null) {
       // 테이블의 실제 너비 계산 (buildHeaderRow와 동일한 방식)
       double calculateTableWidth() {
@@ -2195,22 +2205,46 @@ class ReportTableBuilder {
                     child: LayoutBuilder(
                       builder: (context, innerConstraints) {
                         // fventas/ventas의 경우 헤더와 푸터는 이미 외부에서 처리되므로 테이블만 반환
-                        return SingleChildScrollView(
-                          controller: horizontalScrollController,
-                          scrollDirection: Axis.horizontal,
-                          child: SizedBox(
-                            width: tableWidth,
-                            child: buildDataTable(
-                              reportType: reportType,
-                              displayedList: displayedList,
-                              keys: keys,
-                              columns: columns,
-                              dataList: dataList,
-                              color: color,
-                              onRowDoubleTap: onRowDoubleTap,
-                              onRowTap: onRowTap,
-                              unit: unit,
-                              columnWidths: columnWidths,
+                        // headerFooterScrollController를 클로저로 캡처
+                        final syncController = headerFooterScrollController;
+                        return NotificationListener<ScrollNotification>(
+                          onNotification: (notification) {
+                            // 데이터 테이블의 스크롤 이벤트를 헤더와 푸터에 전달
+                            if (notification is ScrollUpdateNotification &&
+                                notification.metrics.axis == Axis.horizontal &&
+                                horizontalScrollController != null &&
+                                syncController != null) {
+                              final tableScrollPosition = notification.metrics.pixels;
+                              
+                              // 헤더와 푸터 동기화
+                              if (syncController.hasClients) {
+                                final headerScrollPosition = syncController.position.pixels;
+                                final difference = (tableScrollPosition - headerScrollPosition).abs();
+                                
+                                if (difference > 0.1) {
+                                  syncController.jumpTo(tableScrollPosition);
+                                }
+                              }
+                            }
+                            return false;
+                          },
+                          child: SingleChildScrollView(
+                            controller: horizontalScrollController,
+                            scrollDirection: Axis.horizontal,
+                            child: SizedBox(
+                              width: tableWidth,
+                              child: buildDataTable(
+                                reportType: reportType,
+                                displayedList: displayedList,
+                                keys: keys,
+                                columns: columns,
+                                dataList: dataList,
+                                color: color,
+                                onRowDoubleTap: onRowDoubleTap,
+                                onRowTap: onRowTap,
+                                unit: unit,
+                                columnWidths: columnWidths,
+                              ),
                             ),
                           ),
                         );
@@ -2221,12 +2255,27 @@ class ReportTableBuilder {
               ),
             ),
           ),
-          // 푸터 (수평 스크롤 컨테이너로 감싸기)
-          SingleChildScrollView(
-            controller: horizontalScrollController,
-            scrollDirection: Axis.horizontal,
-            physics: const NeverScrollableScrollPhysics(),
-            child: SizedBox(
+          // 푸터 (수평 스크롤 동기화 - 헤더와 같은 컨트롤러 사용)
+          if (horizontalScrollController != null && headerFooterScrollController != null)
+            SingleChildScrollView(
+              controller: headerFooterScrollController,
+              scrollDirection: Axis.horizontal,
+              physics: const NeverScrollableScrollPhysics(),
+              child: SizedBox(
+                width: tableWidth,
+                child: buildFixedTotalRow(
+                  keys, 
+                  displayedList, 
+                  color,
+                  columnWidths: columnWidths,
+                  dataList: dataList,
+                  reportType: reportType,
+                  explicitWidth: tableWidth, // 명시적 너비 전달
+                ),
+              ),
+            )
+          else
+            SizedBox(
               width: tableWidth,
               child: buildFixedTotalRow(
                 keys, 
@@ -2238,7 +2287,6 @@ class ReportTableBuilder {
                 explicitWidth: tableWidth, // 명시적 너비 전달
               ),
             ),
-          ),
         ],
       );
     }
