@@ -1982,31 +1982,63 @@ class _ReportScreenState extends State<ReportScreen> {
 
       // 데이터에서 sucursal 목록 추출
       List<String>? sucursales;
+      debugPrint('═══════════════════════════════════════════════════════');
+      debugPrint('🔍 [Ventas Sucursal 디버깅] sucursal 목록 추출 시작');
+      debugPrint('   → reportType: ${widget.reportType}');
+      debugPrint('   → data.containsKey("data"): ${data.containsKey('data')}');
+      
       if (data.containsKey('data')) {
+        debugPrint('   → data["data"] 타입: ${data['data'].runtimeType}');
+        
         if (data['data'] is List) {
           final dataList = data['data'] as List;
+          debugPrint('   → data["data"]는 List, 길이: ${dataList.length}');
           final sucursalSet = <String>{};
+          
           for (var item in dataList) {
-            if (item is Map<String, dynamic> && item.containsKey('sucursal')) {
-              final sucursal = item['sucursal']?.toString();
-              if (sucursal != null && sucursal.isNotEmpty) {
-                sucursalSet.add(sucursal);
+            if (item is Map<String, dynamic>) {
+              debugPrint('   → 항목 키: ${item.keys.toList()}');
+              if (item.containsKey('sucursal')) {
+                final sucursal = item['sucursal']?.toString();
+                debugPrint('   → sucursal 값: $sucursal (타입: ${item['sucursal'].runtimeType})');
+                if (sucursal != null && sucursal.isNotEmpty) {
+                  sucursalSet.add(sucursal);
+                  debugPrint('   → sucursal 추가됨: $sucursal');
+                } else {
+                  debugPrint('   ⚠️ sucursal이 null이거나 비어있음');
+                }
+              } else {
+                debugPrint('   ⚠️ 항목에 "sucursal" 키가 없음');
               }
+            } else {
+              debugPrint('   ⚠️ 항목이 Map이 아님: ${item.runtimeType}');
             }
           }
+          
+          debugPrint('   → 추출된 sucursalSet: $sucursalSet');
+          debugPrint('   → sucursalSet.isEmpty: ${sucursalSet.isEmpty}');
+          
           if (sucursalSet.isNotEmpty) {
             sucursales = sucursalSet.toList()..sort((a, b) {
               final aNum = int.tryParse(a) ?? 0;
               final bNum = int.tryParse(b) ?? 0;
               return aNum.compareTo(bNum);
             });
+            debugPrint('   → 정렬된 sucursales: $sucursales');
+          } else {
+            debugPrint('   ⚠️ sucursalSet이 비어있어서 sucursales = null');
           }
         } else if (data['data'] is Map) {
+          debugPrint('   → data["data"]는 Map');
           // gastos 보고서처럼 data가 Map인 경우
           final dataMap = data['data'] as Map<String, dynamic>;
+          debugPrint('   → dataMap 키: ${dataMap.keys.toList()}');
+          
           if (dataMap.containsKey('detail') && dataMap['detail'] is List) {
             final detailList = dataMap['detail'] as List;
+            debugPrint('   → detailList 길이: ${detailList.length}');
             final sucursalSet = <String>{};
+            
             for (var item in detailList) {
               if (item is Map<String, dynamic> && item.containsKey('sucursal')) {
                 final sucursal = item['sucursal']?.toString();
@@ -2015,6 +2047,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 }
               }
             }
+            
             if (sucursalSet.isNotEmpty) {
               sucursales = sucursalSet.toList()..sort((a, b) {
                 final aNum = int.tryParse(a) ?? 0;
@@ -2022,9 +2055,23 @@ class _ReportScreenState extends State<ReportScreen> {
                 return aNum.compareTo(bNum);
               });
             }
+          } else {
+            debugPrint('   ⚠️ dataMap에 "detail" 키가 없거나 List가 아님');
           }
+        } else {
+          debugPrint('   ⚠️ data["data"]가 List도 Map도 아님: ${data['data'].runtimeType}');
         }
+      } else {
+        debugPrint('   ⚠️ data에 "data" 키가 없음');
       }
+      
+      debugPrint('   → 최종 sucursales: $sucursales');
+      debugPrint('   → sucursales == null: ${sucursales == null}');
+      if (sucursales != null) {
+        debugPrint('   → sucursales.length: ${sucursales.length}');
+        debugPrint('   → sucursales.length > 1: ${sucursales.length > 1}');
+      }
+      debugPrint('═══════════════════════════════════════════════════════');
 
       debugPrint('   → 데이터 로딩 완료');
       debugPrint('   - 데이터 타입: ${data.runtimeType}');
@@ -2073,11 +2120,25 @@ class _ReportScreenState extends State<ReportScreen> {
         _data = data;
         _isLoading = false;
         _availableSucursales = sucursales;
+        
+        debugPrint('═══════════════════════════════════════════════════════');
+        debugPrint('🔍 [Ventas Sucursal 디버깅] setState에서 _availableSucursales 설정');
+        debugPrint('   → reportType: ${widget.reportType}');
+        debugPrint('   → sucursales: $sucursales');
+        debugPrint('   → _availableSucursales: $_availableSucursales');
+        debugPrint('   → _availableSucursales == null: ${_availableSucursales == null}');
+        if (_availableSucursales != null) {
+          debugPrint('   → _availableSucursales.length: ${_availableSucursales!.length}');
+          debugPrint('   → _availableSucursales.length > 1: ${_availableSucursales!.length > 1}');
+        }
+        debugPrint('═══════════════════════════════════════════════════════');
+        
         // 성능 최적화: 데이터 변경 시 합계 계산 캐시 무효화
         ReportTotalRowBuilder.clearCache();
         // sucursal이 1개 이하이면 필터 초기화
         if (sucursales == null || sucursales.length <= 1) {
           _selectedSucursal = null;
+          debugPrint('🔍 [Ventas Sucursal 디버깅] sucursal이 1개 이하이므로 _selectedSucursal = null');
         }
         // 데이터가 로드되면 처음 100개만 표시
         if (data.containsKey('data')) {
@@ -3845,6 +3906,33 @@ class _ReportScreenState extends State<ReportScreen> {
                             debugPrint('      - checkboxesRow: 생성됨');
                             debugPrint('      - filteringField: 생성됨');
                             
+                            // Sucursal 선택 콤보 미리 빌드
+                            final sucursalSelectorWidget = _buildSucursalSelectorWithDebug('큰 화면 - AppBar title (isDesktopOrTablet - 첫 번째 위치)');
+                            debugPrint('🔍 [Row children 구성 - 첫 번째 위치] sucursalSelectorWidget: ${sucursalSelectorWidget != null ? sucursalSelectorWidget.runtimeType : "null"}');
+                            
+                            // Row children 리스트 구성
+                            final rowChildren = <Widget>[
+                              // Unit 선택 콤보
+                              unitButtons,
+                              const SizedBox(width: 8),
+                              // 달력 버튼 2개
+                              desdeButton,
+                              const SizedBox(width: 4),
+                              hastaButton,
+                              const SizedBox(width: 8),
+                            ];
+                            
+                            // Sucursal 선택 콤보 추가
+                            if (sucursalSelectorWidget != null) {
+                              debugPrint('🔍 [Row children 구성 - 첫 번째 위치] sucursalSelectorWidget 추가됨');
+                              rowChildren.add(sucursalSelectorWidget);
+                              rowChildren.add(const SizedBox(width: 8));
+                            } else {
+                              debugPrint('🔍 [Row children 구성 - 첫 번째 위치] sucursalSelectorWidget가 null이므로 추가 안 함');
+                            }
+                            
+                            debugPrint('🔍 [Row children 구성 - 첫 번째 위치] 최종 children 개수: ${rowChildren.length}');
+                            
                             return Builder(
                               builder: (context) {
                                 WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -3853,19 +3941,15 @@ class _ReportScreenState extends State<ReportScreen> {
                                     debugPrint('   → Row 실제 렌더링 크기:');
                                     debugPrint('      - width: ${renderObject.size.width}');
                                     debugPrint('      - height: ${renderObject.size.height}');
+                                    if (renderObject is RenderFlex) {
+                                      debugPrint('      - children 개수: ${renderObject.childCount}');
+                                    }
                                   }
                                 });
                                 
                                 return Row(
                                   children: [
-                                    // Unit 선택 콤보
-                                    unitButtons,
-                                    const SizedBox(width: 8),
-                                    // 달력 버튼 2개
-                                    desdeButton,
-                                    const SizedBox(width: 4),
-                                    hastaButton,
-                                    const SizedBox(width: 8),
+                                    ...rowChildren,
                                     // Descontado, Reservado, Crédito 체크박스
                                     checkboxesRow,
                                     const SizedBox(width: 8),
@@ -5613,20 +5697,39 @@ class _ReportScreenState extends State<ReportScreen> {
                                   endDate: widget.reportType == ReportType.fventas ? _ventasEndDate : _itemsEndDate,
                                   unit: widget.reportType == ReportType.fventas ? _ventasUnit : null, // fventas 보고서의 경우 unit 전달
                                   onDateRangeChanged: (startDate, endDate) {
-                                    setState(() {
-                                      if (widget.reportType == ReportType.fventas) {
-                                        _ventasStartDate = startDate;
-                                        _ventasEndDate = endDate;
-                                        debugPrint('📅 FVentas 날짜 범위 변경: ${DateFormat('yyyy-MM-dd').format(startDate)} ~ ${DateFormat('yyyy-MM-dd').format(endDate)}');
-                                      } else {
-                                        _itemsStartDate = startDate;
-                                        _itemsEndDate = endDate;
+                                    debugPrint('═══════════════════════════════════════════════════════');
+                                    debugPrint('📅 [FVentas] 날짜 범위 변경 이벤트 시작');
+                                    debugPrint('   → reportType: ${widget.reportType}');
+                                    debugPrint('   → startDate: $startDate');
+                                    debugPrint('   → endDate: $endDate');
+                                    debugPrint('   → 현재 _ventasStartDate: $_ventasStartDate');
+                                    debugPrint('   → 현재 _ventasEndDate: $_ventasEndDate');
+                                    debugPrint('   → horizontalScrollController: ${_horizontalScrollController != null}');
+                                    
+                                    try {
+                                      setState(() {
+                                        if (widget.reportType == ReportType.fventas) {
+                                          _ventasStartDate = startDate;
+                                          _ventasEndDate = endDate;
+                                          debugPrint('📅 FVentas 날짜 범위 변경: ${DateFormat('yyyy-MM-dd').format(startDate)} ~ ${DateFormat('yyyy-MM-dd').format(endDate)}');
+                                        } else {
+                                          _itemsStartDate = startDate;
+                                          _itemsEndDate = endDate;
+                                        }
+                                      });
+                                      
+                                      if (widget.onItemsDateRangeChanged != null && widget.reportType != ReportType.fventas) {
+                                        widget.onItemsDateRangeChanged!(startDate, endDate);
                                       }
-                                    });
-                                    if (widget.onItemsDateRangeChanged != null && widget.reportType != ReportType.fventas) {
-                                      widget.onItemsDateRangeChanged!(startDate, endDate);
+                                      
+                                      debugPrint('   → _loadData() 호출 전');
+                                      _loadData();
+                                      debugPrint('   → _loadData() 호출 완료');
+                                    } catch (e, stackTrace) {
+                                      debugPrint('❌ [FVentas] 날짜 범위 변경 중 오류 발생: $e');
+                                      debugPrint('❌ [FVentas] 스택 트레이스: $stackTrace');
                                     }
-                                    _loadData();
+                                    debugPrint('═══════════════════════════════════════════════════════');
                                   },
                                 ),
                               ),
@@ -5970,55 +6073,122 @@ class _ReportScreenState extends State<ReportScreen> {
                         
                         if (isDesktopOrTablet) {
                           debugPrint('   ✅ isDesktopOrTablet = true → 달력 버튼 2개 포함 Row 반환');
-                          return Row(
-                            children: [
-                              // Unit 선택 콤보
-                              _buildVentasUnitButtonsInAppBar(),
-                              const SizedBox(width: 8),
-                              // 달력 버튼 2개
-                              SizedBox(
-                                width: 90,
-                                child: _buildSingleDateButton(
-                                  label: 'Desde',
-                                  date: _ventasStartDate,
-                                  reportColor: _getReportColor(),
-                                  unit: _ventasUnit,
-                                  onDateSelected: (date) {
-                                    setState(() {
-                                      _ventasStartDate = date;
-                                      if (_ventasUnit == 'month') {
-                                        _ventasEndDate = DateTime(date.year, date.month + 1, 0);
-                                      }
-                                    });
-                                    _loadData();
-                                  },
-                                ),
+                          
+                          // Sucursal 선택 콤보 미리 빌드
+                          final sucursalSelectorWidget = _buildSucursalSelectorWithDebug('큰 화면 - AppBar title (isDesktopOrTablet)');
+                          debugPrint('🔍 [Row children 구성] sucursalSelectorWidget: ${sucursalSelectorWidget != null ? sucursalSelectorWidget.runtimeType : "null"}');
+                          
+                          // Row children 리스트 구성
+                          final rowChildren = <Widget>[
+                            // Unit 선택 콤보
+                            _buildVentasUnitButtonsInAppBar(),
+                            const SizedBox(width: 8),
+                            // 달력 버튼 2개
+                            SizedBox(
+                              width: 90,
+                              child: _buildSingleDateButton(
+                                label: 'Desde',
+                                date: _ventasStartDate,
+                                reportColor: _getReportColor(),
+                                unit: _ventasUnit,
+                                onDateSelected: (date) {
+                                  setState(() {
+                                    _ventasStartDate = date;
+                                    if (_ventasUnit == 'month') {
+                                      _ventasEndDate = DateTime(date.year, date.month + 1, 0);
+                                    }
+                                  });
+                                  _loadData();
+                                },
                               ),
-                              const SizedBox(width: 4),
-                              SizedBox(
-                                width: 90,
-                                child: _buildSingleDateButton(
-                                  label: 'Hasta',
-                                  date: _ventasEndDate,
-                                  reportColor: _getReportColor(),
-                                  unit: _ventasUnit,
-                                  onDateSelected: (date) {
-                                    setState(() {
-                                      _ventasEndDate = date;
-                                      if (_ventasUnit == 'month') {
-                                        _ventasStartDate = DateTime(date.year, date.month, 1);
-                                      }
-                                    });
-                                    _loadData();
-                                  },
-                                ),
+                            ),
+                            const SizedBox(width: 4),
+                            SizedBox(
+                              width: 90,
+                              child: _buildSingleDateButton(
+                                label: 'Hasta',
+                                date: _ventasEndDate,
+                                reportColor: _getReportColor(),
+                                unit: _ventasUnit,
+                                onDateSelected: (date) {
+                                  setState(() {
+                                    _ventasEndDate = date;
+                                    if (_ventasUnit == 'month') {
+                                      _ventasStartDate = DateTime(date.year, date.month, 1);
+                                    }
+                                  });
+                                  _loadData();
+                                },
                               ),
-                              const SizedBox(width: 8),
-                              // Descontado, Reservado, Crédito 체크박스
-                              Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Checkbox(
+                            ),
+                            const SizedBox(width: 8),
+                          ];
+                          
+                          // Sucursal 선택 콤보 추가
+                          if (sucursalSelectorWidget != null) {
+                            debugPrint('🔍 [Row children 구성] sucursalSelectorWidget 추가됨');
+                            rowChildren.add(sucursalSelectorWidget);
+                            rowChildren.add(const SizedBox(width: 8));
+                          } else {
+                            debugPrint('🔍 [Row children 구성] sucursalSelectorWidget가 null이므로 추가 안 함');
+                          }
+                          
+                          debugPrint('🔍 [Row children 구성] 최종 children 개수: ${rowChildren.length}');
+                          for (int i = 0; i < rowChildren.length; i++) {
+                            debugPrint('   → children[$i]: ${rowChildren[i].runtimeType}');
+                          }
+                          
+                          return Builder(
+                            builder: (context) {
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                final renderObject = context.findRenderObject();
+                                if (renderObject != null && renderObject is RenderBox) {
+                                  debugPrint('🔍 [Row 렌더링] 실제 크기: width=${renderObject.size.width}, height=${renderObject.size.height}');
+                                  if (renderObject is RenderFlex) {
+                                    debugPrint('🔍 [Row 렌더링] children 개수: ${renderObject.childCount}');
+                                    RenderBox? child = renderObject.firstChild;
+                                    int index = 0;
+                                    while (child != null) {
+                                      debugPrint('   → child[$index]: width=${child.size.width}, height=${child.size.height}, type=${child.runtimeType}');
+                                      
+                                      // child[6]이 콤보박스인 경우 상세 정보 출력
+                                      if (index == 6 && sucursalSelectorWidget != null) {
+                                        debugPrint('   🔍 [콤보박스 디버깅] child[6] 상세 정보:');
+                                        debugPrint('      - 실제 렌더링 크기: ${child.size.width} x ${child.size.height}');
+                                        debugPrint('      - RenderBox 타입: ${child.runtimeType}');
+                                        debugPrint('      - 부모 RenderBox 크기: ${renderObject.size.width} x ${renderObject.size.height}');
+                                        debugPrint('      - 부모 RenderBox 타입: ${renderObject.runtimeType}');
+                                        
+                                        // 콤보박스의 실제 위치 확인
+                                        final offset = child.localToGlobal(Offset.zero);
+                                        debugPrint('      - 콤보박스 화면 위치: x=${offset.dx}, y=${offset.dy}');
+                                        
+                                        // 콤보박스가 화면 밖에 있는지 확인
+                                        final screenSize = MediaQuery.of(context).size;
+                                        debugPrint('      - 화면 크기: ${screenSize.width} x ${screenSize.height}');
+                                        debugPrint('      - 콤보박스가 화면 안에 있는지: ${offset.dx >= 0 && offset.dx < screenSize.width && offset.dy >= 0 && offset.dy < screenSize.height}');
+                                      }
+                                      
+                                      final parentData = child.parentData;
+                                      if (parentData is FlexParentData) {
+                                        child = parentData.nextSibling;
+                                      } else {
+                                        break;
+                                      }
+                                      index++;
+                                    }
+                                  }
+                                }
+                              });
+                              
+                              return Row(
+                                children: [
+                                  ...rowChildren,
+                                  // Descontado, Reservado, Crédito 체크박스
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Checkbox(
                                   value: _ventasDescontado,
                                   onChanged: (value) {
                                     setState(() {
@@ -6116,6 +6286,8 @@ class _ReportScreenState extends State<ReportScreen> {
                             ),
                           ],
                         );
+                              },
+                            );
                         } else {
                           debugPrint('   ⚠️ isDesktopOrTablet = false → 핸드폰 넓은 화면 레이아웃 사용');
                           return Row(
@@ -10243,6 +10415,52 @@ class _ReportScreenState extends State<ReportScreen> {
       },
       reportColor: _getReportColor(),
     );
+  }
+
+  // Sucursal 콤보박스 표시 여부를 확인하고 디버깅하는 헬퍼 함수
+  Widget? _buildSucursalSelectorWithDebug(String location) {
+    if (widget.reportType == ReportType.ventas) {
+      debugPrint('═══════════════════════════════════════════════════════');
+      debugPrint('🔍 [Ventas Sucursal 디버깅] 콤보박스 표시 조건 체크 ($location)');
+      debugPrint('   → _availableSucursales: $_availableSucursales');
+      debugPrint('   → _availableSucursales == null: ${_availableSucursales == null}');
+      if (_availableSucursales != null) {
+        debugPrint('   → _availableSucursales.length: ${_availableSucursales!.length}');
+        debugPrint('   → _availableSucursales.length > 1: ${_availableSucursales!.length > 1}');
+        debugPrint('   → _availableSucursales 내용: ${_availableSucursales!.join(", ")}');
+      }
+      final shouldShow = _availableSucursales != null && _availableSucursales!.length > 1;
+      debugPrint('   → shouldShow (콤보박스 표시 여부): $shouldShow');
+      debugPrint('═══════════════════════════════════════════════════════');
+      
+      if (shouldShow) {
+        debugPrint('   ✅ 콤보박스 반환: _buildSucursalSelector() 호출');
+        final widget = _buildSucursalSelector();
+        debugPrint('   ✅ 실제 반환된 위젯 타입: ${widget.runtimeType}');
+        debugPrint('   ✅ 위젯이 null인지 확인: ${widget == null}');
+        if (widget != null) {
+          debugPrint('   ✅ 위젯의 key: ${widget.key}');
+          debugPrint('   ✅ 위젯의 child 타입: ${widget is SizedBox ? (widget as SizedBox).child?.runtimeType : "N/A"}');
+        }
+        debugPrint('═══════════════════════════════════════════════════════');
+        return widget;
+      } else {
+        debugPrint('   ❌ 콤보박스 반환 안 함: null 반환');
+        debugPrint('═══════════════════════════════════════════════════════');
+        return null;
+      }
+    }
+    
+    // ventas가 아닌 경우 기존 로직 사용
+    if (_availableSucursales != null && _availableSucursales!.length > 1) {
+      return _buildSucursalSelector();
+    }
+    return null;
+    
+    if (_availableSucursales != null && _availableSucursales!.length > 1) {
+      return _buildSucursalSelector();
+    }
+    return null;
   }
 
   Widget _buildTableFromList(List<dynamic> dataList) {

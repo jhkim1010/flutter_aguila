@@ -2001,7 +2001,53 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       desktopPadding: const EdgeInsets.all(32),
     );
     
-    // 여러 sucursal이 있어도 각 섹션을 개별 카드로 표시 (비교 테이블 대신)
+    // 여러 sucursal이 있는지 확인
+    final hasMultipleSucursales = _hasMultipleSucursales();
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [Resumen del Dia] 여러 sucursal 체크');
+    debugPrint('   → _hasMultipleSucursales() 결과: $hasMultipleSucursales');
+    debugPrint('   → _data 키: ${_data!.keys.toList()}');
+    if (_data!.containsKey('vcodes')) {
+      final vcodesData = _data!['vcodes'];
+      debugPrint('   → vcodes 데이터 타입: ${vcodesData.runtimeType}');
+      if (vcodesData is List) {
+        debugPrint('   → vcodes List 길이: ${vcodesData.length}');
+        if (vcodesData.isNotEmpty) {
+          final sucursales = <int>{};
+          for (var item in vcodesData) {
+            if (item is Map && item.containsKey('sucursal')) {
+              final sucursal = item['sucursal'] is int 
+                  ? item['sucursal'] as int 
+                  : int.tryParse(item['sucursal'].toString()) ?? 0;
+              if (sucursal > 0) {
+                sucursales.add(sucursal);
+              }
+            }
+          }
+          debugPrint('   → 추출된 고유 sucursal: $sucursales (${sucursales.length}개)');
+        }
+      }
+    }
+    debugPrint('═══════════════════════════════════════════════════════');
+    
+    // 여러 sucursal이 있으면 비교 테이블 뷰 표시
+    if (hasMultipleSucursales) {
+      debugPrint('   ✅ 여러 sucursal 감지 → 비교 테이블 뷰 렌더링');
+      return RefreshIndicator(
+        onRefresh: _loadData,
+        child: SingleChildScrollView(
+          padding: EdgeInsets.zero,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: _buildComparisonView(l10n),
+          ),
+        ),
+      );
+    }
+    
+    // 단일 sucursal인 경우 섹션 형태로 표시
+    debugPrint('   → 단일 sucursal 뷰 렌더링 (섹션 형태)');
     debugPrint('   → Resumen del Dia 섹션 뷰 렌더링 (항상 섹션 형태로 표시)');
     
     return RefreshIndicator(
@@ -4128,42 +4174,72 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
   // 여러 sucursal 데이터가 있는지 확인 (실제로 2개 이상일 때만 비교 테이블 표시)
   bool _hasMultipleSucursales() {
     if (_data == null) {
-      debugPrint('⚠️ _hasMultipleSucursales: _data가 null');
+      debugPrint('⚠️ [_hasMultipleSucursales] _data가 null');
       return false;
     }
     
-    debugPrint('🔍 _hasMultipleSucursales 체크 시작');
-    debugPrint('   - _data 키: ${_data!.keys.toList()}');
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [_hasMultipleSucursales] 체크 시작');
+    debugPrint('   → _data 키: ${_data!.keys.toList()}');
     
     // vcodes가 배열인 경우 - 실제 sucursal 개수 확인
     if (_data!.containsKey('vcodes') && _data!['vcodes'] is List) {
       final vcodesList = _data!['vcodes'] as List;
-      debugPrint('   - vcodes는 List: ${vcodesList.length}개 항목');
+      debugPrint('   → vcodes는 List: ${vcodesList.length}개 항목');
       if (vcodesList.isNotEmpty && vcodesList.first is Map) {
         // 고유한 sucursal 개수 확인
         final sucursales = <int>{};
-        for (var item in vcodesList) {
-          if (item is Map && item.containsKey('sucursal')) {
-            final sucursal = item['sucursal'] is int 
-                ? item['sucursal'] as int 
-                : int.tryParse(item['sucursal'].toString()) ?? 0;
-            if (sucursal > 0) {
-              sucursales.add(sucursal);
+        debugPrint('   → vcodes 항목 순회 시작...');
+        for (int i = 0; i < vcodesList.length; i++) {
+          final item = vcodesList[i];
+          debugPrint('      - 항목 #$i: ${item.runtimeType}');
+          if (item is Map) {
+            debugPrint('         → 키: ${item.keys.toList()}');
+            if (item.containsKey('sucursal')) {
+              final sucursalValue = item['sucursal'];
+              debugPrint('         → sucursal 값: $sucursalValue (타입: ${sucursalValue.runtimeType})');
+              final sucursal = sucursalValue is int 
+                  ? sucursalValue as int 
+                  : int.tryParse(sucursalValue.toString()) ?? 0;
+              debugPrint('         → 파싱된 sucursal: $sucursal');
+              if (sucursal > 0) {
+                sucursales.add(sucursal);
+                debugPrint('         → sucursal 추가됨: $sucursal (현재 집합: $sucursales)');
+              } else {
+                debugPrint('         → sucursal이 0 이하이므로 무시');
+              }
+            } else {
+              debugPrint('         → sucursal 키 없음');
             }
+          } else {
+            debugPrint('         → Map이 아님');
           }
         }
-        debugPrint('   - 고유한 sucursal 개수: ${sucursales.length} - $sucursales');
+        debugPrint('   → 최종 고유한 sucursal 개수: ${sucursales.length} - $sucursales');
         // 2개 이상일 때만 비교 테이블 표시
         final result = sucursales.length > 1;
-        debugPrint('   → 결과: $result');
+        debugPrint('   → 결과 (sucursales.length > 1): $result');
+        debugPrint('═══════════════════════════════════════════════════════');
         return result;
+      } else {
+        debugPrint('   → vcodes가 비어있거나 첫 항목이 Map이 아님');
+      }
+    } else {
+      debugPrint('   → vcodes가 없거나 List가 아님');
+      if (_data!.containsKey('vcodes')) {
+        debugPrint('      → vcodes 타입: ${_data!['vcodes'].runtimeType}');
       }
     }
     
     // 여러 형태의 응답 구조를 확인
     // 1. sucursales 배열 형태
     if (_data!.containsKey('sucursales') && _data!['sucursales'] is List) {
-      return (_data!['sucursales'] as List).length > 1;
+      final sucursalesList = _data!['sucursales'] as List;
+      debugPrint('   → sucursales 배열 발견: ${sucursalesList.length}개');
+      final result = sucursalesList.length > 1;
+      debugPrint('   → 결과: $result');
+      debugPrint('═══════════════════════════════════════════════════════');
+      return result;
     }
     
     // 2. 각 sucursal이 키로 있는 맵 형태
@@ -4173,43 +4249,67 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     ).toList();
     
     if (sucursalKeys.length > 1) {
+      debugPrint('   → sucursal 키 발견: $sucursalKeys (${sucursalKeys.length}개)');
+      debugPrint('   → 결과: true');
+      debugPrint('═══════════════════════════════════════════════════════');
       return true;
     }
     
     // 3. data 배열 형태
     if (_data!.containsKey('data') && _data!['data'] is List) {
-      return (_data!['data'] as List).length > 1;
+      final dataList = _data!['data'] as List;
+      debugPrint('   → data 배열 발견: ${dataList.length}개');
+      final result = dataList.length > 1;
+      debugPrint('   → 결과: $result');
+      debugPrint('═══════════════════════════════════════════════════════');
+      return result;
     }
     
+    debugPrint('   → 여러 sucursal을 찾지 못함 → false 반환');
+    debugPrint('═══════════════════════════════════════════════════════');
     return false;
   }
 
   // 비교 테이블 뷰 생성
   Widget _buildComparisonView(AppLocalizations l10n) {
-    debugPrint('🔍 _buildComparisonView 호출됨');
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [_buildComparisonView] 호출됨');
+    debugPrint('   → _data 키: ${_data!.keys.toList()}');
     List<Map<String, dynamic>> sucursalesData = [];
     
     // vcodes가 배열인 경우 (서버 응답 구조)
     if (_data!.containsKey('vcodes') && _data!['vcodes'] is List) {
-      debugPrint('   - vcodes 배열 처리 시작');
+      debugPrint('   → vcodes 배열 처리 시작');
       final vcodesList = _data!['vcodes'] as List;
+      debugPrint('   → vcodesList 길이: ${vcodesList.length}');
       
       // 각 sucursal별로 데이터를 합침
       final sucursalMap = <int, Map<String, dynamic>>{};
       
       // vcodes 데이터 추가
-      for (var item in vcodesList) {
+      debugPrint('   → vcodes 항목 처리 시작...');
+      for (int i = 0; i < vcodesList.length; i++) {
+        final item = vcodesList[i];
+        debugPrint('      - vcodes 항목 #$i: ${item.runtimeType}');
         if (item is Map && item.containsKey('sucursal')) {
-          final sucursal = item['sucursal'] is int 
-              ? item['sucursal'] as int 
-              : int.tryParse(item['sucursal'].toString()) ?? 0;
+          final sucursalValue = item['sucursal'];
+          final sucursal = sucursalValue is int 
+              ? sucursalValue as int 
+              : int.tryParse(sucursalValue.toString()) ?? 0;
+          debugPrint('         → sucursal: $sucursal (원본: $sucursalValue)');
           
           if (!sucursalMap.containsKey(sucursal)) {
+            debugPrint('         → 새 sucursal 추가: $sucursal');
             sucursalMap[sucursal] = {'sucursal': sucursal};
+          } else {
+            debugPrint('         → 기존 sucursal 업데이트: $sucursal');
           }
           sucursalMap[sucursal]!['vcodes'] = item;
+        } else {
+          debugPrint('         → Map이 아니거나 sucursal 키 없음');
         }
       }
+      debugPrint('   → vcodes 처리 완료. sucursalMap 크기: ${sucursalMap.length}');
       
       // vdetalle 데이터 추가
       if (_data!.containsKey('vdetalle') && _data!['vdetalle'] is List) {
@@ -4290,15 +4390,20 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         }
       }
       
+      debugPrint('   → sucursalMap에서 sucursalesData 생성 시작...');
+      debugPrint('   → sucursalMap 키: ${sucursalMap.keys.toList()}');
       sucursalesData = sucursalMap.values.toList();
+      debugPrint('   → 정렬 전 sucursalesData 길이: ${sucursalesData.length}');
       // sucursal 번호로 정렬
       sucursalesData.sort((a, b) => 
         (a['sucursal'] as int).compareTo(b['sucursal'] as int)
       );
       debugPrint('   ✅ sucursalesData 수집 완료: ${sucursalesData.length}개');
-      for (var data in sucursalesData) {
-        debugPrint('     - Sucursal ${data['sucursal']}: ${data.keys.toList()}');
+      for (int i = 0; i < sucursalesData.length; i++) {
+        final data = sucursalesData[i];
+        debugPrint('     - Sucursal #$i: ${data['sucursal']}, 키: ${data.keys.toList()}');
       }
+      debugPrint('═══════════════════════════════════════════════════════');
     }
     // 다른 형태의 데이터 구조 처리
     else if (_data!.containsKey('sucursales') && _data!['sucursales'] is List) {
@@ -4345,27 +4450,22 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     }
 
     debugPrint('   ✅ 비교 뷰 렌더링 시작: ${sucursalesData.length}개 sucursal');
-    return SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      child: Container(
-        width: double.infinity,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // 날짜 표시
-            if (_data!.containsKey('fecha'))
-              _buildDateHeader(_data!['fecha']),
-            
-            // 비교 테이블 섹션
-            _buildSection(
-              l10n.branchComparison,
-              [
-                _buildComparisonTable(sucursalesData, l10n),
-              ],
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // 날짜 표시
+        if (_data!.containsKey('fecha'))
+          _buildDateHeader(_data!['fecha']),
+        
+        // 비교 테이블 섹션
+        _buildSection(
+          l10n.branchComparison,
+          [
+            _buildComparisonTable(sucursalesData, l10n),
           ],
         ),
-      ),
+      ],
     );
   }
 
@@ -4611,21 +4711,17 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
 
     debugPrint('✅ 테이블 생성 완료: ${columns.length}개 컬럼, ${rows.length}개 행');
     
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
       child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: SingleChildScrollView(
-          scrollDirection: Axis.vertical,
-          child: DataTable(
-            columnSpacing: 20,
-            headingRowColor: MaterialStateProperty.all(
-              Theme.of(context).colorScheme.primary.withOpacity(0.1),
-            ),
-            columns: columns,
-            rows: rows,
+        scrollDirection: Axis.vertical,
+        child: DataTable(
+          columnSpacing: 20,
+          headingRowColor: MaterialStateProperty.all(
+            Theme.of(context).colorScheme.primary.withOpacity(0.1),
           ),
+          columns: columns,
+          rows: rows,
         ),
       ),
     );

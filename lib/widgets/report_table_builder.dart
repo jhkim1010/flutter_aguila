@@ -200,8 +200,17 @@ class ReportTableBuilder {
     if (horizontalScrollController != null) {
       debugPrint('   → horizontalScrollController.hasClients: ${horizontalScrollController.hasClients}');
       if (horizontalScrollController.hasClients) {
-        debugPrint('   → horizontalScrollController.position.pixels: ${horizontalScrollController.position.pixels}');
-        debugPrint('   → horizontalScrollController.position.maxScrollExtent: ${horizontalScrollController.position.maxScrollExtent}');
+        try {
+          // 여러 스크롤 뷰에 연결된 경우를 처리
+          if (horizontalScrollController.positions.length == 1) {
+            debugPrint('   → horizontalScrollController.position.pixels: ${horizontalScrollController.position.pixels}');
+            debugPrint('   → horizontalScrollController.position.maxScrollExtent: ${horizontalScrollController.position.maxScrollExtent}');
+          } else {
+            debugPrint('   ⚠️ horizontalScrollController가 ${horizontalScrollController.positions.length}개의 스크롤 뷰에 연결됨');
+          }
+        } catch (e) {
+          debugPrint('   ⚠️ horizontalScrollController.position 접근 오류: $e');
+        }
       }
     }
     debugPrint('═══════════════════════════════════════════════════════');
@@ -904,19 +913,25 @@ class ReportTableBuilder {
                                           debugPrint('   → horizontalScrollController.hasClients: ${horizontalScrollController?.hasClients ?? false}');
                                           
                                           if (horizontalScrollController != null && horizontalScrollController.hasClients) {
-                                            final tableScrollPosition = notification.metrics.pixels;
-                                            final headerScrollPosition = horizontalScrollController.position.pixels;
-                                            final difference = (tableScrollPosition - headerScrollPosition).abs();
+                                            try {
+                                              if (horizontalScrollController.positions.length == 1) {
+                                                final tableScrollPosition = notification.metrics.pixels;
+                                                final headerScrollPosition = horizontalScrollController.position.pixels;
+                                                final difference = (tableScrollPosition - headerScrollPosition).abs();
                                             
-                                            debugPrint('   → 테이블 스크롤 위치: $tableScrollPosition');
-                                            debugPrint('   → 헤더/푸터 스크롤 위치: $headerScrollPosition');
-                                            debugPrint('   → 위치 차이: $difference');
-                                            
-                                            if (difference > 0.1) {
-                                              debugPrint('   ✅ 위치 차이 > 0.1, jumpTo 호출: $tableScrollPosition');
-                                              horizontalScrollController.jumpTo(tableScrollPosition);
-                                            } else {
-                                              debugPrint('   ⚠️ 위치 차이 <= 0.1, 동기화 스킵');
+                                                debugPrint('   → 테이블 스크롤 위치: $tableScrollPosition');
+                                                debugPrint('   → 헤더/푸터 스크롤 위치: $headerScrollPosition');
+                                                debugPrint('   → 위치 차이: $difference');
+                                                
+                                                if (difference > 0.1) {
+                                                  debugPrint('   ✅ 위치 차이 > 0.1, jumpTo 호출: $tableScrollPosition');
+                                                  horizontalScrollController.jumpTo(tableScrollPosition);
+                                                } else {
+                                                  debugPrint('   ⚠️ 위치 차이 <= 0.1, 동기화 스킵');
+                                                }
+                                              }
+                                            } catch (e) {
+                                              debugPrint('   ⚠️ 스크롤 동기화 오류: $e');
                                             }
                                           } else {
                                             debugPrint('   ⚠️ horizontalScrollController가 없거나 클라이언트가 없음');
@@ -988,8 +1003,17 @@ class ReportTableBuilder {
                                 if (horizontalScrollController != null) {
                                   debugPrint('   → horizontalScrollController.hasClients: ${horizontalScrollController.hasClients}');
                                   if (horizontalScrollController.hasClients) {
-                                    debugPrint('   → horizontalScrollController.position.pixels: ${horizontalScrollController.position.pixels}');
-                                    debugPrint('   → horizontalScrollController.position.maxScrollExtent: ${horizontalScrollController.position.maxScrollExtent}');
+                                    try {
+                                      // 여러 스크롤 뷰에 연결된 경우를 처리
+                                      if (horizontalScrollController.positions.length == 1) {
+                                        debugPrint('   → horizontalScrollController.position.pixels: ${horizontalScrollController.position.pixels}');
+                                        debugPrint('   → horizontalScrollController.position.maxScrollExtent: ${horizontalScrollController.position.maxScrollExtent}');
+                                      } else {
+                                        debugPrint('   ⚠️ horizontalScrollController가 ${horizontalScrollController.positions.length}개의 스크롤 뷰에 연결됨');
+                                      }
+                                    } catch (e) {
+                                      debugPrint('   ⚠️ horizontalScrollController.position 접근 오류: $e');
+                                    }
                                   }
                                 }
                               });
@@ -2119,20 +2143,26 @@ class ReportTableBuilder {
                       debugPrint('   → horizontalScrollController.hasClients: ${horizontalScrollController?.hasClients ?? false}');
                       
                       if (horizontalScrollController != null && horizontalScrollController.hasClients) {
-                        // 위치가 다를 때만 업데이트 (무한 루프 방지)
-                        final tableScrollPosition = notification.metrics.pixels;
-                        final footerScrollPosition = horizontalScrollController.position.pixels;
-                        final difference = (tableScrollPosition - footerScrollPosition).abs();
+                        try {
+                          if (horizontalScrollController.positions.length == 1) {
+                            // 위치가 다를 때만 업데이트 (무한 루프 방지)
+                            final tableScrollPosition = notification.metrics.pixels;
+                            final footerScrollPosition = horizontalScrollController.position.pixels;
+                            final difference = (tableScrollPosition - footerScrollPosition).abs();
                         
-                        debugPrint('   → 테이블 스크롤 위치: $tableScrollPosition');
-                        debugPrint('   → 푸터 스크롤 위치: $footerScrollPosition');
-                        debugPrint('   → 위치 차이: $difference');
-                        
-                        if (difference > 0.1) {
-                          debugPrint('   ✅ 위치 차이 > 0.1, jumpTo 호출: $tableScrollPosition');
-                          horizontalScrollController.jumpTo(tableScrollPosition);
-                        } else {
-                          debugPrint('   ⚠️ 위치 차이 <= 0.1, 동기화 스킵');
+                            debugPrint('   → 테이블 스크롤 위치: $tableScrollPosition');
+                            debugPrint('   → 푸터 스크롤 위치: $footerScrollPosition');
+                            debugPrint('   → 위치 차이: $difference');
+                            
+                            if (difference > 0.1) {
+                              debugPrint('   ✅ 위치 차이 > 0.1, jumpTo 호출: $tableScrollPosition');
+                              horizontalScrollController.jumpTo(tableScrollPosition);
+                            } else {
+                              debugPrint('   ⚠️ 위치 차이 <= 0.1, 동기화 스킵');
+                            }
+                          }
+                        } catch (e) {
+                          debugPrint('   ⚠️ 스크롤 동기화 오류: $e');
                         }
                       } else {
                         debugPrint('   ⚠️ horizontalScrollController가 없거나 클라이언트가 없음');
@@ -2172,20 +2202,26 @@ class ReportTableBuilder {
                           debugPrint('   → horizontalScrollController.hasClients: ${horizontalScrollController?.hasClients ?? false}');
                           
                           if (horizontalScrollController != null && horizontalScrollController.hasClients) {
-                            // 위치가 다를 때만 업데이트 (무한 루프 방지)
-                            final tableScrollPosition = notification.metrics.pixels;
-                            final footerScrollPosition = horizontalScrollController.position.pixels;
-                            final difference = (tableScrollPosition - footerScrollPosition).abs();
-                            
-                            debugPrint('   → 테이블 스크롤 위치: $tableScrollPosition');
-                            debugPrint('   → 푸터 스크롤 위치: $footerScrollPosition');
-                            debugPrint('   → 위치 차이: $difference');
-                            
-                            if (difference > 0.1) {
-                              debugPrint('   ✅ 위치 차이 > 0.1, jumpTo 호출: $tableScrollPosition');
-                              horizontalScrollController.jumpTo(tableScrollPosition);
-                            } else {
-                              debugPrint('   ⚠️ 위치 차이 <= 0.1, 동기화 스킵');
+                            try {
+                              if (horizontalScrollController.positions.length == 1) {
+                                // 위치가 다를 때만 업데이트 (무한 루프 방지)
+                                final tableScrollPosition = notification.metrics.pixels;
+                                final footerScrollPosition = horizontalScrollController.position.pixels;
+                                final difference = (tableScrollPosition - footerScrollPosition).abs();
+                                
+                                debugPrint('   → 테이블 스크롤 위치: $tableScrollPosition');
+                                debugPrint('   → 푸터 스크롤 위치: $footerScrollPosition');
+                                debugPrint('   → 위치 차이: $difference');
+                                
+                                if (difference > 0.1) {
+                                  debugPrint('   ✅ 위치 차이 > 0.1, jumpTo 호출: $tableScrollPosition');
+                                  horizontalScrollController.jumpTo(tableScrollPosition);
+                                } else {
+                                  debugPrint('   ⚠️ 위치 차이 <= 0.1, 동기화 스킵');
+                                }
+                              }
+                            } catch (e) {
+                              debugPrint('   ⚠️ 스크롤 동기화 오류: $e');
                             }
                           } else {
                             debugPrint('   ⚠️ horizontalScrollController가 없거나 클라이언트가 없음');
@@ -2218,11 +2254,17 @@ class ReportTableBuilder {
                               
                               // 헤더와 푸터 동기화
                               if (syncController.hasClients) {
-                                final headerScrollPosition = syncController.position.pixels;
-                                final difference = (tableScrollPosition - headerScrollPosition).abs();
-                                
-                                if (difference > 0.1) {
-                                  syncController.jumpTo(tableScrollPosition);
+                                try {
+                                  if (syncController.positions.length == 1) {
+                                    final headerScrollPosition = syncController.position.pixels;
+                                    final difference = (tableScrollPosition - headerScrollPosition).abs();
+                                    
+                                    if (difference > 0.1) {
+                                      syncController.jumpTo(tableScrollPosition);
+                                    }
+                                  }
+                                } catch (e) {
+                                  debugPrint('   ⚠️ syncController 동기화 오류: $e');
                                 }
                               }
                             }
@@ -2353,19 +2395,25 @@ class ReportTableBuilder {
                     
                     // depth == 0 조건 제거 (더 많은 이벤트 캡처)
                     if (horizontalScrollController != null && horizontalScrollController.hasClients) {
-                      final tableScrollPosition = notification.metrics.pixels;
-                      final headerScrollPosition = horizontalScrollController.position.pixels;
-                      final difference = (tableScrollPosition - headerScrollPosition).abs();
-                      
-                      debugPrint('   → 테이블 스크롤 위치: $tableScrollPosition');
-                      debugPrint('   → 헤더 스크롤 위치: $headerScrollPosition');
-                      debugPrint('   → 위치 차이: $difference');
-                      
-                      if (difference > 0.1) {
-                        debugPrint('   ✅ 위치 차이 > 0.1, jumpTo 호출: $tableScrollPosition');
-                        horizontalScrollController.jumpTo(tableScrollPosition);
-                      } else {
-                        debugPrint('   ⚠️ 위치 차이 <= 0.1, 동기화 스킵');
+                      try {
+                        if (horizontalScrollController.positions.length == 1) {
+                          final tableScrollPosition = notification.metrics.pixels;
+                          final headerScrollPosition = horizontalScrollController.position.pixels;
+                          final difference = (tableScrollPosition - headerScrollPosition).abs();
+                          
+                          debugPrint('   → 테이블 스크롤 위치: $tableScrollPosition');
+                          debugPrint('   → 헤더 스크롤 위치: $headerScrollPosition');
+                          debugPrint('   → 위치 차이: $difference');
+                          
+                          if (difference > 0.1) {
+                            debugPrint('   ✅ 위치 차이 > 0.1, jumpTo 호출: $tableScrollPosition');
+                            horizontalScrollController.jumpTo(tableScrollPosition);
+                          } else {
+                            debugPrint('   ⚠️ 위치 차이 <= 0.1, 동기화 스킵');
+                          }
+                        }
+                      } catch (e) {
+                        debugPrint('   ⚠️ 스크롤 동기화 오류: $e');
                       }
                     } else {
                       debugPrint('   ⚠️ horizontalScrollController가 없거나 클라이언트가 없음');
@@ -3784,9 +3832,24 @@ class ReportTableBuilder {
             if (renderBox != null) {
               debugPrint('═══════════════════════════════════════════════════════');
               debugPrint('🔍 [오버랩 디버깅] buildFixedTotalRow 실제 렌더링 크기');
+              debugPrint('   → reportType: $reportType');
               debugPrint('   → 푸터 실제 width: ${renderBox.size.width}');
               debugPrint('   → 푸터 실제 height: ${renderBox.size.height}');
               debugPrint('   → 계산된 총 너비: $footerCumulativeX');
+              
+              // fventas의 경우 추가 디버깅
+              if (reportType == ReportType.fventas) {
+                debugPrint('   → [FVentas 푸터] 높이 확인: ${renderBox.size.height}');
+                debugPrint('   → [FVentas 푸터] 예상 높이: 56.0 (1줄)');
+                if (renderBox.size.height > 60) {
+                  debugPrint('   ⚠️ [FVentas 푸터] 높이가 60px 이상입니다! 2줄로 표시되고 있을 가능성');
+                }
+                
+                // RenderObject 트리 확인
+                debugPrint('   → [FVentas 푸터] RenderBox 타입: ${renderBox.runtimeType}');
+                debugPrint('   → [FVentas 푸터] RenderBox constraints: ${renderBox.constraints}');
+              }
+              
               final parentBox = renderBox.parent as RenderBox?;
               if (parentBox != null) {
                 debugPrint('   → 부모 실제 width: ${parentBox.size.width}');
@@ -3803,86 +3866,116 @@ class ReportTableBuilder {
           
           // Footer는 수평 스크롤 컨트롤러를 사용하지 않음 (전체가 하나의 스크롤로 동기화됨)
           
-          // fventas 보고서의 경우 factura A와 B 각각의 개수와 monto 합계만 표시
+          // fventas 보고서의 경우 factura A와 B 각각의 개수와 monto 합계를 1줄로 표시
           if (reportType == ReportType.fventas && fventasSummary != null) {
+            debugPrint('═══════════════════════════════════════════════════════');
+            debugPrint('🔍 [FVentas 푸터] 1줄 표시 시작');
+            debugPrint('   → fventasSummary: $fventasSummary');
+            debugPrint('   → keys: $keys');
+            debugPrint('   → keys.length: ${keys.length}');
+            
             // tipofactura와 monto 컬럼의 위치 찾기
             int tipofacturaIndex = keys.indexOf('tipofactura');
             int montoIndex = keys.indexOf('monto');
             
+            debugPrint('   → tipofacturaIndex: $tipofacturaIndex');
+            debugPrint('   → montoIndex: $montoIndex');
+            
             if (tipofacturaIndex == -1) tipofacturaIndex = 0;
             if (montoIndex == -1) montoIndex = keys.length - 1;
             
-            // 두 개의 행을 만들어서 표시
-            Widget buildFventasRow(String label, int count, double monto) {
-              return Row(
-                mainAxisSize: MainAxisSize.min,
-                children: keys.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final key = entry.value;
-                  final columnWidth = finalColumnWidths[key] ?? 150.0;
+            debugPrint('   → 조정 후 tipofacturaIndex: $tipofacturaIndex');
+            debugPrint('   → 조정 후 montoIndex: $montoIndex');
+            
+            // Factura A와 B를 1줄로 표시
+            final rowWidget = Row(
+              mainAxisSize: MainAxisSize.min,
+              children: keys.asMap().entries.map((entry) {
+                final index = entry.key;
+                final key = entry.value;
+                final columnWidth = finalColumnWidths[key] ?? 150.0;
+                
+                debugPrint('   → [푸터 셀] index=$index, key=$key, width=$columnWidth');
+                
+                // tipofactura 컬럼에 Factura A와 B 정보를 모두 표시
+                if (index == tipofacturaIndex) {
+                  final text = 'Factura A: ${fventasSummary!['countA']} | Factura B: ${fventasSummary!['countB']}';
+                  debugPrint('   → [푸터 셀] tipofactura 컬럼 텍스트: "$text"');
+                  debugPrint('   → [푸터 셀] tipofactura 컬럼 너비: $columnWidth');
                   
-                  // tipofactura 컬럼에 라벨과 개수 표시
-                  if (index == tipofacturaIndex) {
-                    return SizedBox(
-                      width: columnWidth,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        height: 56.0,
-                        child: Align(
+                  return SizedBox(
+                    width: columnWidth,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      height: 56.0,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
                           alignment: Alignment.centerLeft,
                           child: Text(
-                            '$label: $count',
+                            text,
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
                             ),
+                            maxLines: 1,
                           ),
                         ),
                       ),
-                    );
-                  }
-                  // monto 컬럼에 monto 합계 표시
-                  else if (index == montoIndex) {
-                    return SizedBox(
-                      width: columnWidth,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        height: 56.0,
-                        child: Align(
+                    ),
+                  );
+                }
+                // monto 컬럼에 Factura A와 B의 monto 합계를 모두 표시
+                else if (index == montoIndex) {
+                  final montoAText = ReportUtils.formatValue(fventasSummary!['montoA'] as double);
+                  final montoBText = ReportUtils.formatValue(fventasSummary!['montoB'] as double);
+                  final text = '$montoAText | $montoBText';
+                  debugPrint('   → [푸터 셀] monto 컬럼 텍스트: "$text"');
+                  debugPrint('   → [푸터 셀] monto 컬럼 너비: $columnWidth');
+                  
+                  return SizedBox(
+                    width: columnWidth,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      height: 56.0,
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
                           alignment: Alignment.centerRight,
                           child: Text(
-                            ReportUtils.formatValue(monto),
+                            text,
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
                             ),
+                            maxLines: 1,
                           ),
                         ),
                       ),
-                    );
-                  }
-                  // 다른 컬럼은 빈 칸
-                  else {
-                    return SizedBox(
-                      width: columnWidth,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        height: 56.0,
-                        child: const SizedBox.shrink(),
-                      ),
-                    );
-                  }
-                }).toList(),
-              );
-            }
-            
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                buildFventasRow('Factura A', fventasSummary!['countA'] as int, fventasSummary!['montoA'] as double),
-                buildFventasRow('Factura B', fventasSummary!['countB'] as int, fventasSummary!['montoB'] as double),
-              ],
+                    ),
+                  );
+                }
+                // 다른 컬럼은 빈 칸
+                else {
+                  return SizedBox(
+                    width: columnWidth,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      height: 56.0,
+                      child: const SizedBox.shrink(),
+                    ),
+                  );
+                }
+              }).toList(),
             );
+            
+            debugPrint('   → [FVentas 푸터] Row 위젯 생성 완료');
+            debugPrint('   → [FVentas 푸터] Row children 개수: ${rowWidget.children.length}');
+            debugPrint('═══════════════════════════════════════════════════════');
+            
+            return rowWidget;
           }
           
           return Row(

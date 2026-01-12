@@ -430,6 +430,11 @@ class ReportFilterWidgets {
     required Function(String?) onChanged,
     required Color reportColor,
   }) {
+    debugPrint('🔍 [ReportFilterWidgets.buildSucursalSelector] 호출됨');
+    debugPrint('   → selectedSucursal: $selectedSucursal');
+    debugPrint('   → availableSucursales: $availableSucursales');
+    debugPrint('   → reportColor: $reportColor');
+    
     return SizedBox(
       width: 140,
       child: Container(
@@ -437,29 +442,42 @@ class ReportFilterWidgets {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey[300]!),
+          border: Border.all(color: Colors.grey[400]!, width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: DropdownButton<String?>(
           value: selectedSucursal,
-          hint: const Text('Todos', style: TextStyle(fontSize: 12)),
+          hint: const Text('Todos', style: TextStyle(fontSize: 12, color: Colors.black87)),
           underline: const SizedBox(),
           isDense: true,
           isExpanded: false,
           icon: Icon(Icons.arrow_drop_down, color: reportColor, size: 20),
+          style: const TextStyle(fontSize: 12, color: Colors.black87),
+          dropdownColor: Colors.white,
           items: [
             const DropdownMenuItem<String?>(
               value: null,
-              child: Text('Todos', style: TextStyle(fontSize: 12)),
+              child: Text('Todos', style: TextStyle(fontSize: 12, color: Colors.black87)),
             ),
             if (availableSucursales != null)
               ...availableSucursales!.map((sucursal) {
+                debugPrint('   → DropdownMenuItem 생성: Sucursal $sucursal');
                 return DropdownMenuItem<String?>(
                   value: sucursal,
-                  child: Text('Sucursal $sucursal', style: const TextStyle(fontSize: 12)),
+                  child: Text('Sucursal $sucursal', style: const TextStyle(fontSize: 12, color: Colors.black87)),
                 );
               }).toList(),
           ],
-          onChanged: onChanged,
+          onChanged: (String? value) {
+            debugPrint('   → 콤보박스 값 변경: $value');
+            onChanged(value);
+          },
         ),
       ),
     );
