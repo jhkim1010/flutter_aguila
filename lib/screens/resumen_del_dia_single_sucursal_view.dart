@@ -194,6 +194,24 @@ class ResumenDelDiaSingleSucursalView extends StatelessWidget {
                           final hasVdetalle = data.containsKey('vdetalle');
                           debugPrint('      → hasGastos: $hasGastos, hasVdetalle: $hasVdetalle');
                           
+                          // vdetalle 데이터 상세 확인
+                          if (hasVdetalle) {
+                            final vdetalleRaw = data['vdetalle'];
+                            debugPrint('      → vdetalle 원본 데이터 타입: ${vdetalleRaw.runtimeType}');
+                            debugPrint('      → vdetalle 원본 데이터: $vdetalleRaw');
+                            if (vdetalleRaw is Map) {
+                              debugPrint('      → vdetalle Map 키: ${vdetalleRaw.keys.toList()}');
+                            } else if (vdetalleRaw is List) {
+                              debugPrint('      → vdetalle List 길이: ${vdetalleRaw.length}');
+                              if (vdetalleRaw.isNotEmpty) {
+                                debugPrint('      → vdetalle List 첫 번째 항목: ${vdetalleRaw[0]}');
+                              }
+                            }
+                          } else {
+                            debugPrint('      ⚠️ vdetalle 키가 data에 없음');
+                            debugPrint('      → data의 모든 키: ${data.keys.toList()}');
+                          }
+                          
                           // 둘 다 없으면 빈 위젯 반환
                           if (!hasGastos && !hasVdetalle) {
                             debugPrint('      ⚠️ Gastos와 Vdetalle 모두 없음');
@@ -246,23 +264,34 @@ class ResumenDelDiaSingleSucursalView extends StatelessWidget {
                                       constraints: const BoxConstraints(minWidth: 400),
                                       child: Builder(
                                         builder: (context) {
-                                          debugPrint('      → Vdetalle 섹션 생성 중...');
+                                          debugPrint('═══════════════════════════════════════════════════════');
+                                          debugPrint('      → Vdetalle 섹션 생성 중 (대형화면)...');
+                                          debugPrint('      → data: ${data.keys.toList()}');
                                           try {
                                             final aggregatedVdetalle = _getAggregatedVdetalle(data);
-                                            debugPrint('         → aggregatedVdetalle: $aggregatedVdetalle');
-                                            final vdetalleWidgets = _buildVdetalleSection(context, aggregatedVdetalle, isLarge);
+                                            debugPrint('         → aggregatedVdetalle 반환값: $aggregatedVdetalle');
+                                            debugPrint('         → aggregatedVdetalle.isEmpty: ${aggregatedVdetalle.isEmpty}');
+                                            
+                                            final vdetalleWidgets = _buildVdetalleSection(context, aggregatedVdetalle, isLarge, onReportTypeSelected);
                                             debugPrint('         → vdetalleWidgets 개수: ${vdetalleWidgets.length}');
+                                            debugPrint('         → vdetalleWidgets.isEmpty: ${vdetalleWidgets.isEmpty}');
                                             
                                             if (vdetalleWidgets.isNotEmpty) {
                                               renderedSectionCount++;
                                               debugPrint('         ✅ Vdetalle 섹션 렌더링됨 (총 섹션: $renderedSectionCount)');
-                                              return _buildSection(context, l10n.discountStatistics, vdetalleWidgets, isLarge);
+                                              final sectionWidget = _buildSection(context, l10n.discountStatistics, vdetalleWidgets, isLarge);
+                                              debugPrint('         → sectionWidget 타입: ${sectionWidget.runtimeType}');
+                                              debugPrint('═══════════════════════════════════════════════════════');
+                                              return sectionWidget;
                                             } else {
-                                              debugPrint('         ⚠️ Vdetalle 위젯이 비어있음');
+                                              debugPrint('         ⚠️ Vdetalle 위젯이 비어있음 - SizedBox.shrink() 반환');
+                                              debugPrint('═══════════════════════════════════════════════════════');
                                               return const SizedBox.shrink();
                                             }
-                                          } catch (e) {
+                                          } catch (e, stackTrace) {
                                             debugPrint('         ❌ Vdetalle 섹션 생성 오류: $e');
+                                            debugPrint('         → Stack trace: $stackTrace');
+                                            debugPrint('═══════════════════════════════════════════════════════');
                                             return const SizedBox.shrink();
                                           }
                                         },
@@ -305,23 +334,34 @@ class ResumenDelDiaSingleSucursalView extends StatelessWidget {
                               if (hasVdetalle)
                                 Builder(
                                   builder: (context) {
+                                    debugPrint('═══════════════════════════════════════════════════════');
                                     debugPrint('      → Vdetalle 섹션 생성 중 (작은 화면)...');
+                                    debugPrint('      → data: ${data.keys.toList()}');
                                     try {
                                       final aggregatedVdetalle = _getAggregatedVdetalle(data);
-                                      debugPrint('         → aggregatedVdetalle: $aggregatedVdetalle');
-                                      final vdetalleWidgets = _buildVdetalleSection(context, aggregatedVdetalle, isLarge);
+                                      debugPrint('         → aggregatedVdetalle 반환값: $aggregatedVdetalle');
+                                      debugPrint('         → aggregatedVdetalle.isEmpty: ${aggregatedVdetalle.isEmpty}');
+                                      
+                                      final vdetalleWidgets = _buildVdetalleSection(context, aggregatedVdetalle, isLarge, onReportTypeSelected);
                                       debugPrint('         → vdetalleWidgets 개수: ${vdetalleWidgets.length}');
+                                      debugPrint('         → vdetalleWidgets.isEmpty: ${vdetalleWidgets.isEmpty}');
                                       
                                       if (vdetalleWidgets.isNotEmpty) {
                                         renderedSectionCount++;
                                         debugPrint('         ✅ Vdetalle 섹션 렌더링됨 (총 섹션: $renderedSectionCount)');
-                                        return _buildSection(context, l10n.discountStatistics, vdetalleWidgets, isLarge);
+                                        final sectionWidget = _buildSection(context, l10n.discountStatistics, vdetalleWidgets, isLarge);
+                                        debugPrint('         → sectionWidget 타입: ${sectionWidget.runtimeType}');
+                                        debugPrint('═══════════════════════════════════════════════════════');
+                                        return sectionWidget;
                                       } else {
-                                        debugPrint('         ⚠️ Vdetalle 위젯이 비어있음');
+                                        debugPrint('         ⚠️ Vdetalle 위젯이 비어있음 - SizedBox.shrink() 반환');
+                                        debugPrint('═══════════════════════════════════════════════════════');
                                         return const SizedBox.shrink();
                                       }
-                                    } catch (e) {
+                                    } catch (e, stackTrace) {
                                       debugPrint('         ❌ Vdetalle 섹션 생성 오류: $e');
+                                      debugPrint('         → Stack trace: $stackTrace');
+                                      debugPrint('═══════════════════════════════════════════════════════');
                                       return const SizedBox.shrink();
                                     }
                                   },
@@ -787,28 +827,70 @@ class ResumenDelDiaSingleSucursalView extends StatelessWidget {
   }
   
   Map<String, dynamic> _getAggregatedVdetalle(Map<String, dynamic> data) {
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [_getAggregatedVdetalle] 호출됨');
+    debugPrint('   → data 키: ${data.keys.toList()}');
+    debugPrint('   → data.containsKey(\'vdetalle\'): ${data.containsKey('vdetalle')}');
+    
     if (!data.containsKey('vdetalle')) {
+      debugPrint('   ⚠️ vdetalle 키가 없음 - 빈 Map 반환');
+      debugPrint('═══════════════════════════════════════════════════════');
       return <String, dynamic>{};
     }
     
     final vdetalle = data['vdetalle'];
-    if (vdetalle is! List || vdetalle.isEmpty) {
-      return vdetalle is Map<String, dynamic> ? vdetalle : <String, dynamic>{};
+    debugPrint('   → vdetalle 타입: ${vdetalle.runtimeType}');
+    debugPrint('   → vdetalle 값: $vdetalle');
+    
+    if (vdetalle is Map<String, dynamic>) {
+      debugPrint('   → vdetalle이 Map이므로 그대로 반환');
+      debugPrint('   → Map 키: ${vdetalle.keys.toList()}');
+      debugPrint('   → Map 값: $vdetalle');
+      debugPrint('═══════════════════════════════════════════════════════');
+      return vdetalle;
     }
+    
+    if (vdetalle is! List || vdetalle.isEmpty) {
+      debugPrint('   ⚠️ vdetalle이 List가 아니거나 비어있음 - 빈 Map 반환');
+      debugPrint('═══════════════════════════════════════════════════════');
+      return <String, dynamic>{};
+    }
+    
+    final vdetalleList = vdetalle;
+    debugPrint('   → vdetalle List 길이: ${vdetalleList.length}');
     
     final aggregated = <String, dynamic>{
       'count_discount_event': 0,
       'total_discount_day': 0.0,
     };
     
-    for (var item in vdetalle) {
+    int processedItems = 0;
+    for (var item in vdetalleList) {
+      debugPrint('      - vdetalle 항목 #$processedItems: ${item.runtimeType}');
       if (item is Map<String, dynamic>) {
-        aggregated['count_discount_event'] = (aggregated['count_discount_event'] as int) + 
-            (item['count_discount_event'] as int? ?? 0);
-        aggregated['total_discount_day'] = (aggregated['total_discount_day'] as double) + 
-            ((item['total_discount_day'] as num?)?.toDouble() ?? 0.0);
+        debugPrint('         → 항목 키: ${item.keys.toList()}');
+        debugPrint('         → 항목 값: $item');
+        
+        final countDiscountEvent = item['count_discount_event'] as int? ?? 0;
+        final totalDiscountDay = (item['total_discount_day'] as num?)?.toDouble() ?? 0.0;
+        
+        debugPrint('         → count_discount_event: $countDiscountEvent');
+        debugPrint('         → total_discount_day: $totalDiscountDay');
+        
+        aggregated['count_discount_event'] = (aggregated['count_discount_event'] as int) + countDiscountEvent;
+        aggregated['total_discount_day'] = (aggregated['total_discount_day'] as double) + totalDiscountDay;
+        
+        processedItems++;
+      } else {
+        debugPrint('         ⚠️ 항목이 Map이 아님 - 건너뜀');
       }
     }
+    
+    debugPrint('   ✅ 처리 완료: $processedItems개 항목 처리됨');
+    debugPrint('   → 최종 aggregated: $aggregated');
+    debugPrint('   → count_discount_event: ${aggregated['count_discount_event']}');
+    debugPrint('   → total_discount_day: ${aggregated['total_discount_day']}');
+    debugPrint('═══════════════════════════════════════════════════════');
     
     return aggregated;
   }
@@ -1140,42 +1222,86 @@ class ResumenDelDiaSingleSucursalView extends StatelessWidget {
     }
   }
   
-  List<Widget> _buildVdetalleSection(BuildContext context, Map<String, dynamic> vdetalle, bool isLarge) {
+  List<Widget> _buildVdetalleSection(BuildContext context, Map<String, dynamic> vdetalle, bool isLarge, Function(ReportType) onReportTypeSelected) {
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [_buildVdetalleSection] 호출됨');
+    debugPrint('   → vdetalle: $vdetalle');
+    debugPrint('   → vdetalle.isEmpty: ${vdetalle.isEmpty}');
+    debugPrint('   → vdetalle.keys: ${vdetalle.keys.toList()}');
+    debugPrint('   → isLarge: $isLarge');
+    
     try {
       final cards = <Widget>[];
       
       if (vdetalle.isEmpty) {
+        debugPrint('   ⚠️ vdetalle이 비어있음 - 빈 리스트 반환');
+        debugPrint('═══════════════════════════════════════════════════════');
         return cards;
       }
       
+      debugPrint('   → vdetalle.containsKey(\'count_discount_event\'): ${vdetalle.containsKey('count_discount_event')}');
       if (vdetalle.containsKey('count_discount_event')) {
-        cards.add(_buildDataCard(
-          context,
-          'Eventos de Descuento',
-          vdetalle['count_discount_event'],
-          Icons.local_offer,
-          isLarge: isLarge,
-          onTap: () {
-            // 할인 통계 카드 클릭 시 ventas 보고서로 이동
-            // 단일 sucursal 뷰에서는 콜백을 통해 처리
-          },
-        ));
+        final countValue = vdetalle['count_discount_event'];
+        debugPrint('      → count_discount_event 값: $countValue (타입: ${countValue.runtimeType})');
+        
+        // 값이 0이거나 null이 아닌 경우에만 카드 추가
+        if (countValue != null && countValue != 0) {
+          debugPrint('      ✅ count_discount_event 카드 추가');
+          cards.add(_buildDataCard(
+            context,
+            'Eventos de Descuento',
+            countValue,
+            Icons.local_offer,
+            isLarge: isLarge,
+            onTap: () {
+              debugPrint('🔍 [Descuento 카드 클릭] Eventos de Descuento 카드 클릭됨');
+              debugPrint('   → onReportTypeSelected 호출: ReportType.ventas');
+              onReportTypeSelected(ReportType.ventas);
+            },
+          ));
+        } else {
+          debugPrint('      ⚠️ count_discount_event가 null이거나 0임 - 카드 추가 안 함');
+        }
+      } else {
+        debugPrint('      ⚠️ count_discount_event 키가 없음');
       }
       
+      debugPrint('   → vdetalle.containsKey(\'total_discount_day\'): ${vdetalle.containsKey('total_discount_day')}');
       if (vdetalle.containsKey('total_discount_day')) {
-        cards.add(_buildDataCard(
-          context,
-          'Evento de Descuento',
-          vdetalle['total_discount_day'],
-          Icons.discount,
-          isCurrency: true,
-          isLarge: isLarge,
-        ));
+        final totalValue = vdetalle['total_discount_day'];
+        debugPrint('      → total_discount_day 값: $totalValue (타입: ${totalValue.runtimeType})');
+        
+        // 값이 0이거나 null이 아닌 경우에만 카드 추가
+        if (totalValue != null && totalValue != 0.0 && totalValue != 0) {
+          debugPrint('      ✅ total_discount_day 카드 추가');
+          cards.add(_buildDataCard(
+            context,
+            'Total Descuento',
+            totalValue,
+            Icons.discount,
+            isCurrency: true,
+            isLarge: isLarge,
+            onTap: () {
+              debugPrint('🔍 [Descuento 카드 클릭] Total Descuento 카드 클릭됨');
+              debugPrint('   → onReportTypeSelected 호출: ReportType.ventas');
+              onReportTypeSelected(ReportType.ventas);
+            },
+          ));
+        } else {
+          debugPrint('      ⚠️ total_discount_day가 null이거나 0임 - 카드 추가 안 함');
+        }
+      } else {
+        debugPrint('      ⚠️ total_discount_day 키가 없음');
       }
 
+      debugPrint('   → 생성된 카드 개수: ${cards.length}');
+      debugPrint('═══════════════════════════════════════════════════════');
       return cards;
-    } catch (e) {
-      debugPrint('Error building Vdetalle section: $e');
+    } catch (e, stackTrace) {
+      debugPrint('═══════════════════════════════════════════════════════');
+      debugPrint('❌ Error building Vdetalle section: $e');
+      debugPrint('   → Stack trace: $stackTrace');
+      debugPrint('═══════════════════════════════════════════════════════');
       return [];
     }
   }
