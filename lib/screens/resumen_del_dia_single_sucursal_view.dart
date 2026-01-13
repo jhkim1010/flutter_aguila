@@ -1390,78 +1390,203 @@ class ResumenDelDiaSingleSucursalView extends StatelessWidget {
         final items = fventas['items'] as List;
         
         if (items.isNotEmpty) {
-          cards.add(
-            InkWell(
-              onTap: () => onReportTypeSelected(ReportType.fventas),
-              child: Card(
-                child: Container(
-                  constraints: isLarge 
-                      ? const BoxConstraints(minHeight: 140.0)
-                      : const BoxConstraints(minHeight: 100.0),
-                  padding: EdgeInsets.all(isLarge ? 18.0 : 12.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.receipt, 
-                            color: Colors.deepPurple, 
-                            size: isLarge ? 24.0 : 20.0,
-                          ),
-                          SizedBox(width: isLarge ? 10.0 : 8.0),
-                          Flexible(
-                            child: Text(
-                              'FVentas del Día',
+          // Factura A, B 합산
+          int countAB = 0;
+          double sumMontoAB = 0.0;
+          
+          // NCA, NCB 합산
+          int countNC = 0;
+          double sumMontoNC = 0.0;
+          
+          for (var item in items) {
+            if (item is Map<String, dynamic>) {
+              final tipofactura = item['tipofactura']?.toString() ?? 'Unknown';
+              final count = item['count'] as int? ?? 0;
+              final sumMonto = (item['sum_monto'] as num?)?.toDouble() ?? 0.0;
+              
+              if (tipofactura == 'A' || tipofactura == 'B') {
+                countAB += count;
+                sumMontoAB += sumMonto;
+              } else if (tipofactura == 'NCA' || tipofactura == 'NCB') {
+                countNC += count;
+                sumMontoNC += sumMonto;
+              }
+            }
+          }
+          
+          // Factura A, B 카드
+          if (countAB > 0 || sumMontoAB > 0) {
+            cards.add(
+              InkWell(
+                onTap: () => onReportTypeSelected(ReportType.fventas),
+                child: Card(
+                  child: Container(
+                    constraints: isLarge 
+                        ? const BoxConstraints(minHeight: 120.0)
+                        : const BoxConstraints(minHeight: 100.0),
+                    padding: EdgeInsets.all(isLarge ? 18.0 : 12.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.receipt, 
+                              color: Colors.deepPurple, 
+                              size: isLarge ? 24.0 : 20.0,
+                            ),
+                            SizedBox(width: isLarge ? 10.0 : 8.0),
+                            Flexible(
+                              child: Text(
+                                'Factura A, B',
+                                style: TextStyle(
+                                  fontSize: isLarge ? 18.0 : 15.0,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: isLarge ? 12.0 : 8.0),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Cantidad:',
                               style: TextStyle(
-                                fontSize: isLarge ? 18.0 : 15.0,
+                                fontSize: isLarge ? 14.0 : 12.0,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                            Text(
+                              _formatValue(countAB),
+                              style: TextStyle(
+                                fontSize: isLarge ? 15.0 : 13.0,
                                 fontWeight: FontWeight.bold,
                               ),
-                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: isLarge ? 18.0 : 12.0),
-                      ...items.map<Widget>((item) {
-                        if (item is Map<String, dynamic>) {
-                          final tipofactura = item['tipofactura']?.toString() ?? 'Unknown';
-                          final sumMonto = (item['sum_monto'] as num?)?.toDouble() ?? 0.0;
-                          
-                          return Padding(
-                            padding: EdgeInsets.only(bottom: isLarge ? 12.0 : 8.0),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Text(
-                                  'Factura Tipo $tipofactura',
-                                  style: TextStyle(
-                                    fontSize: isLarge ? 15.0 : 13.0,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                Text(
-                                  _formatValue(sumMonto, isCurrency: true),
-                                  style: TextStyle(
-                                    fontSize: isLarge ? 16.0 : 14.0,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.deepPurple,
-                                  ),
-                                ),
-                              ],
+                          ],
+                        ),
+                        SizedBox(height: isLarge ? 8.0 : 6.0),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Total:',
+                              style: TextStyle(
+                                fontSize: isLarge ? 14.0 : 12.0,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey[700],
+                              ),
                             ),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      }).toList(),
-                    ],
+                            Text(
+                              _formatValue(sumMontoAB, isCurrency: true),
+                              style: TextStyle(
+                                fontSize: isLarge ? 16.0 : 14.0,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.deepPurple,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          );
+            );
+          }
+          
+          // NCA, NCB 카드
+          if (countNC > 0 || sumMontoNC > 0) {
+            cards.add(
+              InkWell(
+                onTap: () => onReportTypeSelected(ReportType.fventas),
+                child: Card(
+                  child: Container(
+                    constraints: isLarge 
+                        ? const BoxConstraints(minHeight: 120.0)
+                        : const BoxConstraints(minHeight: 100.0),
+                    padding: EdgeInsets.all(isLarge ? 18.0 : 12.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.receipt_long, 
+                              color: Colors.orange, 
+                              size: isLarge ? 24.0 : 20.0,
+                            ),
+                            SizedBox(width: isLarge ? 10.0 : 8.0),
+                            Flexible(
+                              child: Text(
+                                'Nota de Crédito (NCA, NCB)',
+                                style: TextStyle(
+                                  fontSize: isLarge ? 18.0 : 15.0,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: isLarge ? 12.0 : 8.0),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Cantidad:',
+                              style: TextStyle(
+                                fontSize: isLarge ? 14.0 : 12.0,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                            Text(
+                              _formatValue(countNC),
+                              style: TextStyle(
+                                fontSize: isLarge ? 15.0 : 13.0,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: isLarge ? 8.0 : 6.0),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Total:',
+                              style: TextStyle(
+                                fontSize: isLarge ? 14.0 : 12.0,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                            Text(
+                              _formatValue(sumMontoNC, isCurrency: true),
+                              style: TextStyle(
+                                fontSize: isLarge ? 16.0 : 14.0,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }
         }
       }
       

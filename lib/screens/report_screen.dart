@@ -2594,6 +2594,19 @@ class _ReportScreenState extends State<ReportScreen> {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [ReportScreen.build] 호출됨');
+    debugPrint('   → reportType: ${widget.reportType}');
+    debugPrint('   → Platform.isWindows: ${Platform.isWindows}');
+    debugPrint('   → Platform.isMacOS: ${Platform.isMacOS}');
+    debugPrint('   → Platform.isLinux: ${Platform.isLinux}');
+    debugPrint('   → defaultTargetPlatform: $defaultTargetPlatform');
+    debugPrint('   → useFullWidth: ${widget.useFullWidth}');
+    debugPrint('   → _isLoading: $_isLoading');
+    debugPrint('   → _data: ${_data != null ? "있음 (키: ${_data!.keys.toList()})" : "null"}');
+    debugPrint('   → _errorMessage: $_errorMessage');
+    debugPrint('═══════════════════════════════════════════════════════');
+    
     final l10n = AppLocalizations.of(context)!;
     final reportTitle = _getReportTitle();
     final reportIcon = _getReportIcon();
@@ -2601,11 +2614,18 @@ class _ReportScreenState extends State<ReportScreen> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        debugPrint('   → LayoutBuilder: constraints.maxWidth=${constraints.maxWidth}, constraints.maxHeight=${constraints.maxHeight}');
+        
         final isLargeScreen = constraints.maxWidth >= 800;
         final orientation = MediaQuery.of(context).orientation;
         final isMobilePortrait = !isLargeScreen && orientation == Orientation.portrait;
         final platformType = PlatformUtils.getPlatformType(context);
         final isMobile = platformType == PlatformType.mobile;
+        
+        debugPrint('   → isLargeScreen: $isLargeScreen');
+        debugPrint('   → orientation: $orientation');
+        debugPrint('   → platformType: $platformType');
+        debugPrint('   → isMobile: $isMobile');
         
         // 핸드폰의 경우: 넓은 화면(가로 모드)이면 1줄, 좁은 화면(세로 모드)이면 2줄 또는 3줄
         // 데스크톱/태블릿의 경우: 기존 로직 유지
@@ -2641,6 +2661,7 @@ class _ReportScreenState extends State<ReportScreen> {
 
     // useFullWidth가 true이면 Scaffold를 반환하지 않고 AppBar와 body를 포함한 위젯 반환
     if (widget.useFullWidth) {
+      debugPrint('   → useFullWidth=true: Column 반환 (AppBar + Expanded body)');
       final appBar = _buildAppBar(context, reportTitle, reportIcon, reportColor, isLargeScreen, isMobilePortrait, needsTwoLineAppBar, needsThreeLineAppBar);
       return Column(
         children: [
@@ -2655,6 +2676,7 @@ class _ReportScreenState extends State<ReportScreen> {
       );
     }
 
+    debugPrint('   → useFullWidth=false: Scaffold 반환');
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -6579,6 +6601,14 @@ class _ReportScreenState extends State<ReportScreen> {
 
   // Body 빌드 메서드 (useFullWidth가 true일 때 사용)
   Widget _buildBody(BuildContext context, AppLocalizations l10n, Color reportColor) {
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [_buildBody] 호출됨');
+    debugPrint('   → reportType: ${widget.reportType}');
+    debugPrint('   → Platform.isWindows: ${Platform.isWindows}');
+    debugPrint('   → _isLoading: $_isLoading');
+    debugPrint('   → _data: ${_data != null ? "있음 (키: ${_data!.keys.toList()})" : "null"}');
+    debugPrint('   → _errorMessage: $_errorMessage');
+    debugPrint('═══════════════════════════════════════════════════════');
     if (_isLoading) {
       return Center(
         child: Column(
@@ -6662,9 +6692,29 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   Widget _buildReportContent() {
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [_buildReportContent] 호출됨');
+    debugPrint('   → reportType: ${widget.reportType}');
+    debugPrint('   → Platform.isWindows: ${Platform.isWindows}');
+    debugPrint('   → _data: ${_data != null ? "있음" : "null"}');
+    
     if (_data == null) {
+      debugPrint('   ⚠️ _data가 null임 - "No hay datos" 반환');
+      debugPrint('═══════════════════════════════════════════════════════');
       return const Center(child: Text('No hay datos'));
     }
+    
+    debugPrint('   → _data 키: ${_data!.keys.toList()}');
+    
+    if (widget.reportType == ReportType.ventas) {
+      debugPrint('   → [Ventas] _data 타입: ${_data.runtimeType}');
+      if (_data!.containsKey('data') && _data!['data'] is List) {
+        debugPrint('   → [Ventas] data 리스트 길이: ${(_data!['data'] as List).length}');
+      } else {
+        debugPrint('   ⚠️ [Ventas] data 키가 없거나 List가 아님');
+      }
+    }
+    debugPrint('═══════════════════════════════════════════════════════');
 
     // 데이터 구조 분석 및 적절한 위젯 반환
     final data = _data!;
@@ -7313,6 +7363,23 @@ class _ReportScreenState extends State<ReportScreen> {
         }
         
         // 성능 최적화: RepaintBoundary로 감싸서 불필요한 리페인트 방지
+        if (widget.reportType == ReportType.ventas) {
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [Ventas] ReportTableBuilder.buildTableFromList 호출 전');
+          debugPrint('   → Platform.isWindows: ${Platform.isWindows}');
+          debugPrint('   → sortedDataList.length: ${sortedDataList.length}');
+          debugPrint('   → _displayedItemsCount: $_displayedItemsCount');
+          debugPrint('   → _ventasUnit: $_ventasUnit');
+          debugPrint('   → _sortColumn: $_sortColumn');
+          debugPrint('   → _sortAscending: $_sortAscending');
+          debugPrint('   → _horizontalScrollController: ${_horizontalScrollController != null}');
+          debugPrint('   → _scrollController: ${_scrollController != null}');
+          if (sortedDataList.isNotEmpty) {
+            debugPrint('   → sortedDataList 첫 번째 항목: ${sortedDataList.first}');
+          }
+          debugPrint('═══════════════════════════════════════════════════════');
+        }
+        
         return RepaintBoundary(
           child: ReportTableBuilder.buildTableFromList(
             widget.reportType == ReportType.ventas ? sortedDataList : filteredDataList,
