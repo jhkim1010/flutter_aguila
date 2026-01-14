@@ -3,12 +3,12 @@
 Launching lib/main.dart on macOS in debug mode...
 Building macOS application...                                   
 ✓ Built build/macos/Build/Products/Debug/Be_Cool.app
-2026-01-14 11:51:46.954 Be_Cool[28421:441045] Running with merged UI and platform thread. Experimental.
+2026-01-14 11:55:08.941 Be_Cool[31365:451275] Running with merged UI and platform thread. Experimental.
 Failed to foreground app; open returned 1
 Syncing files to device macOS...                                
-flutter: 📝 로그 파일 초기화 완료: /Users/marcoskim/Documents/logs/app_log_2026-01-14T11-51-47.txt
-flutter: 📝 로그 파일 경로: /Users/marcoskim/Documents/logs/app_log_2026-01-14T11-51-47.txt
-Syncing files to device macOS...                                   118ms
+flutter: 📝 로그 파일 초기화 완료: /Users/marcoskim/Documents/logs/app_log_2026-01-14T11-55-09.txt
+flutter: 📝 로그 파일 경로: /Users/marcoskim/Documents/logs/app_log_2026-01-14T11-55-09.txt
+Syncing files to device macOS...                                   138ms
 
 Flutter run key commands.
 r Hot reload. 🔥🔥🔥
@@ -18,8 +18,8 @@ d Detach (terminate "flutter run" but leave application running).
 c Clear the screen
 q Quit (terminate the application on the device).
 
-A Dart VM Service on macOS is available at: http://127.0.0.1:57645/oL7p2nYvwPA=/
-The Flutter DevTools debugger and profiler on macOS is available at: http://127.0.0.1:57645/oL7p2nYvwPA=/devtools/?uri=ws://127.0.0.1:57645/oL7p2nYvwPA=/ws
+A Dart VM Service on macOS is available at: http://127.0.0.1:57849/9wbs_KhN4io=/
+The Flutter DevTools debugger and profiler on macOS is available at: http://127.0.0.1:57849/9wbs_KhN4io=/devtools/?uri=ws://127.0.0.1:57849/9wbs_KhN4io=/ws
 flutter: 🔄 저장된 연결 리스트 로드 시작...
 flutter: 📖 연결 정보 읽기 시작... (macOS: true)
 flutter: 📖 SharedPreferences에서 읽기 완료
@@ -83,7 +83,7 @@ flutter: 🔄 ResumenDelDiaScreen: 연결 목록 로드 시작...
 flutter: 📖 연결 정보 읽기 시작... (macOS: true)
 flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
 flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
-flutter: 🔍 [Resumen빌드날짜] 오늘 날짜: 2026-01-14 11:51:49.817779
+flutter: 🔍 [Resumen빌드날짜] 오늘 날짜: 2026-01-14 11:55:11.636650
 flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 14
 flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-14"
 flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-14"
@@ -127,7 +127,21 @@ flutter: ✅ 응답 성공: 3개 항목
 flutter: ✅ Tipos: 3개, 콤보박스 표시: 예
 flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
 flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
-flutter: 🔍 [Resumen빌드날짜] 오늘 날짜: 2026-01-14 11:51:50.143475
+flutter: 🔍 [Resumen빌드날짜] 오늘 날짜: 2026-01-14 11:55:11.924632
+flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 14
+flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-14"
+flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-14"
+flutter: 🔍 [Resumen메뉴] 메뉴 아이템 리스트 생성 완료, 총 14개
+flutter: 🔍 _buildReportContent 호출: _selectedReportType=null, _currentReport=resumen
+flutter: 🔍 _buildResumenContent 호출됨
+flutter:    - _isLoading: true
+flutter:    - _errorMessage: null
+flutter:    - _data: null
+flutter:    → 로딩 상태 반환
+flutter: 🍎 macOS: secure storage 읽기 전 대기 중...
+flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
+flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
+flutter: 🔍 [Resumen빌드날짜] 오늘 날짜: 2026-01-14 11:55:12.432567
 flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 14
 flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-14"
 flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-14"
@@ -143,24 +157,10 @@ flutter: Status Code: 200
 flutter: Response Body Length: 476 bytes
 flutter: ✅ 응답 성공: 4개 항목
 flutter: ✅ Temporadas: 4개, 콤보박스 표시: 예
-flutter: 🍎 macOS: secure storage 읽기 전 대기 중...
-flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
-flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
-flutter: 🔍 [Resumen빌드날짜] 오늘 날짜: 2026-01-14 11:51:50.621673
-flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 14
-flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-14"
-flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-14"
-flutter: 🔍 [Resumen메뉴] 메뉴 아이템 리스트 생성 완료, 총 14개
-flutter: 🔍 _buildReportContent 호출: _selectedReportType=null, _currentReport=resumen
-flutter: 🔍 _buildResumenContent 호출됨
-flutter:    - _isLoading: true
-flutter:    - _errorMessage: null
-flutter:    - _data: null
-flutter:    → 로딩 상태 반환
 flutter:   - 서버 URL: https://sync.coolsistema.com
-flutter:   - 사용 날짜: 2026-01-14 11:51:49.801964
+flutter:   - 사용 날짜: 2026-01-14 11:55:11.625242
 flutter:   - Sucursal: 없음
-flutter:    - 날짜: 2026-01-14 11:51:49.801964
+flutter:    - 날짜: 2026-01-14 11:55:11.625242
 flutter:    - Sucursal: 없음
 flutter: === Reports API 요청 ===
 flutter:   - 엔드포인트: /api/resumen_del_dia
@@ -172,11 +172,11 @@ flutter: URL: https://sync.coolsistema.com/api/resumen_del_dia
 flutter: Headers: {Content-Type: application/json, x-db-name: inquieta14, x-db-user: inquieta, x-db-password: se2021mi09, x-db-ssl: false, Connection: keep-alive}
 flutter: Timeout: 60초
 flutter: Request Body Length: 21 bytes
-flutter: ⏱️ 요청 완료 시간: 908ms
+flutter: ⏱️ 요청 완료 시간: 875ms
 flutter: === 응답 정보 ===
 flutter: Status Code: 200
 flutter: Response Body Length: 1513 bytes
-flutter: Response Body: {"fecha":"2026-01-14","fecha_vcodes":"2026-01-14","fecha_otros":"2026-01-14","vcodes":[{"sucursal":2,"operation_count":19,"total_venta_day":5964780,"total_efectivo_day":4566500,"total_credito_day":0,"total_banco_day":1398280,"total_favor_day":0,"last_venta_hour":"16:27:50","total_count_ropas":263}],"gastos":[{"sucursal":2,"gasto_count":5,"total_gasto_day":82700}],"vdetalle":[{"sucursal":2,"count_discount_event":2,"total_discount_day":-106440}],"vcodes_mpago":[{"sucursal":2,"count_mpago_total":1,... (1513 bytes total)
+flutter: Response Body: {"fecha":"2026-01-14","fecha_vcodes":"2026-01-14","fecha_otros":"2026-01-14","vcodes":[{"sucursal":2,"operation_count":22,"total_venta_day":6369280,"total_efectivo_day":4971000,"total_credito_day":0,"total_banco_day":1398280,"total_favor_day":0,"last_venta_hour":"16:27:50","total_count_ropas":282}],"gastos":[{"sucursal":2,"gasto_count":5,"total_gasto_day":82700}],"vdetalle":[{"sucursal":2,"count_discount_event":2,"total_discount_day":-106440}],"vcodes_mpago":[{"sucursal":2,"count_mpago_total":1,... (1513 bytes total)
 flutter: 📋 resumen_del_dia 원본 응답 데이터:
 flutter:   - fecha: String = 2026-01-14
 flutter:   - fecha_vcodes: String = 2026-01-14
@@ -196,7 +196,7 @@ flutter:      - fecha: String = 2026-01-14
 flutter:      - fecha_vcodes: String = 2026-01-14
 flutter:      - fecha_otros: String = 2026-01-14
 flutter:      - vcodes: List (1개 항목)
-flutter:        첫 번째 항목: {sucursal: 2, operation_count: 19, total_venta_day: 5964780, total_efectivo_day: 4566500, total_credito_day: 0, total_banco_day: 1398280, total_favor_day: 0, last_venta_hour: 16:27:50, total_count_ropas: 263}
+flutter:        첫 번째 항목: {sucursal: 2, operation_count: 22, total_venta_day: 6369280, total_efectivo_day: 4971000, total_credito_day: 0, total_banco_day: 1398280, total_favor_day: 0, last_venta_hour: 16:27:50, total_count_ropas: 282}
 flutter:      - gastos: List (1개 항목)
 flutter:        첫 번째 항목: {sucursal: 2, gasto_count: 5, total_gasto_day: 82700}
 flutter:      - vdetalle: List (1개 항목)
@@ -205,7 +205,7 @@ flutter:      - vcodes_mpago: List (1개 항목)
 flutter:        첫 번째 항목: {sucursal: 2, count_mpago_total: 1, total_mpago_day: 1079250}
 flutter:      - ingresos: List (0개 항목)
 flutter:      - stocks: List (4개 항목)
-flutter:        첫 번째 항목: {sucursal: 2, item_count: 808, tVentas: 948504, tIngresos: 1468710, tOffset: 15573, hVentas: 263, hIngresos: 0, finalStock: 535779}
+flutter:        첫 번째 항목: {sucursal: 2, item_count: 808, tVentas: 948523, tIngresos: 1468710, tOffset: 15573, hVentas: 282, hIngresos: 0, finalStock: 533402}
 flutter:      - fventas: List (1개 항목)
 flutter:        첫 번째 항목: {sucursal: 1, tipofactura: A, count: 2, sum_monto: 361338.4}
 flutter:      - fventas_mes: List (5개 항목)
@@ -239,7 +239,7 @@ flutter: Response Body Length: 36108 bytes
 flutter: ✅ 응답 성공: 100개 항목
 flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
 flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
-flutter: 🔍 [Resumen빌드날짜] 오늘 날짜: 2026-01-14 11:51:52.787781
+flutter: 🔍 [Resumen빌드날짜] 오늘 날짜: 2026-01-14 11:55:14.641978
 flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 14
 flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-14"
 flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-14"
@@ -279,7 +279,7 @@ flutter: ═══════════════════════�
 flutter: ═══════════════════════════════════════════════════════
 flutter: 🔍 [단일 Sucursal 뷰] ResumenDelDiaSingleSucursalView.build 호출
 flutter:    → data 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
-flutter:    → selectedDate: 2026-01-14 11:51:49.801964
+flutter:    → selectedDate: 2026-01-14 11:55:11.625242
 flutter:    → errorMessage: null
 flutter: ═══════════════════════════════════════════════════════
 flutter:    → 섹션별 데이터 존재 여부:
@@ -298,7 +298,7 @@ flutter:    → 대형화면 여부: true
 flutter:    - vcodes 데이터 타입: List<dynamic>
 flutter:    - vcodes List 길이: 1
 flutter:    🔍 [단일 Sucursal] Vcodes 섹션 생성 시작
-flutter:       → aggregatedVcodes: {operation_count: 19, total_venta_day: 5964780.0, total_efectivo_day: 4566500.0, total_credito_day: 0.0, total_banco_day: 1398280.0, total_favor_day: 0.0, total_count_ropas: 263, last_venta_hour: 16:27:50}
+flutter:       → aggregatedVcodes: {operation_count: 22, total_venta_day: 6369280.0, total_efectivo_day: 4971000.0, total_credito_day: 0.0, total_banco_day: 1398280.0, total_favor_day: 0.0, total_count_ropas: 282, last_venta_hour: 16:27:50}
 flutter: 🔍 _buildVcodesSection 호출됨
 flutter:    - vcodes 키: [operation_count, total_venta_day, total_efectivo_day, total_credito_day, total_banco_day, total_favor_day, total_count_ropas, last_venta_hour]
 flutter:    ✅ Vcodes 섹션 카드 생성 완료: 8개
@@ -394,7 +394,7 @@ flutter:    → 큰 화면: setState로 _currentReport=alertas, _selectedReportT
 flutter:    → setState 완료 후: _currentReport=alertas, _selectedReportType=ReportType.alertas
 flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
 flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
-flutter: 🔍 [Resumen빌드날짜] 오늘 날짜: 2026-01-14 11:52:05.143521
+flutter: 🔍 [Resumen빌드날짜] 오늘 날짜: 2026-01-14 11:55:20.215180
 flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 14
 flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-14"
 flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-14"
@@ -456,7 +456,7 @@ flutter: Headers: {Content-Type: application/json, x-db-name: inquieta14, x-db-u
 flutter: Query Parameters: {fecha_inicio: 2026-01-14, fecha_fin: 2026-01-14}
 flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
 flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
-flutter: 🔍 [Resumen빌드날짜] 오늘 날짜: 2026-01-14 11:52:05.455603
+flutter: 🔍 [Resumen빌드날짜] 오늘 날짜: 2026-01-14 11:55:20.487634
 flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 14
 flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-14"
 flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-14"
@@ -828,7 +828,21 @@ flutter:       → columnSpacing(8) 추가 후 x=1217.0
 flutter:    → [푸터] 칼럼 #4: key="sucursal", width=50.0, x=1217.0, padding=16
 flutter:    → [푸터] 총 너비: 1267.0
 flutter:    → 푸터 생성 완료
-flutter: 🔍 [Alertas 푸터] 총 로그 개수: 35
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [Alertas 푸터] 총 로그 개수 계산
+flutter:    → listForTotal.length: 35
+flutter:    → totalLogCount: 35
+flutter:    → keys: [fecha, hora, evento, progname, sucursal]
+flutter:    → keys[0]: fecha
+flutter:    → finalColumnWidths[keys[0]]: 60.0
+flutter:    → 표시할 텍스트: "Total: 35"
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [Alertas 푸터] 첫 번째 칼럼 너비: 60.0
+flutter: 🔍 [Alertas 푸터] 생성할 텍스트: "Total: 35"
+flutter: 🔍 [Alertas 푸터] 빈 칸 칼럼: hora, width: 50.0
+flutter: 🔍 [Alertas 푸터] 빈 칸 칼럼: evento, width: 1000.0
+flutter: 🔍 [Alertas 푸터] 빈 칸 칼럼: progname, width: 75.0
+flutter: 🔍 [Alertas 푸터] 빈 칸 칼럼: sucursal, width: 50.0
 flutter: ═══════════════════════════════════════════════════════
 flutter: 📊 [ReportTableBuilder:680] buildTableFromList 내부 LayoutBuilder 시작
 flutter:    → 파일: report_table_builder.dart
@@ -1006,3 +1020,4 @@ flutter:    → [DataTable] RenderTable 총 자식 수: 180
 flutter:    ═══════════════════════════════════════════════════════
 flutter:    📊 [DataTable] 모든 행 정보 (총 0개)
 flutter:    ═══════════════════════════════════════════════════════
+Lost connection to device.

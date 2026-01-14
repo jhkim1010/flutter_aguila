@@ -1,0 +1,1823 @@
+=== 플랫폼 정보: 대형화면 (Desktop: macos) ===
+
+Launching lib/main.dart on macOS in debug mode...
+Building macOS application...                                   
+✓ Built build/macos/Build/Products/Debug/Be_Cool.app
+2026-01-14 11:58:38.490 Be_Cool[34033:461166] Running with merged UI and platform thread. Experimental.
+Failed to foreground app; open returned 1
+Syncing files to device macOS...                                
+flutter: 📝 로그 파일 초기화 완료: /Users/marcoskim/Documents/logs/app_log_2026-01-14T11-58-39.txt
+flutter: 📝 로그 파일 경로: /Users/marcoskim/Documents/logs/app_log_2026-01-14T11-58-39.txt
+Syncing files to device macOS...                                   114ms
+
+Flutter run key commands.
+r Hot reload. 🔥🔥🔥
+R Hot restart.
+h List all available interactive commands.
+d Detach (terminate "flutter run" but leave application running).
+c Clear the screen
+q Quit (terminate the application on the device).
+
+A Dart VM Service on macOS is available at: http://127.0.0.1:58074/Ob2i2oxKuqQ=/
+The Flutter DevTools debugger and profiler on macOS is available at: http://127.0.0.1:58074/Ob2i2oxKuqQ=/devtools/?uri=ws://127.0.0.1:58074/Ob2i2oxKuqQ=/ws
+flutter: 🔄 저장된 연결 리스트 로드 시작...
+flutter: 📖 연결 정보 읽기 시작... (macOS: true)
+flutter: 📖 SharedPreferences에서 읽기 완료
+flutter: 📖 JSON 데이터 읽기 완료 (길이: 645)
+flutter: ✅ 연결 정보 파싱 완료: 4개 연결
+flutter:    - inquieta (ID: 1765666561277)
+flutter:    - ace (ID: 1765984612266)
+flutter:    - jol-test (ID: 1767153069054)
+flutter:    - el-test (ID: 1768240976895)
+flutter: ✅ 저장된 연결 리스트 로드 완료: 4개 연결
+flutter:    - inquieta (ID: 1765666561277, DB: inquieta14)
+flutter:    - ace (ID: 1765984612266, DB: ace17)
+flutter:    - jol-test (ID: 1767153069054, DB: jolues37)
+flutter:    - el-test (ID: 1768240976895, DB: ellui48_2)
+flutter: ℹ️ disconnect 요청을 보내지 않습니다. (disconnectExisting=false)
+flutter: === 연결 시도 ===
+flutter: URL: https://sync.coolsistema.com/api/health
+flutter: Request Body: {"databaseName":"inquieta14","username":"inquieta","password":"se2021mi09"}
+flutter: Headers: Content-Type: application/json
+flutter: 📱 플랫폼 정보: 대형화면 (Desktop: macOS/Windows/Linux)
+flutter: === 응답 정보 ===
+flutter: Status Code: 200
+flutter: ✅ 연결 성공
+flutter: 💾 데이터베이스 정보 저장 시도:
+flutter:    database_name: inquieta14
+flutter:    username: inquieta
+flutter:    password: *** (길이: 10)
+flutter: 🍎 macOS 개발 환경: 모든 데이터를 SharedPreferences에 저장
+flutter: 📝 [1/3] database_name 저장 시도...
+flutter:    📝 SharedPreferences 저장 시작: key="database_name", value="inquieta14"
+flutter:    ✅ SharedPreferences 저장 결과: true
+flutter:    ✅ SharedPreferences 저장 확인 성공
+flutter: ✅ [1/3] database_name 저장 성공
+flutter: 📝 [2/3] username 저장 시도...
+flutter:    📝 SharedPreferences 저장 시작: key="username", value="inquieta"
+flutter:    ✅ SharedPreferences 저장 결과: true
+flutter:    ✅ SharedPreferences 저장 확인 성공
+flutter: ✅ [2/3] username 저장 성공
+flutter: 📝 [3/3] password 저장 시도...
+flutter:    📝 SharedPreferences 저장 시작: key="password", value="se2021mi09"
+flutter:    ✅ SharedPreferences 저장 결과: true
+flutter:    ✅ SharedPreferences 저장 확인 성공
+flutter: ✅ [3/3] password 저장 성공
+flutter: 🔍 저장 확인 단계 시작...
+flutter: ✅ [확인 1/3] database_name 확인 완료: "inquieta14"
+flutter: ✅ [확인 2/3] username 확인 완료: "inquieta"
+flutter: ✅ [확인 3/3] password 확인 완료: 길이 10
+flutter: ✅ 데이터베이스 정보 저장 완료
+flutter: 🍎 macOS 저장 프로세스 완료!
+flutter: ✅ 자동 연결 성공
+flutter: === GET /api/tipos 요청 ===
+flutter: URL: https://sync.coolsistema.com/api/tipos
+flutter: Headers: {Content-Type: application/json, x-db-name: inquieta14, x-db-user: inquieta, x-db-password: se2021mi09, x-db-ssl: false, Connection: keep-alive}
+flutter: === GET /api/temporadas 요청 ===
+flutter: URL: https://sync.coolsistema.com/api/temporadas
+flutter: Headers: {Content-Type: application/json, x-db-name: inquieta14, x-db-user: inquieta, x-db-password: se2021mi09, x-db-ssl: false, Connection: keep-alive}
+flutter: 🔄 ResumenDelDiaScreen: 연결 목록 로드 시작...
+flutter: 📖 연결 정보 읽기 시작... (macOS: true)
+flutter: 🔄 ResumenDelDiaScreen: didChangeDependencies 호출, 연결 리스트 갱신
+flutter: 🔄 ResumenDelDiaScreen: 연결 목록 로드 시작...
+flutter: 📖 연결 정보 읽기 시작... (macOS: true)
+flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
+flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
+flutter: 🔍 [Resumen빌드날짜] 오늘 날짜: 2026-01-14 11:58:41.120863
+flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 14
+flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-14"
+flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-14"
+flutter: 🔍 [Resumen메뉴] 메뉴 아이템 리스트 생성 완료, 총 14개
+flutter: 🔍 _buildReportContent 호출: _selectedReportType=null, _currentReport=resumen
+flutter: 🔍 _buildResumenContent 호출됨
+flutter:    - _isLoading: true
+flutter:    - _errorMessage: null
+flutter:    - _data: null
+flutter:    → 로딩 상태 반환
+flutter: 📖 SharedPreferences에서 읽기 완료
+flutter: 📖 JSON 데이터 읽기 완료 (길이: 645)
+flutter: ✅ 연결 정보 파싱 완료: 4개 연결
+flutter:    - inquieta (ID: 1765666561277)
+flutter:    - ace (ID: 1765984612266)
+flutter:    - jol-test (ID: 1767153069054)
+flutter:    - el-test (ID: 1768240976895)
+flutter: ✅ ResumenDelDiaScreen: 4개 연결 로드 완료
+flutter:    - inquieta (ID: 1765666561277, DB: inquieta14)
+flutter:    - ace (ID: 1765984612266, DB: ace17)
+flutter:    - jol-test (ID: 1767153069054, DB: jolues37)
+flutter:    - el-test (ID: 1768240976895, DB: ellui48_2)
+flutter: 🔄 ResumenDelDiaScreen: UI 업데이트 완료 (4개 연결 표시)
+flutter: 📖 SharedPreferences에서 읽기 완료
+flutter: 📖 JSON 데이터 읽기 완료 (길이: 645)
+flutter: ✅ 연결 정보 파싱 완료: 4개 연결
+flutter:    - inquieta (ID: 1765666561277)
+flutter:    - ace (ID: 1765984612266)
+flutter:    - jol-test (ID: 1767153069054)
+flutter:    - el-test (ID: 1768240976895)
+flutter: ✅ ResumenDelDiaScreen: 4개 연결 로드 완료
+flutter:    - inquieta (ID: 1765666561277, DB: inquieta14)
+flutter:    - ace (ID: 1765984612266, DB: ace17)
+flutter:    - jol-test (ID: 1767153069054, DB: jolues37)
+flutter:    - el-test (ID: 1768240976895, DB: ellui48_2)
+flutter: 🔄 ResumenDelDiaScreen: UI 업데이트 완료 (4개 연결 표시)
+flutter: === 응답 정보 ===
+flutter: Status Code: 200
+flutter: Response Body Length: 419 bytes
+flutter: ✅ 응답 성공: 3개 항목
+flutter: ✅ Tipos: 3개, 콤보박스 표시: 예
+flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
+flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
+flutter: 🔍 [Resumen빌드날짜] 오늘 날짜: 2026-01-14 11:58:41.426272
+flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 14
+flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-14"
+flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-14"
+flutter: 🔍 [Resumen메뉴] 메뉴 아이템 리스트 생성 완료, 총 14개
+flutter: 🔍 _buildReportContent 호출: _selectedReportType=null, _currentReport=resumen
+flutter: 🔍 _buildResumenContent 호출됨
+flutter:    - _isLoading: true
+flutter:    - _errorMessage: null
+flutter:    - _data: null
+flutter:    → 로딩 상태 반환
+flutter: === 응답 정보 ===
+flutter: Status Code: 200
+flutter: Response Body Length: 476 bytes
+flutter: ✅ 응답 성공: 4개 항목
+flutter: ✅ Temporadas: 4개, 콤보박스 표시: 예
+flutter: 🍎 macOS: secure storage 읽기 전 대기 중...
+flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
+flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
+flutter: 🔍 [Resumen빌드날짜] 오늘 날짜: 2026-01-14 11:58:41.915611
+flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 14
+flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-14"
+flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-14"
+flutter: 🔍 [Resumen메뉴] 메뉴 아이템 리스트 생성 완료, 총 14개
+flutter: 🔍 _buildReportContent 호출: _selectedReportType=null, _currentReport=resumen
+flutter: 🔍 _buildResumenContent 호출됨
+flutter:    - _isLoading: true
+flutter:    - _errorMessage: null
+flutter:    - _data: null
+flutter:    → 로딩 상태 반환
+flutter:   - 서버 URL: https://sync.coolsistema.com
+flutter:   - 사용 날짜: 2026-01-14 11:58:41.108030
+flutter:   - Sucursal: 없음
+flutter:    - 날짜: 2026-01-14 11:58:41.108030
+flutter:    - Sucursal: 없음
+flutter: === Reports API 요청 ===
+flutter:   - 엔드포인트: /api/resumen_del_dia
+flutter:   - 요청 방식: POST (다른 보고서는 GET 사용)
+flutter:   - 타임아웃: 60초 (다른 보고서는 10초)
+flutter:   - 날짜: 2026-01-14
+flutter: === POST /api/resumen_del_dia 요청 ===
+flutter: URL: https://sync.coolsistema.com/api/resumen_del_dia
+flutter: Headers: {Content-Type: application/json, x-db-name: inquieta14, x-db-user: inquieta, x-db-password: se2021mi09, x-db-ssl: false, Connection: keep-alive}
+flutter: Timeout: 60초
+flutter: Request Body Length: 21 bytes
+flutter: ⏱️ 요청 완료 시간: 865ms
+flutter: === 응답 정보 ===
+flutter: Status Code: 200
+flutter: Response Body Length: 1513 bytes
+flutter: Response Body: {"fecha":"2026-01-14","fecha_vcodes":"2026-01-14","fecha_otros":"2026-01-14","vcodes":[{"sucursal":2,"operation_count":22,"total_venta_day":6369280,"total_efectivo_day":4971000,"total_credito_day":0,"total_banco_day":1398280,"total_favor_day":0,"last_venta_hour":"16:27:50","total_count_ropas":282}],"gastos":[{"sucursal":2,"gasto_count":5,"total_gasto_day":82700}],"vdetalle":[{"sucursal":2,"count_discount_event":2,"total_discount_day":-106440}],"vcodes_mpago":[{"sucursal":2,"count_mpago_total":1,... (1513 bytes total)
+flutter: 📋 resumen_del_dia 원본 응답 데이터:
+flutter:   - fecha: String = 2026-01-14
+flutter:   - fecha_vcodes: String = 2026-01-14
+flutter:   - fecha_otros: String = 2026-01-14
+flutter:   - vcodes: List (1개 항목)
+flutter:   - gastos: List (1개 항목)
+flutter:   - vdetalle: List (1개 항목)
+flutter:   - vcodes_mpago: List (1개 항목)
+flutter:   - ingresos: List (0개 항목)
+flutter:   - stocks: List (4개 항목)
+flutter:   - fventas: List (1개 항목)
+flutter:   - fventas_mes: List (5개 항목)
+flutter: ✅ 응답 성공: 11개 항목
+flutter:    - 응답 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes]
+flutter:    - 응답 데이터 상세:
+flutter:      - fecha: String = 2026-01-14
+flutter:      - fecha_vcodes: String = 2026-01-14
+flutter:      - fecha_otros: String = 2026-01-14
+flutter:      - vcodes: List (1개 항목)
+flutter:        첫 번째 항목: {sucursal: 2, operation_count: 22, total_venta_day: 6369280, total_efectivo_day: 4971000, total_credito_day: 0, total_banco_day: 1398280, total_favor_day: 0, last_venta_hour: 16:27:50, total_count_ropas: 282}
+flutter:      - gastos: List (1개 항목)
+flutter:        첫 번째 항목: {sucursal: 2, gasto_count: 5, total_gasto_day: 82700}
+flutter:      - vdetalle: List (1개 항목)
+flutter:        첫 번째 항목: {sucursal: 2, count_discount_event: 2, total_discount_day: -106440}
+flutter:      - vcodes_mpago: List (1개 항목)
+flutter:        첫 번째 항목: {sucursal: 2, count_mpago_total: 1, total_mpago_day: 1079250}
+flutter:      - ingresos: List (0개 항목)
+flutter:      - stocks: List (4개 항목)
+flutter:        첫 번째 항목: {sucursal: 2, item_count: 808, tVentas: 948523, tIngresos: 1468710, tOffset: 15573, hVentas: 282, hIngresos: 0, finalStock: 534511}
+flutter:      - fventas: List (1개 항목)
+flutter:        첫 번째 항목: {sucursal: 1, tipofactura: A, count: 2, sum_monto: 361338.4}
+flutter:      - fventas_mes: List (5개 항목)
+flutter:        첫 번째 항목: {sucursal: 1, cntEvent: 72, tipofactura: A, total_ventas_mes: 18304585.68}
+flutter: 
+
+flutter: ═══════════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════════
+flutter: 🌐 URL: https://sync.coolsistema.com/api/reporte/stocks?date=2026-01-14
+flutter: 
+flutter: 📋 Headers:
+flutter:    Content-Type: application/json
+flutter:    x-db-name: inquieta14
+flutter:    x-db-user: inquieta
+flutter:    x-db-password: ***
+flutter:    x-db-ssl: false
+flutter:    Connection: keep-alive
+flutter: 
+flutter: 🔍 Query Parameters:
+flutter:    date: 2026-01-14
+flutter: ═══════════════════════════════════════════════════════════
+flutter: 
+
+flutter: === GET /api/reporte/stocks 요청 ===
+flutter: URL: https://sync.coolsistema.com/api/reporte/stocks?date=2026-01-14
+flutter: Headers: {Content-Type: application/json, x-db-name: inquieta14, x-db-user: inquieta, x-db-password: se2021mi09, x-db-ssl: false, Connection: keep-alive}
+flutter: Query Parameters: {date: 2026-01-14}
+flutter: === 응답 정보 ===
+flutter: Status Code: 200
+flutter: Response Body Length: 36108 bytes
+flutter: ✅ 응답 성공: 100개 항목
+flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
+flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
+flutter: 🔍 [Resumen빌드날짜] 오늘 날짜: 2026-01-14 11:58:44.216703
+flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 14
+flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-14"
+flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-14"
+flutter: 🔍 [Resumen메뉴] 메뉴 아이템 리스트 생성 완료, 총 14개
+flutter: 🔍 _buildReportContent 호출: _selectedReportType=null, _currentReport=resumen
+flutter: 🔍 _buildResumenContent 호출됨
+flutter:    - _isLoading: false
+flutter:    - _errorMessage: null
+flutter:    - _data: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [_hasMultipleSucursales] 체크 시작
+flutter:    → _data 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter:    → vcodes는 List: 1개 항목
+flutter:    → vcodes 항목 순회 시작...
+flutter:       - 항목 #0: _Map<String, dynamic>
+flutter:          → 키: [sucursal, operation_count, total_venta_day, total_efectivo_day, total_credito_day, total_banco_day, total_favor_day, last_venta_hour, total_count_ropas]
+flutter:          → sucursal 값: 2 (타입: int)
+flutter:          → 파싱된 sucursal: 2
+flutter:          → sucursal 추가됨: 2 (현재 집합: {2})
+flutter:    → 최종 고유한 sucursal 개수: 1 - {2}
+flutter:    → 결과 (sucursales.length > 1): false
+flutter: ═══════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [Resumen del Dia] 여러 sucursal 체크
+flutter:    → _hasMultipleSucursales() 결과: false
+flutter:    → _data 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter:    → vcodes 데이터 타입: List<dynamic>
+flutter:    → vcodes List 길이: 1
+flutter:    → 추출된 고유 sucursal: {2} (1개)
+flutter: ═══════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [단일 Sucursal 뷰] 렌더링 시작
+flutter:    → hasMultipleSucursales: false
+flutter:    → ResumenDelDiaSingleSucursalView 사용
+flutter:    → _data 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter: ═══════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [단일 Sucursal 뷰] ResumenDelDiaSingleSucursalView.build 호출
+flutter:    → data 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter:    → selectedDate: 2026-01-14 11:58:41.108030
+flutter:    → errorMessage: null
+flutter: ═══════════════════════════════════════════════════════
+flutter:    → 섹션별 데이터 존재 여부:
+flutter:       - vcodes: ✅ 있음
+flutter:       - gastos: ✅ 있음
+flutter:       - vdetalle: ✅ 있음
+flutter:       - vcodes_mpago: ✅ 있음
+flutter:       - ingresos: ✅ 있음
+flutter:       - fventas: ✅ 있음
+flutter:       - fventas_mes: ✅ 있음
+flutter:       - stocks: ✅ 있음
+flutter:       - stock_resumen: ✅ 있음
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [단일 Sucursal 뷰] Builder 내부 렌더링 시작
+flutter:    → 대형화면 여부: true
+flutter:    - vcodes 데이터 타입: List<dynamic>
+flutter:    - vcodes List 길이: 1
+flutter:    🔍 [단일 Sucursal] Vcodes 섹션 생성 시작
+flutter:       → aggregatedVcodes: {operation_count: 22, total_venta_day: 6369280.0, total_efectivo_day: 4971000.0, total_credito_day: 0.0, total_banco_day: 1398280.0, total_favor_day: 0.0, total_count_ropas: 282, last_venta_hour: 16:27:50}
+flutter: 🔍 _buildVcodesSection 호출됨
+flutter:    - vcodes 키: [operation_count, total_venta_day, total_efectivo_day, total_credito_day, total_banco_day, total_favor_day, total_count_ropas, last_venta_hour]
+flutter:    ✅ Vcodes 섹션 카드 생성 완료: 8개
+flutter:       → vcodesWidgets 개수: 8
+flutter:       ✅ Vcodes 섹션 렌더링됨 (총 섹션: 1)
+flutter:    🔍 [단일 Sucursal] Gastos/Vdetalle 섹션 생성 시작
+flutter:       → hasGastos: true, hasVdetalle: true
+flutter:       → vdetalle 원본 데이터 타입: List<dynamic>
+flutter:       → vdetalle 원본 데이터: [{sucursal: 2, count_discount_event: 2, total_discount_day: -106440}]
+flutter:       → vdetalle List 길이: 1
+flutter:       → vdetalle List 첫 번째 항목: {sucursal: 2, count_discount_event: 2, total_discount_day: -106440}
+flutter:       → Gastos 섹션 생성 중...
+flutter: 🔍 _getAggregatedGastos: gastos 타입=List<dynamic>, 값=[{sucursal: 2, gasto_count: 5, total_gasto_day: 82700}]
+flutter:    → List 형태 (1개 항목), 합산 시작
+flutter:      - 항목: gasto_count=5, total_gasto_day=82700.0
+flutter:    → 합산 결과: gasto_count=5, total_gasto_day=82700.0
+flutter:          → aggregatedGastos: {gasto_count: 5, total_gasto_day: 82700.0}
+flutter: 🔍 _buildGastosSection 호출: gastos={gasto_count: 5, total_gasto_day: 82700.0}
+flutter:    → gasto_count 카드 추가: 5
+flutter:    → total_gasto_day 카드 추가: 82700.0
+flutter:    → 총 2개 카드 생성
+flutter:          → gastosWidgets 개수: 2
+flutter:          ✅ Gastos 섹션 렌더링됨 (총 섹션: 2)
+flutter: ═══════════════════════════════════════════════════════
+flutter:       → Vdetalle 섹션 생성 중 (대형화면)...
+flutter:       → data: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [_getAggregatedVdetalle] 호출됨
+flutter:    → data 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter:    → data.containsKey('vdetalle'): true
+flutter:    → vdetalle 타입: List<dynamic>
+flutter:    → vdetalle 값: [{sucursal: 2, count_discount_event: 2, total_discount_day: -106440}]
+flutter:    → vdetalle List 길이: 1
+flutter:       - vdetalle 항목 #0: _Map<String, dynamic>
+flutter:          → 항목 키: [sucursal, count_discount_event, total_discount_day]
+flutter:          → 항목 값: {sucursal: 2, count_discount_event: 2, total_discount_day: -106440}
+flutter:          → count_discount_event: 2
+flutter:          → total_discount_day: -106440.0
+flutter:    ✅ 처리 완료: 1개 항목 처리됨
+flutter:    → 최종 aggregated: {count_discount_event: 2, total_discount_day: -106440.0}
+flutter:    → count_discount_event: 2
+flutter:    → total_discount_day: -106440.0
+flutter: ═══════════════════════════════════════════════════════
+flutter:          → aggregatedVdetalle 반환값: {count_discount_event: 2, total_discount_day: -106440.0}
+flutter:          → aggregatedVdetalle.isEmpty: false
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [_buildVdetalleSection] 호출됨
+flutter:    → vdetalle: {count_discount_event: 2, total_discount_day: -106440.0}
+flutter:    → vdetalle.isEmpty: false
+flutter:    → vdetalle.keys: [count_discount_event, total_discount_day]
+flutter:    → isLarge: true
+flutter:    → vdetalle.containsKey('count_discount_event'): true
+flutter:       → count_discount_event 값: 2 (타입: int)
+flutter:       ✅ count_discount_event 카드 추가
+flutter:    → vdetalle.containsKey('total_discount_day'): true
+flutter:       → total_discount_day 값: -106440.0 (타입: double)
+flutter:       ✅ total_discount_day 카드 추가
+flutter:    → 생성된 카드 개수: 2
+flutter: ═══════════════════════════════════════════════════════
+flutter:          → vdetalleWidgets 개수: 2
+flutter:          → vdetalleWidgets.isEmpty: false
+flutter:          ✅ Vdetalle 섹션 렌더링됨 (총 섹션: 3)
+flutter:          → sectionWidget 타입: Column
+flutter: ═══════════════════════════════════════════════════════
+flutter:    🔍 [단일 Sucursal] Mpago 섹션 생성 시작
+flutter:       → aggregatedMpago: {count_mpago_total: 1, total_mpago_day: 1079250.0}
+flutter:       → mpagoWidgets 개수: 2
+flutter:       ✅ Mpago 섹션 렌더링됨 (총 섹션: 4)
+flutter:    🔍 [단일 Sucursal] Ingresos 섹션 생성 시작
+flutter:       → aggregatedIngresos: {}
+flutter:       → ingresosWidgets 개수: 0
+flutter:       ⚠️ Ingresos 위젯이 비어있음
+flutter:    🔍 [단일 Sucursal] FVentas 섹션 생성 시작
+flutter:    → FVentas 계산: totalCount=2, notaCreditoCount=0, 최종 count=2
+flutter:    → FVentas 계산: totalSumMonto=361338.4, notaCreditoSumMonto=0.0, 최종 sum_monto=361338.4
+flutter:       → aggregatedFventas: {items: [{tipofactura: A, count: 2, sum_monto: 361338.4}], total_count: 2, total_sum_monto: 361338.4}
+flutter:       → fventasWidgets 개수: 3
+flutter:       ✅ FVentas 섹션 렌더링됨 (총 섹션: 5)
+flutter:    🔍 [단일 Sucursal] FVentas Mes 섹션 생성 시작
+flutter:       → aggregatedFventasMes: {items: [{tipofactura: A, total_ventas_mes: 39308935.39}, {tipofactura: B, total_ventas_mes: 6293890.0}, {tipofactura: NCA, total_ventas_mes: 268105.59}, {tipofactura: NCB, total_ventas_mes: 211780.0}], total_ventas_mes: 46082710.980000004}
+flutter:       → fventasMesWidgets 개수: 5
+flutter:       ✅ FVentas Mes 섹션 렌더링됨 (총 섹션: 6)
+flutter:    🔍 [단일 Sucursal] Stock Resumen 섹션 생성 시작
+flutter: 🔍 Stock 섹션 체크: stock_resumen=true, stocks=true
+flutter:    - hasStockResumen: true
+flutter:    - hasStocks: true
+flutter:    - stockData 키: [stocks]
+flutter:    - stockWidgets 개수: 1
+flutter:    ✅ Stock Resumen 섹션 렌더링됨 (총 섹션: 7)
+flutter: ℹ️ disconnect 요청을 보내지 않습니다. (disconnectExisting=false)
+flutter: === 연결 시도 ===
+flutter: URL: https://sync.coolsistema.com/api/health
+flutter: Request Body: {"databaseName":"ellui48_2","username":"ellui","password":"eli4059"}
+flutter: Headers: Content-Type: application/json
+flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
+flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
+flutter: 🔍 [Resumen빌드날짜] 오늘 날짜: 2026-01-14 11:58:44.619496
+flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 14
+flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-14"
+flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-14"
+flutter: 🔍 [Resumen메뉴] 메뉴 아이템 리스트 생성 완료, 총 14개
+flutter: 🔍 _buildReportContent 호출: _selectedReportType=null, _currentReport=resumen
+flutter: 🔍 _buildResumenContent 호출됨
+flutter:    - _isLoading: false
+flutter:    - _errorMessage: null
+flutter:    - _data: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [_hasMultipleSucursales] 체크 시작
+flutter:    → _data 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter:    → vcodes는 List: 1개 항목
+flutter:    → vcodes 항목 순회 시작...
+flutter:       - 항목 #0: _Map<String, dynamic>
+flutter:          → 키: [sucursal, operation_count, total_venta_day, total_efectivo_day, total_credito_day, total_banco_day, total_favor_day, last_venta_hour, total_count_ropas]
+flutter:          → sucursal 값: 2 (타입: int)
+flutter:          → 파싱된 sucursal: 2
+flutter:          → sucursal 추가됨: 2 (현재 집합: {2})
+flutter:    → 최종 고유한 sucursal 개수: 1 - {2}
+flutter:    → 결과 (sucursales.length > 1): false
+flutter: ═══════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [Resumen del Dia] 여러 sucursal 체크
+flutter:    → _hasMultipleSucursales() 결과: false
+flutter:    → _data 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter:    → vcodes 데이터 타입: List<dynamic>
+flutter:    → vcodes List 길이: 1
+flutter:    → 추출된 고유 sucursal: {2} (1개)
+flutter: ═══════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [단일 Sucursal 뷰] 렌더링 시작
+flutter:    → hasMultipleSucursales: false
+flutter:    → ResumenDelDiaSingleSucursalView 사용
+flutter:    → _data 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter: ═══════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [단일 Sucursal 뷰] ResumenDelDiaSingleSucursalView.build 호출
+flutter:    → data 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter:    → selectedDate: 2026-01-14 11:58:41.108030
+flutter:    → errorMessage: null
+flutter: ═══════════════════════════════════════════════════════
+flutter:    → 섹션별 데이터 존재 여부:
+flutter:       - vcodes: ✅ 있음
+flutter:       - gastos: ✅ 있음
+flutter:       - vdetalle: ✅ 있음
+flutter:       - vcodes_mpago: ✅ 있음
+flutter:       - ingresos: ✅ 있음
+flutter:       - fventas: ✅ 있음
+flutter:       - fventas_mes: ✅ 있음
+flutter:       - stocks: ✅ 있음
+flutter:       - stock_resumen: ✅ 있음
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [단일 Sucursal 뷰] Builder 내부 렌더링 시작
+flutter:    → 대형화면 여부: true
+flutter:    - vcodes 데이터 타입: List<dynamic>
+flutter:    - vcodes List 길이: 1
+flutter:    🔍 [단일 Sucursal] Vcodes 섹션 생성 시작
+flutter:       → aggregatedVcodes: {operation_count: 22, total_venta_day: 6369280.0, total_efectivo_day: 4971000.0, total_credito_day: 0.0, total_banco_day: 1398280.0, total_favor_day: 0.0, total_count_ropas: 282, last_venta_hour: 16:27:50}
+flutter: 🔍 _buildVcodesSection 호출됨
+flutter:    - vcodes 키: [operation_count, total_venta_day, total_efectivo_day, total_credito_day, total_banco_day, total_favor_day, total_count_ropas, last_venta_hour]
+flutter:    ✅ Vcodes 섹션 카드 생성 완료: 8개
+flutter:       → vcodesWidgets 개수: 8
+flutter:       ✅ Vcodes 섹션 렌더링됨 (총 섹션: 1)
+flutter:    🔍 [단일 Sucursal] Gastos/Vdetalle 섹션 생성 시작
+flutter:       → hasGastos: true, hasVdetalle: true
+flutter:       → vdetalle 원본 데이터 타입: List<dynamic>
+flutter:       → vdetalle 원본 데이터: [{sucursal: 2, count_discount_event: 2, total_discount_day: -106440}]
+flutter:       → vdetalle List 길이: 1
+flutter:       → vdetalle List 첫 번째 항목: {sucursal: 2, count_discount_event: 2, total_discount_day: -106440}
+flutter:       → Gastos 섹션 생성 중...
+flutter: 🔍 _getAggregatedGastos: gastos 타입=List<dynamic>, 값=[{sucursal: 2, gasto_count: 5, total_gasto_day: 82700}]
+flutter:    → List 형태 (1개 항목), 합산 시작
+flutter:      - 항목: gasto_count=5, total_gasto_day=82700.0
+flutter:    → 합산 결과: gasto_count=5, total_gasto_day=82700.0
+flutter:          → aggregatedGastos: {gasto_count: 5, total_gasto_day: 82700.0}
+flutter: 🔍 _buildGastosSection 호출: gastos={gasto_count: 5, total_gasto_day: 82700.0}
+flutter:    → gasto_count 카드 추가: 5
+flutter:    → total_gasto_day 카드 추가: 82700.0
+flutter:    → 총 2개 카드 생성
+flutter:          → gastosWidgets 개수: 2
+flutter:          ✅ Gastos 섹션 렌더링됨 (총 섹션: 2)
+flutter: ═══════════════════════════════════════════════════════
+flutter:       → Vdetalle 섹션 생성 중 (대형화면)...
+flutter:       → data: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [_getAggregatedVdetalle] 호출됨
+flutter:    → data 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter: === 응답 정보 ===
+flutter: Status Code: 200
+flutter: ✅ 연결 성공
+flutter: 💾 데이터베이스 정보 저장 시도:
+flutter:    database_name: ellui48_2
+flutter:    username: ellui
+flutter:    password: *** (길이: 7)
+flutter: 🍎 macOS 개발 환경: 모든 데이터를 SharedPreferences에 저장
+flutter: 📝 [1/3] database_name 저장 시도...
+flutter:    📝 SharedPreferences 저장 시작: key="database_name", value="ellui48_2"
+flutter:    ✅ SharedPreferences 저장 결과: true
+flutter:    ✅ SharedPreferences 저장 확인 성공
+flutter: ✅ [1/3] database_name 저장 성공
+flutter: 📝 [2/3] username 저장 시도...
+flutter:    📝 SharedPreferences 저장 시작: key="username", value="ellui"
+flutter:    ✅ SharedPreferences 저장 결과: true
+flutter:    ✅ SharedPreferences 저장 확인 성공
+flutter: ✅ [2/3] username 저장 성공
+flutter: 📝 [3/3] password 저장 시도...
+flutter:    📝 SharedPreferences 저장 시작: key="password", value="eli4059"
+flutter:    ✅ SharedPreferences 저장 결과: true
+flutter:    ✅ SharedPreferences 저장 확인 성공
+flutter: ✅ [3/3] password 저장 성공
+flutter: 🔍 저장 확인 단계 시작...
+flutter: ✅ [확인 1/3] database_name 확인 완료: "ellui48_2"
+flutter: ✅ [확인 2/3] username 확인 완료: "ellui"
+flutter: ✅ [확인 3/3] password 확인 완료: 길이 7
+flutter: ✅ 데이터베이스 정보 저장 완료
+flutter: 🍎 macOS 저장 프로세스 완료!
+flutter: === GET /api/tipos 요청 ===
+flutter: URL: https://sync.coolsistema.com/api/tipos
+flutter: Headers: {Content-Type: application/json, x-db-name: ellui48_2, x-db-user: ellui, x-db-password: eli4059, x-db-ssl: false, Connection: keep-alive}
+flutter: === 응답 정보 ===
+flutter: Status Code: 200
+flutter: Response Body Length: 191 bytes
+flutter: ✅ 응답 성공: 1개 항목
+flutter: ✅ Tipos: 1개, 콤보박스 표시: 아니오
+flutter: === GET /api/temporadas 요청 ===
+flutter: URL: https://sync.coolsistema.com/api/temporadas
+flutter: Headers: {Content-Type: application/json, x-db-name: ellui48_2, x-db-user: ellui, x-db-password: eli4059, x-db-ssl: false, Connection: keep-alive}
+flutter:    → data.containsKey('vdetalle'): true
+flutter:    → vdetalle 타입: List<dynamic>
+flutter:    → vdetalle 값: [{sucursal: 2, count_discount_event: 2, total_discount_day: -106440}]
+flutter:    → vdetalle List 길이: 1
+flutter:       - vdetalle 항목 #0: _Map<String, dynamic>
+flutter:          → 항목 키: [sucursal, count_discount_event, total_discount_day]
+flutter:          → 항목 값: {sucursal: 2, count_discount_event: 2, total_discount_day: -106440}
+flutter:          → count_discount_event: 2
+flutter:          → total_discount_day: -106440.0
+flutter:    ✅ 처리 완료: 1개 항목 처리됨
+flutter:    → 최종 aggregated: {count_discount_event: 2, total_discount_day: -106440.0}
+flutter:    → count_discount_event: 2
+flutter:    → total_discount_day: -106440.0
+flutter: ═══════════════════════════════════════════════════════
+flutter:          → aggregatedVdetalle 반환값: {count_discount_event: 2, total_discount_day: -106440.0}
+flutter:          → aggregatedVdetalle.isEmpty: false
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [_buildVdetalleSection] 호출됨
+flutter:    → vdetalle: {count_discount_event: 2, total_discount_day: -106440.0}
+flutter:    → vdetalle.isEmpty: false
+flutter:    → vdetalle.keys: [count_discount_event, total_discount_day]
+flutter:    → isLarge: true
+flutter:    → vdetalle.containsKey('count_discount_event'): true
+flutter:       → count_discount_event 값: 2 (타입: int)
+flutter:       ✅ count_discount_event 카드 추가
+flutter:    → vdetalle.containsKey('total_discount_day'): true
+flutter:       → total_discount_day 값: -106440.0 (타입: double)
+flutter:       ✅ total_discount_day 카드 추가
+flutter:    → 생성된 카드 개수: 2
+flutter: ═══════════════════════════════════════════════════════
+flutter:          → vdetalleWidgets 개수: 2
+flutter:          → vdetalleWidgets.isEmpty: false
+flutter:          ✅ Vdetalle 섹션 렌더링됨 (총 섹션: 3)
+flutter:          → sectionWidget 타입: Column
+flutter: ═══════════════════════════════════════════════════════
+flutter:    🔍 [단일 Sucursal] Mpago 섹션 생성 시작
+flutter:       → aggregatedMpago: {count_mpago_total: 1, total_mpago_day: 1079250.0}
+flutter:       → mpagoWidgets 개수: 2
+flutter:       ✅ Mpago 섹션 렌더링됨 (총 섹션: 4)
+flutter:    🔍 [단일 Sucursal] Ingresos 섹션 생성 시작
+flutter:       → aggregatedIngresos: {}
+flutter:       → ingresosWidgets 개수: 0
+flutter:       ⚠️ Ingresos 위젯이 비어있음
+flutter:    🔍 [단일 Sucursal] FVentas 섹션 생성 시작
+flutter:    → FVentas 계산: totalCount=2, notaCreditoCount=0, 최종 count=2
+flutter:    → FVentas 계산: totalSumMonto=361338.4, notaCreditoSumMonto=0.0, 최종 sum_monto=361338.4
+flutter:       → aggregatedFventas: {items: [{tipofactura: A, count: 2, sum_monto: 361338.4}], total_count: 2, total_sum_monto: 361338.4}
+flutter:       → fventasWidgets 개수: 3
+flutter:       ✅ FVentas 섹션 렌더링됨 (총 섹션: 5)
+flutter:    🔍 [단일 Sucursal] FVentas Mes 섹션 생성 시작
+flutter:       → aggregatedFventasMes: {items: [{tipofactura: A, total_ventas_mes: 39308935.39}, {tipofactura: B, total_ventas_mes: 6293890.0}, {tipofactura: NCA, total_ventas_mes: 268105.59}, {tipofactura: NCB, total_ventas_mes: 211780.0}], total_ventas_mes: 46082710.980000004}
+flutter:       → fventasMesWidgets 개수: 5
+flutter:       ✅ FVentas Mes 섹션 렌더링됨 (총 섹션: 6)
+flutter:    🔍 [단일 Sucursal] Stock Resumen 섹션 생성 시작
+flutter: 🔍 Stock 섹션 체크: stock_resumen=true, stocks=true
+flutter:    - hasStockResumen: true
+flutter:    - hasStocks: true
+flutter:    - stockData 키: [stocks]
+flutter:    - stockWidgets 개수: 1
+flutter:    ✅ Stock Resumen 섹션 렌더링됨 (총 섹션: 7)
+flutter: === 응답 정보 ===
+flutter: Status Code: 200
+flutter: Response Body Length: 82 bytes
+flutter: ✅ 응답 성공: 0개 항목
+flutter: ✅ Temporadas: 0개, 콤보박스 표시: 아니오
+flutter:    📝 SharedPreferences 저장 시작: key="database_name", value="ellui48_2"
+flutter:    ✅ SharedPreferences 저장 결과: true
+flutter:    ✅ SharedPreferences 저장 확인 성공
+flutter:    📝 SharedPreferences 저장 시작: key="username", value="ellui"
+flutter: 🔄 ResumenDelDiaScreen: didChangeDependencies 호출, 연결 리스트 갱신
+flutter: 🔄 ResumenDelDiaScreen: 연결 목록 로드 시작...
+flutter: 📖 연결 정보 읽기 시작... (macOS: true)
+flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
+flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
+flutter: 🔍 [Resumen빌드날짜] 오늘 날짜: 2026-01-14 11:58:45.870061
+flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 14
+flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-14"
+flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-14"
+flutter: 🔍 [Resumen메뉴] 메뉴 아이템 리스트 생성 완료, 총 14개
+flutter: 🔍 _buildReportContent 호출: _selectedReportType=null, _currentReport=resumen
+flutter: 🔍 _buildResumenContent 호출됨
+flutter:    - _isLoading: false
+flutter:    - _errorMessage: null
+flutter:    - _data: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [_hasMultipleSucursales] 체크 시작
+flutter:    → _data 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter:    → vcodes는 List: 1개 항목
+flutter:    → vcodes 항목 순회 시작...
+flutter:       - 항목 #0: _Map<String, dynamic>
+flutter:          → 키: [sucursal, operation_count, total_venta_day, total_efectivo_day, total_credito_day, total_banco_day, total_favor_day, last_venta_hour, total_count_ropas]
+flutter:          → sucursal 값: 2 (타입: int)
+flutter:          → 파싱된 sucursal: 2
+flutter:          → sucursal 추가됨: 2 (현재 집합: {2})
+flutter:    → 최종 고유한 sucursal 개수: 1 - {2}
+flutter:    → 결과 (sucursales.length > 1): false
+flutter: ═══════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [Resumen del Dia] 여러 sucursal 체크
+flutter:    → _hasMultipleSucursales() 결과: false
+flutter:    → _data 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter:    → vcodes 데이터 타입: List<dynamic>
+flutter:    → vcodes List 길이: 1
+flutter:    → 추출된 고유 sucursal: {2} (1개)
+flutter: ═══════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [단일 Sucursal 뷰] 렌더링 시작
+flutter:    → hasMultipleSucursales: false
+flutter:    → ResumenDelDiaSingleSucursalView 사용
+flutter:    → _data 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter: ═══════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [단일 Sucursal 뷰] ResumenDelDiaSingleSucursalView.build 호출
+flutter:    → data 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter:    → selectedDate: 2026-01-14 11:58:41.108030
+flutter:    → errorMessage: null
+flutter: ═══════════════════════════════════════════════════════
+flutter:    → 섹션별 데이터 존재 여부:
+flutter:       - vcodes: ✅ 있음
+flutter:       - gastos: ✅ 있음
+flutter:       - vdetalle: ✅ 있음
+flutter:       - vcodes_mpago: ✅ 있음
+flutter:       - ingresos: ✅ 있음
+flutter:       - fventas: ✅ 있음
+flutter:       - fventas_mes: ✅ 있음
+flutter:       - stocks: ✅ 있음
+flutter:       - stock_resumen: ✅ 있음
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [단일 Sucursal 뷰] Builder 내부 렌더링 시작
+flutter:    → 대형화면 여부: true
+flutter:    - vcodes 데이터 타입: List<dynamic>
+flutter:    - vcodes List 길이: 1
+flutter:    🔍 [단일 Sucursal] Vcodes 섹션 생성 시작
+flutter:       → aggregatedVcodes: {operation_count: 22, total_venta_day: 6369280.0, total_efectivo_day: 4971000.0, total_credito_day: 0.0, total_banco_day: 1398280.0, total_favor_day: 0.0, total_count_ropas: 282, last_venta_hour: 16:27:50}
+flutter: 🔍 _buildVcodesSection 호출됨
+flutter:    - vcodes 키: [operation_count, total_venta_day, total_efectivo_day, total_credito_day, total_banco_day, total_favor_day, total_count_ropas, last_venta_hour]
+flutter:    ✅ Vcodes 섹션 카드 생성 완료: 8개
+flutter:       → vcodesWidgets 개수: 8
+flutter:       ✅ Vcodes 섹션 렌더링됨 (총 섹션: 1)
+flutter:    🔍 [단일 Sucursal] Gastos/Vdetalle 섹션 생성 시작
+flutter:       → hasGastos: true, hasVdetalle: true
+flutter:       → vdetalle 원본 데이터 타입: List<dynamic>
+flutter:       → vdetalle 원본 데이터: [{sucursal: 2, count_discount_event: 2, total_discount_day: -106440}]
+flutter:       → vdetalle List 길이: 1
+flutter:       → vdetalle List 첫 번째 항목: {sucursal: 2, count_discount_event: 2, total_discount_day: -106440}
+flutter:       → Gastos 섹션 생성 중...
+flutter: 🔍 _getAggregatedGastos: gastos 타입=List<dynamic>, 값=[{sucursal: 2, gasto_count: 5, total_gasto_day: 82700}]
+flutter:    → List 형태 (1개 항목), 합산 시작
+flutter:      - 항목: gasto_count=5, total_gasto_day=82700.0
+flutter:    → 합산 결과: gasto_count=5, total_gasto_day=82700.0
+flutter:          → aggregatedGastos: {gasto_count: 5, total_gasto_day: 82700.0}
+flutter: 🔍 _buildGastosSection 호출: gastos={gasto_count: 5, total_gasto_day: 82700.0}
+flutter:    → gasto_count 카드 추가: 5
+flutter:    → total_gasto_day 카드 추가: 82700.0
+flutter:    → 총 2개 카드 생성
+flutter:          → gastosWidgets 개수: 2
+flutter:          ✅ Gastos 섹션 렌더링됨 (총 섹션: 2)
+flutter: ═══════════════════════════════════════════════════════
+flutter:       → Vdetalle 섹션 생성 중 (대형화면)...
+flutter:       → data: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [_getAggregatedVdetalle] 호출됨
+flutter:    → data 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter:    → data.containsKey('vdetalle'): true
+flutter:    → vdetalle 타입: List<dynamic>
+flutter:    → vdetalle 값: [{sucursal: 2, count_discount_event: 2, total_discount_day: -106440}]
+flutter:    → vdetalle List 길이: 1
+flutter:       - vdetalle 항목 #0: _Map<String, dynamic>
+flutter:          → 항목 키: [sucursal, count_discount_event, total_discount_day]
+flutter:          → 항목 값: {sucursal: 2, count_discount_event: 2, total_discount_day: -106440}
+flutter:          → count_discount_event: 2
+flutter:          → total_discount_day: -106440.0
+flutter:    ✅ 처리 완료: 1개 항목 처리됨
+flutter:    → 최종 aggregated: {count_discount_event: 2, total_discount_day: -106440.0}
+flutter:    → count_discount_event: 2
+flutter:    → total_discount_day: -106440.0
+flutter: ═══════════════════════════════════════════════════════
+flutter:          → aggregatedVdetalle 반환값: {count_discount_event: 2, total_discount_day: -106440.0}
+flutter:          → aggregatedVdetalle.isEmpty: false
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [_buildVdetalleSection] 호출됨
+flutter:    → vdetalle: {count_discount_event: 2, total_discount_day: -106440.0}
+flutter:    → vdetalle.isEmpty: false
+flutter:    → vdetalle.keys: [count_discount_event, total_discount_day]
+flutter:    → isLarge: true
+flutter:    → vdetalle.containsKey('count_discount_event'): true
+flutter:       → count_discount_event 값: 2 (타입: int)
+flutter:       ✅ count_discount_event 카드 추가
+flutter:    → vdetalle.containsKey('total_discount_day'): true
+flutter:       → total_discount_day 값: -106440.0 (타입: double)
+flutter:       ✅ total_discount_day 카드 추가
+flutter:    → 생성된 카드 개수: 2
+flutter: ═══════════════════════════════════════════════════════
+flutter:          → vdetalleWidgets 개수: 2
+flutter:          → vdetalleWidgets.isEmpty: false
+flutter:          ✅ Vdetalle 섹션 렌더링됨 (총 섹션: 3)
+flutter:          → sectionWidget 타입: Column
+flutter: ═══════════════════════════════════════════════════════
+flutter:    🔍 [단일 Sucursal] Mpago 섹션 생성 시작
+flutter:       → aggregatedMpago: {count_mpago_total: 1, total_mpago_day: 1079250.0}
+flutter:       → mpagoWidgets 개수: 2
+flutter:       ✅ Mpago 섹션 렌더링됨 (총 섹션: 4)
+flutter:    🔍 [단일 Sucursal] Ingresos 섹션 생성 시작
+flutter:       → aggregatedIngresos: {}
+flutter:       → ingresosWidgets 개수: 0
+flutter:       ⚠️ Ingresos 위젯이 비어있음
+flutter:    🔍 [단일 Sucursal] FVentas 섹션 생성 시작
+flutter:    → FVentas 계산: totalCount=2, notaCreditoCount=0, 최종 count=2
+flutter:    → FVentas 계산: totalSumMonto=361338.4, notaCreditoSumMonto=0.0, 최종 sum_monto=361338.4
+flutter:       → aggregatedFventas: {items: [{tipofactura: A, count: 2, sum_monto: 361338.4}], total_count: 2, total_sum_monto: 361338.4}
+flutter:       → fventasWidgets 개수: 3
+flutter:       ✅ FVentas 섹션 렌더링됨 (총 섹션: 5)
+flutter:    🔍 [단일 Sucursal] FVentas Mes 섹션 생성 시작
+flutter:       → aggregatedFventasMes: {items: [{tipofactura: A, total_ventas_mes: 39308935.39}, {tipofactura: B, total_ventas_mes: 6293890.0}, {tipofactura: NCA, total_ventas_mes: 268105.59}, {tipofactura: NCB, total_ventas_mes: 211780.0}], total_ventas_mes: 46082710.980000004}
+flutter:       → fventasMesWidgets 개수: 5
+flutter:       ✅ FVentas Mes 섹션 렌더링됨 (총 섹션: 6)
+flutter:    🔍 [단일 Sucursal] Stock Resumen 섹션 생성 시작
+flutter: 🔍 Stock 섹션 체크: stock_resumen=true, stocks=true
+flutter:    - hasStockResumen: true
+flutter:    - hasStocks: true
+flutter:    - stockData 키: [stocks]
+flutter:    - stockWidgets 개수: 1
+flutter:    ✅ Stock Resumen 섹션 렌더링됨 (총 섹션: 7)
+flutter: 📖 SharedPreferences에서 읽기 완료
+flutter: 📖 JSON 데이터 읽기 완료 (길이: 645)
+flutter: ✅ 연결 정보 파싱 완료: 4개 연결
+flutter:    - inquieta (ID: 1765666561277)
+flutter:    - ace (ID: 1765984612266)
+flutter:    - jol-test (ID: 1767153069054)
+flutter:    - el-test (ID: 1768240976895)
+flutter: ✅ ResumenDelDiaScreen: 4개 연결 로드 완료
+flutter:    - inquieta (ID: 1765666561277, DB: inquieta14)
+flutter:    - ace (ID: 1765984612266, DB: ace17)
+flutter:    - jol-test (ID: 1767153069054, DB: jolues37)
+flutter:    - el-test (ID: 1768240976895, DB: ellui48_2)
+flutter: 🔄 ResumenDelDiaScreen: UI 업데이트 완료 (4개 연결 표시)
+flutter:    ✅ SharedPreferences 저장 결과: true
+flutter:    ✅ SharedPreferences 저장 확인 성공
+flutter:    📝 SharedPreferences 저장 시작: key="password", value="eli4059"
+flutter:    ✅ SharedPreferences 저장 결과: true
+flutter:    ✅ SharedPreferences 저장 확인 성공
+flutter: 🔄 ResumenDelDiaScreen: 연결 목록 로드 시작...
+flutter: 📖 연결 정보 읽기 시작... (macOS: true)
+flutter: 🔄 ResumenDelDiaScreen: didChangeDependencies 호출, 연결 리스트 갱신
+flutter: 🔄 ResumenDelDiaScreen: 연결 목록 로드 시작...
+flutter: 📖 연결 정보 읽기 시작... (macOS: true)
+flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
+flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
+flutter: 🔍 [Resumen빌드날짜] 오늘 날짜: 2026-01-14 11:58:46.013034
+flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 14
+flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-14"
+flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-14"
+flutter: 🔍 [Resumen메뉴] 메뉴 아이템 리스트 생성 완료, 총 14개
+flutter: 🔍 _buildReportContent 호출: _selectedReportType=null, _currentReport=resumen
+flutter: 🔍 _buildResumenContent 호출됨
+flutter:    - _isLoading: true
+flutter:    - _errorMessage: null
+flutter:    - _data: null
+flutter:    → 로딩 상태 반환
+flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
+flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
+flutter: 🔍 [Resumen빌드날짜] 오늘 날짜: 2026-01-14 11:58:46.052601
+flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 14
+flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-14"
+flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-14"
+flutter: 🔍 [Resumen메뉴] 메뉴 아이템 리스트 생성 완료, 총 14개
+flutter: 🔍 _buildReportContent 호출: _selectedReportType=null, _currentReport=resumen
+flutter: 🔍 _buildResumenContent 호출됨
+flutter:    - _isLoading: false
+flutter:    - _errorMessage: null
+flutter:    - _data: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [_hasMultipleSucursales] 체크 시작
+flutter:    → _data 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter:    → vcodes는 List: 1개 항목
+flutter:    → vcodes 항목 순회 시작...
+flutter:       - 항목 #0: _Map<String, dynamic>
+flutter:          → 키: [sucursal, operation_count, total_venta_day, total_efectivo_day, total_credito_day, total_banco_day, total_favor_day, last_venta_hour, total_count_ropas]
+flutter:          → sucursal 값: 2 (타입: int)
+flutter:          → 파싱된 sucursal: 2
+flutter:          → sucursal 추가됨: 2 (현재 집합: {2})
+flutter:    → 최종 고유한 sucursal 개수: 1 - {2}
+flutter:    → 결과 (sucursales.length > 1): false
+flutter: ═══════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📖 SharedPreferences에서 읽기 완료
+flutter: 📖 JSON 데이터 읽기 완료 (길이: 645)
+flutter: ✅ 연결 정보 파싱 완료: 4개 연결
+flutter:    - inquieta (ID: 1765666561277)
+flutter:    - ace (ID: 1765984612266)
+flutter:    - jol-test (ID: 1767153069054)
+flutter:    - el-test (ID: 1768240976895)
+flutter: ✅ ResumenDelDiaScreen: 4개 연결 로드 완료
+flutter:    - inquieta (ID: 1765666561277, DB: inquieta14)
+flutter:    - ace (ID: 1765984612266, DB: ace17)
+flutter:    - jol-test (ID: 1767153069054, DB: jolues37)
+flutter:    - el-test (ID: 1768240976895, DB: ellui48_2)
+flutter: 🔄 ResumenDelDiaScreen: UI 업데이트 완료 (4개 연결 표시)
+flutter: 📖 SharedPreferences에서 읽기 완료
+flutter: 📖 JSON 데이터 읽기 완료 (길이: 645)
+flutter: ✅ 연결 정보 파싱 완료: 4개 연결
+flutter:    - inquieta (ID: 1765666561277)
+flutter:    - ace (ID: 1765984612266)
+flutter:    - jol-test (ID: 1767153069054)
+flutter:    - el-test (ID: 1768240976895)
+flutter: ✅ ResumenDelDiaScreen: 4개 연결 로드 완료
+flutter:    - inquieta (ID: 1765666561277, DB: inquieta14)
+flutter:    - ace (ID: 1765984612266, DB: ace17)
+flutter:    - jol-test (ID: 1767153069054, DB: jolues37)
+flutter:    - el-test (ID: 1768240976895, DB: ellui48_2)
+flutter: 🔄 ResumenDelDiaScreen: UI 업데이트 완료 (4개 연결 표시)
+flutter: 🍎 macOS: secure storage 읽기 전 대기 중...
+flutter: 🔍 [Resumen del Dia] 여러 sucursal 체크
+flutter:    → _hasMultipleSucursales() 결과: false
+flutter:    → _data 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter:    → vcodes 데이터 타입: List<dynamic>
+flutter:    → vcodes List 길이: 1
+flutter:    → 추출된 고유 sucursal: {2} (1개)
+flutter: ═══════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [단일 Sucursal 뷰] 렌더링 시작
+flutter:    → hasMultipleSucursales: false
+flutter:    → ResumenDelDiaSingleSucursalView 사용
+flutter:    → _data 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter: ═══════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [단일 Sucursal 뷰] ResumenDelDiaSingleSucursalView.build 호출
+flutter:    → data 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter:    → selectedDate: 2026-01-14 11:58:41.108030
+flutter:    → errorMessage: null
+flutter: ═══════════════════════════════════════════════════════
+flutter:    → 섹션별 데이터 존재 여부:
+flutter:       - vcodes: ✅ 있음
+flutter:       - gastos: ✅ 있음
+flutter:       - vdetalle: ✅ 있음
+flutter:       - vcodes_mpago: ✅ 있음
+flutter:       - ingresos: ✅ 있음
+flutter:       - fventas: ✅ 있음
+flutter:       - fventas_mes: ✅ 있음
+flutter:       - stocks: ✅ 있음
+flutter:       - stock_resumen: ✅ 있음
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [단일 Sucursal 뷰] Builder 내부 렌더링 시작
+flutter:    → 대형화면 여부: true
+flutter:    - vcodes 데이터 타입: List<dynamic>
+flutter:    - vcodes List 길이: 1
+flutter:    🔍 [단일 Sucursal] Vcodes 섹션 생성 시작
+flutter:       → aggregatedVcodes: {operation_count: 22, total_venta_day: 6369280.0, total_efectivo_day: 4971000.0, total_credito_day: 0.0, total_banco_day: 1398280.0, total_favor_day: 0.0, total_count_ropas: 282, last_venta_hour: 16:27:50}
+flutter: 🔍 _buildVcodesSection 호출됨
+flutter:    - vcodes 키: [operation_count, total_venta_day, total_efectivo_day, total_credito_day, total_banco_day, total_favor_day, total_count_ropas, last_venta_hour]
+flutter:    ✅ Vcodes 섹션 카드 생성 완료: 8개
+flutter:       → vcodesWidgets 개수: 8
+flutter:       ✅ Vcodes 섹션 렌더링됨 (총 섹션: 1)
+flutter:    🔍 [단일 Sucursal] Gastos/Vdetalle 섹션 생성 시작
+flutter:       → hasGastos: true, hasVdetalle: true
+flutter:       → vdetalle 원본 데이터 타입: List<dynamic>
+flutter:       → vdetalle 원본 데이터: [{sucursal: 2, count_discount_event: 2, total_discount_day: -106440}]
+flutter:       → vdetalle List 길이: 1
+flutter:       → vdetalle List 첫 번째 항목: {sucursal: 2, count_discount_event: 2, total_discount_day: -106440}
+flutter:       → Gastos 섹션 생성 중...
+flutter: 🔍 _getAggregatedGastos: gastos 타입=List<dynamic>, 값=[{sucursal: 2, gasto_count: 5, total_gasto_day: 82700}]
+flutter:    → List 형태 (1개 항목), 합산 시작
+flutter:      - 항목: gasto_count=5, total_gasto_day=82700.0
+flutter:    → 합산 결과: gasto_count=5, total_gasto_day=82700.0
+flutter:          → aggregatedGastos: {gasto_count: 5, total_gasto_day: 82700.0}
+flutter: 🔍 _buildGastosSection 호출: gastos={gasto_count: 5, total_gasto_day: 82700.0}
+flutter:    → gasto_count 카드 추가: 5
+flutter:    → total_gasto_day 카드 추가: 82700.0
+flutter:    → 총 2개 카드 생성
+flutter:          → gastosWidgets 개수: 2
+flutter:          ✅ Gastos 섹션 렌더링됨 (총 섹션: 2)
+flutter: ═══════════════════════════════════════════════════════
+flutter:       → Vdetalle 섹션 생성 중 (대형화면)...
+flutter:       → data: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [_getAggregatedVdetalle] 호출됨
+flutter:    → data 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter:    → data.containsKey('vdetalle'): true
+flutter:    → vdetalle 타입: List<dynamic>
+flutter:    → vdetalle 값: [{sucursal: 2, count_discount_event: 2, total_discount_day: -106440}]
+flutter:    → vdetalle List 길이: 1
+flutter:       - vdetalle 항목 #0: _Map<String, dynamic>
+flutter:          → 항목 키: [sucursal, count_discount_event, total_discount_day]
+flutter:          → 항목 값: {sucursal: 2, count_discount_event: 2, total_discount_day: -106440}
+flutter:          → count_discount_event: 2
+flutter:          → total_discount_day: -106440.0
+flutter:    ✅ 처리 완료: 1개 항목 처리됨
+flutter:    → 최종 aggregated: {count_discount_event: 2, total_discount_day: -106440.0}
+flutter:    → count_discount_event: 2
+flutter:    → total_discount_day: -106440.0
+flutter: ═══════════════════════════════════════════════════════
+flutter:          → aggregatedVdetalle 반환값: {count_discount_event: 2, total_discount_day: -106440.0}
+flutter:          → aggregatedVdetalle.isEmpty: false
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [_buildVdetalleSection] 호출됨
+flutter:    → vdetalle: {count_discount_event: 2, total_discount_day: -106440.0}
+flutter:    → vdetalle.isEmpty: false
+flutter:    → vdetalle.keys: [count_discount_event, total_discount_day]
+flutter:    → isLarge: true
+flutter:    → vdetalle.containsKey('count_discount_event'): true
+flutter:       → count_discount_event 값: 2 (타입: int)
+flutter:       ✅ count_discount_event 카드 추가
+flutter:    → vdetalle.containsKey('total_discount_day'): true
+flutter:       → total_discount_day 값: -106440.0 (타입: double)
+flutter:       ✅ total_discount_day 카드 추가
+flutter:    → 생성된 카드 개수: 2
+flutter: ═══════════════════════════════════════════════════════
+flutter:          → vdetalleWidgets 개수: 2
+flutter:          → vdetalleWidgets.isEmpty: false
+flutter:          ✅ Vdetalle 섹션 렌더링됨 (총 섹션: 3)
+flutter:          → sectionWidget 타입: Column
+flutter: ═══════════════════════════════════════════════════════
+flutter:    🔍 [단일 Sucursal] Mpago 섹션 생성 시작
+flutter:       → aggregatedMpago: {count_mpago_total: 1, total_mpago_day: 1079250.0}
+flutter:       → mpagoWidgets 개수: 2
+flutter:       ✅ Mpago 섹션 렌더링됨 (총 섹션: 4)
+flutter:    🔍 [단일 Sucursal] Ingresos 섹션 생성 시작
+flutter:       → aggregatedIngresos: {}
+flutter:       → ingresosWidgets 개수: 0
+flutter:       ⚠️ Ingresos 위젯이 비어있음
+flutter:    🔍 [단일 Sucursal] FVentas 섹션 생성 시작
+flutter:    → FVentas 계산: totalCount=2, notaCreditoCount=0, 최종 count=2
+flutter:    → FVentas 계산: totalSumMonto=361338.4, notaCreditoSumMonto=0.0, 최종 sum_monto=361338.4
+flutter:       → aggregatedFventas: {items: [{tipofactura: A, count: 2, sum_monto: 361338.4}], total_count: 2, total_sum_monto: 361338.4}
+flutter:       → fventasWidgets 개수: 3
+flutter:       ✅ FVentas 섹션 렌더링됨 (총 섹션: 5)
+flutter:    🔍 [단일 Sucursal] FVentas Mes 섹션 생성 시작
+flutter:       → aggregatedFventasMes: {items: [{tipofactura: A, total_ventas_mes: 39308935.39}, {tipofactura: B, total_ventas_mes: 6293890.0}, {tipofactura: NCA, total_ventas_mes: 268105.59}, {tipofactura: NCB, total_ventas_mes: 211780.0}], total_ventas_mes: 46082710.980000004}
+flutter:       → fventasMesWidgets 개수: 5
+flutter:       ✅ FVentas Mes 섹션 렌더링됨 (총 섹션: 6)
+flutter:    🔍 [단일 Sucursal] Stock Resumen 섹션 생성 시작
+flutter: 🔍 Stock 섹션 체크: stock_resumen=true, stocks=true
+flutter:    - hasStockResumen: true
+flutter:    - hasStocks: true
+flutter:    - stockData 키: [stocks]
+flutter:    - stockWidgets 개수: 1
+flutter:    ✅ Stock Resumen 섹션 렌더링됨 (총 섹션: 7)
+flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
+flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
+flutter: 🔍 [Resumen빌드날짜] 오늘 날짜: 2026-01-14 11:58:46.181189
+flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 14
+flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-14"
+flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-14"
+flutter: 🔍 [Resumen메뉴] 메뉴 아이템 리스트 생성 완료, 총 14개
+flutter: 🔍 _buildReportContent 호출: _selectedReportType=null, _currentReport=resumen
+flutter: 🔍 _buildResumenContent 호출됨
+flutter:    - _isLoading: true
+flutter:    - _errorMessage: null
+flutter:    - _data: null
+flutter:    → 로딩 상태 반환
+flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
+flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
+flutter: 🔍 [Resumen빌드날짜] 오늘 날짜: 2026-01-14 11:58:46.832262
+flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 14
+flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-14"
+flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-14"
+flutter: 🔍 [Resumen메뉴] 메뉴 아이템 리스트 생성 완료, 총 14개
+flutter: 🔍 _buildReportContent 호출: _selectedReportType=null, _currentReport=resumen
+flutter: 🔍 _buildResumenContent 호출됨
+flutter:    - _isLoading: true
+flutter:    - _errorMessage: null
+flutter:    - _data: null
+flutter:    → 로딩 상태 반환
+flutter:   - 서버 URL: https://sync.coolsistema.com
+flutter:   - 사용 날짜: 2026-01-14 11:58:46.011970
+flutter:   - Sucursal: 없음
+flutter:    - 날짜: 2026-01-14 11:58:46.011970
+flutter:    - Sucursal: 없음
+flutter: === Reports API 요청 ===
+flutter:   - 엔드포인트: /api/resumen_del_dia
+flutter:   - 요청 방식: POST (다른 보고서는 GET 사용)
+flutter:   - 타임아웃: 60초 (다른 보고서는 10초)
+flutter:   - 날짜: 2026-01-14
+flutter: === POST /api/resumen_del_dia 요청 ===
+flutter: URL: https://sync.coolsistema.com/api/resumen_del_dia
+flutter: Headers: {Content-Type: application/json, x-db-name: ellui48_2, x-db-user: ellui, x-db-password: eli4059, x-db-ssl: false, Connection: keep-alive}
+flutter: Timeout: 60초
+flutter: Request Body Length: 21 bytes
+flutter: ⏱️ 요청 완료 시간: 1486ms
+flutter: === 응답 정보 ===
+flutter: Status Code: 200
+flutter: Response Body Length: 706 bytes
+flutter: Response Body: {"fecha":"2026-01-14","fecha_vcodes":"2026-01-14","fecha_otros":"2026-01-14","vcodes":[{"sucursal":1,"operation_count":17,"total_venta_day":1600000,"total_efectivo_day":1600000,"total_credito_day":0,"total_banco_day":0,"total_favor_day":0,"last_venta_hour":"11:50:24","total_count_ropas":185}],"gastos":[{"sucursal":1,"gasto_count":1,"total_gasto_day":8000}],"vdetalle":[],"vcodes_mpago":[],"ingresos":[],"stocks":[{"sucursal":1,"item_count":757,"tVentas":101511,"tIngresos":630,"tOffset":0,"hVentas"... (706 bytes total)
+flutter: 📋 resumen_del_dia 원본 응답 데이터:
+flutter:   - fecha: String = 2026-01-14
+flutter:   - fecha_vcodes: String = 2026-01-14
+flutter:   - fecha_otros: String = 2026-01-14
+flutter:   - vcodes: List (1개 항목)
+flutter:   - gastos: List (1개 항목)
+flutter:   - vdetalle: List (0개 항목)
+flutter:   - vcodes_mpago: List (0개 항목)
+flutter:   - ingresos: List (0개 항목)
+flutter:   - stocks: List (1개 항목)
+flutter:   - fventas: List (1개 항목)
+flutter:   - fventas_mes: List (1개 항목)
+flutter: ✅ 응답 성공: 11개 항목
+flutter:    - 응답 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes]
+flutter:    - 응답 데이터 상세:
+flutter:      - fecha: String = 2026-01-14
+flutter:      - fecha_vcodes: String = 2026-01-14
+flutter:      - fecha_otros: String = 2026-01-14
+flutter:      - vcodes: List (1개 항목)
+flutter:        첫 번째 항목: {sucursal: 1, operation_count: 17, total_venta_day: 1600000, total_efectivo_day: 1600000, total_credito_day: 0, total_banco_day: 0, total_favor_day: 0, last_venta_hour: 11:50:24, total_count_ropas: 185}
+flutter:      - gastos: List (1개 항목)
+flutter:        첫 번째 항목: {sucursal: 1, gasto_count: 1, total_gasto_day: 8000}
+flutter:      - vdetalle: List (0개 항목)
+flutter:      - vcodes_mpago: List (0개 항목)
+flutter:      - ingresos: List (0개 항목)
+flutter:      - stocks: List (1개 항목)
+flutter:        첫 번째 항목: {sucursal: 1, item_count: 757, tVentas: 101511, tIngresos: 630, tOffset: 0, hVentas: 131, hIngresos: 0, finalStock: -100881}
+flutter:      - fventas: List (1개 항목)
+flutter:        첫 번째 항목: {sucursal: 1, tipofactura: A, count: 3, sum_monto: 105350}
+flutter:      - fventas_mes: List (1개 항목)
+flutter:        첫 번째 항목: {sucursal: 1, cntEvent: 37, tipofactura: A, total_ventas_mes: 5413895}
+flutter: 
+
+flutter: ═══════════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════════
+flutter: 🌐 URL: https://sync.coolsistema.com/api/reporte/stocks?date=2026-01-14
+flutter: 
+flutter: 📋 Headers:
+flutter:    Content-Type: application/json
+flutter:    x-db-name: ellui48_2
+flutter:    x-db-user: ellui
+flutter:    x-db-password: ***
+flutter:    x-db-ssl: false
+flutter:    Connection: keep-alive
+flutter: 
+flutter: 🔍 Query Parameters:
+flutter:    date: 2026-01-14
+flutter: ═══════════════════════════════════════════════════════════
+flutter: 
+
+flutter: === GET /api/reporte/stocks 요청 ===
+flutter: URL: https://sync.coolsistema.com/api/reporte/stocks?date=2026-01-14
+flutter: Headers: {Content-Type: application/json, x-db-name: ellui48_2, x-db-user: ellui, x-db-password: eli4059, x-db-ssl: false, Connection: keep-alive}
+flutter: Query Parameters: {date: 2026-01-14}
+flutter: === 응답 정보 ===
+flutter: Status Code: 200
+flutter: Response Body Length: 33324 bytes
+flutter: ✅ 응답 성공: 100개 항목
+flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
+flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
+flutter: 🔍 [Resumen빌드날짜] 오늘 날짜: 2026-01-14 11:58:49.532339
+flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 14
+flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-14"
+flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-14"
+flutter: 🔍 [Resumen메뉴] 메뉴 아이템 리스트 생성 완료, 총 14개
+flutter: 🔍 _buildReportContent 호출: _selectedReportType=null, _currentReport=resumen
+flutter: 🔍 _buildResumenContent 호출됨
+flutter:    - _isLoading: false
+flutter:    - _errorMessage: null
+flutter:    - _data: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [_hasMultipleSucursales] 체크 시작
+flutter:    → _data 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter:    → vcodes는 List: 1개 항목
+flutter:    → vcodes 항목 순회 시작...
+flutter:       - 항목 #0: _Map<String, dynamic>
+flutter:          → 키: [sucursal, operation_count, total_venta_day, total_efectivo_day, total_credito_day, total_banco_day, total_favor_day, last_venta_hour, total_count_ropas]
+flutter:          → sucursal 값: 1 (타입: int)
+flutter:          → 파싱된 sucursal: 1
+flutter:          → sucursal 추가됨: 1 (현재 집합: {1})
+flutter:    → 최종 고유한 sucursal 개수: 1 - {1}
+flutter:    → 결과 (sucursales.length > 1): false
+flutter: ═══════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [Resumen del Dia] 여러 sucursal 체크
+flutter:    → _hasMultipleSucursales() 결과: false
+flutter:    → _data 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter:    → vcodes 데이터 타입: List<dynamic>
+flutter:    → vcodes List 길이: 1
+flutter:    → 추출된 고유 sucursal: {1} (1개)
+flutter: ═══════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [단일 Sucursal 뷰] 렌더링 시작
+flutter:    → hasMultipleSucursales: false
+flutter:    → ResumenDelDiaSingleSucursalView 사용
+flutter:    → _data 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter: ═══════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [단일 Sucursal 뷰] ResumenDelDiaSingleSucursalView.build 호출
+flutter:    → data 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter:    → selectedDate: 2026-01-14 11:58:46.011970
+flutter:    → errorMessage: null
+flutter: ═══════════════════════════════════════════════════════
+flutter:    → 섹션별 데이터 존재 여부:
+flutter:       - vcodes: ✅ 있음
+flutter:       - gastos: ✅ 있음
+flutter:       - vdetalle: ✅ 있음
+flutter:       - vcodes_mpago: ✅ 있음
+flutter:       - ingresos: ✅ 있음
+flutter:       - fventas: ✅ 있음
+flutter:       - fventas_mes: ✅ 있음
+flutter:       - stocks: ✅ 있음
+flutter:       - stock_resumen: ✅ 있음
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [단일 Sucursal 뷰] Builder 내부 렌더링 시작
+flutter:    → 대형화면 여부: true
+flutter:    - vcodes 데이터 타입: List<dynamic>
+flutter:    - vcodes List 길이: 1
+flutter:    🔍 [단일 Sucursal] Vcodes 섹션 생성 시작
+flutter:       → aggregatedVcodes: {operation_count: 17, total_venta_day: 1600000.0, total_efectivo_day: 1600000.0, total_credito_day: 0.0, total_banco_day: 0.0, total_favor_day: 0.0, total_count_ropas: 185, last_venta_hour: 11:50:24}
+flutter: 🔍 _buildVcodesSection 호출됨
+flutter:    - vcodes 키: [operation_count, total_venta_day, total_efectivo_day, total_credito_day, total_banco_day, total_favor_day, total_count_ropas, last_venta_hour]
+flutter:    ✅ Vcodes 섹션 카드 생성 완료: 8개
+flutter:       → vcodesWidgets 개수: 8
+flutter:       ✅ Vcodes 섹션 렌더링됨 (총 섹션: 1)
+flutter:    🔍 [단일 Sucursal] Gastos/Vdetalle 섹션 생성 시작
+flutter:       → hasGastos: true, hasVdetalle: true
+flutter:       → vdetalle 원본 데이터 타입: List<dynamic>
+flutter:       → vdetalle 원본 데이터: []
+flutter:       → vdetalle List 길이: 0
+flutter:       → Gastos 섹션 생성 중...
+flutter: 🔍 _getAggregatedGastos: gastos 타입=List<dynamic>, 값=[{sucursal: 1, gasto_count: 1, total_gasto_day: 8000}]
+flutter:    → List 형태 (1개 항목), 합산 시작
+flutter:      - 항목: gasto_count=1, total_gasto_day=8000.0
+flutter:    → 합산 결과: gasto_count=1, total_gasto_day=8000.0
+flutter:          → aggregatedGastos: {gasto_count: 1, total_gasto_day: 8000.0}
+flutter: 🔍 _buildGastosSection 호출: gastos={gasto_count: 1, total_gasto_day: 8000.0}
+flutter:    → gasto_count 카드 추가: 1
+flutter:    → total_gasto_day 카드 추가: 8000.0
+flutter:    → 총 2개 카드 생성
+flutter:          → gastosWidgets 개수: 2
+flutter:          ✅ Gastos 섹션 렌더링됨 (총 섹션: 2)
+flutter: ═══════════════════════════════════════════════════════
+flutter:       → Vdetalle 섹션 생성 중 (대형화면)...
+flutter:       → data: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [_getAggregatedVdetalle] 호출됨
+flutter:    → data 키: [fecha, fecha_vcodes, fecha_otros, vcodes, gastos, vdetalle, vcodes_mpago, ingresos, stocks, fventas, fventas_mes, stock_resumen]
+flutter:    → data.containsKey('vdetalle'): true
+flutter:    → vdetalle 타입: List<dynamic>
+flutter:    → vdetalle 값: []
+flutter:    ⚠️ vdetalle이 List가 아니거나 비어있음 - 빈 Map 반환
+flutter: ═══════════════════════════════════════════════════════
+flutter:          → aggregatedVdetalle 반환값: {}
+flutter:          → aggregatedVdetalle.isEmpty: true
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [_buildVdetalleSection] 호출됨
+flutter:    → vdetalle: {}
+flutter:    → vdetalle.isEmpty: true
+flutter:    → vdetalle.keys: []
+flutter:    → isLarge: true
+flutter:    ⚠️ vdetalle이 비어있음 - 빈 리스트 반환
+flutter: ═══════════════════════════════════════════════════════
+flutter:          → vdetalleWidgets 개수: 0
+flutter:          → vdetalleWidgets.isEmpty: true
+flutter:          ⚠️ Vdetalle 위젯이 비어있음 - SizedBox.shrink() 반환
+flutter: ═══════════════════════════════════════════════════════
+flutter:    🔍 [단일 Sucursal] Mpago 섹션 생성 시작
+flutter:       → aggregatedMpago: {}
+flutter:       → mpagoWidgets 개수: 0
+flutter:       ⚠️ Mpago 위젯이 비어있음
+flutter:    🔍 [단일 Sucursal] Ingresos 섹션 생성 시작
+flutter:       → aggregatedIngresos: {}
+flutter:       → ingresosWidgets 개수: 0
+flutter:       ⚠️ Ingresos 위젯이 비어있음
+flutter:    🔍 [단일 Sucursal] FVentas 섹션 생성 시작
+flutter:    → FVentas 계산: totalCount=3, notaCreditoCount=0, 최종 count=3
+flutter:    → FVentas 계산: totalSumMonto=105350.0, notaCreditoSumMonto=0.0, 최종 sum_monto=105350.0
+flutter:       → aggregatedFventas: {items: [{tipofactura: A, count: 3, sum_monto: 105350.0}], total_count: 3, total_sum_monto: 105350.0}
+flutter:       → fventasWidgets 개수: 3
+flutter:       ✅ FVentas 섹션 렌더링됨 (총 섹션: 3)
+flutter:    🔍 [단일 Sucursal] FVentas Mes 섹션 생성 시작
+flutter:       → aggregatedFventasMes: {items: [{tipofactura: A, total_ventas_mes: 5413895.0}], total_ventas_mes: 5413895.0}
+flutter:       → fventasMesWidgets 개수: 2
+flutter:       ✅ FVentas Mes 섹션 렌더링됨 (총 섹션: 4)
+flutter:    🔍 [단일 Sucursal] Stock Resumen 섹션 생성 시작
+flutter: 🔍 Stock 섹션 체크: stock_resumen=true, stocks=true
+flutter:    - hasStockResumen: true
+flutter:    - hasStocks: true
+flutter:    - stockData 키: [stocks]
+flutter:    - stockWidgets 개수: 1
+flutter:    ✅ Stock Resumen 섹션 렌더링됨 (총 섹션: 5)
+flutter: 🔍 _navigateToReport 호출: reportType=alertas, 현재 _currentReport=resumen, _selectedReportType=null
+flutter:    → reportTypeEnum=ReportType.alertas, _isLargeScreen=true
+flutter:    → 큰 화면: setState로 _currentReport=alertas, _selectedReportType=ReportType.alertas 설정
+flutter:    → setState 완료 후: _currentReport=alertas, _selectedReportType=ReportType.alertas
+flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
+flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
+flutter: 🔍 [Resumen빌드날짜] 오늘 날짜: 2026-01-14 11:58:52.165827
+flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 14
+flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-14"
+flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-14"
+flutter: 🔍 [Resumen메뉴] 메뉴 아이템 리스트 생성 완료, 총 14개
+flutter: 🔍 _buildReportContent 호출: _selectedReportType=ReportType.alertas, _currentReport=alertas
+flutter:    → ReportScreen 반환: reportType=ReportType.alertas
+flutter: 🔍 _buildReportContent: _selectedReportType=ReportType.alertas, _currentVentasDescontado=null
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [ReportScreen.build] 호출됨
+flutter:    → reportType: ReportType.alertas
+flutter:    → Platform.isWindows: false
+flutter:    → Platform.isMacOS: true
+flutter:    → Platform.isLinux: false
+flutter:    → defaultTargetPlatform: TargetPlatform.macOS
+flutter:    → useFullWidth: true
+flutter:    → _isLoading: true
+flutter:    → _data: null
+flutter:    → _errorMessage: null
+flutter: ═══════════════════════════════════════════════════════
+flutter:    → LayoutBuilder: constraints.maxWidth=1732.0, constraints.maxHeight=991.0
+flutter:    → isLargeScreen: true
+flutter:    → orientation: Orientation.landscape
+flutter:    → platformType: PlatformType.desktop
+flutter:    → isMobile: false
+flutter:    → useFullWidth=true: Column 반환 (AppBar + Expanded body)
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [_buildBody] 호출됨
+flutter:    → reportType: ReportType.alertas
+flutter:    → Platform.isWindows: false
+flutter:    → _isLoading: true
+flutter:    → _data: null
+flutter:    → _errorMessage: null
+flutter: ═══════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════════
+flutter: 🔍 [ReportType.alertas AppBar - 넓은 화면] Row LayoutBuilder 호출됨
+flutter:    → rowConstraints.maxWidth: 1700.0
+flutter:    → rowConstraints.maxHeight: Infinity
+flutter:    → rowConstraints.isTight: false
+flutter:    → rowConstraints.isNormalized: true
+flutter:    → isLargeScreen: true
+flutter:    → reportType: ReportType.alertas
+flutter: ═══════════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════════
+flutter: 🔍 [_buildFilteringWordFieldInAppBar] 호출됨
+flutter:    → reportType: ReportType.alertas
+flutter:    → _filteringWordController.text: 
+flutter: ═══════════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════════
+flutter: 🔍 [ReportFilters.buildFilteringWordField] 호출됨
+flutter: ═══════════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════════
+flutter: 📋 [_closeClienteDetailOverlay] 대화상자 닫기 시작
+flutter: → _clienteDetailOverlayEntry: null
+flutter: ⚠️ [_closeClienteDetailOverlay] OverlayEntry가 이미 null임
+flutter: ═══════════════════════════════════════════════════════════
+flutter: === GET /api/reporte/alertas 요청 ===
+flutter: URL: https://sync.coolsistema.com/api/reporte/alertas?fecha_inicio=2026-01-14&fecha_fin=2026-01-14
+flutter: Headers: {Content-Type: application/json, x-db-name: ellui48_2, x-db-user: ellui, x-db-password: eli4059, x-db-ssl: false, Connection: keep-alive}
+flutter: Query Parameters: {fecha_inicio: 2026-01-14, fecha_fin: 2026-01-14}
+flutter: 🔍 [Resumen메뉴] _buildReportMenuItemsForPanel 호출됨
+flutter: 🔍 [Resumen빌드날짜] _getBuildDateString 호출됨
+flutter: 🔍 [Resumen빌드날짜] 오늘 날짜: 2026-01-14 11:58:52.404356
+flutter: 🔍 [Resumen빌드날짜] year: 2026, month: 1, day: 14
+flutter: ✅ [Resumen빌드날짜] 최종 결과: "ver. 2026-Enero-14"
+flutter: 🔍 [Resumen메뉴] 빌드 날짜 문자열: "ver. 2026-Enero-14"
+flutter: 🔍 [Resumen메뉴] 메뉴 아이템 리스트 생성 완료, 총 14개
+flutter: 🔍 _buildReportContent 호출: _selectedReportType=ReportType.alertas, _currentReport=alertas
+flutter:    → ReportScreen 반환: reportType=ReportType.alertas
+flutter: 🔍 _buildReportContent: _selectedReportType=ReportType.alertas, _currentVentasDescontado=null
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [ReportScreen.build] 호출됨
+flutter:    → reportType: ReportType.alertas
+flutter:    → Platform.isWindows: false
+flutter:    → Platform.isMacOS: true
+flutter:    → Platform.isLinux: false
+flutter:    → defaultTargetPlatform: TargetPlatform.macOS
+flutter:    → useFullWidth: true
+flutter:    → _isLoading: true
+flutter:    → _data: null
+flutter:    → _errorMessage: null
+flutter: ═══════════════════════════════════════════════════════
+flutter:    → LayoutBuilder: constraints.maxWidth=1732.0, constraints.maxHeight=991.0
+flutter:    → isLargeScreen: true
+flutter:    → orientation: Orientation.landscape
+flutter:    → platformType: PlatformType.desktop
+flutter:    → isMobile: false
+flutter:    → useFullWidth=true: Column 반환 (AppBar + Expanded body)
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [_buildBody] 호출됨
+flutter:    → reportType: ReportType.alertas
+flutter:    → Platform.isWindows: false
+flutter:    → _isLoading: true
+flutter:    → _data: null
+flutter:    → _errorMessage: null
+flutter: ═══════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════════
+flutter: 🔍 [ReportType.alertas AppBar - 넓은 화면] Row LayoutBuilder 호출됨
+flutter:    → rowConstraints.maxWidth: 1700.0
+flutter:    → rowConstraints.maxHeight: Infinity
+flutter:    → rowConstraints.isTight: false
+flutter:    → rowConstraints.isNormalized: true
+flutter:    → isLargeScreen: true
+flutter:    → reportType: ReportType.alertas
+flutter: ═══════════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════════
+flutter: 🔍 [_buildFilteringWordFieldInAppBar] 호출됨
+flutter:    → reportType: ReportType.alertas
+flutter:    → _filteringWordController.text: 
+flutter: ═══════════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════════
+flutter: 🔍 [ReportFilters.buildFilteringWordField] 호출됨
+flutter: ═══════════════════════════════════════════════════════════
+flutter: === 응답 정보 ===
+flutter: Status Code: 200
+flutter: Response Body Length: 3526 bytes
+flutter: ✅ 응답 성공: 19개 항목
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [Ventas Sucursal 디버깅] sucursal 목록 추출 시작
+flutter:    → reportType: ReportType.alertas
+flutter:    → data.containsKey("data"): true
+flutter:    → data["data"] 타입: List<dynamic>
+flutter:    → data["data"]는 List, 길이: 19
+flutter:    → 항목 키: [fecha, hora, evento, progname, alerta, sucursal]
+flutter:    → sucursal 값: 1 (타입: int)
+flutter:    → sucursal 추가됨: 1
+flutter:    → 항목 키: [fecha, hora, evento, progname, alerta, sucursal]
+flutter:    → sucursal 값: 1 (타입: int)
+flutter:    → sucursal 추가됨: 1
+flutter:    → 항목 키: [fecha, hora, evento, progname, alerta, sucursal]
+flutter:    → sucursal 값: 1 (타입: int)
+flutter:    → sucursal 추가됨: 1
+flutter:    → 항목 키: [fecha, hora, evento, progname, alerta, sucursal]
+flutter:    → sucursal 값: 1 (타입: int)
+flutter:    → sucursal 추가됨: 1
+flutter:    → 항목 키: [fecha, hora, evento, progname, alerta, sucursal]
+flutter:    → sucursal 값: 1 (타입: int)
+flutter:    → sucursal 추가됨: 1
+flutter:    → 항목 키: [fecha, hora, evento, progname, alerta, sucursal]
+flutter:    → sucursal 값: 1 (타입: int)
+flutter:    → sucursal 추가됨: 1
+flutter:    → 항목 키: [fecha, hora, evento, progname, alerta, sucursal]
+flutter:    → sucursal 값: 1 (타입: int)
+flutter:    → sucursal 추가됨: 1
+flutter:    → 항목 키: [fecha, hora, evento, progname, alerta, sucursal]
+flutter:    → sucursal 값: 1 (타입: int)
+flutter:    → sucursal 추가됨: 1
+flutter:    → 항목 키: [fecha, hora, evento, progname, alerta, sucursal]
+flutter:    → sucursal 값: 1 (타입: int)
+flutter:    → sucursal 추가됨: 1
+flutter:    → 항목 키: [fecha, hora, evento, progname, alerta, sucursal]
+flutter:    → sucursal 값: 1 (타입: int)
+flutter:    → sucursal 추가됨: 1
+flutter:    → 항목 키: [fecha, hora, evento, progname, alerta, sucursal]
+flutter:    → sucursal 값: 1 (타입: int)
+flutter:    → sucursal 추가됨: 1
+flutter:    → 항목 키: [fecha, hora, evento, progname, alerta, sucursal]
+flutter:    → sucursal 값: 1 (타입: int)
+flutter:    → sucursal 추가됨: 1
+flutter:    → 항목 키: [fecha, hora, evento, progname, alerta, sucursal]
+flutter:    → sucursal 값: 1 (타입: int)
+flutter:    → sucursal 추가됨: 1
+flutter:    → 항목 키: [fecha, hora, evento, progname, alerta, sucursal]
+flutter:    → sucursal 값: 1 (타입: int)
+flutter:    → sucursal 추가됨: 1
+flutter:    → 항목 키: [fecha, hora, evento, progname, alerta, sucursal]
+flutter:    → sucursal 값: 1 (타입: int)
+flutter:    → sucursal 추가됨: 1
+flutter:    → 항목 키: [fecha, hora, evento, progname, alerta, sucursal]
+flutter:    → sucursal 값: 1 (타입: int)
+flutter:    → sucursal 추가됨: 1
+flutter:    → 항목 키: [fecha, hora, evento, progname, alerta, sucursal]
+flutter:    → sucursal 값: 1 (타입: int)
+flutter:    → sucursal 추가됨: 1
+flutter:    → 항목 키: [fecha, hora, evento, progname, alerta, sucursal]
+flutter:    → sucursal 값: 1 (타입: int)
+flutter:    → sucursal 추가됨: 1
+flutter:    → 항목 키: [fecha, hora, evento, progname, alerta, sucursal]
+flutter:    → sucursal 값: 1 (타입: int)
+flutter:    → sucursal 추가됨: 1
+flutter:    → 추출된 sucursalSet: {1}
+flutter:    → sucursalSet.isEmpty: false
+flutter:    → 정렬된 sucursales: [1]
+flutter:    → 최종 sucursales: [1]
+flutter:    → sucursales == null: false
+flutter:    → sucursales.length: 1
+flutter:    → sucursales.length > 1: false
+flutter: ═══════════════════════════════════════════════════════
+flutter:    → 데이터 로딩 완료
+flutter:    - 데이터 타입: _Map<String, dynamic>
+flutter:    - 데이터 키: [filters, summary, data]
+flutter:    - 응답 데이터 개수: 19
+flutter:    - 사용 가능한 sucursales: [1]
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [Ventas Sucursal 디버깅] setState에서 _availableSucursales 설정
+flutter:    → reportType: ReportType.alertas
+flutter:    → sucursales: [1]
+flutter:    → _availableSucursales: [1]
+flutter:    → _availableSucursales == null: false
+flutter:    → _availableSucursales.length: 1
+flutter:    → _availableSucursales.length > 1: false
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [Ventas Sucursal 디버깅] sucursal이 1개 이하이므로 _selectedSucursal = null
+flutter:    → setState: _data 업데이트, _isLoading=false, _displayedItemsCount=19
+flutter: 📊 _loadData() 완료
+flutter: ═══════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [ReportScreen.build] 호출됨
+flutter:    → reportType: ReportType.alertas
+flutter:    → Platform.isWindows: false
+flutter:    → Platform.isMacOS: true
+flutter:    → Platform.isLinux: false
+flutter:    → defaultTargetPlatform: TargetPlatform.macOS
+flutter:    → useFullWidth: true
+flutter:    → _isLoading: false
+flutter:    → _data: 있음 (키: [filters, summary, data])
+flutter:    → _errorMessage: null
+flutter: ═══════════════════════════════════════════════════════
+flutter:    → LayoutBuilder: constraints.maxWidth=1732.0, constraints.maxHeight=991.0
+flutter:    → isLargeScreen: true
+flutter:    → orientation: Orientation.landscape
+flutter:    → platformType: PlatformType.desktop
+flutter:    → isMobile: false
+flutter:    → useFullWidth=true: Column 반환 (AppBar + Expanded body)
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [_buildBody] 호출됨
+flutter:    → reportType: ReportType.alertas
+flutter:    → Platform.isWindows: false
+flutter:    → _isLoading: false
+flutter:    → _data: 있음 (키: [filters, summary, data])
+flutter:    → _errorMessage: null
+flutter: ═══════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════════
+flutter: 🔍 [ReportType.alertas AppBar - 넓은 화면] Row LayoutBuilder 호출됨
+flutter:    → rowConstraints.maxWidth: 1700.0
+flutter:    → rowConstraints.maxHeight: Infinity
+flutter:    → rowConstraints.isTight: false
+flutter:    → rowConstraints.isNormalized: true
+flutter:    → isLargeScreen: true
+flutter:    → reportType: ReportType.alertas
+flutter: ═══════════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════════
+flutter: 🔍 [_buildFilteringWordFieldInAppBar] 호출됨
+flutter:    → reportType: ReportType.alertas
+flutter:    → _filteringWordController.text: 
+flutter: ═══════════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════════
+flutter: 🔍 [ReportFilters.buildFilteringWordField] 호출됨
+flutter: ═══════════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [_buildReportContent] 호출됨
+flutter:    → reportType: ReportType.alertas
+flutter:    → Platform.isWindows: false
+flutter:    → _data: 있음
+flutter:    → _data 키: [filters, summary, data]
+flutter:    → [Alertas] _data 타입: _Map<String, dynamic>
+flutter:    → [Alertas] _data 키: [filters, summary, data]
+flutter:    → [Alertas] data 키 존재: true
+flutter:    → [Alertas] data 타입: List<dynamic>
+flutter:    → [Alertas] data 리스트 길이: 19
+flutter:    → [Alertas] 첫 번째 항목: {fecha: 2026-01-14, hora: 11:17:20, evento: [JUMPTO4UNAVENTA 7364]; BLLAMADO4MODIFICAR IS TRUE, VCODE - ELLUI3-2026-01-14-00013 ; ALERTA;; [ENC] 11, progname: VControl, alerta: true, sucursal: 1}
+flutter:    → [Alertas] 첫 번째 항목 키: [fecha, hora, evento, progname, alerta, sucursal]
+flutter: ═══════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [Alertas] dataList 생성 확인
+flutter:    → data.containsKey("data"): true
+flutter:    → data["data"] 타입: List<dynamic>
+flutter:    → data["data"] is List: true
+flutter:    → dataList.length: 19
+flutter:    → dataList.first 타입: _Map<String, dynamic>
+flutter:    → dataList.first: {fecha: 2026-01-14, hora: 11:17:20, evento: [JUMPTO4UNAVENTA 7364]; BLLAMADO4MODIFICAR IS TRUE, VCODE - ELLUI3-2026-01-14-00013 ; ALERTA;; [ENC] 11, progname: VControl, alerta: true, sucursal: 1}
+flutter:    → dataList.first 키: [fecha, hora, evento, progname, alerta, sucursal]
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [Alertas] filteredDataList 초기화
+flutter:    → filteredDataList.length: 19
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [Alertas] 데이터 처리 시작
+flutter:    → dataList.length: 19
+flutter:    → filteredDataList.length: 19
+flutter:    → _alertasVCancelado: false
+flutter:    → _alertasJefe: false
+flutter:    → _alertasWeb: false
+flutter:    → filteringWord: ""
+flutter:    → filteredDataList 첫 번째 항목: {fecha: 2026-01-14, hora: 11:17:20, evento: [JUMPTO4UNAVENTA 7364]; BLLAMADO4MODIFICAR IS TRUE, VCODE - ELLUI3-2026-01-14-00013 ; ALERTA;; [ENC] 11, progname: VControl, alerta: true, sucursal: 1}
+flutter:    → filteredDataList 첫 번째 항목 키: [fecha, hora, evento, progname, alerta, sucursal]
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [Alertas] 정렬 전 sortedDataList.length: 19
+flutter: 🔍 [Alertas] 정렬 후 sortedDataList.length: 19
+flutter:    → sortedDataList 첫 번째 항목: {fecha: 2026-01-14, hora: 11:17:20, evento: [JUMPTO4UNAVENTA 7364]; BLLAMADO4MODIFICAR IS TRUE, VCODE - ELLUI3-2026-01-14-00013 ; ALERTA;; [ENC] 11, progname: VControl, alerta: true, sucursal: 1}
+
+══╡ EXCEPTION CAUGHT BY RENDERING LIBRARY ╞═════════════════════════════════════════════════════════
+The following assertion was thrown during layout:
+A RenderFlex overflowed by 112 pixels on the right.
+
+The relevant error-causing widget was:
+  Row
+  Row:file:///Users/marcoskim/Trabajos_Programming/flutter_aguila/lib/widgets/report_table_builder.dart:4072:22
+
+To inspect this widget in Flutter DevTools, visit:
+http://127.0.0.1:58074/Ob2i2oxKuqQ=/devtools//#/inspector?uri=http%3A%2F%2F127.0.0.1%3A58074%2FOb2i2oxKuqQ%3D%2F&inspectorRef=inspector-0
+
+The overflowing RenderFlex has an orientation of Axis.horizontal.
+The edge of the RenderFlex that is overflowing has been marked in the rendering with a yellow and
+black striped pattern. This is usually caused by the contents being too big for the RenderFlex.
+Consider applying a flex factor (e.g. using an Expanded widget) to force the children of the
+RenderFlex to fit within the available space instead of being sized to their natural size.
+This is considered an error condition because it indicates that there is content that cannot be
+seen. If the content is legitimately bigger than the available space, consider clipping it with a
+ClipRect widget before putting it in the flex, or using a scrollable container rather than a Flex,
+like a ListView.
+The specific RenderFlex in question is: RenderFlex#143bc relayoutBoundary=up25 OVERFLOWING:
+  creator: Row ← Padding ← DecoratedBox ← ConstrainedBox ← Container ← Builder ← Padding ←
+    DecoratedBox ← ConstrainedBox ← Container ← _SingleChildViewport ← IgnorePointer-[GlobalKey#94bb5]
+    ← ⋯
+  parentData: offset=Offset(0.0, 2.0) (can use size)
+  constraints: BoxConstraints(w=1267.0, 0.0<=h<=Infinity)
+  size: Size(1267.0, 56.0)
+  direction: horizontal
+  mainAxisAlignment: start
+  mainAxisSize: min
+  crossAxisAlignment: center
+  textDirection: ltr
+  verticalDirection: down
+  spacing: 0.0
+◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤
+════════════════════════════════════════════════════════════════════════════════════════════════════
+
+flutter:    → sortedDataList 첫 번째 항목 키: [fecha, hora, evento, progname, alerta, sucursal]
+flutter: 🔍 [Alertas] 테이블 빌드 시작
+flutter:    → sortedDataList.length: 19
+flutter:    → _displayedItemsCount: 19
+flutter:    → _itemsPerPage: 100
+flutter:    → _scrollController: true
+flutter:    → _horizontalScrollController: true
+flutter:    → reportColor: MaterialColor(primary value: Color(alpha: 1.0000, red: 1.0000, green: 0.5961, blue: 0.0000, colorSpace: ColorSpace.sRGB))
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [alertas] buildTableFromList 시작
+flutter:    → horizontalScrollController: true
+flutter:    → horizontalScrollController.hasClients: false
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [ReportTableBuilder:176] buildTableFromList 함수 시작
+flutter:    → 파일: report_table_builder.dart
+flutter:    → 라인: 176
+flutter:    → reportType: ReportType.alertas
+flutter:    → dataList.length: 19
+flutter:    → displayedItemsCount: 19
+flutter:    → itemsPerPage: 100
+flutter:    → displayedList.length: 19
+flutter:    → totalCount: 19
+flutter:    → [ReportTableBuilder:593] isItemsOrIngresos 계산 (조기 확인)
+flutter:       → reportType == ReportType.items: false
+flutter:       → reportType == ReportType.ingresos: false
+flutter:       → isItemsOrIngresos: false
+flutter: 🔍 [Alertas] 테이블 위젯 생성 완료
+flutter:    → tableWidget 타입: LayoutBuilder
+flutter:    → tableWidget: LayoutBuilder
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [ReportTableBuilder:610] buildTableFromList Column LayoutBuilder 시작
+flutter:    → 파일: report_table_builder.dart
+flutter:    → 라인: 610
+flutter:    → reportType: ReportType.alertas
+flutter:    → constraints.maxWidth: 1732.0
+flutter:    → constraints.maxHeight: 935.0
+flutter:    → constraints.minWidth: 0.0
+flutter:    → constraints.minHeight: 0.0
+flutter:    → [ReportTableBuilder:620] ConstrainedBox 생성 시작
+flutter:       → minWidth: 1732.0
+flutter:       → maxWidth: 1732.0
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [_buildHeaderRow] 함수 진입
+flutter:    → keys: [fecha, hora, evento, progname, sucursal]
+flutter:    → keys.length: 5
+flutter:    → columns.length: 5
+flutter:    → columnWidths 전달됨: true
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [헤더] _buildHeaderRow 칼럼 너비 정보
+flutter:    → keys: [fecha, hora, evento, progname, sucursal]
+flutter:    → keys.length: 5
+flutter:    → columns.length: 5
+flutter:    → columnWidths 전달됨: true
+flutter:    → finalColumnWidths: {codigo1: 200.0, desc1: 200.0, ProductName: 400.0, totalCantidad: 120.0, CategoryCode: 100.0, CompanyCode: 100.0, tprendas: 100.0, timporte: 120.0, codigo: 120.0, descripcion: 200.0, tevent: 100.0, tcant: 120.0, tIngreso: 120.0, tingreso: 120.0, cntEvent: 100.0, cntevent: 100.0, fecha: 60.0, hora: 50.0, evento: 1000.0, progname: 75.0, alerta: 40.0, sucursal: 50.0, start_date: 120.0, end_date: 120.0}
+flutter:    → [헤더] 칼럼 #0: key="fecha", width=60.0, x=0.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=68.0
+flutter:    → [헤더] 칼럼 #1: key="hora", width=50.0, x=68.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=126.0
+flutter:    → [헤더] 칼럼 #2: key="evento", width=1000.0, x=126.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=1134.0
+flutter:    → [헤더] 칼럼 #3: key="progname", width=75.0, x=1134.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=1217.0
+flutter:    → [헤더] 칼럼 #4: key="sucursal", width=50.0, x=1217.0, padding=16
+flutter:    → [헤더] 총 너비: 1267.0
+flutter:    → [ReportTableBuilder:650] Column 생성 시작
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [buildTableFromList] 푸터 생성 시작
+flutter:    → keys: [fecha, hora, evento, progname, sucursal]
+flutter:    → columnWidths 전달: true
+flutter:    → horizontalScrollController: true
+flutter:    → [alertas] 계산된 footerWidth: 1267.0
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [_buildFixedTotalRow] 함수 진입
+flutter:    → keys: [fecha, hora, evento, progname, sucursal]
+flutter:    → keys.length: 5
+flutter:    → columnWidths 전달됨: true
+flutter:    → displayedList.length: 19
+flutter:    → dataList.length: 19
+flutter:    → reportType: ReportType.alertas
+flutter:    → 합계 계산에 사용할 리스트 길이: 19
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [푸터] _buildFixedTotalRow 칼럼 너비 정보
+flutter:    → keys: [fecha, hora, evento, progname, sucursal]
+flutter:    → keys.length: 5
+flutter:    → columnWidths 전달됨: true
+flutter:    → finalColumnWidths: {codigo1: 200.0, desc1: 200.0, ProductName: 400.0, totalCantidad: 120.0, CategoryCode: 100.0, CompanyCode: 100.0, tprendas: 100.0, timporte: 120.0, codigo: 120.0, descripcion: 200.0, tevent: 100.0, tcant: 120.0, tIngreso: 120.0, tingreso: 120.0, cntEvent: 100.0, cntevent: 100.0, fecha: 60.0, hora: 50.0, evento: 1000.0, progname: 75.0, alerta: 40.0, sucursal: 50.0, start_date: 120.0, end_date: 120.0}
+flutter:    → [푸터] 칼럼 #0: key="fecha", width=60.0, x=0.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=68.0
+flutter:    → [푸터] 칼럼 #1: key="hora", width=50.0, x=68.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=126.0
+flutter:    → [푸터] 칼럼 #2: key="evento", width=1000.0, x=126.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=1134.0
+flutter:    → [푸터] 칼럼 #3: key="progname", width=75.0, x=1134.0, padding=16
+flutter:       → columnSpacing(8) 추가 후 x=1217.0
+flutter:    → [푸터] 칼럼 #4: key="sucursal", width=50.0, x=1217.0, padding=16
+flutter:    → [푸터] 총 너비: 1267.0
+flutter:    → 푸터 생성 완료
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [Alertas 푸터] 총 로그 개수 계산
+flutter:    → listForTotal.length: 19
+flutter:    → totalLogCount: 19
+flutter:    → keys: [fecha, hora, evento, progname, sucursal]
+flutter:    → keys[0]: fecha
+flutter:    → finalColumnWidths[keys[0]]: 60.0
+flutter:    → 표시할 텍스트: "Total: 19"
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [Alertas 푸터] 첫 번째 칼럼 너비 (조정 후): 150.0
+flutter: 🔍 [Alertas 푸터] 생성할 텍스트: "Total: 19"
+flutter: 🔍 [Alertas 푸터] 빈 칸 칼럼: hora, width: 50.0
+flutter: 🔍 [Alertas 푸터] 빈 칸 칼럼: evento, width: 1000.0
+flutter: 🔍 [Alertas 푸터] 빈 칸 칼럼: progname, width: 75.0
+flutter: 🔍 [Alertas 푸터] 빈 칸 칼럼: sucursal, width: 50.0
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [ReportTableBuilder:680] buildTableFromList 내부 LayoutBuilder 시작
+flutter:    → 파일: report_table_builder.dart
+flutter:    → 라인: 680
+flutter:    → reportType: ReportType.alertas
+flutter:    → innerConstraints.maxWidth: 1732.0
+flutter:    → innerConstraints.maxHeight: 817.0
+flutter:    → innerConstraints.minWidth: 1732.0
+flutter:    → innerConstraints.minHeight: 817.0
+flutter:    → [ReportTableBuilder:690] Items/Ingresos: SingleChildScrollView로 수직 스크롤 추가
+flutter:    → [ReportTableBuilder:691] _buildTableContent 호출 시작
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [ReportTableBuilder:1512] _buildTableContent 시작
+flutter:    → 파일: report_table_builder.dart
+flutter:    → 라인: 1512
+flutter:    → reportType: ReportType.alertas
+flutter:    → constraints.maxWidth: 1732.0
+flutter:    → constraints.maxHeight: 817.0
+flutter:    → constraints.minWidth: 1732.0
+flutter:    → constraints.minHeight: 817.0
+flutter:    → horizontalScrollController: true
+flutter:    → [ReportTableBuilder:1522] needsHorizontalScroll: true
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [ReportTableBuilder:1772] _buildDataTable 시작
+flutter:    → 파일: report_table_builder.dart
+flutter:    → 라인: 1772
+flutter:    → reportType: ReportType.alertas
+flutter:    → isItemsOrIngresos: false
+flutter:    → columns.length: 5
+flutter:    → displayedList.length: 19
+flutter:    → keys.length: 5
+flutter:    → [ReportTableBuilder:705] _buildTableContent 호출 완료, Scrollbar + SingleChildScrollView로 감싸기
+flutter:    → [ReportTableBuilder:730] tableContent 반환
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [ReportTableBuilder:1781] _buildDataTable LayoutBuilder 시작
+flutter:    → 파일: report_table_builder.dart
+flutter:    → 라인: 1781
+flutter:    → constraints.maxWidth: 1832.0
+flutter:    → constraints.maxHeight: Infinity
+flutter:    → constraints.minWidth: 1832.0
+flutter:    → constraints.minHeight: 0.0
+flutter:    → [ReportTableBuilder:1789] DataTable 생성 시작
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [DataTable] _buildDataTable 칼럼 너비 정보
+flutter:    → keys: [fecha, hora, evento, progname, sucursal]
+flutter:    → keys.length: 5
+flutter:    → columns.length: 5
+flutter:    → isItemsOrIngresos: false
+flutter:    → columnWidths 전달됨: true
+flutter:    → finalColumnWidths: {codigo1: 200.0, desc1: 200.0, ProductName: 400.0, totalCantidad: 120.0, CategoryCode: 100.0, CompanyCode: 100.0, tprendas: 100.0, timporte: 120.0, codigo: 120.0, descripcion: 200.0, tevent: 100.0, tcant: 120.0, tIngreso: 120.0, tingreso: 120.0, cntEvent: 100.0, cntevent: 100.0, fecha: 60.0, hora: 50.0, evento: 1000.0, progname: 75.0, alerta: 40.0, sucursal: 50.0, start_date: 120.0, end_date: 120.0}
+flutter:    → [DataTable] 칼럼 #0: key="fecha", width=60.0, x=0.0, DataColumn label SizedBox width=60.0
+flutter:       → columnSpacing(1) 추가 후 x=61.0
+flutter:    → [DataTable] 칼럼 #1: key="hora", width=50.0, x=61.0, DataColumn label SizedBox width=50.0
+flutter:       → columnSpacing(1) 추가 후 x=112.0
+flutter:    → [DataTable] 칼럼 #2: key="evento", width=1000.0, x=112.0, DataColumn label SizedBox width=1000.0
+flutter:       → columnSpacing(1) 추가 후 x=1113.0
+flutter:    → [DataTable] 칼럼 #3: key="progname", width=75.0, x=1113.0, DataColumn label SizedBox width=75.0
+flutter:       → columnSpacing(1) 추가 후 x=1189.0
+flutter:    → [DataTable] 칼럼 #4: key="sucursal", width=50.0, x=1189.0, DataColumn label SizedBox width=50.0
+flutter:    → [DataTable] 총 너비: 1239.0
+flutter:    → [DataTable] columnSpacing: 1 (reportType: ReportType.alertas, alertas: true)
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [데이터 행] _buildDataRowFromMap 칼럼 너비 정보
+flutter:    → keys: [fecha, hora, evento, progname, sucursal]
+flutter:    → keys.length: 5
+flutter:    → isItemsOrIngresos: false
+flutter:    → isAlertas: true
+flutter:    → columnWidths 전달됨: true
+flutter:    → finalColumnWidths: {codigo1: 200.0, desc1: 200.0, ProductName: 400.0, totalCantidad: 120.0, CategoryCode: 100.0, CompanyCode: 100.0, tprendas: 100.0, timporte: 120.0, codigo: 120.0, descripcion: 200.0, tevent: 100.0, tcant: 120.0, tIngreso: 120.0, tingreso: 120.0, cntEvent: 100.0, cntevent: 100.0, fecha: 60.0, hora: 50.0, evento: 1000.0, progname: 75.0, alerta: 40.0, sucursal: 50.0, start_date: 120.0, end_date: 120.0}
+flutter:    → [데이터 행] 칼럼 #0: key="fecha", width=60.0, x=0.0, DataCell padding=16
+flutter:       → columnSpacing(8) 추가 후 x=68.0
+flutter:    → [데이터 행] 칼럼 #1: key="hora", width=50.0, x=68.0, DataCell padding=16
+flutter:       → columnSpacing(8) 추가 후 x=126.0
+flutter:    → [데이터 행] 칼럼 #2: key="evento", width=1000.0, x=126.0, DataCell padding=16
+flutter:       → columnSpacing(8) 추가 후 x=1134.0
+flutter:    → [데이터 행] 칼럼 #3: key="progname", width=75.0, x=1134.0, DataCell padding=16
+flutter:       → columnSpacing(8) 추가 후 x=1217.0
+flutter:    → [데이터 행] 칼럼 #4: key="sucursal", width=50.0, x=1217.0, DataCell padding=16
+flutter:    → [데이터 행] 총 너비: 1267.0
+flutter:    → [ReportTableBuilder:1808] SizedBox 생성 시작
+flutter:       → width: 1832.0
+flutter:    → [ReportTableBuilder:1832] sizedBox 반환
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [ReportTableBuilder:625] ConstrainedBox 실제 렌더링 크기 (PostFrameCallback)
+flutter:    → 파일: report_table_builder.dart
+flutter:    → 라인: 625
+flutter:    → ConstrainedBox width: 1732.0
+flutter:    → ConstrainedBox height: 935.0
+flutter:    → 예상 width: 1732.0
+flutter:    → [ReportTableBuilder:640] SizedBox 실제 렌더링 크기 (PostFrameCallback)
+flutter:       → 파일: report_table_builder.dart
+flutter:       → 라인: 640
+flutter:       → SizedBox width: 1732.0
+flutter:       → SizedBox height: 935.0
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [헤더] 실제 렌더링 위치 측정
+flutter:    → 헤더 전체 width: 1732.0
+flutter:    → 헤더 전체 height: 58.0
+flutter:    → 헤더 localToGlobal(0,0): Offset(60.0, 56.0)
+flutter:    → [헤더] 구조 파악 시작
+flutter:    [depth=0] 타입=_RenderScrollSemantics, width=1732.0, height=58.0
+flutter:      [depth=1] 타입=RenderPointerListener, width=1732.0, height=58.0
+flutter:        [depth=2] 타입=RenderSemanticsGestureHandler, width=1732.0, height=58.0
+flutter:          [depth=3] 타입=RenderPointerListener, width=1732.0, height=58.0
+flutter:            [depth=4] 타입=RenderSemanticsAnnotations, width=1732.0, height=58.0
+flutter:              [depth=5] 타입=RenderIgnorePointer, width=1732.0, height=58.0
+flutter:                [depth=6] 타입=_RenderSingleChildViewport, width=1732.0, height=58.0
+flutter:                  [depth=7] 타입=RenderDecoratedBox, width=1267.0, height=58.0
+flutter:                    [depth=8] 타입=RenderPadding, width=1267.0, height=58.0
+flutter:    → [헤더] Row 찾음 (depth=9): width=1267.0, 타입=RenderFlex
+flutter:    → [헤더] Row 찾음: width=1267.0
+flutter:    → [헤더] Row 자식 탐색 시작
+flutter:    → [헤더] Row 자식 #0: 타입=RenderConstrainedBox, width=60.0
+flutter:    → [헤더] Row 자식 #1: 타입=RenderConstrainedBox, width=8.0
+flutter:    → [헤더] Row 자식 #2: 타입=RenderConstrainedBox, width=50.0
+flutter:    → [헤더] Row 자식 #3: 타입=RenderConstrainedBox, width=8.0
+flutter:    → [헤더] Row 자식 #4: 타입=RenderConstrainedBox, width=1000.0
+flutter:    → [헤더] Row 자식 #5: 타입=RenderConstrainedBox, width=8.0
+flutter:    → [헤더] Row 자식 #6: 타입=RenderConstrainedBox, width=75.0
+flutter:    → [헤더] Row 자식 #7: 타입=RenderConstrainedBox, width=8.0
+flutter:    → [헤더] Row 자식 #8: 타입=RenderConstrainedBox, width=50.0
+flutter:    → [헤더] 칼럼 #0: 실제 x=0.0, width=60.0, 예상 x=0.0, 차이=0.0, 타입=RenderConstrainedBox
+flutter:    → [헤더] 칼럼 #1: 실제 x=1134.0, width=75.0, 예상 x=68.0, 차이=1066.0, 타입=RenderConstrainedBox
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [오버랩 디버깅] buildHeaderRow 실제 렌더링 크기
+flutter:    → 헤더 실제 width: 1267.0
+flutter:    → 헤더 실제 height: 56.0
+flutter:    → 계산된 총 너비: 1267.0
+flutter:    → 부모 실제 width: 1267.0
+flutter:    ✅ 헤더 오버랩 없음. 여유: -0.0px
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [alertas] Items/Ingresos 푸터 생성 완료
+flutter:    → horizontalScrollController: true
+flutter:    → horizontalScrollController.hasClients: true
+flutter:    ⚠️ horizontalScrollController가 3개의 스크롤 뷰에 연결됨
+flutter: ═══════════════════════════════════════════════════════
+flutter: 🔍 [오버랩 디버깅] buildFixedTotalRow 실제 렌더링 크기
+flutter:    → reportType: ReportType.alertas
+flutter:    → 푸터 실제 width: 1267.0
+flutter:    → 푸터 실제 height: 58.0
+flutter:    → 계산된 총 너비: 1267.0
+flutter:    → 부모 실제 width: 1267.0
+flutter:    ✅ 푸터 오버랩 없음. 여유: -0.0px
+flutter: ═══════════════════════════════════════════════════════
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [ReportTableBuilder:708] buildTableFromList 실제 렌더링 크기 (PostFrameCallback)
+flutter:    → 파일: report_table_builder.dart
+flutter:    → 라인: 708
+flutter:    → width: 1732.0
+flutter:    → height: 912.0
+flutter:    → 예상 width: 1732.0
+flutter:    → 차이: 0.0
+flutter:    → [ReportTableBuilder:720] 자식 RenderBox #0
+flutter:       → width: 1732.0
+flutter:       → height: 912.0
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [ReportTableBuilder:1815] _buildDataTable 실제 렌더링 크기 (PostFrameCallback)
+flutter:    → 파일: report_table_builder.dart
+flutter:    → 라인: 1815
+flutter:    → SizedBox width: 1832.0
+flutter:    → SizedBox height: 912.0
+flutter:    → 예상 width: 1832.0
+flutter:    → 차이: 0.0
+flutter:    → [ReportTableBuilder:1824] 자식 RenderBox #0
+flutter:       → width: 1832.0
+flutter:       → height: 912.0
+flutter: ═══════════════════════════════════════════════════════
+flutter: 📊 [DataTable] 실제 렌더링 위치 측정
+flutter:    → DataTable 전체 width: 1832.0
+flutter:    → DataTable 전체 height: 912.0
+flutter:    → DataTable localToGlobal(0,0): Offset(60.0, 114.0)
+flutter:    → [DataTable] RenderTable 찾음: width=1832.0
+flutter:    → [DataTable] RenderTable 타입: RenderTable
+flutter:    → [DataTable] RenderTable 총 자식 수: 100
+flutter:    ═══════════════════════════════════════════════════════
+flutter:    📊 [DataTable] 모든 행 정보 (총 0개)
+flutter:    ═══════════════════════════════════════════════════════

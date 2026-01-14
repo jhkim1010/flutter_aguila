@@ -1216,8 +1216,8 @@ class ReportTableBuilder {
         return LayoutBuilder(
           builder: (context, constraints) {
             final screenWidth = constraints.maxWidth;
-            // 컬럼 간격 (8px) * (컬럼 수 - 1) + 좌우 패딩 (32px)
-            final totalSpacing = 8 * (keys.length - 1) + 32;
+            // 컬럼 간격 (1px) * (컬럼 수 - 1) + 좌우 패딩 (32px)
+            final totalSpacing = 1 * (keys.length - 1) + 32;
             final availableWidth = screenWidth - totalSpacing;
             
             // Alertas 컬럼별 최소 너비 설정 (모든 칼럼을 절반으로 줄임)
@@ -1789,15 +1789,26 @@ class ReportTableBuilder {
                                 final isNumeric = (key != 'codigo' && key != 'codigo1' && key != 'tcode' && key != 'id_codigo1' && key != 'vcode')
                                     ? (ReportUtils.isNumeric(value) || isAmountColumn)
                                     : false;
-                                return DataCell(
-                                  Align(
-                                    alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
-                                    child: Text(
-                                      formattedValue,
-                                      style: const TextStyle(fontSize: 14),
-                                    ),
+                                // alertas 보고서는 padding을 1로 설정
+                                final cellWidget = Align(
+                                  alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+                                  child: Text(
+                                    formattedValue,
+                                    style: const TextStyle(fontSize: 14),
                                   ),
                                 );
+                                
+                                if (reportType == ReportType.alertas) {
+                                  debugPrint('🔍 [Alertas DataCell] padding=1 설정 - key: $key, value: $formattedValue');
+                                  return DataCell(
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 1), // padding을 1로 설정
+                                      child: cellWidget,
+                                    ),
+                                  );
+                                }
+                                
+                                return DataCell(cellWidget);
                               }).toList();
                               assert(cells.length == keys.length);
                               
@@ -2972,12 +2983,14 @@ class ReportTableBuilder {
                     debugPrint('   → [DataTable] 칼럼 #$i: key="$k", width=$w, x=$dataTableCumulativeX, DataColumn label SizedBox width=$w');
                     dataTableCumulativeX += w;
                     if (i < keys.length - 1) {
-                      dataTableCumulativeX += 8; // columnSpacing
-                      debugPrint('      → columnSpacing(8) 추가 후 x=$dataTableCumulativeX');
+                      final actualColumnSpacing = (reportType == ReportType.alertas) ? 1 : 8;
+                      dataTableCumulativeX += actualColumnSpacing; // alertas는 1, 다른 보고서는 8
+                      debugPrint('      → columnSpacing($actualColumnSpacing) 추가 후 x=$dataTableCumulativeX');
                     }
                   }
                   debugPrint('   → [DataTable] 총 너비: $dataTableCumulativeX');
-                  debugPrint('   → [DataTable] columnSpacing: 8');
+                  final actualColumnSpacing = reportType == ReportType.alertas ? 1 : 8;
+                  debugPrint('   → [DataTable] columnSpacing: $actualColumnSpacing (reportType: $reportType, alertas: ${reportType == ReportType.alertas})');
                 }
                 
                 return DataColumn(
@@ -4026,42 +4039,73 @@ class ReportTableBuilder {
           // Alertas 보고서의 경우 총 로그 개수만 표시
           if (reportType == ReportType.alertas) {
             final totalLogCount = listForTotal.length;
-            debugPrint('🔍 [Alertas 푸터] 총 로그 개수: $totalLogCount');
+            debugPrint('═══════════════════════════════════════════════════════');
+            debugPrint('🔍 [Alertas 푸터] 총 로그 개수 계산');
+            debugPrint('   → listForTotal.length: ${listForTotal.length}');
+            debugPrint('   → totalLogCount: $totalLogCount');
+            debugPrint('   → keys: $keys');
+            debugPrint('   → keys[0]: ${keys.isNotEmpty ? keys[0] : "없음"}');
+            debugPrint('   → finalColumnWidths[keys[0]]: ${keys.isNotEmpty ? finalColumnWidths[keys[0]] : "없음"}');
+            debugPrint('   → 표시할 텍스트: "Total: $totalLogCount"');
+            debugPrint('═══════════════════════════════════════════════════════');
             
-            return Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // 첫 번째 칼럼에 총 로그 개수 표시
-                SizedBox(
-                  width: finalColumnWidths[keys[0]] ?? 150.0,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            // 첫 번째 칼럼 너비를 충분히 크게 설정 (최소 150)
+            final firstColumnWidth = keys.isNotEmpty 
+                ? ((finalColumnWidths[keys[0]] ?? 150.0) < 150.0 ? 150.0 : (finalColumnWidths[keys[0]] ?? 150.0))
+                : 150.0;
+            debugPrint('🔍 [Alertas 푸터] 첫 번째 칼럼 너비 (조정 후): $firstColumnWidth');
+            
+            final totalText = 'Total: $totalLogCount';
+            debugPrint('🔍 [Alertas 푸터] 생성할 텍스트: "$totalText"');
+            
+            return Container(
+              width: explicitWidth ?? double.infinity,
+              decoration: BoxDecoration(
+                color: reportColor.withOpacity(0.1),
+                border: Border(
+                  top: BorderSide(
+                    color: reportColor.withOpacity(0.3),
+                    width: 2,
+                  ),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 첫 번째 칼럼에 총 로그 개수 표시 (충분한 너비, 최소 200)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 8), // padding을 1로 설정
                     height: 56.0,
+                    constraints: const BoxConstraints(minWidth: 200), // 최소 너비 200으로 증가
                     child: Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        'Total: $totalLogCount',
-                        style: const TextStyle(
+                        totalText,
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
+                          color: reportColor,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.visible,
                       ),
                     ),
                   ),
-                ),
-                // 나머지 칼럼은 빈 칸
-                ...keys.skip(1).map((key) {
-                  final columnWidth = finalColumnWidths[key] ?? 150.0;
-                  return SizedBox(
-                    width: columnWidth,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      height: 56.0,
-                      child: const SizedBox.shrink(),
-                    ),
-                  );
-                }),
-              ],
+                  // 나머지 칼럼은 빈 칸
+                  ...keys.skip(1).map((key) {
+                    final columnWidth = finalColumnWidths[key] ?? 150.0;
+                    debugPrint('🔍 [Alertas 푸터] 빈 칸 칼럼: $key, width: $columnWidth');
+                    return SizedBox(
+                      width: columnWidth + 1, // columnSpacing 고려
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 8), // padding을 1로 설정
+                        height: 56.0,
+                        child: const SizedBox.shrink(),
+                      ),
+                    );
+                  }),
+                ],
+              ),
             );
           }
           
