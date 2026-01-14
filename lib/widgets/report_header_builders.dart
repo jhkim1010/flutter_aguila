@@ -336,40 +336,61 @@ class ReportHeaderBuilders {
       }
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      decoration: BoxDecoration(
-        color: ReportUtils.getReportColor(reportType).withOpacity(0.05),
-        border: Border(
-          bottom: BorderSide(
-            color: ReportUtils.getReportColor(reportType).withOpacity(0.3),
-            width: 1,
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          // 날짜 범위 선택
-          Expanded(
-            child: ItemsDateRangeSelector(
-              reportType: reportType,
-              startDate: startDate,
-              endDate: endDate,
-              onDateRangeChanged: onDateRangeChanged,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        debugPrint('═══════════════════════════════════════════════════════════');
+        debugPrint('🔍 [buildItemsFilterSection] LayoutBuilder 호출됨');
+        debugPrint('   → reportType: $reportType');
+        debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
+        debugPrint('   → constraints.maxHeight: ${constraints.maxHeight}');
+        debugPrint('   → constraints.isTight: ${constraints.isTight}');
+        debugPrint('   → constraints.isNormalized: ${constraints.isNormalized}');
+        debugPrint('═══════════════════════════════════════════════════════════');
+        
+        if (constraints.maxWidth.isInfinite) {
+          debugPrint('⚠️ [buildItemsFilterSection] constraints.maxWidth가 무한대입니다!');
+          return const SizedBox.shrink();
+        }
+        
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          decoration: BoxDecoration(
+            color: ReportUtils.getReportColor(reportType).withOpacity(0.05),
+            border: Border(
+              bottom: BorderSide(
+                color: ReportUtils.getReportColor(reportType).withOpacity(0.3),
+                width: 1,
+              ),
             ),
           ),
-          const SizedBox(width: 12),
-          // 데이터 개수 표시
-          Text(
-            'Total: $filteredCount${filteredCount != totalCount ? ' / $totalCount' : ''}',
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.grey[700],
-              fontWeight: FontWeight.w500,
+          child: SizedBox(
+            width: constraints.maxWidth,
+            child: Row(
+              children: [
+                // 날짜 범위 선택
+                Expanded(
+                  child: ItemsDateRangeSelector(
+                    reportType: reportType,
+                    startDate: startDate,
+                    endDate: endDate,
+                    onDateRangeChanged: onDateRangeChanged,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // 데이터 개수 표시
+                Text(
+                  'Total: $filteredCount${filteredCount != totalCount ? ' / $totalCount' : ''}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey[700],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

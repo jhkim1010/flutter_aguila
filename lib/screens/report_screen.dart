@@ -197,16 +197,19 @@ class _ReportScreenState extends State<ReportScreen> {
     }
     
     // Items, Ingresos, Gastos 및 Alertas 보고서의 경우 기본 날짜 설정 (오늘 날짜 또는 초기값)
-    if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas) {
+    if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas || widget.reportType == ReportType.clientes) {
       if (widget.initialItemsStartDate != null && widget.initialItemsEndDate != null) {
         _itemsStartDate = widget.initialItemsStartDate;
         _itemsEndDate = widget.initialItemsEndDate;
-        final reportName = widget.reportType == ReportType.items ? "Items" : (widget.reportType == ReportType.ingresos ? "Ingresos" : "Gastos");
+        final reportName = widget.reportType == ReportType.items ? "Items" : (widget.reportType == ReportType.ingresos ? "Ingresos" : (widget.reportType == ReportType.gastos ? "Gastos" : (widget.reportType == ReportType.clientes ? "Clientes" : "Alertas")));
         print('📅 $reportName 보고서 초기 날짜 범위 설정: ${DateFormat('yyyy-MM-dd').format(_itemsStartDate!)} ~ ${DateFormat('yyyy-MM-dd').format(_itemsEndDate!)}');
       } else {
         final now = DateTime.now();
         _itemsStartDate = now;
         _itemsEndDate = now;
+        if (widget.reportType == ReportType.clientes) {
+          print('📅 Clientes 보고서 날짜 범위 설정 (오늘): ${DateFormat('yyyy-MM-dd').format(_itemsStartDate!)} ~ ${DateFormat('yyyy-MM-dd').format(_itemsEndDate!)}');
+        }
       }
     }
     // Ventas 및 FVentas 보고서의 경우 초기 날짜 범위 설정
@@ -233,6 +236,9 @@ class _ReportScreenState extends State<ReportScreen> {
     // 초기 상태 저장
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _notifyStateChanged();
+      // Clientes 보고서 초기화 시 OverlayEntry 닫기 (이전에 열린 overlay가 남아있을 수 있음)
+      // PostFrameCallback 내에서 실행하여 context가 준비된 후에 실행되도록 함
+      _closeClienteDetailOverlay();
     });
     _loadData();
   }
@@ -273,16 +279,21 @@ class _ReportScreenState extends State<ReportScreen> {
         _stocksHasMore = false;
         _stocksSortColumn = 'codigo';
         _stocksSortAscending = true;
-      } else if (widget.reportType == ReportType.clientes) {
-        _clientesOffset = 0;
-        _clientesHasMore = false;
-        _clientesIsLoadingMore = false;
-        _clientesSortColumn = null;
-        _clientesSortAscending = false;
-      }
+    } else if (widget.reportType == ReportType.clientes) {
+      _clientesOffset = 0;
+      _clientesHasMore = false;
+      _clientesIsLoadingMore = false;
+      _clientesSortColumn = null;
+      _clientesSortAscending = false;
+      // Clientes 보고서로 전환 시 OverlayEntry 닫기
+      _closeClienteDetailOverlay();
+    } else {
+      // 다른 보고서로 전환 시에도 OverlayEntry 닫기
+      _closeClienteDetailOverlay();
+    }
       
-      // Items, Ingresos, Gastos 및 Alertas 보고서의 경우 기본 날짜 설정 (오늘 날짜 또는 초기값)
-      if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas) {
+      // Items, Ingresos, Gastos, Alertas 및 Clientes 보고서의 경우 기본 날짜 설정 (오늘 날짜 또는 초기값)
+      if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas || widget.reportType == ReportType.clientes) {
         if (widget.initialItemsStartDate != null && widget.initialItemsEndDate != null) {
           _itemsStartDate = widget.initialItemsStartDate;
           _itemsEndDate = widget.initialItemsEndDate;
@@ -468,8 +479,13 @@ class _ReportScreenState extends State<ReportScreen> {
     }
     
     // 데이터 리스트가 있는 경우 필터링/정렬 적용
-    if (data.containsKey('data') && data['data'] is List) {
-      List<dynamic> dataList = List.from(data['data'] as List);
+    if (data.containsKey('data')) {
+      // items 보고서의 경우 data['data']가 Map일 수 있음
+      if (widget.reportType == ReportType.items && data['data'] is Map) {
+        debugPrint('⚠️ [Items Report] data["data"]가 Map 구조입니다. List로 변환할 수 없습니다.');
+        // Map 구조인 경우 필터링/정렬을 건너뜀
+      } else if (data['data'] is List) {
+        List<dynamic> dataList = List.from(data['data'] as List);
       
       // 필터링 적용
       if (widget.reportType == ReportType.items || 
@@ -661,6 +677,7 @@ class _ReportScreenState extends State<ReportScreen> {
         // 필터링된 detail로 업데이트
         dataMap['detail'] = detailList;
         data['data'] = dataMap;
+      }
       }
     }
     
@@ -1405,6 +1422,19 @@ class _ReportScreenState extends State<ReportScreen> {
           _tiposList = tipos;
           _temporadasList = temporadas;
           
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [Tipos/Temporadas 로드 완료]');
+          debugPrint('   → _tiposList.length: ${tipos.length}');
+          debugPrint('   → _temporadasList.length: ${temporadas.length}');
+          debugPrint('   → reportType: ${widget.reportType}');
+          if (tipos.isNotEmpty) {
+            debugPrint('   → 첫 번째 tipo: ${tipos.first}');
+          }
+          if (temporadas.isNotEmpty) {
+            debugPrint('   → 첫 번째 temporada: ${temporadas.first}');
+          }
+          debugPrint('═══════════════════════════════════════════════════════');
+          
           // 선택된 값이 새 리스트에 없으면 null로 초기화
           if (_selectedTipoId != null) {
             final tipoIds = tipos.map((tipo) {
@@ -1608,7 +1638,7 @@ class _ReportScreenState extends State<ReportScreen> {
             filters: filters,
           );
           
-          debugPrint('   → API 응답 받음: ${data.containsKey('data') ? (data['data'] as List).length : 0}개 항목');
+          debugPrint('   → API 응답 받음: ${data.containsKey('data') ? (data['data'] is List ? (data['data'] as List).length : (data['data'] is Map ? 'Map 구조' : '알 수 없음')) : 0}개 항목');
           break;
         case ReportType.clientes:
           final currentFilteringWord = filteringWord ?? _filteringWordController.text.trim();
@@ -2485,23 +2515,50 @@ class _ReportScreenState extends State<ReportScreen> {
 
   // Items 보고서용 필터 섹션 (데이터 개수 + 날짜 범위 + 필터링)
   Widget _buildItemsFilterSection() {
-    return ReportHeaderBuilders.buildItemsFilterSection(
-      data: _data,
-      filteringWordController: _filteringWordController,
-      startDate: _itemsStartDate,
-      endDate: _itemsEndDate,
-      onDateRangeChanged: (startDate, endDate) {
-        setState(() {
-          _itemsStartDate = startDate;
-          _itemsEndDate = endDate;
-        });
-        // 날짜 범위 변경 콜백 호출
-        if (widget.onItemsDateRangeChanged != null) {
-          widget.onItemsDateRangeChanged!(startDate, endDate);
+    debugPrint('═══════════════════════════════════════════════════════════');
+    debugPrint('🔍 [_buildItemsFilterSection] 호출됨');
+    debugPrint('   → reportType: ${widget.reportType}');
+    debugPrint('   → _itemsStartDate: $_itemsStartDate');
+    debugPrint('   → _itemsEndDate: $_itemsEndDate');
+    debugPrint('   → _data: ${_data != null ? "있음 (키: ${_data!.keys.toList()})" : "null"}');
+    debugPrint('═══════════════════════════════════════════════════════════');
+    
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        debugPrint('🔍 [_buildItemsFilterSection] LayoutBuilder 호출됨');
+        debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
+        debugPrint('   → constraints.maxHeight: ${constraints.maxHeight}');
+        debugPrint('   → constraints.isTight: ${constraints.isTight}');
+        debugPrint('   → constraints.isNormalized: ${constraints.isNormalized}');
+        
+        if (constraints.maxWidth.isInfinite) {
+          debugPrint('⚠️ [_buildItemsFilterSection] constraints.maxWidth가 무한대입니다!');
+          return const SizedBox.shrink();
         }
-        _loadData();
+        
+        return SizedBox(
+          width: constraints.maxWidth,
+          child: ReportHeaderBuilders.buildItemsFilterSection(
+            data: _data,
+            filteringWordController: _filteringWordController,
+            startDate: _itemsStartDate,
+            endDate: _itemsEndDate,
+            onDateRangeChanged: (startDate, endDate) {
+              debugPrint('📅 [_buildItemsFilterSection] 날짜 범위 변경: $startDate ~ $endDate');
+              setState(() {
+                _itemsStartDate = startDate;
+                _itemsEndDate = endDate;
+              });
+              // 날짜 범위 변경 콜백 호출
+              if (widget.onItemsDateRangeChanged != null) {
+                widget.onItemsDateRangeChanged!(startDate, endDate);
+              }
+              _loadData();
+            },
+            reportType: widget.reportType,
+          ),
+        );
       },
-      reportType: widget.reportType,
     );
   }
 
@@ -2770,9 +2827,16 @@ class _ReportScreenState extends State<ReportScreen> {
                       if (isMobilePortrait) {
                         // Clientes 보고서의 경우 특별한 레이아웃
                         if (widget.reportType == ReportType.clientes) {
+                          debugPrint('═══════════════════════════════════════════════════════════');
+                          debugPrint('🔍 [Clientes AppBar] AppBar 빌드 시작');
+                          debugPrint('   → reportType: ${widget.reportType}');
+                          debugPrint('   → _itemsStartDate: $_itemsStartDate');
+                          debugPrint('   → _itemsEndDate: $_itemsEndDate');
+                          debugPrint('═══════════════════════════════════════════════════════════');
+                          
                           return Column(
                             mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               // 첫 번째 줄: 아이콘, 제목, 필터들, 메뉴 버튼, 공유 버튼
                               Row(
@@ -2856,30 +2920,43 @@ class _ReportScreenState extends State<ReportScreen> {
                                 ],
                               ),
                               // 두 번째 줄: 달력 2개
-                              Row(
-                                children: [
-                                  Flexible(
-                                    child: ItemsDateRangeSelector(
-                                      reportType: widget.reportType,
-                                      startDate: _itemsStartDate,
-                                      endDate: _itemsEndDate,
-                                      onDateRangeChanged: (startDate, endDate) {
-                                        debugPrint('📅 [Items Report] 날짜 범위 변경 이벤트:');
-                                        debugPrint('   → 변경 전: startDate=$_itemsStartDate, endDate=$_itemsEndDate');
-                                        debugPrint('   → 변경 후: startDate=$startDate, endDate=$endDate');
-                                        setState(() {
-                                          _itemsStartDate = startDate;
-                                          _itemsEndDate = endDate;
-                                        });
-                                        if (widget.onItemsDateRangeChanged != null) {
-                                          widget.onItemsDateRangeChanged!(startDate, endDate);
-                                        }
-                                        debugPrint('   → _loadData() 호출하여 데이터 다시 로드');
-                                        _loadData();
-                                      },
-                                    ),
-                                  ),
-                                ],
+                              Builder(
+                                builder: (context) {
+                                  debugPrint('═══════════════════════════════════════════════════════════');
+                                  debugPrint('🔍 [Clientes AppBar] Builder 호출됨');
+                                  debugPrint('   → _itemsStartDate: $_itemsStartDate');
+                                  debugPrint('   → _itemsEndDate: $_itemsEndDate');
+                                  
+                                  try {
+                                    final mediaQuery = MediaQuery.of(context);
+                                    debugPrint('   → MediaQuery.size: ${mediaQuery.size}');
+                                    debugPrint('   → MediaQuery.orientation: ${mediaQuery.orientation}');
+                                  } catch (e) {
+                                    debugPrint('   ⚠️ MediaQuery.of(context) 오류: $e');
+                                  }
+                                  
+                                  debugPrint('═══════════════════════════════════════════════════════════');
+                                  
+                                  return ItemsDateRangeSelector(
+                                    reportType: widget.reportType,
+                                    startDate: _itemsStartDate,
+                                    endDate: _itemsEndDate,
+                                    onDateRangeChanged: (startDate, endDate) {
+                                      debugPrint('📅 [Items Report] 날짜 범위 변경 이벤트:');
+                                      debugPrint('   → 변경 전: startDate=$_itemsStartDate, endDate=$_itemsEndDate');
+                                      debugPrint('   → 변경 후: startDate=$startDate, endDate=$endDate');
+                                      setState(() {
+                                        _itemsStartDate = startDate;
+                                        _itemsEndDate = endDate;
+                                      });
+                                      if (widget.onItemsDateRangeChanged != null) {
+                                        widget.onItemsDateRangeChanged!(startDate, endDate);
+                                      }
+                                      debugPrint('   → _loadData() 호출하여 데이터 다시 로드');
+                                      _loadData();
+                                    },
+                                  );
+                                },
                               ),
                             ],
                           );
@@ -3024,29 +3101,44 @@ class _ReportScreenState extends State<ReportScreen> {
                               ),
                               const SizedBox(height: 4),
                               // 두 번째 줄: 날짜 선택기, 버튼들, Sucursal 선택기, 필터링 단어 필드
-                              Row(
-                                children: [
-                                  Flexible(
-                                    child: ItemsDateRangeSelector(
-                                      reportType: widget.reportType,
-                                      startDate: _itemsStartDate,
-                                      endDate: _itemsEndDate,
-                                      onDateRangeChanged: (startDate, endDate) {
-                                        debugPrint('📅 [Items Report] 날짜 범위 변경 이벤트:');
-                                        debugPrint('   → 변경 전: startDate=$_itemsStartDate, endDate=$_itemsEndDate');
-                                        debugPrint('   → 변경 후: startDate=$startDate, endDate=$endDate');
-                                        setState(() {
-                                          _itemsStartDate = startDate;
-                                          _itemsEndDate = endDate;
-                                        });
-                                        if (widget.onItemsDateRangeChanged != null) {
-                                          widget.onItemsDateRangeChanged!(startDate, endDate);
-                                        }
-                                        debugPrint('   → _loadData() 호출하여 데이터 다시 로드');
-                                        _loadData();
-                                      },
-                                    ),
-                                  ),
+                              LayoutBuilder(
+                                builder: (context, constraints) {
+                                  debugPrint('═══════════════════════════════════════════════════════════');
+                                  debugPrint('🔍 [Clientes AppBar - 일반 AppBar] 두 번째 줄 LayoutBuilder 호출됨');
+                                  debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
+                                  debugPrint('   → constraints.maxHeight: ${constraints.maxHeight}');
+                                  debugPrint('   → constraints.isTight: ${constraints.isTight}');
+                                  debugPrint('   → constraints.isNormalized: ${constraints.isNormalized}');
+                                  debugPrint('═══════════════════════════════════════════════════════════');
+
+                                  if (constraints.maxWidth.isInfinite) {
+                                    debugPrint('⚠️ [Clientes AppBar - 일반 AppBar] constraints.maxWidth가 무한대입니다!');
+                                    return const SizedBox.shrink();
+                                  }
+
+                                  return Row(
+                                    children: [
+                                      Expanded(
+                                        child: ItemsDateRangeSelector(
+                                          reportType: widget.reportType,
+                                          startDate: _itemsStartDate,
+                                          endDate: _itemsEndDate,
+                                          onDateRangeChanged: (startDate, endDate) {
+                                            debugPrint('📅 [Items Report] 날짜 범위 변경 이벤트:');
+                                            debugPrint('   → 변경 전: startDate=$_itemsStartDate, endDate=$_itemsEndDate');
+                                            debugPrint('   → 변경 후: startDate=$startDate, endDate=$endDate');
+                                            setState(() {
+                                              _itemsStartDate = startDate;
+                                              _itemsEndDate = endDate;
+                                            });
+                                            if (widget.onItemsDateRangeChanged != null) {
+                                              widget.onItemsDateRangeChanged!(startDate, endDate);
+                                            }
+                                            debugPrint('   → _loadData() 호출하여 데이터 다시 로드');
+                                            _loadData();
+                                          },
+                                        ),
+                                      ),
                                   // Alertas 보고서의 경우 VCancelado, Jefe, WEB 버튼 추가
                                   if (widget.reportType == ReportType.alertas) ...[
                                     const SizedBox(width: 8),
@@ -3092,17 +3184,19 @@ class _ReportScreenState extends State<ReportScreen> {
                                       _loadData();
                                     }),
                                   ],
-                                  if (_availableSucursales != null && _availableSucursales!.length > 1) ...[
-                                    const SizedBox(width: 8),
-                                    Flexible(
-                                      child: _buildSucursalSelector(),
-                                    ),
-                                  ],
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: _buildFilteringWordFieldInAppBar(),
-                                  ),
-                                ],
+                                      if (_availableSucursales != null && _availableSucursales!.length > 1) ...[
+                                        const SizedBox(width: 8),
+                                        Flexible(
+                                          child: _buildSucursalSelector(),
+                                        ),
+                                      ],
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: _buildFilteringWordFieldInAppBar(),
+                                      ),
+                                    ],
+                                  );
+                                },
                               ),
                             ],
                           );
@@ -4865,16 +4959,37 @@ class _ReportScreenState extends State<ReportScreen> {
                                   ],
                                   const SizedBox(width: 16),
                                   // Tipo와 Temporada 콤보박스 (filteringWord 왼쪽)
-                                  if (_tiposList.length > 1 || _temporadasList.length > 1) ...[
-                                    if (_tiposList.length > 1) ...[
-                                      _buildTipoSelector(),
-                                      const SizedBox(width: 8),
-                                    ],
-                                    if (_temporadasList.length > 1) ...[
-                                      _buildTemporadaSelector(),
-                                      const SizedBox(width: 8),
-                                    ],
-                                  ],
+                                  Builder(
+                                    builder: (context) {
+                                      debugPrint('═══════════════════════════════════════════════════════');
+                                      debugPrint('🔍 [Stocks AppBar] Tipo/Temporada 콤보박스 표시 조건 확인');
+                                      debugPrint('   → _tiposList.length: ${_tiposList.length}');
+                                      debugPrint('   → _temporadasList.length: ${_temporadasList.length}');
+                                      debugPrint('   → _tiposList: $_tiposList');
+                                      debugPrint('   → _temporadasList: $_temporadasList');
+                                      debugPrint('   → 표시 조건: _tiposList.length > 1 || _temporadasList.length > 1');
+                                      debugPrint('   → 결과: ${_tiposList.length > 1 || _temporadasList.length > 1}');
+                                      debugPrint('═══════════════════════════════════════════════════════');
+                                      
+                                      // 길이가 1 이상이면 표시 (1개여도 선택할 수 있도록)
+                                      if (_tiposList.isNotEmpty || _temporadasList.isNotEmpty) {
+                                        return Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            if (_tiposList.isNotEmpty) ...[
+                                              _buildTipoSelector(),
+                                              const SizedBox(width: 8),
+                                            ],
+                                            if (_temporadasList.isNotEmpty) ...[
+                                              _buildTemporadaSelector(),
+                                              const SizedBox(width: 8),
+                                            ],
+                                          ],
+                                        );
+                                      }
+                                      return const SizedBox.shrink();
+                                    },
+                                  ),
                                   Expanded(
                                     child: _buildFilteringWordFieldInAppBar(),
                                   ),
@@ -5447,26 +5562,44 @@ class _ReportScreenState extends State<ReportScreen> {
                               ],
                             ),
                             // 두 번째 줄: 달력 2개
-                            Row(
-                              children: [
-                                Flexible(
-                                  child: ItemsDateRangeSelector(
-                                    reportType: widget.reportType,
-                                    startDate: _itemsStartDate,
-                                    endDate: _itemsEndDate,
-                                    onDateRangeChanged: (startDate, endDate) {
-                                      setState(() {
-                                        _itemsStartDate = startDate;
-                                        _itemsEndDate = endDate;
-                                      });
-                                      if (widget.onItemsDateRangeChanged != null) {
-                                        widget.onItemsDateRangeChanged!(startDate, endDate);
-                                      }
-                                      _loadData();
-                                    },
-                                  ),
-                                ),
-                              ],
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                debugPrint('═══════════════════════════════════════════════════════════');
+                                debugPrint('🔍 [Clientes AppBar - 넓은 화면] 두 번째 줄 LayoutBuilder 호출됨');
+                                debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
+                                debugPrint('   → constraints.maxHeight: ${constraints.maxHeight}');
+                                debugPrint('   → constraints.isTight: ${constraints.isTight}');
+                                debugPrint('   → constraints.isNormalized: ${constraints.isNormalized}');
+                                debugPrint('═══════════════════════════════════════════════════════════');
+
+                                if (constraints.maxWidth.isInfinite) {
+                                  debugPrint('⚠️ [Clientes AppBar - 넓은 화면] constraints.maxWidth가 무한대입니다!');
+                                  return const SizedBox.shrink();
+                                }
+
+                                return Row(
+                                  children: [
+                                    SizedBox(
+                                      width: constraints.maxWidth,
+                                      child: ItemsDateRangeSelector(
+                                        reportType: widget.reportType,
+                                        startDate: _itemsStartDate,
+                                        endDate: _itemsEndDate,
+                                        onDateRangeChanged: (startDate, endDate) {
+                                          setState(() {
+                                            _itemsStartDate = startDate;
+                                            _itemsEndDate = endDate;
+                                          });
+                                          if (widget.onItemsDateRangeChanged != null) {
+                                            widget.onItemsDateRangeChanged!(startDate, endDate);
+                                          }
+                                          _loadData();
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
                             ),
                           ],
                         );
@@ -5611,80 +5744,97 @@ class _ReportScreenState extends State<ReportScreen> {
                             ),
                             const SizedBox(height: 4),
                             // 두 번째 줄: 날짜 선택기, 버튼들, Sucursal 선택기, 필터링 단어 필드
-                            Row(
-                              children: [
-                                Flexible(
-                                  child: ItemsDateRangeSelector(
-                                    reportType: widget.reportType,
-                                    startDate: _itemsStartDate,
-                                    endDate: _itemsEndDate,
-                                    onDateRangeChanged: (startDate, endDate) {
-                                      setState(() {
-                                        _itemsStartDate = startDate;
-                                        _itemsEndDate = endDate;
-                                      });
-                                      if (widget.onItemsDateRangeChanged != null) {
-                                        widget.onItemsDateRangeChanged!(startDate, endDate);
-                                      }
-                                      _loadData();
-                                    },
-                                  ),
-                                ),
-                                // Alertas 보고서의 경우 VCancelado, Jefe, WEB 버튼 추가
-                                if (widget.reportType == ReportType.alertas) ...[
-                                  const SizedBox(width: 8),
-                                  _buildAlertasFilterButton('VCancelado', _alertasVCancelado, () {
-                                    setState(() {
-                                      _alertasVCancelado = !_alertasVCancelado;
-                                      _alertasJefe = false;
-                                      _alertasWeb = false;
-                                      if (_alertasVCancelado) {
-                                        _filteringWordController.text = 'VCancelado';
-                                      } else {
-                                        _filteringWordController.text = '';
-                                      }
-                                    });
-                                    _loadData();
-                                  }),
-                                  const SizedBox(width: 4),
-                                  _buildAlertasFilterButton('Jefe', _alertasJefe, () {
-                                    setState(() {
-                                      _alertasJefe = !_alertasJefe;
-                                      _alertasVCancelado = false;
-                                      _alertasWeb = false;
-                                      if (_alertasJefe) {
-                                        _filteringWordController.text = 'Jefe';
-                                      } else {
-                                        _filteringWordController.text = '';
-                                      }
-                                    });
-                                    _loadData();
-                                  }),
-                                  const SizedBox(width: 4),
-                                  _buildAlertasFilterButton('WEB', _alertasWeb, () {
-                                    setState(() {
-                                      _alertasWeb = !_alertasWeb;
-                                      _alertasVCancelado = false;
-                                      _alertasJefe = false;
-                                      // WEB 버튼은 filteringWord를 설정하지 않음
-                                      if (!_alertasWeb) {
-                                        _filteringWordController.text = '';
-                                      }
-                                    });
-                                    _loadData();
-                                  }),
-                                ],
-                                if (_availableSucursales != null && _availableSucursales!.length > 1) ...[
-                                  const SizedBox(width: 8),
-                                  Flexible(
-                                    child: _buildSucursalSelector(),
-                                  ),
-                                ],
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: _buildFilteringWordFieldInAppBar(),
-                                ),
-                              ],
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                debugPrint('═══════════════════════════════════════════════════════════');
+                                debugPrint('🔍 [Clientes AppBar - 넓은 화면] 두 번째 줄 LayoutBuilder 호출됨 (다른 보고서)');
+                                debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
+                                debugPrint('   → constraints.maxHeight: ${constraints.maxHeight}');
+                                debugPrint('   → constraints.isTight: ${constraints.isTight}');
+                                debugPrint('   → constraints.isNormalized: ${constraints.isNormalized}');
+                                debugPrint('═══════════════════════════════════════════════════════════');
+
+                                if (constraints.maxWidth.isInfinite) {
+                                  debugPrint('⚠️ [Clientes AppBar - 넓은 화면] constraints.maxWidth가 무한대입니다!');
+                                  return const SizedBox.shrink();
+                                }
+
+                                return Row(
+                                  children: [
+                                    Expanded(
+                                      child: ItemsDateRangeSelector(
+                                        reportType: widget.reportType,
+                                        startDate: _itemsStartDate,
+                                        endDate: _itemsEndDate,
+                                        onDateRangeChanged: (startDate, endDate) {
+                                          setState(() {
+                                            _itemsStartDate = startDate;
+                                            _itemsEndDate = endDate;
+                                          });
+                                          if (widget.onItemsDateRangeChanged != null) {
+                                            widget.onItemsDateRangeChanged!(startDate, endDate);
+                                          }
+                                          _loadData();
+                                        },
+                                      ),
+                                    ),
+                                    // Alertas 보고서의 경우 VCancelado, Jefe, WEB 버튼 추가
+                                    if (widget.reportType == ReportType.alertas) ...[
+                                      const SizedBox(width: 8),
+                                      _buildAlertasFilterButton('VCancelado', _alertasVCancelado, () {
+                                        setState(() {
+                                          _alertasVCancelado = !_alertasVCancelado;
+                                          _alertasJefe = false;
+                                          _alertasWeb = false;
+                                          if (_alertasVCancelado) {
+                                            _filteringWordController.text = 'VCancelado';
+                                          } else {
+                                            _filteringWordController.text = '';
+                                          }
+                                        });
+                                        _loadData();
+                                      }),
+                                      const SizedBox(width: 4),
+                                      _buildAlertasFilterButton('Jefe', _alertasJefe, () {
+                                        setState(() {
+                                          _alertasJefe = !_alertasJefe;
+                                          _alertasVCancelado = false;
+                                          _alertasWeb = false;
+                                          if (_alertasJefe) {
+                                            _filteringWordController.text = 'Jefe';
+                                          } else {
+                                            _filteringWordController.text = '';
+                                          }
+                                        });
+                                        _loadData();
+                                      }),
+                                      const SizedBox(width: 4),
+                                      _buildAlertasFilterButton('WEB', _alertasWeb, () {
+                                        setState(() {
+                                          _alertasWeb = !_alertasWeb;
+                                          _alertasVCancelado = false;
+                                          _alertasJefe = false;
+                                          // WEB 버튼은 filteringWord를 설정하지 않음
+                                          if (!_alertasWeb) {
+                                            _filteringWordController.text = '';
+                                          }
+                                        });
+                                        _loadData();
+                                      }),
+                                    ],
+                                    if (_availableSucursales != null && _availableSucursales!.length > 1) ...[
+                                      const SizedBox(width: 8),
+                                      Flexible(
+                                        child: _buildSucursalSelector(),
+                                      ),
+                                    ],
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: _buildFilteringWordFieldInAppBar(),
+                                    ),
+                                  ],
+                                );
+                              },
                             ),
                           ],
                         );
@@ -5771,153 +5921,370 @@ class _ReportScreenState extends State<ReportScreen> {
                       );
                     }
                     
-                    // 넓은 화면: 1줄로 배치
-                    return Row(
-                      children: [
-                        Icon(reportIcon, color: Colors.white),
-                        const SizedBox(width: 8),
-                        Text(reportTitle),
-                        const SizedBox(width: 16),
-                        // 큰 화면 또는 수평 모드: 시작일과 종료일 선택기 2개
-                        SizedBox(
-                          width: isLargeScreen ? 150 : 90,
-                          child: _buildSingleDateButton(
-                            label: 'Desde',
-                            date: widget.reportType == ReportType.fventas ? _ventasStartDate : _itemsStartDate,
-                            reportColor: _getReportColor(),
-                            onDateSelected: (date) {
-                              setState(() {
-                                if (widget.reportType == ReportType.fventas) {
-                                  _ventasStartDate = date;
-                                } else {
-                                  _itemsStartDate = date;
-                                }
-                              });
-                              if (widget.onItemsDateRangeChanged != null && widget.reportType != ReportType.fventas) {
-                                widget.onItemsDateRangeChanged!(
-                                  widget.reportType == ReportType.fventas ? _ventasStartDate! : _itemsStartDate!,
-                                  widget.reportType == ReportType.fventas ? (_ventasEndDate ?? _ventasStartDate!) : (_itemsEndDate ?? _itemsStartDate!)
-                                );
-                              }
-                              _loadData();
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        SizedBox(
-                          width: isLargeScreen ? 150 : 90,
-                          child: _buildSingleDateButton(
-                            label: 'Hasta',
-                            date: widget.reportType == ReportType.fventas ? _ventasEndDate : _itemsEndDate,
-                            reportColor: _getReportColor(),
-                            onDateSelected: (date) {
-                              setState(() {
-                                if (widget.reportType == ReportType.fventas) {
-                                  _ventasEndDate = date;
-                                } else {
-                                  _itemsEndDate = date;
-                                }
-                              });
-                              if (widget.onItemsDateRangeChanged != null && widget.reportType != ReportType.fventas) {
-                                widget.onItemsDateRangeChanged!(
-                                  widget.reportType == ReportType.fventas ? (_ventasStartDate ?? _ventasEndDate!) : (_itemsStartDate ?? _itemsEndDate!),
-                                  widget.reportType == ReportType.fventas ? _ventasEndDate! : _itemsEndDate!
-                                );
-                              }
-                              _loadData();
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        // 지점 선택 UI (큰 화면에서만, sucursal이 1개 이상일 때만 표시)
-                        if (isLargeScreen && _availableSucursales != null && _availableSucursales!.length > 1) ...[
-                            _buildSucursalSelector(),
-                            const SizedBox(width: 16),
-                        ],
-                        // Clientes 보고서의 경우 필터들 추가
-                        if (widget.reportType == ReportType.clientes) ...[
-                          _buildClientesResponsableInsSelector(),
-                          const SizedBox(width: 8),
-                          _buildClientesProvinciaSelector(),
-                          const SizedBox(width: 8),
-                          _buildClientesDeudoresCheckbox(),
-                          const SizedBox(width: 8),
-                          _buildClientesReservadoresCheckbox(),
-                          const SizedBox(width: 8),
-                        ],
-                        // Alertas 보고서의 경우 VCancelado 및 Jefe 버튼 추가
-                        if (widget.reportType == ReportType.alertas) ...[
-                          TextButton(
-                            onPressed: () {
-                              setState(() {
-                                _alertasVCancelado = !_alertasVCancelado;
-                                _alertasJefe = false; // 다른 버튼 비활성화
-                                if (_alertasVCancelado) {
-                                  // VCancelado 버튼이 활성화되면 filteringWord에 "VCancelado" 입력
-                                  _filteringWordController.text = 'VCancelado';
-                                } else {
-                                  // VCancelado 버튼이 비활성화되면 filteringWord 초기화
-                                  _filteringWordController.text = '';
-                                }
-                              });
-                              _loadData();
-                            },
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              backgroundColor: _alertasVCancelado 
-                                  ? Colors.white.withOpacity(0.3) 
-                                  : Colors.transparent,
+                    // 넓은 화면: Clientes 보고서 - 1줄로 배치 (달력 2개는 filteringWord 왼편에)
+                    if (widget.reportType == ReportType.clientes) {
+                      return LayoutBuilder(
+                        builder: (context, rowConstraints) {
+                          debugPrint('═══════════════════════════════════════════════════════════');
+                          debugPrint('🔍 [Clientes AppBar - 넓은 화면] Row LayoutBuilder 호출됨');
+                          debugPrint('   → rowConstraints.maxWidth: ${rowConstraints.maxWidth}');
+                          debugPrint('   → rowConstraints.maxHeight: ${rowConstraints.maxHeight}');
+                          debugPrint('   → rowConstraints.isTight: ${rowConstraints.isTight}');
+                          debugPrint('   → rowConstraints.isNormalized: ${rowConstraints.isNormalized}');
+                          debugPrint('   → isLargeScreen: $isLargeScreen');
+                          debugPrint('═══════════════════════════════════════════════════════════');
+
+                          if (rowConstraints.maxWidth.isInfinite) {
+                            debugPrint('⚠️ [Clientes AppBar - 넓은 화면] rowConstraints.maxWidth가 무한대입니다!');
+                            return const SizedBox.shrink();
+                          }
+
+                          return SizedBox(
+                            width: rowConstraints.maxWidth,
+                            child: Row(
+                              children: [
+                                Icon(reportIcon, color: Colors.white),
+                                const SizedBox(width: 8),
+                                Text(reportTitle),
+                                const SizedBox(width: 16),
+                                // 날짜 버튼 2개 (filteringWord 왼편에)
+                                SizedBox(
+                                  width: isLargeScreen ? 150 : 90,
+                                  child: _buildSingleDateButton(
+                                    label: 'Desde',
+                                    date: _itemsStartDate,
+                                    reportColor: _getReportColor(),
+                                    onDateSelected: (date) {
+                                      debugPrint('📅 [Clientes AppBar] Desde 버튼 클릭: $date');
+                                      setState(() {
+                                        _itemsStartDate = date;
+                                      });
+                                      if (widget.onItemsDateRangeChanged != null) {
+                                        widget.onItemsDateRangeChanged!(_itemsStartDate!, _itemsEndDate ?? _itemsStartDate!);
+                                      }
+                                      _loadData();
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                SizedBox(
+                                  width: isLargeScreen ? 150 : 90,
+                                  child: _buildSingleDateButton(
+                                    label: 'Hasta',
+                                    date: _itemsEndDate,
+                                    reportColor: _getReportColor(),
+                                    onDateSelected: (date) {
+                                      debugPrint('📅 [Clientes AppBar] Hasta 버튼 클릭: $date');
+                                      setState(() {
+                                        _itemsEndDate = date;
+                                      });
+                                      if (widget.onItemsDateRangeChanged != null) {
+                                        widget.onItemsDateRangeChanged!(_itemsStartDate ?? _itemsEndDate!, _itemsEndDate!);
+                                      }
+                                      _loadData();
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                // Clientes 필터들
+                                _buildClientesResponsableInsSelector(),
+                                const SizedBox(width: 8),
+                                _buildClientesProvinciaSelector(),
+                                const SizedBox(width: 8),
+                                _buildClientesDeudoresCheckbox(),
+                                const SizedBox(width: 8),
+                                _buildClientesReservadoresCheckbox(),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _buildFilteringWordFieldInAppBar(),
+                                ),
+                                const SizedBox(width: 8),
+                                // 메뉴 버튼
+                                Builder(
+                                  builder: (context) {
+                                    debugPrint('🔍 [Clientes AppBar] PopupMenuButton 빌드 시작');
+                                    return PopupMenuButton<ReportType>(
+                                      icon: const Icon(Icons.more_vert, color: Colors.white, size: 18),
+                                      tooltip: 'Menú',
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                      iconSize: 18,
+                                      onSelected: (ReportType reportType) {
+                                        debugPrint('🔍 [Clientes AppBar] PopupMenuButton onSelected: $reportType');
+                                        if (reportType != widget.reportType) {
+                                          Navigator.pushReplacement(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => ReportScreen(
+                                                serverUrl: widget.serverUrl,
+                                                reportType: reportType,
+                                                initialDate: widget.initialDate,
+                                                initialItemsStartDate: widget.initialItemsStartDate,
+                                                initialItemsEndDate: widget.initialItemsEndDate,
+                                                initialFilteringWord: widget.initialFilteringWord,
+                                                initialSortColumn: widget.initialSortColumn,
+                                                initialSortAscending: widget.initialSortAscending,
+                                                onStateChanged: widget.onStateChanged,
+                                                onItemsDateRangeChanged: widget.onItemsDateRangeChanged,
+                                                useFullWidth: widget.useFullWidth,
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      },
+                                      itemBuilder: (BuildContext context) {
+                                        debugPrint('🔍 [Clientes AppBar] PopupMenuButton itemBuilder 호출됨!');
+                                        final items = _buildReportMenuItems();
+                                        debugPrint('🔍 [Clientes AppBar] PopupMenuButton 메뉴 아이템 개수: ${items.length}');
+                                        for (int i = 0; i < items.length; i++) {
+                                          debugPrint('🔍 [Clientes AppBar] PopupMenuButton 아이템 #$i: ${items[i].runtimeType}');
+                                        }
+                                        return items;
+                                      },
+                                    );
+                                  },
+                                ),
+                                // 공유 버튼
+                                if (_data != null)
+                                  Builder(
+                                    builder: (context) {
+                                      debugPrint('🔍 [Clientes AppBar] 공유 버튼 빌드 시작');
+                                      return IconButton(
+                                        icon: const Icon(Icons.share, color: Colors.white, size: 18),
+                                        tooltip: 'Compartir como PDF',
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                        iconSize: 18,
+                                        onPressed: () {
+                                          debugPrint('🔍 [Clientes AppBar] 공유 버튼 클릭됨');
+                                          _shareReport();
+                                        },
+                                      );
+                                    },
+                                  ),
+                              ],
                             ),
-                            child: Text(
-                              'VCancelado',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: _alertasVCancelado ? FontWeight.bold : FontWeight.normal,
+                          );
+                        },
+                      );
+                    }
+                    
+                    // 다른 보고서들: 기존 로직 유지 (alertas 포함)
+                    return LayoutBuilder(
+                      builder: (context, rowConstraints) {
+                        debugPrint('═══════════════════════════════════════════════════════════');
+                        debugPrint('🔍 [${widget.reportType} AppBar - 넓은 화면] Row LayoutBuilder 호출됨');
+                        debugPrint('   → rowConstraints.maxWidth: ${rowConstraints.maxWidth}');
+                        debugPrint('   → rowConstraints.maxHeight: ${rowConstraints.maxHeight}');
+                        debugPrint('   → rowConstraints.isTight: ${rowConstraints.isTight}');
+                        debugPrint('   → rowConstraints.isNormalized: ${rowConstraints.isNormalized}');
+                        debugPrint('   → isLargeScreen: $isLargeScreen');
+                        debugPrint('   → reportType: ${widget.reportType}');
+                        debugPrint('═══════════════════════════════════════════════════════════');
+
+                        if (rowConstraints.maxWidth.isInfinite) {
+                          debugPrint('⚠️ [${widget.reportType} AppBar - 넓은 화면] rowConstraints.maxWidth가 무한대입니다!');
+                          return const SizedBox.shrink();
+                        }
+
+                        return SizedBox(
+                          width: rowConstraints.maxWidth,
+                          child: Row(
+                            children: [
+                              Icon(reportIcon, color: Colors.white),
+                              const SizedBox(width: 8),
+                              Text(reportTitle),
+                              const SizedBox(width: 16),
+                              // 큰 화면 또는 수평 모드: 시작일과 종료일 선택기 2개
+                              SizedBox(
+                                width: isLargeScreen ? 150 : 90,
+                                child: _buildSingleDateButton(
+                                  label: 'Desde',
+                                  date: widget.reportType == ReportType.fventas ? _ventasStartDate : _itemsStartDate,
+                                  reportColor: _getReportColor(),
+                                  onDateSelected: (date) {
+                                    debugPrint('📅 [${widget.reportType} AppBar] Desde 버튼 클릭: $date');
+                                    setState(() {
+                                      if (widget.reportType == ReportType.fventas) {
+                                        _ventasStartDate = date;
+                                      } else {
+                                        _itemsStartDate = date;
+                                      }
+                                    });
+                                    if (widget.onItemsDateRangeChanged != null && widget.reportType != ReportType.fventas) {
+                                      widget.onItemsDateRangeChanged!(
+                                        widget.reportType == ReportType.fventas ? _ventasStartDate! : _itemsStartDate!,
+                                        widget.reportType == ReportType.fventas ? (_ventasEndDate ?? _ventasStartDate!) : (_itemsEndDate ?? _itemsStartDate!)
+                                      );
+                                    }
+                                    _loadData();
+                                  },
+                                ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          TextButton(
-                            onPressed: () {
-                              setState(() {
-                                _alertasJefe = !_alertasJefe;
-                                _alertasVCancelado = false; // 다른 버튼 비활성화
-                                if (_alertasJefe) {
-                                  // Jefe 버튼이 활성화되면 filteringWord에 "jefe" 입력
-                                  _filteringWordController.text = 'jefe';
-                                } else {
-                                  // Jefe 버튼이 비활성화되면 filteringWord 초기화
-                                  _filteringWordController.text = '';
-                                }
-                              });
-                              _loadData();
-                            },
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              backgroundColor: _alertasJefe 
-                                  ? Colors.white.withOpacity(0.3) 
-                                  : Colors.transparent,
-                            ),
-                            child: Text(
-                              'Jefe',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: _alertasJefe ? FontWeight.bold : FontWeight.normal,
+                              const SizedBox(width: 8),
+                              SizedBox(
+                                width: isLargeScreen ? 150 : 90,
+                                child: _buildSingleDateButton(
+                                  label: 'Hasta',
+                                  date: widget.reportType == ReportType.fventas ? _ventasEndDate : _itemsEndDate,
+                                  reportColor: _getReportColor(),
+                                  onDateSelected: (date) {
+                                    debugPrint('📅 [${widget.reportType} AppBar] Hasta 버튼 클릭: $date');
+                                    setState(() {
+                                      if (widget.reportType == ReportType.fventas) {
+                                        _ventasEndDate = date;
+                                      } else {
+                                        _itemsEndDate = date;
+                                      }
+                                    });
+                                    if (widget.onItemsDateRangeChanged != null && widget.reportType != ReportType.fventas) {
+                                      widget.onItemsDateRangeChanged!(
+                                        widget.reportType == ReportType.fventas ? (_ventasStartDate ?? _ventasEndDate!) : (_itemsStartDate ?? _itemsEndDate!),
+                                        widget.reportType == ReportType.fventas ? _ventasEndDate! : _itemsEndDate!
+                                      );
+                                    }
+                                    _loadData();
+                                  },
+                                ),
                               ),
-                            ),
+                              const SizedBox(width: 16),
+                              // 지점 선택 UI (큰 화면에서만, sucursal이 1개 이상일 때만 표시)
+                              if (isLargeScreen && _availableSucursales != null && _availableSucursales!.length > 1) ...[
+                                  _buildSucursalSelector(),
+                                  const SizedBox(width: 16),
+                              ],
+                              // Alertas 보고서의 경우 VCancelado 및 Jefe 버튼 추가
+                              if (widget.reportType == ReportType.alertas) ...[
+                                TextButton(
+                                  onPressed: () {
+                                    debugPrint('🔍 [Alertas AppBar] VCancelado 버튼 클릭됨');
+                                    setState(() {
+                                      _alertasVCancelado = !_alertasVCancelado;
+                                      _alertasJefe = false; // 다른 버튼 비활성화
+                                      if (_alertasVCancelado) {
+                                        // VCancelado 버튼이 활성화되면 filteringWord에 "VCancelado" 입력
+                                        _filteringWordController.text = 'VCancelado';
+                                      } else {
+                                        // VCancelado 버튼이 비활성화되면 filteringWord 초기화
+                                        _filteringWordController.text = '';
+                                      }
+                                    });
+                                    _loadData();
+                                  },
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    minimumSize: Size.zero,
+                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    backgroundColor: _alertasVCancelado 
+                                        ? Colors.white.withOpacity(0.3) 
+                                        : Colors.transparent,
+                                  ),
+                                  child: Text(
+                                    'VCancelado',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: _alertasVCancelado ? FontWeight.bold : FontWeight.normal,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                TextButton(
+                                  onPressed: () {
+                                    debugPrint('🔍 [Alertas AppBar] Jefe 버튼 클릭됨');
+                                    setState(() {
+                                      _alertasJefe = !_alertasJefe;
+                                      _alertasVCancelado = false; // 다른 버튼 비활성화
+                                      if (_alertasJefe) {
+                                        // Jefe 버튼이 활성화되면 filteringWord에 "jefe" 입력
+                                        _filteringWordController.text = 'jefe';
+                                      } else {
+                                        // Jefe 버튼이 비활성화되면 filteringWord 초기화
+                                        _filteringWordController.text = '';
+                                      }
+                                    });
+                                    _loadData();
+                                  },
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    minimumSize: Size.zero,
+                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    backgroundColor: _alertasJefe 
+                                        ? Colors.white.withOpacity(0.3) 
+                                        : Colors.transparent,
+                                  ),
+                                  child: Text(
+                                    'Jefe',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: _alertasJefe ? FontWeight.bold : FontWeight.normal,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+                              Expanded(
+                                child: _buildFilteringWordFieldInAppBar(),
+                              ),
+                              const SizedBox(width: 8),
+                              // 메뉴 버튼
+                              PopupMenuButton<ReportType>(
+                                icon: const Icon(Icons.more_vert, color: Colors.white, size: 18),
+                                tooltip: 'Menú',
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                iconSize: 18,
+                                onSelected: (ReportType reportType) {
+                                  debugPrint('🔍 [${widget.reportType} AppBar] PopupMenuButton onSelected: $reportType');
+                                  if (reportType != widget.reportType) {
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => ReportScreen(
+                                          serverUrl: widget.serverUrl,
+                                          reportType: reportType,
+                                          initialDate: widget.initialDate,
+                                          initialItemsStartDate: widget.initialItemsStartDate,
+                                          initialItemsEndDate: widget.initialItemsEndDate,
+                                          initialFilteringWord: widget.initialFilteringWord,
+                                          initialSortColumn: widget.initialSortColumn,
+                                          initialSortAscending: widget.initialSortAscending,
+                                          onStateChanged: widget.onStateChanged,
+                                          onItemsDateRangeChanged: widget.onItemsDateRangeChanged,
+                                          useFullWidth: widget.useFullWidth,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
+                                itemBuilder: (BuildContext context) {
+                                  debugPrint('🔍 [${widget.reportType} AppBar] PopupMenuButton itemBuilder 호출됨!');
+                                  final items = _buildReportMenuItems();
+                                  debugPrint('🔍 [${widget.reportType} AppBar] PopupMenuButton 메뉴 아이템 개수: ${items.length}');
+                                  for (int i = 0; i < items.length; i++) {
+                                    debugPrint('🔍 [${widget.reportType} AppBar] PopupMenuButton 아이템 #$i: ${items[i].runtimeType}');
+                                  }
+                                  return items;
+                                },
+                              ),
+                              // 공유 버튼
+                              if (_data != null)
+                                IconButton(
+                                  icon: const Icon(Icons.share, color: Colors.white, size: 18),
+                                  tooltip: 'Compartir como PDF',
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  iconSize: 18,
+                                  onPressed: () {
+                                    debugPrint('🔍 [${widget.reportType} AppBar] 공유 버튼 클릭됨');
+                                    _shareReport();
+                                  },
+                                ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                        ],
-                        Expanded(
-                          child: _buildFilteringWordFieldInAppBar(),
-                        ),
-                      ],
+                        );
+                      },
                     );
                   },
                 )
@@ -6518,16 +6885,35 @@ class _ReportScreenState extends State<ReportScreen> {
                                     ],
                                     const SizedBox(width: 16),
                                     // Tipo와 Temporada 콤보박스 (filteringWord 왼쪽)
-                                    if (_tiposList.length > 1 || _temporadasList.length > 1) ...[
-                                      if (_tiposList.length > 1) ...[
-                                        _buildTipoSelector(),
-                                        const SizedBox(width: 8),
-                                      ],
-                                      if (_temporadasList.length > 1) ...[
-                                        _buildTemporadaSelector(),
-                                        const SizedBox(width: 8),
-                                      ],
-                                    ],
+                                    Builder(
+                                      builder: (context) {
+                                        debugPrint('═══════════════════════════════════════════════════════');
+                                        debugPrint('🔍 [Stocks AppBar - useFullWidth] Tipo/Temporada 콤보박스 표시 조건 확인');
+                                        debugPrint('   → _tiposList.length: ${_tiposList.length}');
+                                        debugPrint('   → _temporadasList.length: ${_temporadasList.length}');
+                                        debugPrint('   → _tiposList: $_tiposList');
+                                        debugPrint('   → _temporadasList: $_temporadasList');
+                                        debugPrint('═══════════════════════════════════════════════════════');
+                                        
+                                        // 길이가 1 이상이면 표시 (1개여도 선택할 수 있도록)
+                                        if (_tiposList.isNotEmpty || _temporadasList.isNotEmpty) {
+                                          return Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              if (_tiposList.isNotEmpty) ...[
+                                                _buildTipoSelector(),
+                                                const SizedBox(width: 8),
+                                              ],
+                                              if (_temporadasList.isNotEmpty) ...[
+                                                _buildTemporadaSelector(),
+                                                const SizedBox(width: 8),
+                                              ],
+                                            ],
+                                          );
+                                        }
+                                        return const SizedBox.shrink();
+                                      },
+                                    ),
                                     Expanded(
                                       child: _buildFilteringWordFieldInAppBar(),
                                     ),
@@ -6555,8 +6941,8 @@ class _ReportScreenState extends State<ReportScreen> {
                               ],
                             ),
       backgroundColor: reportColor,
-      actions: (needsThreeLineAppBar || needsTwoLineAppBar)
-          ? [] // 좁은 화면에서는 title에 이미 메뉴 버튼과 공유 버튼이 있으므로 actions 비활성화
+      actions: (needsThreeLineAppBar || needsTwoLineAppBar || (widget.reportType == ReportType.clientes && isLargeScreen) || (widget.reportType == ReportType.alertas && isLargeScreen))
+          ? [] // 좁은 화면 또는 clientes/alertas 보고서 넓은 화면에서는 title에 이미 메뉴 버튼과 공유 버튼이 있으므로 actions 비활성화
           : [
               // 보고서 선택 드롭다운 메뉴
               PopupMenuButton<ReportType>(
@@ -6705,6 +7091,32 @@ class _ReportScreenState extends State<ReportScreen> {
     }
     
     debugPrint('   → _data 키: ${_data!.keys.toList()}');
+    
+    // Alertas 보고서 디버깅
+    if (widget.reportType == ReportType.alertas) {
+      debugPrint('   → [Alertas] _data 타입: ${_data.runtimeType}');
+      debugPrint('   → [Alertas] _data 키: ${_data!.keys.toList()}');
+      if (_data!.containsKey('data')) {
+        debugPrint('   → [Alertas] data 키 존재: true');
+        debugPrint('   → [Alertas] data 타입: ${_data!['data'].runtimeType}');
+        if (_data!['data'] is List) {
+          final dataList = _data!['data'] as List;
+          debugPrint('   → [Alertas] data 리스트 길이: ${dataList.length}');
+          if (dataList.isNotEmpty) {
+            debugPrint('   → [Alertas] 첫 번째 항목: ${dataList.first}');
+            if (dataList.first is Map) {
+              debugPrint('   → [Alertas] 첫 번째 항목 키: ${(dataList.first as Map).keys.toList()}');
+            }
+          } else {
+            debugPrint('   ⚠️ [Alertas] data 리스트가 비어있음!');
+          }
+        } else {
+          debugPrint('   ⚠️ [Alertas] data가 List가 아님: ${_data!['data'].runtimeType}');
+        }
+      } else {
+        debugPrint('   ⚠️ [Alertas] data 키가 없음');
+      }
+    }
     
     if (widget.reportType == ReportType.ventas) {
       debugPrint('   → [Ventas] _data 타입: ${_data.runtimeType}');
@@ -6925,7 +7337,31 @@ class _ReportScreenState extends State<ReportScreen> {
     // 'data' 키가 있고 리스트인 경우
     if (data.containsKey('data') && data['data'] is List) {
       final dataList = data['data'] as List;
+      
+      // Alertas 보고서 디버깅
+      if (widget.reportType == ReportType.alertas) {
+        debugPrint('═══════════════════════════════════════════════════════');
+        debugPrint('🔍 [Alertas] dataList 생성 확인');
+        debugPrint('   → data.containsKey("data"): ${data.containsKey("data")}');
+        debugPrint('   → data["data"] 타입: ${data["data"].runtimeType}');
+        debugPrint('   → data["data"] is List: ${data["data"] is List}');
+        debugPrint('   → dataList.length: ${dataList.length}');
+        if (dataList.isNotEmpty) {
+          debugPrint('   → dataList.first 타입: ${dataList.first.runtimeType}');
+          debugPrint('   → dataList.first: ${dataList.first}');
+          if (dataList.first is Map) {
+            debugPrint('   → dataList.first 키: ${(dataList.first as Map).keys.toList()}');
+          }
+        } else {
+          debugPrint('   ⚠️ [Alertas] dataList가 비어있음!');
+        }
+        debugPrint('═══════════════════════════════════════════════════════');
+      }
+      
       if (dataList.isEmpty) {
+        if (widget.reportType == ReportType.alertas) {
+          debugPrint('⚠️ [Alertas] dataList가 비어있어서 "No hay datos disponibles" 반환');
+        }
         return const Center(child: Text('No hay datos disponibles'));
       }
       
@@ -6933,6 +7369,12 @@ class _ReportScreenState extends State<ReportScreen> {
       if (dataList.isNotEmpty && dataList.first is Map) {
         // Items, Ingresos, Gastos, Alertas, Ventas 및 FVentas 보고서의 경우 filteringWord 필터 적용
         List<dynamic> filteredDataList = dataList;
+        
+        // Alertas 보고서 디버깅
+        if (widget.reportType == ReportType.alertas) {
+          debugPrint('🔍 [Alertas] filteredDataList 초기화');
+          debugPrint('   → filteredDataList.length: ${filteredDataList.length}');
+        }
         
         // fventas 데이터 디버깅
         if (widget.reportType == ReportType.fventas) {
@@ -7060,8 +7502,27 @@ class _ReportScreenState extends State<ReportScreen> {
         }
         // Alertas 보고서는 별도 처리 (화면을 나누지 않음)
         if (widget.reportType == ReportType.alertas) {
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [Alertas] 데이터 처리 시작');
+          debugPrint('   → dataList.length: ${dataList.length}');
+          debugPrint('   → filteredDataList.length: ${filteredDataList.length}');
+          debugPrint('   → _alertasVCancelado: $_alertasVCancelado');
+          debugPrint('   → _alertasJefe: $_alertasJefe');
+          debugPrint('   → _alertasWeb: $_alertasWeb');
+          debugPrint('   → filteringWord: "${_filteringWordController.text.trim()}"');
+          if (filteredDataList.isNotEmpty) {
+            debugPrint('   → filteredDataList 첫 번째 항목: ${filteredDataList.first}');
+            if (filteredDataList.first is Map) {
+              debugPrint('   → filteredDataList 첫 번째 항목 키: ${(filteredDataList.first as Map).keys.toList()}');
+            }
+          } else {
+            debugPrint('   ⚠️ [Alertas] filteredDataList가 비어있음!');
+          }
+          debugPrint('═══════════════════════════════════════════════════════');
+          
           // Alertas 보고서는 항상 id_log 역순으로 정렬
           List<dynamic> sortedDataList = List.from(filteredDataList);
+          debugPrint('🔍 [Alertas] 정렬 전 sortedDataList.length: ${sortedDataList.length}');
           sortedDataList.sort((a, b) {
             if (a is! Map<String, dynamic> || b is! Map<String, dynamic>) {
               return 0;
@@ -7088,43 +7549,69 @@ class _ReportScreenState extends State<ReportScreen> {
             final bStr = bIdLog.toString().toLowerCase();
             return bStr.compareTo(aStr); // 역순 정렬
           });
+          debugPrint('🔍 [Alertas] 정렬 후 sortedDataList.length: ${sortedDataList.length}');
+          if (sortedDataList.isNotEmpty) {
+            debugPrint('   → sortedDataList 첫 번째 항목: ${sortedDataList.first}');
+            if (sortedDataList.first is Map) {
+              debugPrint('   → sortedDataList 첫 번째 항목 키: ${(sortedDataList.first as Map).keys.toList()}');
+            }
+          } else {
+            debugPrint('   ⚠️ [Alertas] sortedDataList가 비어있음!');
+          }
           
           // Alertas 보고서 색상 결정
           Color alertasColor = Colors.orange; // alertas 보고서 기본 색상
           
+          debugPrint('🔍 [Alertas] 테이블 빌드 시작');
+          debugPrint('   → sortedDataList.length: ${sortedDataList.length}');
+          debugPrint('   → _displayedItemsCount: $_displayedItemsCount');
+          debugPrint('   → _itemsPerPage: $_itemsPerPage');
+          debugPrint('   → _scrollController: ${_scrollController != null}');
+          debugPrint('   → _horizontalScrollController: ${_horizontalScrollController != null}');
+          debugPrint('   → reportColor: $alertasColor');
+          
           // 테이블 위젯 생성 (화면을 나누지 않음) (성능 최적화: RepaintBoundary로 감싸서 불필요한 리페인트 방지)
-          return RepaintBoundary(
-            child: ReportTableBuilder.buildTableFromList(
-              sortedDataList,
-              _displayedItemsCount,
-              _itemsPerPage,
-              _scrollController,
-              widget.reportType,
-              sortColumn: _sortColumn,
-              sortAscending: _sortAscending,
-              horizontalScrollController: _horizontalScrollController,
-              reportColor: alertasColor,
-              unit: null,
-              onRowDoubleTap: null,
-              onRowTap: null,
-              onSort: (columnIndex, ascending) {
-                setState(() {
-                  final allKeys = sortedDataList.isNotEmpty 
-                      ? (sortedDataList.first as Map<String, dynamic>).keys.toList()
-                      : <String>[];
-                  if (columnIndex >= 0 && columnIndex < allKeys.length) {
-                    final key = allKeys[columnIndex];
-                    if (_sortColumn == key) {
-                      _sortAscending = !_sortAscending;
-                    } else {
-                      _sortColumn = key;
-                      _sortAscending = false;
-                    }
-                    _displayedItemsCount = _itemsPerPage;
+          final tableWidget = ReportTableBuilder.buildTableFromList(
+            sortedDataList,
+            _displayedItemsCount,
+            _itemsPerPage,
+            _scrollController,
+            widget.reportType,
+            sortColumn: _sortColumn,
+            sortAscending: _sortAscending,
+            horizontalScrollController: _horizontalScrollController,
+            reportColor: alertasColor,
+            unit: null,
+            onRowDoubleTap: null,
+            onRowTap: null,
+            onSort: (columnIndex, ascending) {
+              debugPrint('🔍 [Alertas] onSort 콜백 호출: columnIndex=$columnIndex, ascending=$ascending');
+              setState(() {
+                final allKeys = sortedDataList.isNotEmpty 
+                    ? (sortedDataList.first as Map<String, dynamic>).keys.toList()
+                    : <String>[];
+                debugPrint('   → allKeys: $allKeys');
+                if (columnIndex >= 0 && columnIndex < allKeys.length) {
+                  final key = allKeys[columnIndex];
+                  debugPrint('   → 정렬 키: $key');
+                  if (_sortColumn == key) {
+                    _sortAscending = !_sortAscending;
+                  } else {
+                    _sortColumn = key;
+                    _sortAscending = false;
                   }
-                });
-              },
-            ),
+                  _displayedItemsCount = _itemsPerPage;
+                }
+              });
+            },
+          );
+          
+          debugPrint('🔍 [Alertas] 테이블 위젯 생성 완료');
+          debugPrint('   → tableWidget 타입: ${tableWidget.runtimeType}');
+          debugPrint('   → tableWidget: ${tableWidget.toString()}');
+          
+          return RepaintBoundary(
+            child: tableWidget,
           );
         }
         
@@ -8549,10 +9036,19 @@ class _ReportScreenState extends State<ReportScreen> {
     
     return InkWell(
       onTap: () async {
+        debugPrint('═══════════════════════════════════════════════════════════');
+        debugPrint('🔍 [_buildSingleDateButton] onTap 호출됨');
+        debugPrint('   → label: $label');
+        debugPrint('   → date: $date');
+        debugPrint('   → unit: $unit');
+        debugPrint('   → reportType: ${widget.reportType}');
+        debugPrint('═══════════════════════════════════════════════════════════');
+        
         DateTime? picked;
         
         if (unit == 'year') {
           // 연도 선택
+          debugPrint('📅 [DateButton] 연도 선택 다이얼로그 표시');
           picked = await ReportHeaderBuilders.selectYearDialog(
             context,
             date ?? DateTime.now(),
@@ -8563,6 +9059,7 @@ class _ReportScreenState extends State<ReportScreen> {
           );
         } else if (unit == 'month') {
           // 월 선택
+          debugPrint('📅 [DateButton] 월 선택 다이얼로그 표시');
           picked = await ReportHeaderBuilders.selectYearMonthDialog(
             context,
             date ?? DateTime.now(),
@@ -8573,6 +9070,7 @@ class _ReportScreenState extends State<ReportScreen> {
           );
         } else {
           // 일반 날짜 선택 (vcode, day)
+          debugPrint('📅 [DateButton] 일반 날짜 선택 다이얼로그 표시');
           picked = await showDatePicker(
             context: context,
             initialDate: date ?? DateTime.now(),
@@ -8595,8 +9093,12 @@ class _ReportScreenState extends State<ReportScreen> {
           );
         }
         
+        debugPrint('📅 [DateButton] 선택된 날짜: $picked');
         if (picked != null) {
+          debugPrint('📅 [DateButton] onDateSelected 콜백 호출: $picked');
           onDateSelected(picked);
+        } else {
+          debugPrint('📅 [DateButton] 날짜 선택 취소됨');
         }
       },
       borderRadius: BorderRadius.circular(6),
@@ -9099,20 +9601,20 @@ class _ReportScreenState extends State<ReportScreen> {
         Widget dialogWidget = Material(
           color: Colors.transparent,
           child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: isWideScreen ? BorderRadius.circular(8) : null,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 10,
-                  spreadRadius: 2,
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: isWideScreen ? BorderRadius.circular(8) : null,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 10,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
                 // 헤더
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -9175,17 +9677,37 @@ class _ReportScreenState extends State<ReportScreen> {
         
         if (isWideScreen) {
           // 큰 화면: 오른쪽에만 대화상자 표시, 배경 없음
+          // Positioned만 사용하여 대화상자 영역만 차지하도록 함
           return Positioned(
             right: 16,
             top: 16,
             width: dialogWidth,
             height: dialogHeight,
-            child: dialogWidget,
+            child: IgnorePointer(
+              ignoring: false,
+              child: dialogWidget,
+            ),
           );
         } else {
-          // 작은 화면: 전체 화면 사용
+          // 작은 화면: 전체 화면 사용, 배경 클릭 시 닫기
           return Positioned.fill(
-            child: dialogWidget,
+            child: Stack(
+              children: [
+                // 반투명 배경 (클릭 시 닫기)
+                Positioned.fill(
+                  child: GestureDetector(
+                    onTap: _closeClienteDetailOverlay,
+                    child: Container(
+                      color: Colors.black.withOpacity(0.5),
+                    ),
+                  ),
+                ),
+                // 대화상자
+                Center(
+                  child: dialogWidget,
+                ),
+              ],
+            ),
           );
         }
       },
@@ -10364,9 +10886,17 @@ class _ReportScreenState extends State<ReportScreen> {
 
   // Filtering word 입력 필드 (AppBar용)
   Widget _buildFilteringWordFieldInAppBar() {
+    debugPrint('═══════════════════════════════════════════════════════════');
+    debugPrint('🔍 [_buildFilteringWordFieldInAppBar] 호출됨');
+    debugPrint('   → reportType: ${widget.reportType}');
+    debugPrint('   → _filteringWordController.text: ${_filteringWordController.text}');
+    debugPrint('═══════════════════════════════════════════════════════════');
+    
+    // Expanded 안에 있으므로 LayoutBuilder 불필요 - Expanded가 이미 제약을 제공함
     return ReportFilters.buildFilteringWordField(
       controller: _filteringWordController,
       onSubmitted: (value) {
+        debugPrint('🔍 [_buildFilteringWordFieldInAppBar] onSubmitted 호출됨: $value');
         // codigos, todocodigos 또는 stocks 보고서인 경우 서버에 요청
         if (widget.reportType == ReportType.codigos || 
             widget.reportType == ReportType.todocodigos || 
@@ -10375,6 +10905,7 @@ class _ReportScreenState extends State<ReportScreen> {
         }
       },
       onClear: () {
+        debugPrint('🔍 [_buildFilteringWordFieldInAppBar] onClear 호출됨');
         // clear 호출을 다음 프레임으로 지연하여 키보드 이벤트 충돌 방지
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
@@ -10418,9 +10949,13 @@ class _ReportScreenState extends State<ReportScreen> {
   // Clientes 보고서용 필터 UI 빌더들 - ReportFilterWidgets로 이동
   // Responsable Ins 콤보박스
   Widget _buildClientesResponsableInsSelector() {
+    debugPrint('🔍 [_buildClientesResponsableInsSelector] 호출됨');
+    debugPrint('   → _clientesResponsableIns: $_clientesResponsableIns');
+    
     return ReportFilterWidgets.buildClientesResponsableInsSelector(
       selectedValue: _clientesResponsableIns,
       onChanged: (String? value) {
+        debugPrint('🔍 [_buildClientesResponsableInsSelector] onChanged 호출됨: $value');
         setState(() {
           _clientesResponsableIns = value;
         });
@@ -10432,9 +10967,13 @@ class _ReportScreenState extends State<ReportScreen> {
 
   // Provincias 콤보박스 - ReportFilterWidgets로 이동
   Widget _buildClientesProvinciaSelector() {
+    debugPrint('🔍 [_buildClientesProvinciaSelector] 호출됨');
+    debugPrint('   → _clientesProvincia: $_clientesProvincia');
+    
     return ReportFilterWidgets.buildClientesProvinciaSelector(
       selectedValue: _clientesProvincia,
       onChanged: (String? value) {
+        debugPrint('🔍 [_buildClientesProvinciaSelector] onChanged 호출됨: $value');
         setState(() {
           _clientesProvincia = value;
         });

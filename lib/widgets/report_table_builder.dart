@@ -567,13 +567,13 @@ class ReportTableBuilder {
       'tingreso': 120,
       'cntEvent': 100,
       'cntevent': 100,
-      // Alertas 보고서
-      'fecha': 120,
-      'hora': 100,
-      'evento': 500, // 긴 텍스트를 위해 충분한 너비 할당
-      'progname': 150,
-      'alerta': 80,
-      'sucursal': 100,
+      // Alertas 보고서 (모든 칼럼을 절반으로 줄이고, evento는 2배로 늘림)
+      'fecha': 60,   // 120 -> 60 (절반)
+      'hora': 50,    // 100 -> 50 (절반)
+      'evento': 1000, // 500 -> 1000 (2배)
+      'progname': 75, // 150 -> 75 (절반)
+      'alerta': 40,   // 80 -> 40 (절반)
+      'sucursal': 50, // 100 -> 50 (절반)
       // 기타
       'start_date': 120,
       'end_date': 120,
@@ -1024,16 +1024,16 @@ class ReportTableBuilder {
                               debugPrint('   → columnWidths 전달: ${columnWidths != null}');
                               debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
                               
-                              // fventas/ventas의 경우 테이블 너비 계산
+                              // fventas/ventas/clientes/alertas의 경우 테이블 너비 계산
                               double? footerWidth;
-                              if (reportType == ReportType.fventas || reportType == ReportType.ventas) {
+                              if (reportType == ReportType.fventas || reportType == ReportType.ventas || reportType == ReportType.clientes || reportType == ReportType.alertas) {
                                 final defaultColumnWidths = <String, double>{
                                   'codigo1': 200, 'desc1': 200, 'ProductName': 400, 'totalCantidad': 120,
                                   'CategoryCode': 100, 'CompanyCode': 100, 'tprendas': 100, 'timporte': 120,
                                   'codigo': 120, 'descripcion': 200, 'tevent': 100, 'tcant': 120,
                                   'tIngreso': 120, 'tingreso': 120, 'cntEvent': 100, 'cntevent': 100,
-                                  'fecha': 120, 'hora': 100, 'evento': 500, 'progname': 150,
-                                  'alerta': 80, 'sucursal': 100,
+                                  'fecha': 60, 'hora': 50, 'evento': 1000, 'progname': 75,
+                                  'alerta': 40, 'sucursal': 50,
                                   // ventas/fventas 보고서용 컬럼 너비
                                   'vcode': 100, 'tpago': 120, 'cntropas': 100, 'clientenombre': 200,
                                   'id_fventa': 150, 'numfactura': 150, 'tipofactura': 150, 'dni': 150,
@@ -1042,6 +1042,10 @@ class ReportTableBuilder {
                                   'cae': 150, 'vencimiento_cae': 150, 'punto_venta': 150, 'afip_number': 150,
                                   'tipo_pago': 150, 'b_impreso_x_comandera': 150, 'terminal': 150,
                                   'ref_id_vcode': 150, 'b_sincronizado_node_svr': 150,
+                                  // clientes 보고서용 컬럼 너비
+                                  'nombre': 150, 'vendedor': 150, 'direccion': 150, 'localidad': 150,
+                                  'provincia': 150, 'telefono': 150, 'cntoperation': 150, 'totalimporte_compra': 150,
+                                  'totaldeuda': 150, 'last_buy_date': 150, 'memo': 150,
                                 };
                                 final finalColumnWidths = columnWidths ?? defaultColumnWidths;
                                 double calculatedWidth = 0.0;
@@ -1054,7 +1058,7 @@ class ReportTableBuilder {
                                   }
                                 }
                                 footerWidth = calculatedWidth;
-                                debugPrint('   → [fventas/ventas] 계산된 footerWidth: $footerWidth');
+                                debugPrint('   → [${reportType.name}] 계산된 footerWidth: $footerWidth');
                               }
                               
                               final footer = buildFixedTotalRow(
@@ -1064,7 +1068,7 @@ class ReportTableBuilder {
                                 columnWidths: columnWidths,
                                 dataList: dataList,
                                 reportType: reportType,
-                                explicitWidth: footerWidth, // fventas/ventas의 경우 명시적 너비 전달
+                                explicitWidth: footerWidth, // fventas/ventas/clientes/alertas의 경우 명시적 너비 전달
                               );
                               debugPrint('   → 푸터 생성 완료');
                               
@@ -1216,12 +1220,12 @@ class ReportTableBuilder {
             final totalSpacing = 8 * (keys.length - 1) + 32;
             final availableWidth = screenWidth - totalSpacing;
             
-            // Alertas 컬럼별 최소 너비 설정 (alerta 제외, 더 작게 조정)
+            // Alertas 컬럼별 최소 너비 설정 (모든 칼럼을 절반으로 줄임)
             final alertasMinWidths = <String, double>{
-              'fecha': 100,  // 120 -> 100
-              'hora': 80,    // 100 -> 80
-              'progname': 120, // 150 -> 120
-              'sucursal': 60,  // 100 -> 60
+              'fecha': 60,   // 120 -> 60 (절반)
+              'hora': 50,    // 100 -> 50 (절반)
+              'progname': 75, // 150 -> 75 (절반)
+              'sucursal': 50, // 100 -> 50 (절반)
             };
             
             // 최소 너비가 필요한 컬럼들의 총 너비 계산
@@ -1232,8 +1236,8 @@ class ReportTableBuilder {
               }
             }
             
-            // evento 컬럼에 할당할 나머지 공간 계산
-            final eventoWidth = (availableWidth - totalMinWidth).clamp(200.0, double.infinity);
+            // evento 컬럼에 할당할 나머지 공간 계산 (최소 1000으로 설정)
+            final eventoWidth = (availableWidth - totalMinWidth).clamp(1000.0, double.infinity);
             
             // 동적 컬럼 너비 계산
             final dynamicColumnWidths = <String, double>{};
@@ -1280,7 +1284,7 @@ class ReportTableBuilder {
                       controller: scrollController,
                       scrollDirection: Axis.vertical,
                       child: DataTable(
-                        columnSpacing: 8,
+                        columnSpacing: 1, // 8 -> 1로 줄임
                         dataRowMinHeight: reportType == ReportType.alertas ? null : 12, // Alertas는 자동 높이
                         dataRowMaxHeight: reportType == ReportType.alertas ? null : 20, // Alertas는 자동 높이
                         headingRowHeight: 0,
@@ -1296,7 +1300,10 @@ class ReportTableBuilder {
                           return DataColumn(
                             label: SizedBox(
                               width: dynamicColumnWidths[key] ?? 150.0,
-                              child: col.label,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 1), // padding을 1로 설정
+                                child: col.label,
+                              ),
                             ),
                             onSort: col.onSort,
                           );
@@ -1338,22 +1345,25 @@ class ReportTableBuilder {
                               final cellWidth = dynamicColumnWidths[key] ?? 150.0;
                               
                               return DataCell(
-                                SizedBox(
-                                  width: cellWidth,
-                                  child: Align(
-                                    alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
-                                    child: Wrap(
-                                      children: [
-                                        Text(
-                                          formattedValue,
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            height: isEventoColumn ? 1.3 : 1.2,
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 1), // padding을 1로 설정
+                                  child: SizedBox(
+                                    width: cellWidth,
+                                    child: Align(
+                                      alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+                                      child: Wrap(
+                                        children: [
+                                          Text(
+                                            formattedValue,
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              height: isEventoColumn ? 1.3 : 1.2,
+                                            ),
+                                            maxLines: null, // Alertas는 모든 줄 표시
+                                            overflow: TextOverflow.visible, // 내용에 맞게 자동 높이 조절
                                           ),
-                                          maxLines: null, // Alertas는 모든 줄 표시
-                                          overflow: TextOverflow.visible, // 내용에 맞게 자동 높이 조절
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -1362,7 +1372,12 @@ class ReportTableBuilder {
                             
                             return DataRow(cells: cells);
                           }
-                          return DataRow(cells: keys.map((key) => const DataCell(Text(''))).toList());
+                          return DataRow(cells: keys.map((key) => DataCell(
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 1), // padding을 1로 설정
+                              child: const Text(''),
+                            ),
+                          )).toList());
                         }).toList(),
                       ),
                     ),
@@ -1446,7 +1461,7 @@ class ReportTableBuilder {
                           controller: horizontalScrollController,
                   scrollDirection: Axis.horizontal,
                   child: DataTable(
-                    columnSpacing: 8,
+                    columnSpacing: reportType == ReportType.alertas ? 1 : 8, // alertas는 1로 설정
                             dataRowMinHeight: reportType == ReportType.alertas ? null : 48, // Alertas는 자동 높이
                             dataRowMaxHeight: reportType == ReportType.alertas ? null : 56, // Alertas는 자동 높이
                             headingRowHeight: 0, // 헤더는 _buildHeaderRow로 표시하므로 0으로 설정
@@ -1705,7 +1720,7 @@ class ReportTableBuilder {
                           ),
                         )
                       : DataTable(
-                          columnSpacing: 8,
+                          columnSpacing: reportType == ReportType.alertas ? 1 : 8, // alertas는 1로 설정
                           dataRowMinHeight: reportType == ReportType.alertas ? 72 : 48, // Alertas는 1.5배 높이
                           dataRowMaxHeight: reportType == ReportType.alertas ? 84 : 56, // Alertas는 1.5배 높이
                           headingRowHeight: reportType == ReportType.ventas ? 0 : 56, // ventas는 상단 헤더 사용
@@ -3445,11 +3460,11 @@ class ReportTableBuilder {
       'tingreso': 150,
       'cntEvent': 120,
       'cntevent': 120,
-      'fecha': 120,
-      'hora': 100,
-      'evento': 500,
-      'progname': 150,
-      'sucursal': 100,
+      'fecha': 60,   // 120 -> 60 (절반)
+      'hora': 50,    // 100 -> 50 (절반)
+      'evento': 1000, // 500 -> 1000 (2배)
+      'progname': 75, // 150 -> 75 (절반)
+      'sucursal': 50, // 100 -> 50 (절반)
     };
     final finalColumnWidths = columnWidths ?? defaultColumnWidths;
     
@@ -3488,6 +3503,36 @@ class ReportTableBuilder {
       // items/ingresos/alertas 보고서는 각 셀의 너비를 설정하여 헤더와 일치시킴
       if (isItemsOrIngresos || isAlertas) {
         final columnWidth = finalColumnWidths[key] ?? 150.0;
+        // alertas 보고서는 padding을 1로 설정
+        if (isAlertas) {
+          // cell.child가 Align인 경우 Align의 child를 Padding과 SizedBox로 감싸기
+          if (cell.child is Align) {
+            final align = cell.child as Align;
+            return DataCell(
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 1), // padding을 1로 설정
+                child: SizedBox(
+                  width: columnWidth,
+                  child: Align(
+                    alignment: align.alignment,
+                    child: align.child,
+                  ),
+                ),
+              ),
+            );
+          }
+          // cell.child가 다른 타입인 경우 Padding과 SizedBox로 감싸기
+          return DataCell(
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 1), // padding을 1로 설정
+              child: SizedBox(
+                width: columnWidth,
+                child: cell.child,
+              ),
+            ),
+          );
+        }
+        // items/ingresos 보고서는 기존대로
         // cell.child가 Align인 경우 Align의 child를 SizedBox로 감싸기
         if (cell.child is Align) {
           final align = cell.child as Align;
@@ -3978,6 +4023,48 @@ class ReportTableBuilder {
             return rowWidget;
           }
           
+          // Alertas 보고서의 경우 총 로그 개수만 표시
+          if (reportType == ReportType.alertas) {
+            final totalLogCount = listForTotal.length;
+            debugPrint('🔍 [Alertas 푸터] 총 로그 개수: $totalLogCount');
+            
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 첫 번째 칼럼에 총 로그 개수 표시
+                SizedBox(
+                  width: finalColumnWidths[keys[0]] ?? 150.0,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    height: 56.0,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Total: $totalLogCount',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // 나머지 칼럼은 빈 칸
+                ...keys.skip(1).map((key) {
+                  final columnWidth = finalColumnWidths[key] ?? 150.0;
+                  return SizedBox(
+                    width: columnWidth,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      height: 56.0,
+                      child: const SizedBox.shrink(),
+                    ),
+                  );
+                }),
+              ],
+            );
+          }
+          
           return Row(
             mainAxisSize: MainAxisSize.min,
             children: keys.asMap().entries.expand((entry) {
@@ -4095,13 +4182,13 @@ class ReportTableBuilder {
       'tingreso': 120,
       'cntEvent': 100,
       'cntevent': 100,
-      // Alertas 보고서
-      'fecha': 120,
-      'hora': 100,
-      'evento': 500,
-      'progname': 150,
-      'alerta': 80,
-      'sucursal': 100,
+      // Alertas 보고서 (모든 칼럼을 절반으로 줄이고, evento는 2배로 늘림)
+      'fecha': 60,   // 120 -> 60 (절반)
+      'hora': 50,    // 100 -> 50 (절반)
+      'evento': 1000, // 500 -> 1000 (2배)
+      'progname': 75, // 150 -> 75 (절반)
+      'alerta': 40,   // 80 -> 40 (절반)
+      'sucursal': 50, // 100 -> 50 (절반)
     };
     
     final finalColumnWidths = columnWidths ?? defaultColumnWidths;

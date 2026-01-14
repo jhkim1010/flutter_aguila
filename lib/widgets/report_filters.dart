@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:intl/intl.dart';
 import 'report_utils.dart';
 
@@ -10,6 +11,11 @@ class ReportFilters {
     required Function(String) onSubmitted,
     required Function() onClear,
   }) {
+    debugPrint('═══════════════════════════════════════════════════════════');
+    debugPrint('🔍 [ReportFilters.buildFilteringWordField] 호출됨');
+    debugPrint('═══════════════════════════════════════════════════════════');
+    
+    // Expanded 안에 있으므로 LayoutBuilder 불필요 - Expanded가 이미 제약을 제공함
     return Container(
       height: 40,
       decoration: BoxDecoration(

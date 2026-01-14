@@ -198,6 +198,84 @@ class ResumenDelDiaMultipleSucursalesView extends StatelessWidget {
         }
       }
       
+      // fventas 처리 (sucursal별로 그룹화)
+      if (data.containsKey('fventas') && data['fventas'] is List) {
+        debugPrint('═══════════════════════════════════════════════════════');
+        debugPrint('   → fventas 배열 처리 시작 (sucursal별 그룹화)');
+        final fventasList = data['fventas'] as List;
+        debugPrint('   → fventasList 길이: ${fventasList.length}');
+        
+        // 각 sucursal별로 fventas 데이터를 그룹화
+        final Map<int, Map<String, Map<String, dynamic>>> fventasBySucursal = {};
+        
+        for (var item in fventasList) {
+          if (item is Map<String, dynamic>) {
+            final sucursalValue = item['sucursal'];
+            final sucursal = sucursalValue is int 
+                ? sucursalValue 
+                : (sucursalValue is String ? int.tryParse(sucursalValue) : null);
+            
+            if (sucursal != null) {
+              // sucursalMap에 없으면 추가 (fventas 데이터에만 있는 sucursal일 수 있음)
+              if (!sucursalMap.containsKey(sucursal)) {
+                debugPrint('      → fventas에서 발견된 새 sucursal: $sucursal (sucursalMap에 추가)');
+                sucursalMap[sucursal] = {'sucursal': sucursal};
+              }
+              
+              final tipofactura = item['tipofactura']?.toString() ?? 'Unknown';
+              
+              debugPrint('      → fventas 항목: sucursal=$sucursal, tipofactura=$tipofactura');
+              
+              if (!fventasBySucursal.containsKey(sucursal)) {
+                fventasBySucursal[sucursal] = {};
+              }
+              
+              // tipofactura별로 그룹화 (같은 tipofactura가 여러 개 있을 수 있으므로 합산)
+              if (!fventasBySucursal[sucursal]!.containsKey(tipofactura)) {
+                fventasBySucursal[sucursal]![tipofactura] = {
+                  'tipofactura': tipofactura,
+                  'count': 0,
+                  'sum_monto': 0.0,
+                };
+              }
+              
+              final count = (item['count'] as num?)?.toInt() ?? 0;
+              final sumMonto = (item['sum_monto'] as num?)?.toDouble() ?? 0.0;
+              
+              fventasBySucursal[sucursal]![tipofactura]!['count'] = 
+                  (fventasBySucursal[sucursal]![tipofactura]!['count'] as int) + count;
+              fventasBySucursal[sucursal]![tipofactura]!['sum_monto'] = 
+                  (fventasBySucursal[sucursal]![tipofactura]!['sum_monto'] as double) + sumMonto;
+              
+              debugPrint('         → 합산: count=${fventasBySucursal[sucursal]![tipofactura]!['count']}, sum_monto=${fventasBySucursal[sucursal]![tipofactura]!['sum_monto']}');
+            } else {
+              debugPrint('      ⚠️ fventas 항목: sucursal을 파싱할 수 없음 (건너뜀)');
+            }
+          }
+        }
+        
+        // 각 sucursal별로 fventas 데이터를 sucursalMap에 저장
+        fventasBySucursal.forEach((sucursal, tipofacturaMap) {
+          if (sucursalMap.containsKey(sucursal)) {
+            // tipofactura별로 그룹화된 데이터를 리스트로 변환
+            final fventasItems = tipofacturaMap.values.toList();
+            sucursalMap[sucursal]!['fventas'] = {
+              'items': fventasItems,
+            };
+            debugPrint('   ✅ sucursal $sucursal에 fventas 데이터 저장: ${fventasItems.length}개 tipofactura');
+          }
+        });
+        
+        debugPrint('   → fventas 처리 완료: ${fventasBySucursal.length}개 sucursal에 데이터 저장');
+        debugPrint('═══════════════════════════════════════════════════════');
+      } else {
+        debugPrint('   ⚠️ fventas 키가 없거나 List가 아님');
+        debugPrint('      → data.containsKey(\'fventas\'): ${data.containsKey('fventas')}');
+        if (data.containsKey('fventas')) {
+          debugPrint('      → data[\'fventas\'] 타입: ${data['fventas'].runtimeType}');
+        }
+      }
+      
       // sucursalMap에서 sucursalesData 생성
       debugPrint('   → sucursalMap에서 sucursalesData 생성 시작...');
       final sortedKeys = sucursalMap.keys.toList()..sort();
@@ -305,11 +383,13 @@ class ResumenDelDiaMultipleSucursalesView extends StatelessWidget {
                 leftChild: Builder(
                   builder: (context) {
                     debugPrint('   → 왼쪽 테이블 영역 렌더링 시작');
-                    return SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
+                    return Center(
                       child: SingleChildScrollView(
-                        scrollDirection: Axis.vertical,
-                        child: _buildComparisonTable(context, sucursalesData, l10n),
+                        scrollDirection: Axis.horizontal,
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.vertical,
+                          child: _buildComparisonTable(context, sucursalesData, l10n),
+                        ),
                       ),
                     );
                   },
@@ -342,38 +422,40 @@ class ResumenDelDiaMultipleSucursalesView extends StatelessWidget {
                     
                     debugPrint('═══════════════════════════════════════════════════════');
                     
-                    return SingleChildScrollView(
-                      padding: const EdgeInsets.all(padding),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Stock Resumen 테이블만 표시
-                          if (hasStockData) ...[
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 16),
-                              child: Text(
-                                'Stock Resumen',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.grey[800],
-                                ),
-                              ),
-                            ),
-                            ...stockWidgets,
-                          ] else ...[
-                            Padding(
-                              padding: const EdgeInsets.all(24.0),
-                              child: Center(
+                    return Center(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(padding),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Stock Resumen 테이블만 표시
+                            if (hasStockData) ...[
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 16),
                                 child: Text(
-                                  'Stock 데이터가 없습니다.',
-                                  style: TextStyle(color: Colors.grey[600]),
+                                  'Stock Resumen',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey[800],
+                                  ),
                                 ),
                               ),
-                            ),
+                              ...stockWidgets,
+                            ] else ...[
+                              Padding(
+                                padding: const EdgeInsets.all(24.0),
+                                child: Center(
+                                  child: Text(
+                                    'Stock 데이터가 없습니다.',
+                                    style: TextStyle(color: Colors.grey[600]),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
                     );
                   },
@@ -664,9 +746,9 @@ class ResumenDelDiaMultipleSucursalesView extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         child: DataTable(
           columnSpacing: 24,
-          headingRowHeight: 56,
-          dataRowMinHeight: 48,
-          dataRowMaxHeight: 72,
+          headingRowHeight: 42, // 56 * 0.75 = 42
+          dataRowMinHeight: 36, // 48 * 0.75 = 36
+          dataRowMaxHeight: 54, // 72 * 0.75 = 54
           columns: [
             const DataColumn(
               label: Text(
@@ -750,88 +832,67 @@ class ResumenDelDiaMultipleSucursalesView extends StatelessWidget {
                   value = ingresosData[key];
                 }
               } else if (category == 'fventas') {
-                // FVentas 처리 - sucursal별로 구분 가능한지 확인
+                // FVentas 처리 - sucursalData에서 직접 가져오기
                 // key 형식: A_count, B_sum_monto 등
                 debugPrint('═══════════════════════════════════════════════════════');
                 debugPrint('      → FVentas 처리 시작');
                 debugPrint('         → 현재 처리 중인 sucursalData: ${sucursalData['sucursal']}');
                 debugPrint('         → key: $key');
+                debugPrint('         → sucursalData.containsKey(\'fventas\'): ${sucursalData.containsKey('fventas')}');
                 
-                final sucursalNum = sucursalData['sucursal'] is int
-                    ? sucursalData['sucursal'] as int
-                    : int.tryParse(sucursalData['sucursal']?.toString() ?? '0') ?? 0;
-                debugPrint('         → 추출된 sucursalNum: $sucursalNum');
-                
-                // 먼저 원본 fventas 데이터에서 sucursal별로 찾기 시도
-                if (data.containsKey('fventas') && data['fventas'] is List) {
-                  final fventasList = data['fventas'] as List;
-                  debugPrint('         → fventas 원본 List 길이: ${fventasList.length}');
+                final keyParts = key.split('_');
+                if (keyParts.length >= 2) {
+                  final tipofactura = keyParts[0]; // A, B, NCA, NCB
+                  final fieldType = keyParts.sublist(1).join('_'); // count 또는 sum_monto
                   
-                  final keyParts = key.split('_');
-                  if (keyParts.length >= 2) {
-                    final tipofactura = keyParts[0]; // A, B, NCA, NCB
-                    final fieldType = keyParts.sublist(1).join('_'); // count 또는 sum_monto
+                  debugPrint('         → 파싱된 tipofactura: $tipofactura');
+                  debugPrint('         → 파싱된 fieldType: $fieldType');
+                  
+                  // sucursalData에서 fventas 데이터 가져오기
+                  if (sucursalData.containsKey('fventas') && sucursalData['fventas'] is Map) {
+                    final fventasData = sucursalData['fventas'] as Map<String, dynamic>;
+                    debugPrint('         → fventasData: $fventasData');
                     
-                    debugPrint('         → 파싱된 tipofactura: $tipofactura');
-                    debugPrint('         → 파싱된 fieldType: $fieldType');
-                    
-                    // 원본 데이터에서 해당 sucursal과 tipofactura에 맞는 항목 찾기
-                    bool foundInOriginal = false;
-                    for (var item in fventasList) {
-                      if (item is Map<String, dynamic>) {
-                        final itemSucursal = item.containsKey('sucursal')
-                            ? (item['sucursal'] is int
-                                ? item['sucursal'] as int
-                                : int.tryParse(item['sucursal']?.toString() ?? '0') ?? 0)
-                            : null;
-                        final itemTipofactura = item['tipofactura']?.toString() ?? 'Unknown';
-                        
-                        debugPrint('            → 원본 항목 체크: sucursal=$itemSucursal, tipofactura=$itemTipofactura');
-                        
-                        // sucursal 정보가 있고, 현재 sucursal과 일치하는 경우
-                        if (itemSucursal != null && itemSucursal == sucursalNum && itemTipofactura == tipofactura) {
-                          debugPrint('            ✅ 원본 데이터에서 찾음!');
-                          if (fieldType == 'count') {
-                            value = item['count'] as int? ?? 0;
-                            debugPrint('               → count 값: $value');
-                          } else if (fieldType == 'sum_monto') {
-                            value = (item['sum_monto'] as num?)?.toDouble() ?? 0.0;
-                            debugPrint('               → sum_monto 값: $value');
-                          }
-                          foundInOriginal = true;
-                          break;
-                        }
-                      }
-                    }
-                    
-                    // 원본 데이터에서 찾지 못한 경우, aggregated 데이터 사용 (기존 방식)
-                    if (!foundInOriginal) {
-                      debugPrint('         ⚠️ 원본 데이터에서 해당 sucursal의 데이터를 찾지 못함');
-                      debugPrint('         → aggregated 데이터 사용 (전체 합계)');
-                      final aggregatedFventas = _getAggregatedFventas();
-                      if (aggregatedFventas.containsKey('items') && aggregatedFventas['items'] is List) {
-                        final fventasItems = aggregatedFventas['items'] as List;
-                        
-                        for (var item in fventasItems) {
-                          if (item is Map<String, dynamic>) {
-                            final itemTipofactura = item['tipofactura']?.toString() ?? 'Unknown';
-                            if (itemTipofactura == tipofactura) {
-                              if (fieldType == 'count') {
-                                value = item['count'] as int? ?? 0;
-                                debugPrint('               → aggregated count 값: $value (모든 sucursal 합계)');
-                              } else if (fieldType == 'sum_monto') {
-                                value = (item['sum_monto'] as num?)?.toDouble() ?? 0.0;
-                                debugPrint('               → aggregated sum_monto 값: $value (모든 sucursal 합계)');
-                              }
-                              break;
+                    if (fventasData.containsKey('items') && fventasData['items'] is List) {
+                      final fventasItems = fventasData['items'] as List;
+                      debugPrint('         → fventasItems 길이: ${fventasItems.length}');
+                      
+                      // 해당 tipofactura 찾기
+                      for (var item in fventasItems) {
+                        if (item is Map<String, dynamic>) {
+                          final itemTipofactura = item['tipofactura']?.toString() ?? 'Unknown';
+                          debugPrint('            → 항목 체크: tipofactura=$itemTipofactura');
+                          
+                          if (itemTipofactura == tipofactura) {
+                            debugPrint('            ✅ 해당 tipofactura 찾음!');
+                            if (fieldType == 'count') {
+                              value = item['count'] as int? ?? 0;
+                              debugPrint('               → count 값: $value');
+                            } else if (fieldType == 'sum_monto') {
+                              value = (item['sum_monto'] as num?)?.toDouble() ?? 0.0;
+                              debugPrint('               → sum_monto 값: $value');
                             }
+                            break;
                           }
                         }
                       }
+                      
+                      if (value == null) {
+                        debugPrint('         ⚠️ 해당 tipofactura를 찾지 못함 - 0으로 설정');
+                        value = fieldType == 'count' ? 0 : 0.0;
+                      }
+                    } else {
+                      debugPrint('         ⚠️ fventasData에 items가 없거나 List가 아님');
+                      value = fieldType == 'count' ? 0 : 0.0;
                     }
+                  } else {
+                    debugPrint('         ⚠️ sucursalData에 fventas 키가 없거나 Map이 아님');
+                    debugPrint('         → sucursalData 키: ${sucursalData.keys.toList()}');
+                    value = fieldType == 'count' ? 0 : 0.0;
                   }
                 } else {
-                  debugPrint('         ⚠️ data에 fventas 키가 없거나 List가 아님');
+                  debugPrint('         ⚠️ key 형식이 올바르지 않음: $key');
+                  value = 0;
                 }
                 debugPrint('═══════════════════════════════════════════════════════');
               } else if (category == 'fventas_mes') {
@@ -899,10 +960,23 @@ class ResumenDelDiaMultipleSucursalesView extends StatelessWidget {
             dynamic totalValue;
             
             if (category == 'fventas') {
-              // FVentas는 전체 데이터이므로 첫 번째 값 사용
+              // FVentas는 이제 sucursal별로 구분되므로 모든 sucursal 값의 합산
               if (sucursalValues.isNotEmpty) {
-                totalValue = sucursalValues.first;
-                debugPrint('      → Total (FVentas): $totalValue (전체 데이터)');
+                totalValue = sucursalValues.fold<dynamic>(
+                  null,
+                  (sum, val) {
+                    if (val == null) return sum;
+                    if (sum == null) {
+                      if (val is num) return val;
+                      return null;
+                    }
+                    if (val is num && sum is num) {
+                      return sum + val;
+                    }
+                    return sum;
+                  },
+                );
+                debugPrint('      → Total (FVentas): $totalValue (sucursal별 합산)');
               } else {
                 totalValue = null;
               }

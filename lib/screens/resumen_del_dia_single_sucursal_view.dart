@@ -1420,12 +1420,13 @@ class ResumenDelDiaSingleSucursalView extends StatelessWidget {
               InkWell(
                 onTap: () => onReportTypeSelected(ReportType.fventas),
                 child: Card(
-                  child: Container(
-                    constraints: isLarge 
-                        ? const BoxConstraints(minHeight: 120.0)
-                        : const BoxConstraints(minHeight: 100.0),
-                    padding: EdgeInsets.all(isLarge ? 18.0 : 12.0),
-                    child: Column(
+                  elevation: 2,
+                  margin: EdgeInsets.zero,
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: Padding(
+                      padding: EdgeInsets.all(isLarge ? (12.0 * 2 * 2 / 3) : 12.0),
+                      child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1452,41 +1453,12 @@ class ResumenDelDiaSingleSucursalView extends StatelessWidget {
                         SizedBox(height: isLarge ? 12.0 : 8.0),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Cantidad:',
-                              style: TextStyle(
-                                fontSize: isLarge ? 14.0 : 12.0,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.grey[700],
-                              ),
-                            ),
-                            Text(
-                              _formatValue(countAB),
-                              style: TextStyle(
-                                fontSize: isLarge ? 15.0 : 13.0,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: isLarge ? 8.0 : 6.0),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Text(
-                              'Total:',
+                              '${_formatValue(countAB)} / ${_formatValue(sumMontoAB, isCurrency: true)}',
                               style: TextStyle(
-                                fontSize: isLarge ? 14.0 : 12.0,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.grey[700],
-                              ),
-                            ),
-                            Text(
-                              _formatValue(sumMontoAB, isCurrency: true),
-                              style: TextStyle(
-                                fontSize: isLarge ? 16.0 : 14.0,
+                                fontSize: isLarge ? 15.0 : 13.0,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.deepPurple,
                               ),
@@ -1494,6 +1466,7 @@ class ResumenDelDiaSingleSucursalView extends StatelessWidget {
                           ],
                         ),
                       ],
+                    ),
                     ),
                   ),
                 ),
@@ -1507,12 +1480,13 @@ class ResumenDelDiaSingleSucursalView extends StatelessWidget {
               InkWell(
                 onTap: () => onReportTypeSelected(ReportType.fventas),
                 child: Card(
-                  child: Container(
-                    constraints: isLarge 
-                        ? const BoxConstraints(minHeight: 120.0)
-                        : const BoxConstraints(minHeight: 100.0),
-                    padding: EdgeInsets.all(isLarge ? 18.0 : 12.0),
-                    child: Column(
+                  elevation: 2,
+                  margin: EdgeInsets.zero,
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: Padding(
+                      padding: EdgeInsets.all(isLarge ? (12.0 * 2 * 2 / 3) : 12.0),
+                      child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1539,41 +1513,12 @@ class ResumenDelDiaSingleSucursalView extends StatelessWidget {
                         SizedBox(height: isLarge ? 12.0 : 8.0),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Cantidad:',
-                              style: TextStyle(
-                                fontSize: isLarge ? 14.0 : 12.0,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.grey[700],
-                              ),
-                            ),
-                            Text(
-                              _formatValue(countNC),
-                              style: TextStyle(
-                                fontSize: isLarge ? 15.0 : 13.0,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: isLarge ? 8.0 : 6.0),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Text(
-                              'Total:',
+                              '${_formatValue(countNC)} / ${_formatValue(sumMontoNC, isCurrency: true)}',
                               style: TextStyle(
-                                fontSize: isLarge ? 14.0 : 12.0,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.grey[700],
-                              ),
-                            ),
-                            Text(
-                              _formatValue(sumMontoNC, isCurrency: true),
-                              style: TextStyle(
-                                fontSize: isLarge ? 16.0 : 14.0,
+                                fontSize: isLarge ? 15.0 : 13.0,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.orange,
                               ),
@@ -1581,6 +1526,7 @@ class ResumenDelDiaSingleSucursalView extends StatelessWidget {
                           ],
                         ),
                       ],
+                    ),
                     ),
                   ),
                 ),

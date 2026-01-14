@@ -688,6 +688,21 @@ class _ItemsDateRangeSelectorState extends State<ItemsDateRangeSelector> {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('═══════════════════════════════════════════════════════════');
+    debugPrint('🔍 [ItemsDateRangeSelector] build 호출됨');
+    debugPrint('   → reportType: ${widget.reportType}');
+    debugPrint('   → _startDate: $_startDate');
+    debugPrint('   → _endDate: $_endDate');
+    debugPrint('   → unit: ${widget.unit}');
+    
+    try {
+      final mediaQuery = MediaQuery.of(context);
+      debugPrint('   → MediaQuery.size: ${mediaQuery.size}');
+      debugPrint('   → MediaQuery.orientation: ${mediaQuery.orientation}');
+    } catch (e) {
+      debugPrint('   ⚠️ MediaQuery.of(context) 오류: $e');
+    }
+    
     final reportColor = ReportUtils.getReportColor(widget.reportType);
     DateFormat dateFormat;
 
@@ -715,72 +730,78 @@ class _ItemsDateRangeSelectorState extends State<ItemsDateRangeSelector> {
       rangeDisplay = 'Seleccionar rango';
     }
 
+    debugPrint('   → rangeDisplay: $rangeDisplay');
+    debugPrint('═══════════════════════════════════════════════════════════');
+
+    // Expanded 안에 있을 수 있으므로 LayoutBuilder 사용하지 않음
+    // Expanded가 이미 제약을 제공함
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      decoration: BoxDecoration(
-        color: reportColor.withOpacity(0.1),
-        border: Border(
-          bottom: BorderSide(
-            color: reportColor.withOpacity(0.3),
-            width: 1,
-          ),
-        ),
-      ),
-      child: GestureDetector(
-        onTap: _selectDateRange,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: reportColor.withOpacity(0.5),
-              width: 1,
+            color: reportColor.withOpacity(0.1),
+            border: Border(
+              bottom: BorderSide(
+                color: reportColor.withOpacity(0.3),
+                width: 1,
+              ),
             ),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.unit == 'year'
-                          ? 'Rango de Años'
-                          : widget.unit == 'month'
-                              ? 'Rango de Meses'
-                              : 'Rango de Fechas',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      rangeDisplay,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+          child: GestureDetector(
+            onTap: _selectDateRange,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: reportColor.withOpacity(0.5),
+                  width: 1,
                 ),
               ),
-              Icon(
-                widget.unit == 'year'
-                    ? Icons.event
-                    : widget.unit == 'month'
-                        ? Icons.calendar_view_month
-                        : Icons.date_range,
-                color: reportColor,
-                size: 24,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          widget.unit == 'year'
+                              ? 'Rango de Años'
+                              : widget.unit == 'month'
+                                  ? 'Rango de Meses'
+                                  : 'Rango de Fechas',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          rangeDisplay,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    widget.unit == 'year'
+                        ? Icons.event
+                        : widget.unit == 'month'
+                            ? Icons.calendar_view_month
+                            : Icons.date_range,
+                    color: reportColor,
+                    size: 24,
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
-    );
+        );
   }
 }
 

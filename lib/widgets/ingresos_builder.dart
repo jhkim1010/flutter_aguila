@@ -428,14 +428,37 @@ class IngresosBuilder {
                 debugPrint('📊 [IngresosBuilder] _buildRightPanel LayoutBuilder');
                 debugPrint('   → expandedConstraints.maxWidth: ${expandedConstraints.maxWidth}');
                 debugPrint('   → expandedConstraints.maxHeight: ${expandedConstraints.maxHeight}');
+                debugPrint('   → expandedConstraints.isTight: ${expandedConstraints.isTight}');
+                debugPrint('   → expandedConstraints.isNormalized: ${expandedConstraints.isNormalized}');
+                
+                if (expandedConstraints.maxHeight.isInfinite) {
+                  debugPrint('⚠️ [IngresosBuilder] _buildRightPanel expandedConstraints.maxHeight가 무한대입니다!');
+                  debugPrint('   → productsTable이 null인지 확인: ${productsTable == null}');
+                  // maxHeight가 무한대인 경우에도 productsTable을 표시해야 함
+                  if (productsTable != null) {
+                    return ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minWidth: expandedConstraints.maxWidth,
+                        maxWidth: expandedConstraints.maxWidth,
+                      ),
+                      child: SizedBox(
+                        width: expandedConstraints.maxWidth,
+                        child: productsTable,
+                      ),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                }
                 
                 return ConstrainedBox(
                   constraints: BoxConstraints(
                     minWidth: expandedConstraints.maxWidth,
                     maxWidth: expandedConstraints.maxWidth,
+                    maxHeight: expandedConstraints.maxHeight.isFinite ? expandedConstraints.maxHeight : double.infinity,
                   ),
                   child: SizedBox(
                     width: expandedConstraints.maxWidth,
+                    height: expandedConstraints.maxHeight.isFinite ? expandedConstraints.maxHeight : null,
                     child: productsTable,
                   ),
                 );
@@ -449,11 +472,17 @@ class IngresosBuilder {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.max,
             children: [
-              Expanded(child: content),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: content,
+                ),
+              ),
             ],
           );
         } else {
-          return content;
+          return SingleChildScrollView(
+            child: content,
+          );
         }
       },
     );
