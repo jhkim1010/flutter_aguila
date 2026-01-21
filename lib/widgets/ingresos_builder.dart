@@ -310,22 +310,26 @@ class IngresosBuilder {
         data.summaryByCategoryTable == null && 
         data.summaryByColorTable == null && 
         data.productsTable != null) {
-      return Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 헤더 부분 (summaryCard)
-            if (data.summaryCard != null) ...[
-              data.summaryCard!,
-              const SizedBox(height: 24),
+      return SingleChildScrollView(
+        controller: data.scrollController,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 헤더 부분 (summaryCard)
+              if (data.summaryCard != null) ...[
+                data.summaryCard!,
+                const SizedBox(height: 24),
+              ],
+              // products 테이블만 100% 폭으로 표시
+              _buildRightPanel(
+                productsTable: data.productsTable!,
+                useExpanded: false,
+              ),
             ],
-            // products 테이블만 100% 폭으로 표시
-            _buildRightPanel(
-              productsTable: data.productsTable!,
-              useExpanded: false,
-            ),
-          ],
+          ),
         ),
       );
     }

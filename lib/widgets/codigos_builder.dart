@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../services/database_service.dart';
 import '../utils/device_info_helper.dart';
+import '../utils/mobile_layout_helper.dart';
 import 'report_utils.dart';
 
 /// Codigos 보고서 UI 빌더
@@ -34,9 +35,51 @@ class CodigosBuilder {
     final horizontalPadding = 32.0; // 좌우 padding
     final totalWidth = columnsTotalWidth + columnsSpacing + horizontalPadding;
     final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
     final needsHorizontalScroll = totalWidth > screenWidth;
+    
+    // ============================================================
+    // 📱 Codigos/Todocodigos 화면 깨짐 현상 디버깅
+    // ============================================================
+    // 핸드폰에서 화면 깨짐 현상 원인 파악을 위한 디버깅
+    final layoutInfo = MobileLayoutHelper.getLayoutInfo(context);
+    final isMobilePhone = layoutInfo.isMobilePhone;
+    final isMobilePhonePortrait = layoutInfo.isMobilePhonePortrait;
+    final isMobilePhoneLandscape = layoutInfo.isMobilePhoneLandscape;
+    
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('📱 [Codigos Builder] buildContent 시작');
+    debugPrint('   → reportType: $reportType');
+    debugPrint('   → isMobilePhone: $isMobilePhone');
+    debugPrint('   → isMobilePhonePortrait: $isMobilePhonePortrait');
+    debugPrint('   → isMobilePhoneLandscape: $isMobilePhoneLandscape');
+    debugPrint('   → screenWidth: $screenWidth');
+    debugPrint('   → screenHeight: $screenHeight');
+    debugPrint('   → totalWidth: $totalWidth');
+    debugPrint('   → needsHorizontalScroll: $needsHorizontalScroll');
+    debugPrint('   → dataList.length: ${dataList.length}');
+    debugPrint('   → filteredDataList.length: ${filteredDataList.length}');
+    debugPrint('   → selectedCodigo != null: ${selectedCodigo != null}');
+    debugPrint('   → columnKeys.length: ${columnKeys.length}');
+    debugPrint('═══════════════════════════════════════════════════════');
 
-    return Column(
+    return Builder(
+      builder: (context) {
+        // 렌더링 후 실제 크기 측정
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+          if (renderBox != null) {
+            debugPrint('═══════════════════════════════════════════════════════');
+            debugPrint('📱 [Codigos Builder] Column 실제 렌더링 크기');
+            debugPrint('   → Column width: ${renderBox.size.width}');
+            debugPrint('   → Column height: ${renderBox.size.height}');
+            debugPrint('   → 예상 width: $screenWidth');
+            debugPrint('   → 차이: ${renderBox.size.width - screenWidth}');
+            debugPrint('═══════════════════════════════════════════════════════');
+          }
+        });
+        
+        return Column(
       children: [
         // 백그라운드 로딩 인디케이터
         if (isLoadingMore)
@@ -66,20 +109,63 @@ class CodigosBuilder {
             ),
           ),
         Expanded(
-          child: Row(
-            children: [
-              // 왼쪽: Codigos 리스트
-              Expanded(
-                flex: selectedCodigo != null ? 1 : 1,
-                child: Container(
-                  decoration: BoxDecoration(
-                    border: Border(
-                      right: selectedCodigo != null 
-                          ? BorderSide(color: Colors.grey[300]!, width: 1)
-                          : BorderSide.none,
-                    ),
-                  ),
-                  child: needsHorizontalScroll
+          child: Builder(
+            builder: (rowContext) {
+              // ============================================================
+              // 📱 Codigos/Todocodigos Row 레이아웃 디버깅
+              // ============================================================
+              // Row 렌더링 후 실제 크기 측정
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                final RenderBox? renderBox = rowContext.findRenderObject() as RenderBox?;
+                if (renderBox != null) {
+                  debugPrint('═══════════════════════════════════════════════════════');
+                  debugPrint('📱 [Codigos Builder] Row 실제 렌더링 크기');
+                  debugPrint('   → Row width: ${renderBox.size.width}');
+                  debugPrint('   → Row height: ${renderBox.size.height}');
+                  debugPrint('   → 예상 width: $screenWidth');
+                  debugPrint('   → 차이: ${renderBox.size.width - screenWidth}');
+                  debugPrint('   → selectedCodigo != null: ${selectedCodigo != null}');
+                  
+                  // Row의 자식들 확인
+                  int childIndex = 0;
+                  renderBox.visitChildren((child) {
+                    if (child is RenderBox) {
+                      debugPrint('   → [Row 자식 #$childIndex]');
+                      debugPrint('      → width: ${child.size.width}');
+                      debugPrint('      → height: ${child.size.height}');
+                      debugPrint('      → 타입: ${child.runtimeType}');
+                      childIndex++;
+                    }
+                  });
+                  debugPrint('═══════════════════════════════════════════════════════');
+                }
+              });
+              
+              return Row(
+                children: [
+                  // 왼쪽: Codigos 리스트
+                  Expanded(
+                    flex: selectedCodigo != null ? 1 : 1,
+                    child: Builder(
+                      builder: (leftExpandedContext) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          final RenderBox? renderBox = leftExpandedContext.findRenderObject() as RenderBox?;
+                          if (renderBox != null) {
+                            debugPrint('📱 [Codigos Builder] 왼쪽 Expanded 실제 크기');
+                            debugPrint('   → width: ${renderBox.size.width}');
+                            debugPrint('   → height: ${renderBox.size.height}');
+                          }
+                        });
+                        
+                        return Container(
+                          decoration: BoxDecoration(
+                            border: Border(
+                              right: selectedCodigo != null 
+                                  ? BorderSide(color: Colors.grey[300]!, width: 1)
+                                  : BorderSide.none,
+                            ),
+                          ),
+                          child: needsHorizontalScroll
                       ? LayoutBuilder(
                           builder: (context, constraints) {
                             return SingleChildScrollView(
@@ -210,12 +296,18 @@ class CodigosBuilder {
                             ),
                           ],
                         ),
+                    );
+                  },
                 ),
               ),
             ],
+          );
+            },
           ),
         ),
       ],
+    );
+      },
     );
   }
 

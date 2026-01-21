@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'report_utils.dart';
+import '../utils/mobile_layout_helper.dart';
 
 class ReportTableBuilder {
   // 디버깅용 카운터
   static int _debugRowCount = 0;
+  static int _debugCellCount = 0;
   
   
   /// 화면에 표시되는 컬럼 목록을 반환 (PDF 생성용)
@@ -203,8 +205,8 @@ class ReportTableBuilder {
         try {
           // 여러 스크롤 뷰에 연결된 경우를 처리
           if (horizontalScrollController.positions.length == 1) {
-            debugPrint('   → horizontalScrollController.position.pixels: ${horizontalScrollController.position.pixels}');
-            debugPrint('   → horizontalScrollController.position.maxScrollExtent: ${horizontalScrollController.position.maxScrollExtent}');
+        debugPrint('   → horizontalScrollController.position.pixels: ${horizontalScrollController.position.pixels}');
+        debugPrint('   → horizontalScrollController.position.maxScrollExtent: ${horizontalScrollController.position.maxScrollExtent}');
           } else {
             debugPrint('   ⚠️ horizontalScrollController가 ${horizontalScrollController.positions.length}개의 스크롤 뷰에 연결됨');
           }
@@ -627,10 +629,288 @@ class ReportTableBuilder {
       _debugRowCount = 0;
     }
     
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('📊 [ReportTableBuilder] buildTableFromList 시작');
+    debugPrint('   → reportType: $reportType');
+    debugPrint('   → reportType.name: ${reportType.name}');
+    debugPrint('   → reportType == ReportType.alertas: ${reportType == ReportType.alertas}');
+    debugPrint('   → ReportType.alertas: ${ReportType.alertas}');
+    debugPrint('   → ReportType.alertas.name: ${ReportType.alertas.name}');
+    debugPrint('   → keys: $keys');
+    debugPrint('   → keys.length: ${keys.length}');
+    debugPrint('   → displayedList.length: ${displayedList.length}');
+    debugPrint('═══════════════════════════════════════════════════════');
+    
     debugPrint('   → [ReportTableBuilder:593] isItemsOrIngresos 계산 (조기 확인)');
     debugPrint('      → reportType == ReportType.items: ${reportType == ReportType.items}');
     debugPrint('      → reportType == ReportType.ingresos: ${reportType == ReportType.ingresos}');
     debugPrint('      → isItemsOrIngresos: $isItemsOrIngresos');
+    debugPrint('   → [ReportTableBuilder:593] alertas 체크');
+    debugPrint('      → reportType == ReportType.alertas: ${reportType == ReportType.alertas}');
+    debugPrint('      → reportType.runtimeType: ${reportType.runtimeType}');
+    debugPrint('      → ReportType.alertas.runtimeType: ${ReportType.alertas.runtimeType}');
+    
+    // Alertas 보고서는 Table 위젯을 사용하여 칼럼 너비를 명시적으로 제어
+    if (reportType == ReportType.alertas) {
+      debugPrint('✅ [Alertas 체크] 조건 통과 - alertas 전용 경로 실행');
+      debugPrint('═══════════════════════════════════════════════════════');
+      debugPrint('🔍 [Alertas 전용 경로] 실행 시작');
+      debugPrint('   → reportType: $reportType');
+      debugPrint('   → keys: $keys');
+      debugPrint('   → keys.length: ${keys.length}');
+      debugPrint('═══════════════════════════════════════════════════════');
+      
+      // Alertas 보고서의 경우 화면 너비에 맞춰 컬럼 너비 동적 계산
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final screenWidth = constraints.maxWidth;
+          // 컬럼 간격 (1px) * (컬럼 수 - 1) + 좌우 패딩 (32px)
+          final totalSpacing = 1 * (keys.length - 1) + 32;
+          final availableWidth = screenWidth - totalSpacing;
+          
+          // 대형 화면 감지 (1200px 이상)
+          final isLargeScreen = screenWidth >= 1200;
+          
+          // Alertas 컬럼별 최소 너비 설정
+          // 대형 화면에서는 fecha, hora를 2배로 설정
+          final alertasMinWidths = <String, double>{
+            'fecha': isLargeScreen ? 120 : 60,   // 대형 화면: 120 (2배), 일반: 60
+            'hora': isLargeScreen ? 100 : 50,    // 대형 화면: 100 (2배), 일반: 50
+            'progname': 75, // 150 -> 75 (절반)
+            'sucursal': 50, // 100 -> 50 (절반)
+          };
+          
+          debugPrint('   → [대형 화면 감지] screenWidth: $screenWidth, isLargeScreen: $isLargeScreen');
+          debugPrint('   → [칼럼 너비] fecha: ${alertasMinWidths['fecha']}, hora: ${alertasMinWidths['hora']}');
+          
+          // 최소 너비가 필요한 컬럼들의 총 너비 계산
+          double totalMinWidth = 0;
+          for (var key in keys) {
+            if (alertasMinWidths.containsKey(key)) {
+              totalMinWidth += alertasMinWidths[key]!;
+            }
+          }
+          
+          // evento 컬럼에 할당할 나머지 공간 계산 (최소 1000으로 설정)
+          final eventoWidth = (availableWidth - totalMinWidth).clamp(1000.0, double.infinity);
+          
+          // 동적 컬럼 너비 계산
+          final dynamicColumnWidths = <String, double>{};
+          for (var key in keys) {
+            if (key.toLowerCase() == 'evento') {
+              dynamicColumnWidths[key] = eventoWidth;
+            } else if (alertasMinWidths.containsKey(key)) {
+              dynamicColumnWidths[key] = alertasMinWidths[key]!;
+            } else {
+              dynamicColumnWidths[key] = columnWidths[key] ?? 150.0;
+            }
+          }
+          
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('📊 [Alertas 보고서] 테이블 빌드 시작');
+          debugPrint('   → keys: $keys');
+          debugPrint('   → keys.length: ${keys.length}');
+          debugPrint('   → displayedList.length: ${displayedList.length}');
+          debugPrint('   → dataList.length: ${dataList.length}');
+          debugPrint('   → dynamicColumnWidths: $dynamicColumnWidths');
+          debugPrint('   → screenWidth: $screenWidth');
+          debugPrint('   → availableWidth: $availableWidth');
+          debugPrint('═══════════════════════════════════════════════════════');
+          
+          // alertas 보고서는 Table 위젯 내부에 헤더가 포함되어 있으므로 별도 헤더 생성 불필요
+          debugPrint('📊 [Alertas 보고서] Table 위젯 사용 (헤더는 Table 내부에 포함됨)');
+          debugPrint('   → keys: $keys');
+          debugPrint('   → columns.length: ${columns.length}');
+          debugPrint('   → dynamicColumnWidths: $dynamicColumnWidths');
+          
+          return Column(
+            children: [
+              Expanded(
+                child: Scrollbar(
+                  controller: scrollController,
+                  thumbVisibility: true,
+                  child: SingleChildScrollView(
+                    controller: scrollController,
+                    scrollDirection: Axis.vertical,
+                    child: Builder(
+                      builder: (context) {
+                        // alertas 보고서는 DataTable의 칼럼 너비를 명시적으로 제어하기 위해
+                        // 전체 너비를 계산하여 SizedBox로 감싸기
+                        final totalTableWidth = keys.fold<double>(0.0, (sum, key) {
+                          final width = dynamicColumnWidths[key] ?? 150.0;
+                          return sum + width + 1; // columnSpacing 1 추가
+                        });
+                        
+                        debugPrint('═══════════════════════════════════════════════════════');
+                        debugPrint('🔍 [Alertas DataTable] 총 너비 계산 시작');
+                        debugPrint('   → keys: $keys');
+                        debugPrint('   → dynamicColumnWidths: $dynamicColumnWidths');
+                        debugPrint('   → 총 너비 계산: $totalTableWidth');
+                        debugPrint('   → 칼럼별 너비: ${keys.map((k) => '${k}=${dynamicColumnWidths[k] ?? 150.0}').join(', ')}');
+                        debugPrint('═══════════════════════════════════════════════════════');
+                        
+                        // DataTable이 칼럼 너비를 자동으로 계산하므로, Table 위젯을 사용하여
+                        // 각 칼럼의 너비를 명시적으로 제어
+                        return SizedBox(
+                          width: totalTableWidth,
+                          child: Table(
+                            columnWidths: keys.asMap().map((index, key) {
+                              final columnWidth = dynamicColumnWidths[key] ?? 150.0;
+                              return MapEntry(index, FixedColumnWidth(columnWidth));
+                            }),
+                            border: TableBorder(
+                              horizontalInside: BorderSide(color: Colors.grey.shade300, width: 0.5),
+                              verticalInside: BorderSide(color: Colors.grey.shade300, width: 0.5),
+                            ),
+                            children: [
+                              // 헤더 행
+                              TableRow(
+                                decoration: BoxDecoration(
+                                  color: color.withOpacity(0.1),
+                                ),
+                                children: columns.asMap().entries.map((entry) {
+                                  final index = entry.key;
+                                  final col = entry.value;
+                                  final key = keys[index];
+                                  final columnWidth = dynamicColumnWidths[key] ?? 150.0;
+                                  debugPrint('📊 [Alertas Table] 헤더 셀 생성 - index: $index, key: $key, width: $columnWidth');
+                                  
+                                  // 대형 화면 감지 (1200px 이상)
+                                  final isLargeScreen = screenWidth >= 1200;
+                                  // 대형 화면에서는 헤더 행 높이도 2/3로 줄임 (vertical padding: 8 -> 5.33, 약 5)
+                                  final headerVerticalPadding = isLargeScreen ? 5.33 : 8.0;
+                                  
+                                  return Container(
+                                    padding: EdgeInsets.symmetric(horizontal: 1, vertical: headerVerticalPadding),
+                                    child: GestureDetector(
+                                      onTap: col.onSort != null ? () {
+                                        if (sortColumn == key) {
+                                          col.onSort!(index, !sortAscending);
+                                        } else {
+                                          col.onSort!(index, false);
+                                        }
+                                      } : null,
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.start,
+                                        children: [
+                                          Flexible(
+                                            child: col.label,
+                                          ),
+                                          if (col.onSort != null && sortColumn == key)
+                                            Icon(
+                                              sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                                              size: 16,
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                              // 데이터 행
+                              ...displayedList.map((item) {
+                                if (item is Map<String, dynamic>) {
+                                  return TableRow(
+                                    children: keys.map((key) {
+                                      // 키 이름 대소문자 구분 없이 찾기
+                                      final actualKey = item.keys.firstWhere(
+                                        (k) => k.toLowerCase() == key.toLowerCase(),
+                                        orElse: () => key,
+                                      );
+                                      final value = item[actualKey];
+                                      
+                                      final keyLower = key.toLowerCase();
+                                      final isEventoColumn = keyLower == 'evento';
+                                      
+                                      // evento 컬럼은 formatValue에서 자르지 않음 (2줄 표시를 위해)
+                                      String formattedValue;
+                                      if (isEventoColumn && value is String) {
+                                        formattedValue = value.replaceAll('\$', '').trim();
+                                      } else {
+                                        formattedValue = ReportUtils.formatValue(value, fieldName: key, reportType: reportType);
+                                      }
+                                      
+                                      final isAmountColumn = keyLower == 'sucursal';
+                                      final isNumeric = ReportUtils.isNumeric(value) || isAmountColumn;
+                                      
+                                      final cellWidth = dynamicColumnWidths[key] ?? 150.0;
+                                      
+                                      debugPrint('🔍 [Alertas Table] 데이터 셀 생성 - key: $key, width: $cellWidth, value: $formattedValue');
+                                      
+                                      // 대형 화면 감지 (1200px 이상)
+                                      final isLargeScreen = screenWidth >= 1200;
+                                      // 대형 화면에서는 행 높이를 2/3로 줄임 (vertical padding: 4 -> 2.67, 약 3)
+                                      final verticalPadding = isLargeScreen ? 2.67 : 4.0;
+                                      
+                                      debugPrint('   → [행 높이] isLargeScreen: $isLargeScreen, verticalPadding: $verticalPadding');
+                                      
+                                      return Container(
+                                        padding: EdgeInsets.symmetric(horizontal: 1, vertical: verticalPadding),
+                                        child: Align(
+                                          alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+                                          child: Text(
+                                            formattedValue,
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              height: isEventoColumn ? 1.3 : 1.2,
+                                            ),
+                                            maxLines: null,
+                                            overflow: TextOverflow.visible,
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  );
+                                }
+                                // 대형 화면 감지 (1200px 이상)
+                                final isLargeScreen = screenWidth >= 1200;
+                                // 대형 화면에서는 행 높이를 2/3로 줄임 (vertical padding: 4 -> 2.67, 약 3)
+                                final verticalPadding = isLargeScreen ? 2.67 : 4.0;
+                                
+                                return TableRow(
+                                  children: keys.map((key) => Container(
+                                    padding: EdgeInsets.symmetric(horizontal: 1, vertical: verticalPadding),
+                                    child: const Text(''),
+                                  )).toList(),
+                                );
+                              }).toList(),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              // Footer: 총 데이터 개수만 표시
+              Builder(
+                builder: (context) {
+                  debugPrint('📊 [Alertas 보고서] Footer 빌드 시작');
+                  debugPrint('   → dataList.length: ${dataList.length}');
+                  debugPrint('   → displayedList.length: ${displayedList.length}');
+                  
+                  return Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.1),
+                      border: Border(top: BorderSide(color: Colors.grey.shade300)),
+                    ),
+                    child: buildFixedTotalRow(
+                      keys,
+                      displayedList,
+                      color,
+                      columnWidths: dynamicColumnWidths,
+                      dataList: dataList,
+                      reportType: reportType,
+                    ),
+                  );
+                },
+              ),
+            ],
+          );
+        },
+      );
+    }
     
     // items 및 ingresos 보고서는 LayoutBuilder로 전체 폭 강제 (먼저 처리)
     if (isItemsOrIngresos) {
@@ -638,6 +918,10 @@ class ReportTableBuilder {
       debugPrint('📊 [ReportTableBuilder:600] buildTableFromList - Items/Ingresos 모드 진입 (조기 처리)');
       debugPrint('   → 파일: report_table_builder.dart');
       debugPrint('   → 라인: 600');
+      debugPrint('   → reportType: $reportType');
+      debugPrint('   → isItemsOrIngresos: $isItemsOrIngresos');
+      
+      debugPrint('✅ [Items/Ingresos 체크] 조건 통과 - items/ingresos 전용 경로 실행');
       debugPrint('   → reportType: $reportType');
       debugPrint('   → isItemsOrIngresos: $isItemsOrIngresos');
       
@@ -713,10 +997,57 @@ class ReportTableBuilder {
                         }
                       });
                       
-                      // 헤더 생성 (ventas/clientes는 제외)
-                      final headerRow = (reportType == ReportType.ventas || reportType == ReportType.clientes || reportType == ReportType.fventas)
+                      // ============================================================
+                      // 📱 헤더 생성 - 핸드폰에서 ventas 헤더가 안 보이는 문제 디버깅
+                      // ============================================================
+                      // ventas/clientes/fventas는 별도 헤더 행을 사용하지 않음 (DataTable의 headingRowHeight가 0)
+                      // 하지만 수평 스크롤이 있는 경우 별도 헤더가 필요할 수 있음
+                      final isVentasOrClientesOrFventas = reportType == ReportType.ventas || 
+                                                          reportType == ReportType.clientes || 
+                                                          reportType == ReportType.fventas;
+                      
+                      // 핸드폰 화면 구성 정보 확인
+                      final layoutInfo = MobileLayoutHelper.getLayoutInfo(context);
+                      final isMobilePhone = layoutInfo.isMobilePhone;
+                      final isMobilePhonePortrait = layoutInfo.isMobilePhonePortrait;
+                      final isMobilePhoneLandscape = layoutInfo.isMobilePhoneLandscape;
+                      
+                      debugPrint('═══════════════════════════════════════════════════════');
+                      debugPrint('📱 [Ventas 헤더 디버깅] 헤더 생성 시작');
+                      debugPrint('   → reportType: $reportType');
+                      debugPrint('   → isVentasOrClientesOrFventas: $isVentasOrClientesOrFventas');
+                      debugPrint('   → isMobilePhone: $isMobilePhone');
+                      debugPrint('   → isMobilePhonePortrait: $isMobilePhonePortrait');
+                      debugPrint('   → isMobilePhoneLandscape: $isMobilePhoneLandscape');
+                      debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
+                      debugPrint('   → constraints.maxHeight: ${constraints.maxHeight}');
+                      debugPrint('   → keys.length: ${keys.length}');
+                      debugPrint('   → columns.length: ${columns.length}');
+                      debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
+                      
+                      final headerRow = isVentasOrClientesOrFventas
                           ? null 
                           : buildHeaderRow(keys, columns, color, sortColumn, sortAscending, onSort, columnWidths: columnWidths, reportType: reportType);
+                      
+                      // ventas 보고서 디버깅 (핸드폰에서 헤더가 안 보이는 문제 분석)
+                      if (reportType == ReportType.ventas) {
+                        debugPrint('═══════════════════════════════════════════════════════');
+                        debugPrint('📱 [Ventas Report] 헤더 처리 디버깅');
+                        debugPrint('   → keys.length: ${keys.length}');
+                        debugPrint('   → keys: $keys');
+                        debugPrint('   → displayedList.length: ${displayedList.length}');
+                        debugPrint('   → headerRow: ${headerRow != null ? "생성됨" : "null (ventas는 별도 헤더 없음)"}');
+                        debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
+                        debugPrint('   → isMobilePhone: $isMobilePhone');
+                        debugPrint('   → isMobilePhonePortrait: $isMobilePhonePortrait');
+                        debugPrint('   → isMobilePhoneLandscape: $isMobilePhoneLandscape');
+                        debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
+                        debugPrint('   → constraints.maxHeight: ${constraints.maxHeight}');
+                        debugPrint('   ⚠️ [문제] ventas는 headerRow가 null이므로 별도 헤더가 표시되지 않음');
+                        debugPrint('   ⚠️ [문제] DataTable의 headingRowHeight가 0으로 설정되어 있음');
+                        debugPrint('   ⚠️ [문제] 핸드폰에서 헤더가 안 보이는 원인: 별도 헤더 행이 없고 DataTable 헤더도 숨겨져 있음');
+                        debugPrint('═══════════════════════════════════════════════════════');
+                      }
                       
                       // fventas 디버깅
                       if (reportType == ReportType.fventas) {
@@ -731,10 +1062,18 @@ class ReportTableBuilder {
                       }
                       
                       debugPrint('   → [ReportTableBuilder:650] Column 생성 시작');
+                      debugPrint('   → headerRow != null: ${headerRow != null}');
+                      debugPrint('   → reportType: $reportType');
+                      if (reportType == ReportType.ventas) {
+                        debugPrint('   ⚠️ [Ventas] headerRow가 null이므로 헤더가 Column children에 포함되지 않음');
+                        debugPrint('   ⚠️ [Ventas] 결과: 헤더가 전혀 표시되지 않음');
+                      }
+                      
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           // 헤더 (수평 스크롤 동기화)
+                          // ventas/clientes/fventas는 headerRow가 null이므로 헤더가 표시되지 않음
                           if (headerRow != null)
                             Builder(
                               builder: (context) {
@@ -915,19 +1254,19 @@ class ReportTableBuilder {
                                           if (horizontalScrollController != null && horizontalScrollController.hasClients) {
                                             try {
                                               if (horizontalScrollController.positions.length == 1) {
-                                                final tableScrollPosition = notification.metrics.pixels;
-                                                final headerScrollPosition = horizontalScrollController.position.pixels;
-                                                final difference = (tableScrollPosition - headerScrollPosition).abs();
+                                            final tableScrollPosition = notification.metrics.pixels;
+                                            final headerScrollPosition = horizontalScrollController.position.pixels;
+                                            final difference = (tableScrollPosition - headerScrollPosition).abs();
                                             
-                                                debugPrint('   → 테이블 스크롤 위치: $tableScrollPosition');
-                                                debugPrint('   → 헤더/푸터 스크롤 위치: $headerScrollPosition');
-                                                debugPrint('   → 위치 차이: $difference');
-                                                
-                                                if (difference > 0.1) {
-                                                  debugPrint('   ✅ 위치 차이 > 0.1, jumpTo 호출: $tableScrollPosition');
-                                                  horizontalScrollController.jumpTo(tableScrollPosition);
-                                                } else {
-                                                  debugPrint('   ⚠️ 위치 차이 <= 0.1, 동기화 스킵');
+                                            debugPrint('   → 테이블 스크롤 위치: $tableScrollPosition');
+                                            debugPrint('   → 헤더/푸터 스크롤 위치: $headerScrollPosition');
+                                            debugPrint('   → 위치 차이: $difference');
+                                            
+                                            if (difference > 0.1) {
+                                              debugPrint('   ✅ 위치 차이 > 0.1, jumpTo 호출: $tableScrollPosition');
+                                              horizontalScrollController.jumpTo(tableScrollPosition);
+                                            } else {
+                                              debugPrint('   ⚠️ 위치 차이 <= 0.1, 동기화 스킵');
                                                 }
                                               }
                                             } catch (e) {
@@ -1006,8 +1345,8 @@ class ReportTableBuilder {
                                     try {
                                       // 여러 스크롤 뷰에 연결된 경우를 처리
                                       if (horizontalScrollController.positions.length == 1) {
-                                        debugPrint('   → horizontalScrollController.position.pixels: ${horizontalScrollController.position.pixels}');
-                                        debugPrint('   → horizontalScrollController.position.maxScrollExtent: ${horizontalScrollController.position.maxScrollExtent}');
+                                    debugPrint('   → horizontalScrollController.position.pixels: ${horizontalScrollController.position.pixels}');
+                                    debugPrint('   → horizontalScrollController.position.maxScrollExtent: ${horizontalScrollController.position.maxScrollExtent}');
                                       } else {
                                         debugPrint('   ⚠️ horizontalScrollController가 ${horizontalScrollController.positions.length}개의 스크롤 뷰에 연결됨');
                                       }
@@ -1054,7 +1393,9 @@ class ReportTableBuilder {
                                   final columnWidth = finalColumnWidths[key] ?? 150.0;
                                   calculatedWidth += columnWidth;
                                   if (i < keys.length - 1) {
-                                    calculatedWidth += 8; // columnSpacing
+                                    // alertas 보고서는 columnSpacing을 1로 설정
+                                    final actualColumnSpacing = (reportType == ReportType.alertas) ? 1 : 8;
+                                    calculatedWidth += actualColumnSpacing;
                                   }
                                 }
                                 footerWidth = calculatedWidth;
@@ -1207,1371 +1548,6 @@ class ReportTableBuilder {
             ),
           );
         },
-      );
-
-    // Items, Ingresos 및 Alertas 보고서의 경우 합계 행을 화면 하단에 고정하면서 수직 스크롤 가능
-    if (reportType == ReportType.alertas) {
-      // Alertas 보고서의 경우 화면 너비에 맞춰 컬럼 너비 동적 계산
-      if (reportType == ReportType.alertas) {
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final screenWidth = constraints.maxWidth;
-            // 컬럼 간격 (1px) * (컬럼 수 - 1) + 좌우 패딩 (32px)
-            final totalSpacing = 1 * (keys.length - 1) + 32;
-            final availableWidth = screenWidth - totalSpacing;
-            
-            // Alertas 컬럼별 최소 너비 설정 (모든 칼럼을 절반으로 줄임)
-            final alertasMinWidths = <String, double>{
-              'fecha': 60,   // 120 -> 60 (절반)
-              'hora': 50,    // 100 -> 50 (절반)
-              'progname': 75, // 150 -> 75 (절반)
-              'sucursal': 50, // 100 -> 50 (절반)
-            };
-            
-            // 최소 너비가 필요한 컬럼들의 총 너비 계산
-            double totalMinWidth = 0;
-            for (var key in keys) {
-              if (alertasMinWidths.containsKey(key)) {
-                totalMinWidth += alertasMinWidths[key]!;
-              }
-            }
-            
-            // evento 컬럼에 할당할 나머지 공간 계산 (최소 1000으로 설정)
-            final eventoWidth = (availableWidth - totalMinWidth).clamp(1000.0, double.infinity);
-            
-            // 동적 컬럼 너비 계산
-            final dynamicColumnWidths = <String, double>{};
-            for (var key in keys) {
-              if (key.toLowerCase() == 'evento') {
-                dynamicColumnWidths[key] = eventoWidth;
-              } else if (alertasMinWidths.containsKey(key)) {
-                dynamicColumnWidths[key] = alertasMinWidths[key]!;
-              } else {
-                dynamicColumnWidths[key] = columnWidths[key] ?? 150.0;
-              }
-            }
-            
-            debugPrint('═══════════════════════════════════════════════════════');
-            debugPrint('📊 [Alertas 보고서] 테이블 빌드 시작');
-            debugPrint('   → keys: $keys');
-            debugPrint('   → keys.length: ${keys.length}');
-            debugPrint('   → displayedList.length: ${displayedList.length}');
-            debugPrint('   → dataList.length: ${dataList.length}');
-            debugPrint('   → dynamicColumnWidths: $dynamicColumnWidths');
-            debugPrint('   → screenWidth: $screenWidth');
-            debugPrint('   → availableWidth: $availableWidth');
-            debugPrint('═══════════════════════════════════════════════════════');
-            
-            // 헤더를 별도로 분리하여 수평 스크롤 동기화
-            debugPrint('📊 [Alertas 보고서] 헤더 빌드 시작');
-            debugPrint('   → keys: $keys');
-            debugPrint('   → columns.length: ${columns.length}');
-            debugPrint('   → dynamicColumnWidths: $dynamicColumnWidths');
-            
-            final headerRow = buildHeaderRow(keys, columns, color, sortColumn, sortAscending, onSort, columnWidths: dynamicColumnWidths, reportType: reportType);
-            
-            debugPrint('📊 [Alertas 보고서] 헤더 빌드 완료');
-            
-            return Column(
-              children: [
-                // 헤더 (수평 스크롤 동기화)
-                headerRow,
-                Expanded(
-                  child: Scrollbar(
-                    controller: scrollController,
-                    thumbVisibility: true,
-                    child: SingleChildScrollView(
-                      controller: scrollController,
-                      scrollDirection: Axis.vertical,
-                      child: DataTable(
-                        columnSpacing: 1, // 8 -> 1로 줄임
-                        dataRowMinHeight: reportType == ReportType.alertas ? null : 12, // Alertas는 자동 높이
-                        dataRowMaxHeight: reportType == ReportType.alertas ? null : 20, // Alertas는 자동 높이
-                        headingRowHeight: 0,
-                        headingRowColor: MaterialStateProperty.all(Colors.transparent),
-                        sortColumnIndex: sortColumn != null && keys.contains(sortColumn) 
-                            ? keys.indexOf(sortColumn) 
-                            : null,
-                        sortAscending: sortAscending,
-                        columns: columns.map((col) {
-                          final index = columns.indexOf(col);
-                          final key = keys[index];
-                          debugPrint('📊 [Alertas 보고서] DataColumn 생성 - index: $index, key: $key, width: ${dynamicColumnWidths[key] ?? 150.0}');
-                          return DataColumn(
-                            label: SizedBox(
-                              width: dynamicColumnWidths[key] ?? 150.0,
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 1), // padding을 1로 설정
-                                child: col.label,
-                              ),
-                            ),
-                            onSort: col.onSort,
-                          );
-                        }).toList(),
-                        rows: displayedList.map((item) {
-                          if (item is Map<String, dynamic>) {
-                            var cells = keys.map((key) {
-                              // 키 이름 대소문자 구분 없이 찾기
-                              final actualKey = item.keys.firstWhere(
-                                (k) => k.toLowerCase() == key.toLowerCase(),
-                                orElse: () => key,
-                              );
-                              final value = item[actualKey];
-                              
-                              // 디버깅: tpago, tefectivo, tbanco, treservado, tfavor 값 확인 (첫 번째 행만)
-                              if (displayedList.indexOf(item) == 0 && 
-                                  (key.toLowerCase() == 'tpago' || 
-                                   key.toLowerCase() == 'tefectivo' || 
-                                   key.toLowerCase() == 'tbanco' || 
-                                   key.toLowerCase() == 'treservado' || 
-                                   key.toLowerCase() == 'tfavor')) {
-                                print('🔍 Alertas ${key.toUpperCase()} 값 확인 - key: $key, actualKey: $actualKey, value: $value, 타입: ${value?.runtimeType}');
-                              }
-                              
-                              final keyLower = key.toLowerCase();
-                              final isEventoColumn = keyLower == 'evento';
-                              
-                              // evento 컬럼은 formatValue에서 자르지 않음 (2줄 표시를 위해)
-                              String formattedValue;
-                              if (isEventoColumn && value is String) {
-                                formattedValue = value.replaceAll('\$', '').trim();
-                              } else {
-                                formattedValue = ReportUtils.formatValue(value, fieldName: key, reportType: reportType);
-                              }
-                              
-                              final isAmountColumn = keyLower == 'sucursal';
-                              final isNumeric = ReportUtils.isNumeric(value) || isAmountColumn;
-                              
-                              final cellWidth = dynamicColumnWidths[key] ?? 150.0;
-                              
-                              return DataCell(
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 1), // padding을 1로 설정
-                                  child: SizedBox(
-                                    width: cellWidth,
-                                    child: Align(
-                                      alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
-                                      child: Wrap(
-                                        children: [
-                                          Text(
-                                            formattedValue,
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              height: isEventoColumn ? 1.3 : 1.2,
-                                            ),
-                                            maxLines: null, // Alertas는 모든 줄 표시
-                                            overflow: TextOverflow.visible, // 내용에 맞게 자동 높이 조절
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }).toList();
-                            
-                            return DataRow(cells: cells);
-                          }
-                          return DataRow(cells: keys.map((key) => DataCell(
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 1), // padding을 1로 설정
-                              child: const Text(''),
-                            ),
-                          )).toList());
-                        }).toList(),
-                      ),
-                    ),
-                  ),
-                ),
-                // Footer: 총 데이터 개수만 표시
-                Builder(
-                  builder: (context) {
-                    debugPrint('📊 [Alertas 보고서] Footer 빌드 시작');
-                    debugPrint('   → dataList.length: ${dataList.length}');
-                    debugPrint('   → displayedList.length: ${displayedList.length}');
-                    
-                    return Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: color.withOpacity(0.1),
-                        border: Border(top: BorderSide(color: color, width: 1)),
-                      ),
-                      child: Row(
-                        children: [
-                          Text(
-                            'Total: ${dataList.length} registros',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: color,
-                              fontSize: 14,
-                  ),
-                ),
-              ],
-                      ),
-                    );
-                  },
-                ),
-              ],
-            );
-          },
-        );
-      }
-      
-      // 헤더를 별도로 분리하여 수평 스크롤 동기화
-      final headerRow = buildHeaderRow(keys, columns, color, sortColumn, sortAscending, onSort, reportType: reportType);
-      
-      // 헤더와 푸터용 별도 컨트롤러 생성 (데이터 테이블과 동기화)
-      final headerFooterScrollController = horizontalScrollController != null
-          ? ScrollController()
-          : null;
-      
-      return Column(
-        children: [
-          // 헤더 (수평 스크롤 동기화 - 별도 컨트롤러 사용)
-          if (horizontalScrollController != null && headerFooterScrollController != null)
-            SingleChildScrollView(
-              controller: headerFooterScrollController,
-              scrollDirection: Axis.horizontal,
-              physics: const NeverScrollableScrollPhysics(),
-              child: headerRow,
-            )
-          else
-            headerRow,
-          Expanded(
-            child: Scrollbar(
-              controller: scrollController,
-              thumbVisibility: true,
-              child: NotificationListener<ScrollNotification>(
-                onNotification: (notification) {
-                  // 데이터 부분의 수평 스크롤 이벤트를 헤더에 전달
-                  if (notification is ScrollUpdateNotification && 
-                      notification.depth == 0 && 
-                      notification.metrics.axis == Axis.horizontal &&
-                      horizontalScrollController != null &&
-                      horizontalScrollController.hasClients) {
-                    horizontalScrollController.jumpTo(notification.metrics.pixels);
-                  }
-                  return false;
-                },
-              child: SingleChildScrollView(
-                controller: scrollController,
-                scrollDirection: Axis.vertical,
-                  child: horizontalScrollController != null
-                      ? SingleChildScrollView(
-                          controller: horizontalScrollController,
-                  scrollDirection: Axis.horizontal,
-                  child: DataTable(
-                    columnSpacing: reportType == ReportType.alertas ? 1 : 8, // alertas는 1로 설정
-                            dataRowMinHeight: reportType == ReportType.alertas ? null : 48, // Alertas는 자동 높이
-                            dataRowMaxHeight: reportType == ReportType.alertas ? null : 56, // Alertas는 자동 높이
-                            headingRowHeight: 0, // 헤더는 _buildHeaderRow로 표시하므로 0으로 설정
-                    headingRowColor: MaterialStateProperty.all(
-                              Colors.transparent, // 헤더 배경을 투명하게
-                    ),
-                    sortColumnIndex: sortColumn != null && keys.contains(sortColumn) 
-                        ? keys.indexOf(sortColumn) 
-                        : null,
-                    sortAscending: sortAscending,
-                    columns: columns, // columns는 정렬 기능을 위해 필요하지만 headingRowHeight가 0이므로 표시되지 않음
-                    rows: displayedList.map((item) {
-                      if (item is Map<String, dynamic>) {
-                        // keys의 각 키에 대해 셀 생성 (키가 없어도 셀은 생성)
-                        var cells = keys.map((key) {
-                          // 키 이름 대소문자 구분 없이 찾기
-                          final actualKey = item.keys.firstWhere(
-                            (k) => k.toLowerCase() == key.toLowerCase(),
-                            orElse: () => key,
-                          );
-                          final value = item[actualKey];
-                          
-                          // 디버깅: tpago, tefectivo, tbanco, treservado, tfavor 값 확인
-                          if (key.toLowerCase() == 'tpago' || 
-                              key.toLowerCase() == 'tefectivo' || 
-                              key.toLowerCase() == 'tbanco' || 
-                              key.toLowerCase() == 'treservado' || 
-                              key.toLowerCase() == 'tfavor') {
-                            if (value == null || value == 0) {
-                              print('⚠️ ${key.toUpperCase()} 값 확인 - key: $key, actualKey: $actualKey, value: $value, 타입: ${value?.runtimeType}');
-                              print('   item의 모든 키: ${item.keys.toList()}');
-                            }
-                          }
-                          String formattedValue;
-                          
-                          // codigo 관련 칼럼은 문자로 처리 (숫자 포맷팅 제외)
-                          // vcode는 서버에서 이미 right(vcode, 5)로 처리되었으므로 특별 처리 불필요
-                          final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1' || key == 'vcode';
-                          
-                          // year 필드 포맷팅: "2025-01-01" 또는 "2025" -> "2025" (대소문자 구분 없음)
-                          final keyLower = key.toLowerCase();
-                          if (keyLower == 'year' && value != null) {
-                            final yearStr = value.toString();
-                            print('🔵🔵🔵 year 필드 포맷팅 - key: $key, keyLower: $keyLower, value: $yearStr, unit: $unit');
-                            if (yearStr.contains('-')) {
-                              // "YYYY-MM-DD" 또는 "YYYY-MM" 형식에서 연도만 추출
-                              formattedValue = yearStr.split('-')[0];
-                              print('🔵🔵🔵 year 포맷팅 결과: $formattedValue (원본: $yearStr)');
-                            } else {
-                              formattedValue = yearStr;
-                            }
-                          }
-                          // month 필드 포맷팅: "2025-12-01" -> "2025-12" (대소문자 구분 없음)
-                          else if (keyLower == 'month' && value != null) {
-                            final monthStr = value.toString();
-                            if (monthStr.length >= 7 && monthStr.contains('-')) {
-                              // "YYYY-MM-DD" 형식을 "YYYY-MM"으로 변환
-                              formattedValue = monthStr.substring(0, 7);
-                            } else {
-                              formattedValue = monthStr;
-                            }
-                          } else {
-                            formattedValue = isCodigoColumn 
-                                ? (value?.toString() ?? 'N/A')
-                                : ReportUtils.formatValue(value, fieldName: key, reportType: reportType);
-                          }
-                          
-                          // 디버깅: year 필드인데 포맷팅이 안 된 경우
-                          if (keyLower == 'year' && formattedValue.contains('-')) {
-                            print('⚠️⚠️⚠️ year 필드가 포맷팅되지 않았습니다! key: $key, formattedValue: $formattedValue');
-                          }
-                          
-                          // 금액/숫자 관련 컬럼명 체크 (명시적으로 숫자로 처리)
-                          final isAmountColumn = keyLower.contains('costo') || 
-                                                 keyLower.contains('importe') || 
-                                                 keyLower.contains('ingreso') || 
-                                                 keyLower.contains('precio') ||
-                                                 keyLower.contains('pre') ||
-                                                 keyLower.contains('venta') ||
-                                                 keyLower.contains('cantidad') ||
-                                                 keyLower.contains('count') ||
-                                                 keyLower.contains('total') ||
-                                                 keyLower == 'sucursal' || // alertas 보고서의 sucursal 컬럼
-                                                 (keyLower.startsWith('t') && 
-                                                  (keyLower.contains('cant') || 
-                                                   keyLower.contains('event') ||
-                                                   keyLower.contains('prendas')));
-                          
-                          final isNumeric = (key != 'codigo' && key != 'codigo1' && key != 'tcode' && key != 'id_codigo1' && key != 'vcode') 
-                              ? (ReportUtils.isNumeric(value) || isAmountColumn)
-                              : false;
-                          
-                          // 헤더와 일치하는 고정 너비 적용
-                          final cellWidth = columnWidths[key] ?? 150.0;
-                          
-                          // Alertas 보고서는 내용에 맞게 자동 높이 조절
-                          final isAlertas = reportType == ReportType.alertas;
-                          final isEventoColumn = key.toLowerCase() == 'evento';
-                          
-                          return DataCell(
-                            SizedBox(
-                              width: cellWidth,
-                              child: Align(
-                                alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
-                                child: isAlertas
-                                    ? Wrap(
-                                        children: [
-                                          Text(
-                                            formattedValue,
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              height: isEventoColumn ? 1.3 : 1.2,
-                                            ),
-                                            maxLines: null, // 모든 줄 표시
-                                            overflow: TextOverflow.visible, // 내용에 맞게 자동 높이 조절
-                                          ),
-                                        ],
-                                      )
-                                    : Text(
-                                        formattedValue,
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          height: 1.2, // 읽기 가능한 줄 높이로 조정
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                              ),
-                            ),
-                          );
-                        }).toList();
-                        
-                        // 셀 개수가 keys.length와 일치하는지 확인
-                        assert(cells.length == keys.length, 
-                          'Row cells count (${cells.length}) must match keys count (${keys.length})');
-                        
-                        // ventas 보고서의 vcode 단위에서 더블 탭 및 단일 탭 제스처 추가
-                        if ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas && unit == 'vcode' && cells.isNotEmpty) {
-                          // vcode 컬럼의 인덱스 찾기
-                          final vcodeIndex = keys.indexOf('vcode');
-                          if (vcodeIndex >= 0 && vcodeIndex < cells.length) {
-                            final vcodeCell = cells[vcodeIndex];
-                            if (vcodeCell.child is SizedBox) {
-                              final sizedBox = vcodeCell.child as SizedBox;
-                              if (sizedBox.child is Align) {
-                                final align = sizedBox.child as Align;
-                                cells[vcodeIndex] = DataCell(
-                                  GestureDetector(
-                                    onTap: onRowTap != null ? () => onRowTap(item) : null,
-                                    onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
-                                    behavior: HitTestBehavior.opaque,
-                                    child: Container(
-                                      width: double.infinity,
-                                      height: double.infinity,
-                                      alignment: align.alignment,
-                                      child: align.child,
-                                    ),
-                                  ),
-                                );
-                              }
-                            }
-                          }
-                          // vcode 컬럼을 찾지 못한 경우 첫 번째 셀에 적용 (하위 호환성)
-                          else if (cells.isNotEmpty) {
-                          final firstCell = cells[0];
-                            if (firstCell.child is SizedBox) {
-                              final sizedBox = firstCell.child as SizedBox;
-                              if (sizedBox.child is Align) {
-                                final align = sizedBox.child as Align;
-                            cells[0] = DataCell(
-                              GestureDetector(
-                                    onTap: onRowTap != null ? () => onRowTap(item) : null,
-                                onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
-                                behavior: HitTestBehavior.opaque,
-                                child: Container(
-                                  width: double.infinity,
-                                  height: double.infinity,
-                                  alignment: align.alignment,
-                                  child: align.child,
-                                ),
-                              ),
-                            );
-                              }
-                            }
-                          }
-                        }
-                        
-                        return DataRow(cells: cells);
-                      }
-                      // Map이 아닌 경우에도 keys.length만큼 셀 생성
-                      final formattedValue = ReportUtils.formatValue(item);
-                      final isNumeric = ReportUtils.isNumeric(item);
-                      final nonMapCells = List.generate(keys.length, (index) {
-                        return DataCell(
-                          Align(
-                            alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
-                            child: Text(
-                              index == 0 ? formattedValue : '',
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                          ),
-                        );
-                      });
-                      
-                      // ventas 보고서의 경우 제스처 추가
-                      // year, month, day 단위: 모든 셀에 제스처 추가
-                      // vcode 단위: 첫 번째 셀에만 제스처 추가
-                      if ((onRowDoubleTap != null || onRowTap != null) && reportType == ReportType.ventas && nonMapCells.isNotEmpty && item is Map<String, dynamic>) {
-                        final updatedCells = List<DataCell>.from(nonMapCells);
-                        
-                        if (unit == 'year' || unit == 'month' || unit == 'day') {
-                          // year, month, day 단위: 모든 셀에 제스처 추가
-                          for (int i = 0; i < updatedCells.length; i++) {
-                            final cell = updatedCells[i];
-                            if (cell.child is Align) {
-                              final align = cell.child as Align;
-                              updatedCells[i] = DataCell(
-                                GestureDetector(
-                                  onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
-                                  behavior: HitTestBehavior.opaque,
-                                  child: Container(
-                                    width: double.infinity,
-                                    height: double.infinity,
-                                    alignment: align.alignment,
-                                    child: align.child,
-                                  ),
-                                ),
-                              );
-                            }
-                          }
-                        } else {
-                          // vcode 단위: 첫 번째 셀에만 제스처 추가
-                          final firstCell = updatedCells[0];
-                          if (firstCell.child is Align) {
-                            final align = firstCell.child as Align;
-                            updatedCells[0] = DataCell(
-                              GestureDetector(
-                                onTap: (onRowTap != null && unit == 'vcode') ? () => onRowTap(item) : null,
-                                onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
-                                behavior: HitTestBehavior.opaque,
-                                child: Container(
-                                  width: double.infinity,
-                                  height: double.infinity,
-                                  alignment: align.alignment,
-                                  child: align.child,
-                                ),
-                              ),
-                            );
-                          }
-                        }
-                        
-                        return DataRow(cells: updatedCells);
-                      }
-                      
-                      return DataRow(cells: nonMapCells);
-                    }).toList(),
-                          ),
-                        )
-                      : DataTable(
-                          columnSpacing: reportType == ReportType.alertas ? 1 : 8, // alertas는 1로 설정
-                          dataRowMinHeight: reportType == ReportType.alertas ? 72 : 48, // Alertas는 1.5배 높이
-                          dataRowMaxHeight: reportType == ReportType.alertas ? 84 : 56, // Alertas는 1.5배 높이
-                          headingRowHeight: reportType == ReportType.ventas ? 0 : 56, // ventas는 상단 헤더 사용
-                          headingRowColor: MaterialStateProperty.all(
-                            Colors.transparent,
-                          ),
-                          sortColumnIndex: sortColumn != null && keys.contains(sortColumn) 
-                              ? keys.indexOf(sortColumn) 
-                              : null,
-                          sortAscending: sortAscending,
-                          columns: columns,
-                          rows: displayedList.map((item) {
-                            print('🔵 DataTable rows 생성 - unit: $unit, reportType: $reportType, onRowDoubleTap: ${onRowDoubleTap != null}');
-                            if (item is Map<String, dynamic>) {
-                              var cells = keys.map((key) {
-                                final value = item[key];
-                                String formattedValue;
-                                // codigo 관련 칼럼은 문자로 처리 (숫자 포맷팅 제외)
-                                // vcode는 서버에서 이미 right(vcode, 5)로 처리되었으므로 특별 처리 불필요
-                                final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1' || key == 'vcode';
-                                
-                                // year 필드 포맷팅: "2025-01-01" 또는 "2025" -> "2025" (대소문자 구분 없음)
-                                final keyLower = key.toLowerCase();
-                                if (keyLower == 'year' && value != null) {
-                                  final yearStr = value.toString();
-                                  print('🔵 year 필드 포맷팅 - key: $key, value: $yearStr');
-                                  if (yearStr.contains('-')) {
-                                    // "YYYY-MM-DD" 또는 "YYYY-MM" 형식에서 연도만 추출
-                                    formattedValue = yearStr.split('-')[0];
-                                    print('🔵 year 포맷팅 결과: $formattedValue');
-                                  } else {
-                                    formattedValue = yearStr;
-                                  }
-                                }
-                                // month 필드 포맷팅: "2025-12-01" -> "2025-12" (대소문자 구분 없음)
-                                else if (keyLower == 'month' && value != null) {
-                                  final monthStr = value.toString();
-                                  if (monthStr.length >= 7 && monthStr.contains('-')) {
-                                    // "YYYY-MM-DD" 형식을 "YYYY-MM"으로 변환
-                                    formattedValue = monthStr.substring(0, 7);
-                                  } else {
-                                    formattedValue = monthStr;
-                                  }
-                                } else {
-                                  formattedValue = isCodigoColumn 
-                                      ? (value?.toString() ?? 'N/A')
-                                      : ReportUtils.formatValue(value, fieldName: key, reportType: reportType);
-                                }
-                                
-                                // 금액/숫자 관련 컬럼명 체크 (명시적으로 숫자로 처리)
-                                final isAmountColumn = keyLower.contains('costo') ||
-                                                       keyLower.contains('importe') ||
-                                                       keyLower.contains('ingreso') ||
-                                                       keyLower.contains('precio') ||
-                                                       keyLower.contains('pre') ||
-                                                       keyLower.contains('venta') ||
-                                                       keyLower.contains('cantidad') ||
-                                                       keyLower.contains('count') ||
-                                                       keyLower.contains('total') ||
-                                                       keyLower == 'sucursal' || // alertas 보고서의 sucursal 컬럼
-                                                       (keyLower.startsWith('t') &&
-                                                        (keyLower.contains('cant') ||
-                                                         keyLower.contains('event') ||
-                                                         keyLower.contains('prendas')));
-                                
-                                final isNumeric = (key != 'codigo' && key != 'codigo1' && key != 'tcode' && key != 'id_codigo1' && key != 'vcode')
-                                    ? (ReportUtils.isNumeric(value) || isAmountColumn)
-                                    : false;
-                                // alertas 보고서는 padding을 1로 설정
-                                final cellWidget = Align(
-                                  alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
-                                  child: Text(
-                                    formattedValue,
-                                    style: const TextStyle(fontSize: 14),
-                                  ),
-                                );
-                                
-                                if (reportType == ReportType.alertas) {
-                                  debugPrint('🔍 [Alertas DataCell] padding=1 설정 - key: $key, value: $formattedValue');
-                                  return DataCell(
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 1), // padding을 1로 설정
-                                      child: cellWidget,
-                                    ),
-                                  );
-                                }
-                                
-                                return DataCell(cellWidget);
-                              }).toList();
-                              assert(cells.length == keys.length);
-                              
-                              // ventas 보고서의 vcode 단위 또는 clientes 보고서에서 더블 탭 및 단일 탭 제스처 추가
-                              final finalCells = ((onRowDoubleTap != null || onRowTap != null) && 
-                                  ((reportType == ReportType.ventas && unit == 'vcode') || reportType == ReportType.clientes) && 
-                                  cells.isNotEmpty)
-                                  ? (() {
-                                      final updatedCells = List<DataCell>.from(cells);
-                                      
-                                      // clientes 보고서의 경우 모든 셀에 더블 클릭 및 단일 클릭 제스처 추가
-                                      if (reportType == ReportType.clientes) {
-                                        debugPrint('═══════════════════════════════════════════════════════════');
-                                        debugPrint('🔨 [report_table_builder] clientes 보고서 - 셀에 더블클릭 및 단일클릭 제스처 추가');
-                                        debugPrint('→ updatedCells.length: ${updatedCells.length}');
-                                        debugPrint('→ onRowDoubleTap: ${onRowDoubleTap != null ? "존재함" : "null"}');
-                                        debugPrint('→ onRowTap: ${onRowTap != null ? "존재함" : "null"}');
-                                        debugPrint('→ item keys: ${item is Map ? (item as Map).keys.toList() : "N/A"}');
-                                        
-                                        for (int i = 0; i < updatedCells.length; i++) {
-                                          final cell = updatedCells[i];
-                                          if (cell.child is Align) {
-                                            final align = cell.child as Align;
-                                            updatedCells[i] = DataCell(
-                                              GestureDetector(
-                                                onTap: onRowTap != null ? () {
-                                                  debugPrint('🔍 [report_table_builder] clientes 셀 단일클릭 감지됨!');
-                                                  debugPrint('→ 셀 인덱스: $i');
-                                                  debugPrint('→ item: $item');
-                                                  onRowTap(item);
-                                                } : null,
-                                                onDoubleTap: onRowDoubleTap != null ? () {
-                                                  debugPrint('🔍 [report_table_builder] clientes 셀 더블클릭 감지됨!');
-                                                  debugPrint('→ 셀 인덱스: $i');
-                                                  debugPrint('→ item: $item');
-                                                  onRowDoubleTap(item);
-                                                } : null,
-                                                behavior: HitTestBehavior.opaque,
-                                                child: Container(
-                                                  width: double.infinity,
-                                                  height: double.infinity,
-                                                  alignment: align.alignment,
-                                                  child: align.child,
-                                                ),
-                                              ),
-                                            );
-                                          }
-                                        }
-                                        debugPrint('✅ [report_table_builder] clientes 셀 제스처 추가 완료');
-                                        debugPrint('═══════════════════════════════════════════════════════════');
-                                        return updatedCells;
-                                      }
-                                      
-                                      // ventas 보고서의 vcode 단위: vcode 컬럼의 인덱스 찾기
-                                      final vcodeIndex = keys.indexOf('vcode');
-                                      if (vcodeIndex >= 0 && vcodeIndex < updatedCells.length) {
-                                        final vcodeCell = updatedCells[vcodeIndex];
-                                        if (vcodeCell.child is Align) {
-                                          final align = vcodeCell.child as Align;
-                                          updatedCells[vcodeIndex] = DataCell(
-                                            GestureDetector(
-                                              onTap: onRowTap != null ? () => onRowTap(item) : null,
-                                              onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
-                                              behavior: HitTestBehavior.opaque,
-                                              child: Container(
-                                                width: double.infinity,
-                                                height: double.infinity,
-                                                alignment: align.alignment,
-                                                child: align.child,
-                                              ),
-                                            ),
-                                          );
-                                        }
-                                      }
-                                      // vcode 컬럼을 찾지 못한 경우 첫 번째 셀에 적용 (하위 호환성)
-                                      else if (updatedCells.isNotEmpty) {
-                                      final firstCell = updatedCells[0];
-                                      if (firstCell.child is Align) {
-                                        final align = firstCell.child as Align;
-                                        updatedCells[0] = DataCell(
-                                          GestureDetector(
-                                              onTap: onRowTap != null ? () => onRowTap(item) : null,
-                                            onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
-                                            behavior: HitTestBehavior.opaque,
-                                            child: Container(
-                                              width: double.infinity,
-                                              height: double.infinity,
-                                              alignment: align.alignment,
-                                              child: align.child,
-                                            ),
-                                          ),
-                                        );
-                                        }
-                                      }
-                                      return updatedCells;
-                                    })()
-                                  : cells;
-                              
-                              return DataRow(cells: finalCells);
-                            }
-                            final formattedValue = ReportUtils.formatValue(item);
-                            final isNumeric = ReportUtils.isNumeric(item);
-                            final nonMapCells = List.generate(keys.length, (index) {
-                              return DataCell(
-                                Align(
-                                  alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
-                                  child: Text(
-                                    index == 0 ? formattedValue : '',
-                                    style: const TextStyle(fontSize: 14),
-                                  ),
-                                ),
-                              );
-                            });
-                            
-                            // ventas 보고서의 vcode 단위 또는 clientes 보고서에서 더블 탭 및 단일 탭 제스처 추가
-                            if ((onRowDoubleTap != null || onRowTap != null) && 
-                                ((reportType == ReportType.ventas && unit == 'vcode') || reportType == ReportType.clientes) && 
-                                nonMapCells.isNotEmpty && item is Map<String, dynamic>) {
-                              final updatedCells = List<DataCell>.from(nonMapCells);
-                              
-                              // clientes 보고서의 경우 모든 셀에 더블 클릭 및 단일 클릭 제스처 추가
-                              if (reportType == ReportType.clientes) {
-                                debugPrint('═══════════════════════════════════════════════════════════');
-                                debugPrint('🔨 [report_table_builder] clientes 보고서 (nonMapCells) - 셀에 더블클릭 및 단일클릭 제스처 추가');
-                                debugPrint('→ updatedCells.length: ${updatedCells.length}');
-                                debugPrint('→ onRowDoubleTap: ${onRowDoubleTap != null ? "존재함" : "null"}');
-                                debugPrint('→ onRowTap: ${onRowTap != null ? "존재함" : "null"}');
-                                debugPrint('→ item keys: ${item is Map ? (item as Map).keys.toList() : "N/A"}');
-                                
-                                for (int i = 0; i < updatedCells.length; i++) {
-                                  final cell = updatedCells[i];
-                                  if (cell.child is Align) {
-                                    final align = cell.child as Align;
-                                    updatedCells[i] = DataCell(
-                                      GestureDetector(
-                                        onTap: onRowTap != null ? () {
-                                          debugPrint('🔍 [report_table_builder] clientes 셀 단일클릭 감지됨! (nonMapCells)');
-                                          debugPrint('→ 셀 인덱스: $i');
-                                          debugPrint('→ item: $item');
-                                          onRowTap(item);
-                                        } : null,
-                                        onDoubleTap: onRowDoubleTap != null ? () {
-                                          debugPrint('🔍 [report_table_builder] clientes 셀 더블클릭 감지됨! (nonMapCells)');
-                                          debugPrint('→ 셀 인덱스: $i');
-                                          debugPrint('→ item: $item');
-                                          onRowDoubleTap(item);
-                                        } : null,
-                                        behavior: HitTestBehavior.opaque,
-                                        child: Container(
-                                          width: double.infinity,
-                                          height: double.infinity,
-                                          alignment: align.alignment,
-                                          child: align.child,
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                }
-                                debugPrint('✅ [report_table_builder] clientes 셀 제스처 추가 완료 (nonMapCells)');
-                                debugPrint('═══════════════════════════════════════════════════════════');
-                                return DataRow(cells: updatedCells);
-                              }
-                              
-                              // ventas 보고서의 vcode 단위: vcode 컬럼의 인덱스 찾기
-                              final vcodeIndex = keys.indexOf('vcode');
-                              if (vcodeIndex >= 0 && vcodeIndex < updatedCells.length) {
-                                final vcodeCell = updatedCells[vcodeIndex];
-                                if (vcodeCell.child is Align) {
-                                  final align = vcodeCell.child as Align;
-                                  updatedCells[vcodeIndex] = DataCell(
-                                    GestureDetector(
-                                      onTap: onRowTap != null ? () => onRowTap(item) : null,
-                                      onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
-                                      behavior: HitTestBehavior.opaque,
-                                      child: Container(
-                                        width: double.infinity,
-                                        height: double.infinity,
-                                        alignment: align.alignment,
-                                        child: align.child,
-                                      ),
-                                    ),
-                                  );
-                                }
-                              }
-                              // vcode 컬럼을 찾지 못한 경우 첫 번째 셀에 적용 (하위 호환성)
-                              else if (updatedCells.isNotEmpty) {
-                              final firstCell = updatedCells[0];
-                              if (firstCell.child is Align) {
-                                final align = firstCell.child as Align;
-                                updatedCells[0] = DataCell(
-                                  GestureDetector(
-                                      onTap: onRowTap != null ? () => onRowTap(item) : null,
-                                    onDoubleTap: onRowDoubleTap != null ? () => onRowDoubleTap(item) : null,
-                                    behavior: HitTestBehavior.opaque,
-                                    child: Container(
-                                      width: double.infinity,
-                                      height: double.infinity,
-                                      alignment: align.alignment,
-                                      child: align.child,
-                                    ),
-                                  ),
-                                );
-                                }
-                              }
-                              return DataRow(cells: updatedCells);
-                            }
-                            
-                            return DataRow(cells: nonMapCells);
-                          }).toList(),
-                        ),
-                ),
-              ),
-            ),
-          ),
-          // 고정된 합계 행 (items 보고서는 전체 데이터, 다른 보고서는 displayedList 사용)
-          buildFixedTotalRow(
-            keys, 
-            displayedList, 
-            color,
-            dataList: dataList,
-            reportType: reportType,
-          ),
-        ],
-      );
-    }
-
-    // 다른 보고서는 기존 방식 유지 (ventas는 DataTable 헤더 사용)
-    // ventas 보고서의 경우 별도 헤더를 사용하지 않고 DataTable 헤더만 사용
-    // clientes 보고서도 별도 헤더를 사용하지 않고 DataTable 헤더만 사용
-    final headerRow = (reportType == ReportType.ventas || reportType == ReportType.clientes)
-        ? null 
-        : buildHeaderRow(keys, columns, color, sortColumn, sortAscending, onSort, reportType: reportType);
-    
-    // items 및 ingresos 보고서는 이미 위에서 처리되었으므로 여기서는 일반 모드로 진행
-    debugPrint('═══════════════════════════════════════════════════════');
-    debugPrint('📊 [ReportTableBuilder:1491] buildTableFromList - 일반 모드 (Items/Ingresos는 이미 처리됨)');
-    debugPrint('   → 파일: report_table_builder.dart');
-    debugPrint('   → 라인: 1491');
-    debugPrint('   → reportType: $reportType');
-    
-    // fventas 및 ventas 보고서의 경우 헤더, 테이블, 푸터를 하나의 수평 스크롤 컨테이너로 감싸서 동기화
-    // 헤더와 푸터용 별도 컨트롤러 생성 (데이터 테이블과 동기화)
-    final headerFooterScrollController = (reportType == ReportType.fventas || reportType == ReportType.ventas) && horizontalScrollController != null
-        ? ScrollController()
-        : null;
-    
-    if ((reportType == ReportType.fventas || reportType == ReportType.ventas) && horizontalScrollController != null) {
-      // 테이블의 실제 너비 계산 (buildHeaderRow와 동일한 방식)
-      double calculateTableWidth() {
-        // buildHeaderRow에서 사용하는 기본 columnWidths 가져오기
-        final defaultColumnWidths = <String, double>{
-          'codigo1': 200,
-          'desc1': 200,
-          'ProductName': 400,
-          'totalCantidad': 120,
-          'CategoryCode': 100,
-          'CompanyCode': 100,
-          'tprendas': 100,
-          'timporte': 120,
-          'codigo': 120,
-          'descripcion': 200,
-          'tevent': 100,
-          'tcant': 120,
-          'tIngreso': 120,
-          'tingreso': 120,
-          'cntEvent': 100,
-          'cntevent': 100,
-          'fecha': 120,
-          'hora': 100,
-          'evento': 500,
-          'progname': 150,
-          'alerta': 80,
-          'sucursal': 100,
-          // ventas 보고서용 컬럼 너비
-          'vcode': 100,
-          'tpago': 120,
-          'cntropas': 100,
-          'clientenombre': 200,
-          'tefectivo': 120,
-          'tcredito': 120,
-          'tbanco': 120,
-          'treservado': 120,
-          'tfavor': 120,
-          'vendedor': 150,
-          'tipo': 80,
-          'dni': 120,
-          'resiva': 100,
-          'casoesp': 150,
-          'nencargado': 150,
-          'cretmp': 100,
-          'ntiqrepetir': 100,
-          'b_mercadopago': 100,
-          'd_num_caja': 100,
-          'd_num_terminal': 100,
-          'id': 80,
-        };
-        final finalColumnWidths = columnWidths ?? defaultColumnWidths;
-        
-        double totalWidth = 0.0;
-        for (int i = 0; i < keys.length; i++) {
-          final key = keys[i];
-          final width = finalColumnWidths[key] ?? 150.0;
-          totalWidth += width;
-          if (i < keys.length - 1) {
-            totalWidth += 8; // columnSpacing
-          }
-        }
-        return totalWidth;
-      }
-      
-      final tableWidth = calculateTableWidth();
-      
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 헤더 (수평 스크롤 컨테이너로 감싸기) - fventas만, ventas는 헤더 없음
-          if (reportType == ReportType.fventas && headerRow != null)
-            SingleChildScrollView(
-              controller: horizontalScrollController,
-              scrollDirection: Axis.horizontal,
-              physics: const NeverScrollableScrollPhysics(),
-              child: SizedBox(
-                width: tableWidth,
-                child: buildHeaderRow(
-                  keys,
-                  columns,
-                  color,
-                  sortColumn,
-                  sortAscending,
-                  onSort,
-                  columnWidths: columnWidths,
-                  reportType: reportType,
-                  explicitWidth: tableWidth, // 명시적 너비 전달
-                ),
-              ),
-            ),
-          Expanded(
-            child: Scrollbar(
-              controller: scrollController,
-              thumbVisibility: true,
-              child: NotificationListener<ScrollNotification>(
-                onNotification: (notification) {
-                  // 디버깅: 스크롤 이벤트 감지
-                  debugPrint('🔍 [${reportType.name}] 외부 NotificationListener 스크롤 이벤트');
-                  debugPrint('   → notification 타입: ${notification.runtimeType}');
-                  debugPrint('   → notification.depth: ${notification.depth}');
-                  
-                  // 데이터 부분의 수평 스크롤 이벤트를 헤더와 푸터에 전달
-                  if (notification is ScrollUpdateNotification) {
-                    debugPrint('   → ScrollUpdateNotification 감지');
-                    debugPrint('   → metrics.axis: ${notification.metrics.axis}');
-                    debugPrint('   → metrics.pixels: ${notification.metrics.pixels}');
-                    debugPrint('   → metrics.maxScrollExtent: ${notification.metrics.maxScrollExtent}');
-                    debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
-                    
-                    if (notification.metrics.axis == Axis.horizontal) {
-                      debugPrint('   ✅ 수평 스크롤 이벤트 확인');
-                      debugPrint('   → horizontalScrollController.hasClients: ${horizontalScrollController?.hasClients ?? false}');
-                      
-                      if (horizontalScrollController != null && horizontalScrollController.hasClients) {
-                        try {
-                          if (horizontalScrollController.positions.length == 1) {
-                            // 위치가 다를 때만 업데이트 (무한 루프 방지)
-                            final tableScrollPosition = notification.metrics.pixels;
-                            final footerScrollPosition = horizontalScrollController.position.pixels;
-                            final difference = (tableScrollPosition - footerScrollPosition).abs();
-                        
-                            debugPrint('   → 테이블 스크롤 위치: $tableScrollPosition');
-                            debugPrint('   → 푸터 스크롤 위치: $footerScrollPosition');
-                            debugPrint('   → 위치 차이: $difference');
-                            
-                            if (difference > 0.1) {
-                              debugPrint('   ✅ 위치 차이 > 0.1, jumpTo 호출: $tableScrollPosition');
-                              horizontalScrollController.jumpTo(tableScrollPosition);
-                            } else {
-                              debugPrint('   ⚠️ 위치 차이 <= 0.1, 동기화 스킵');
-                            }
-                          }
-                        } catch (e) {
-                          debugPrint('   ⚠️ 스크롤 동기화 오류: $e');
-                        }
-                      } else {
-                        debugPrint('   ⚠️ horizontalScrollController가 없거나 클라이언트가 없음');
-                      }
-                    } else {
-                      debugPrint('   ⚠️ 수직 스크롤 이벤트 (무시)');
-                    }
-                  } else if (notification is ScrollStartNotification) {
-                    debugPrint('   → ScrollStartNotification 감지');
-                    debugPrint('   → metrics.axis: ${notification.metrics.axis}');
-                  } else if (notification is ScrollEndNotification) {
-                    debugPrint('   → ScrollEndNotification 감지');
-                    debugPrint('   → metrics.axis: ${notification.metrics.axis}');
-                  }
-                  return false;
-                },
-                child: SingleChildScrollView(
-                  controller: scrollController,
-                  scrollDirection: Axis.vertical,
-                  child: NotificationListener<ScrollNotification>(
-                    onNotification: (notification) {
-                      // 디버깅: 내부 스크롤 이벤트 감지
-                      debugPrint('🔍 [${reportType.name}] 내부 NotificationListener 스크롤 이벤트');
-                      debugPrint('   → notification 타입: ${notification.runtimeType}');
-                      debugPrint('   → notification.depth: ${notification.depth}');
-                      
-                      // 데이터 부분의 수평 스크롤 이벤트를 헤더와 푸터에 전달
-                      if (notification is ScrollUpdateNotification) {
-                        debugPrint('   → ScrollUpdateNotification 감지');
-                        debugPrint('   → metrics.axis: ${notification.metrics.axis}');
-                        debugPrint('   → metrics.pixels: ${notification.metrics.pixels}');
-                        debugPrint('   → metrics.maxScrollExtent: ${notification.metrics.maxScrollExtent}');
-                        debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
-                        
-                        if (notification.metrics.axis == Axis.horizontal) {
-                          debugPrint('   ✅ 수평 스크롤 이벤트 확인');
-                          debugPrint('   → horizontalScrollController.hasClients: ${horizontalScrollController?.hasClients ?? false}');
-                          
-                          if (horizontalScrollController != null && horizontalScrollController.hasClients) {
-                            try {
-                              if (horizontalScrollController.positions.length == 1) {
-                                // 위치가 다를 때만 업데이트 (무한 루프 방지)
-                                final tableScrollPosition = notification.metrics.pixels;
-                                final footerScrollPosition = horizontalScrollController.position.pixels;
-                                final difference = (tableScrollPosition - footerScrollPosition).abs();
-                                
-                                debugPrint('   → 테이블 스크롤 위치: $tableScrollPosition');
-                                debugPrint('   → 푸터 스크롤 위치: $footerScrollPosition');
-                                debugPrint('   → 위치 차이: $difference');
-                                
-                                if (difference > 0.1) {
-                                  debugPrint('   ✅ 위치 차이 > 0.1, jumpTo 호출: $tableScrollPosition');
-                                  horizontalScrollController.jumpTo(tableScrollPosition);
-                                } else {
-                                  debugPrint('   ⚠️ 위치 차이 <= 0.1, 동기화 스킵');
-                                }
-                              }
-                            } catch (e) {
-                              debugPrint('   ⚠️ 스크롤 동기화 오류: $e');
-                            }
-                          } else {
-                            debugPrint('   ⚠️ horizontalScrollController가 없거나 클라이언트가 없음');
-                          }
-                        } else {
-                          debugPrint('   ⚠️ 수직 스크롤 이벤트 (무시)');
-                        }
-                      } else if (notification is ScrollStartNotification) {
-                        debugPrint('   → ScrollStartNotification 감지');
-                        debugPrint('   → metrics.axis: ${notification.metrics.axis}');
-                      } else if (notification is ScrollEndNotification) {
-                        debugPrint('   → ScrollEndNotification 감지');
-                        debugPrint('   → metrics.axis: ${notification.metrics.axis}');
-                      }
-                      return false;
-                    },
-                    child: LayoutBuilder(
-                      builder: (context, innerConstraints) {
-                        // fventas/ventas의 경우 헤더와 푸터는 이미 외부에서 처리되므로 테이블만 반환
-                        // headerFooterScrollController를 클로저로 캡처
-                        final syncController = headerFooterScrollController;
-                        return NotificationListener<ScrollNotification>(
-                          onNotification: (notification) {
-                            // 데이터 테이블의 스크롤 이벤트를 헤더와 푸터에 전달
-                            if (notification is ScrollUpdateNotification &&
-                                notification.metrics.axis == Axis.horizontal &&
-                                horizontalScrollController != null &&
-                                syncController != null) {
-                              final tableScrollPosition = notification.metrics.pixels;
-                              
-                              // 헤더와 푸터 동기화
-                              if (syncController.hasClients) {
-                                try {
-                                  if (syncController.positions.length == 1) {
-                                    final headerScrollPosition = syncController.position.pixels;
-                                    final difference = (tableScrollPosition - headerScrollPosition).abs();
-                                    
-                                    if (difference > 0.1) {
-                                      syncController.jumpTo(tableScrollPosition);
-                                    }
-                                  }
-                                } catch (e) {
-                                  debugPrint('   ⚠️ syncController 동기화 오류: $e');
-                                }
-                              }
-                            }
-                            return false;
-                          },
-                          child: SingleChildScrollView(
-                            controller: horizontalScrollController,
-                            scrollDirection: Axis.horizontal,
-                            child: SizedBox(
-                              width: tableWidth,
-                              child: buildDataTable(
-                                reportType: reportType,
-                                displayedList: displayedList,
-                                keys: keys,
-                                columns: columns,
-                                dataList: dataList,
-                                color: color,
-                                onRowDoubleTap: onRowDoubleTap,
-                                onRowTap: onRowTap,
-                                unit: unit,
-                                columnWidths: columnWidths,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          // 푸터 (수평 스크롤 동기화 - 헤더와 같은 컨트롤러 사용)
-          if (horizontalScrollController != null && headerFooterScrollController != null)
-            SingleChildScrollView(
-              controller: headerFooterScrollController,
-              scrollDirection: Axis.horizontal,
-              physics: const NeverScrollableScrollPhysics(),
-              child: SizedBox(
-                width: tableWidth,
-                child: buildFixedTotalRow(
-                  keys, 
-                  displayedList, 
-                  color,
-                  columnWidths: columnWidths,
-                  dataList: dataList,
-                  reportType: reportType,
-                  explicitWidth: tableWidth, // 명시적 너비 전달
-                ),
-              ),
-            )
-          else
-            SizedBox(
-              width: tableWidth,
-              child: buildFixedTotalRow(
-                keys, 
-                displayedList, 
-                color,
-                columnWidths: columnWidths,
-                dataList: dataList,
-                reportType: reportType,
-                explicitWidth: tableWidth, // 명시적 너비 전달
-              ),
-            ),
-        ],
-      );
-    }
-    
-    // 다른 보고서는 기존 방식 유지
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // 헤더 (수평 스크롤 동기화) - ventas는 제외
-        Builder(
-          builder: (context) {
-            // 디버깅: 헤더 생성 시점 로깅
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              debugPrint('🔍 [${reportType.name}] 다른 보고서 헤더 생성 완료');
-              debugPrint('   → headerRow: ${headerRow != null}');
-              debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
-              if (horizontalScrollController != null) {
-                debugPrint('   → horizontalScrollController.hasClients: ${horizontalScrollController.hasClients}');
-                if (horizontalScrollController.hasClients) {
-                  debugPrint('   → horizontalScrollController.position.pixels: ${horizontalScrollController.position.pixels}');
-                  debugPrint('   → horizontalScrollController.position.maxScrollExtent: ${horizontalScrollController.position.maxScrollExtent}');
-                }
-              }
-            });
-            
-            if (headerRow != null) {
-              if (horizontalScrollController != null) {
-                return SingleChildScrollView(
-                  controller: horizontalScrollController,
-                  scrollDirection: Axis.horizontal,
-                  physics: const NeverScrollableScrollPhysics(),
-                  child: headerRow,
-                );
-              } else {
-                return headerRow;
-              }
-            }
-            return const SizedBox.shrink();
-          },
-        ),
-        Expanded(
-          child: Scrollbar(
-            controller: scrollController,
-            thumbVisibility: true,
-            child: NotificationListener<ScrollNotification>(
-              onNotification: (notification) {
-                // 디버깅: 다른 보고서 스크롤 이벤트 감지
-                debugPrint('🔍 [${reportType.name}] 다른 보고서 NotificationListener 스크롤 이벤트');
-                debugPrint('   → notification 타입: ${notification.runtimeType}');
-                debugPrint('   → notification.depth: ${notification.depth}');
-                
-                // 데이터 부분의 수평 스크롤 이벤트를 헤더와 푸터에 전달
-                if (notification is ScrollUpdateNotification) {
-                  debugPrint('   → ScrollUpdateNotification 감지');
-                  debugPrint('   → metrics.axis: ${notification.metrics.axis}');
-                  debugPrint('   → metrics.pixels: ${notification.metrics.pixels}');
-                  debugPrint('   → metrics.maxScrollExtent: ${notification.metrics.maxScrollExtent}');
-                  debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
-                  
-                  if (notification.metrics.axis == Axis.horizontal) {
-                    debugPrint('   ✅ 수평 스크롤 이벤트 확인');
-                    debugPrint('   → depth == 0: ${notification.depth == 0}');
-                    debugPrint('   → horizontalScrollController.hasClients: ${horizontalScrollController?.hasClients ?? false}');
-                    
-                    // depth == 0 조건 제거 (더 많은 이벤트 캡처)
-                    if (horizontalScrollController != null && horizontalScrollController.hasClients) {
-                      try {
-                        if (horizontalScrollController.positions.length == 1) {
-                          final tableScrollPosition = notification.metrics.pixels;
-                          final headerScrollPosition = horizontalScrollController.position.pixels;
-                          final difference = (tableScrollPosition - headerScrollPosition).abs();
-                          
-                          debugPrint('   → 테이블 스크롤 위치: $tableScrollPosition');
-                          debugPrint('   → 헤더 스크롤 위치: $headerScrollPosition');
-                          debugPrint('   → 위치 차이: $difference');
-                          
-                          if (difference > 0.1) {
-                            debugPrint('   ✅ 위치 차이 > 0.1, jumpTo 호출: $tableScrollPosition');
-                            horizontalScrollController.jumpTo(tableScrollPosition);
-                          } else {
-                            debugPrint('   ⚠️ 위치 차이 <= 0.1, 동기화 스킵');
-                          }
-                        }
-                      } catch (e) {
-                        debugPrint('   ⚠️ 스크롤 동기화 오류: $e');
-                      }
-                    } else {
-                      debugPrint('   ⚠️ horizontalScrollController가 없거나 클라이언트가 없음');
-                    }
-                  } else {
-                    debugPrint('   ⚠️ 수직 스크롤 이벤트 (무시)');
-                  }
-                } else if (notification is ScrollStartNotification) {
-                  debugPrint('   → ScrollStartNotification 감지');
-                  debugPrint('   → metrics.axis: ${notification.metrics.axis}');
-                } else if (notification is ScrollEndNotification) {
-                  debugPrint('   → ScrollEndNotification 감지');
-                  debugPrint('   → metrics.axis: ${notification.metrics.axis}');
-                }
-                return false;
-              },
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  debugPrint('═══════════════════════════════════════════════════════');
-                  debugPrint('📊 [ReportTableBuilder:1520] buildTableFromList LayoutBuilder');
-                  debugPrint('   → 파일: report_table_builder.dart');
-                  debugPrint('   → 라인: 1520');
-                  debugPrint('   → reportType: $reportType');
-                  debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
-                  debugPrint('   → constraints.maxHeight: ${constraints.maxHeight}');
-                  debugPrint('   → constraints.minWidth: ${constraints.minWidth}');
-                  debugPrint('   → constraints.minHeight: ${constraints.minHeight}');
-                  
-                  return SingleChildScrollView(
-              controller: scrollController,
-              scrollDirection: Axis.vertical,
-                    child: _buildTableContent(
-                      constraints: constraints,
-                      horizontalScrollController: horizontalScrollController,
-                      reportType: reportType,
-                      displayedList: displayedList,
-                      keys: keys,
-                      columns: columns,
-                      dataList: dataList,
-                      color: color,
-                      onRowDoubleTap: onRowDoubleTap,
-                      onRowTap: onRowTap,
-                      unit: unit,
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-        ),
-        // 푸터 (화면 하단에 고정, 수평 스크롤 동기화)
-        Builder(
-          builder: (context) {
-            // 테이블 너비 계산 (ventas 등에서 explicitWidth 전달을 위해)
-            double calculateFooterWidth() {
-              final defaultColumnWidths = <String, double>{
-                'codigo1': 200, 'desc1': 200, 'ProductName': 400, 'totalCantidad': 120,
-                'CategoryCode': 100, 'CompanyCode': 100, 'tprendas': 100, 'timporte': 120,
-                'codigo': 120, 'descripcion': 200, 'tevent': 100, 'tcant': 120,
-                'tIngreso': 120, 'tingreso': 120, 'cntEvent': 100, 'cntevent': 100,
-                'fecha': 120, 'hora': 100, 'evento': 500, 'progname': 150,
-                'alerta': 80, 'sucursal': 100,
-                // ventas 보고서용 컬럼 너비
-                'vcode': 100, 'tpago': 120, 'cntropas': 100, 'clientenombre': 200,
-                'tefectivo': 120, 'tcredito': 120, 'tbanco': 120, 'treservado': 120,
-                'tfavor': 120, 'vendedor': 150, 'tipo': 80, 'dni': 120,
-                'resiva': 100, 'casoesp': 150, 'nencargado': 150, 'cretmp': 100,
-                'ntiqrepetir': 100, 'b_mercadopago': 100, 'd_num_caja': 100,
-                'd_num_terminal': 100, 'id': 80,
-              };
-              final finalColumnWidths = columnWidths ?? defaultColumnWidths;
-              
-              double totalWidth = 0.0;
-              for (int i = 0; i < keys.length; i++) {
-                final key = keys[i];
-                final width = finalColumnWidths[key] ?? 150.0;
-                totalWidth += width;
-                if (i < keys.length - 1) {
-                  totalWidth += 8; // columnSpacing
-                }
-              }
-              return totalWidth;
-            }
-            
-            final footerWidth = calculateFooterWidth();
-            
-            // 디버깅: 푸터 생성 시점 로깅
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              debugPrint('🔍 [${reportType.name}] 다른 보고서 푸터 생성 완료');
-              debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
-              debugPrint('   → 계산된 footerWidth: $footerWidth');
-              if (horizontalScrollController != null) {
-                debugPrint('   → horizontalScrollController.hasClients: ${horizontalScrollController.hasClients}');
-                if (horizontalScrollController.hasClients) {
-                  debugPrint('   → horizontalScrollController.position.pixels: ${horizontalScrollController.position.pixels}');
-                  debugPrint('   → horizontalScrollController.position.maxScrollExtent: ${horizontalScrollController.position.maxScrollExtent}');
-                }
-              }
-            });
-            
-            if (horizontalScrollController != null) {
-              return SingleChildScrollView(
-                controller: horizontalScrollController,
-                scrollDirection: Axis.horizontal,
-                physics: const NeverScrollableScrollPhysics(),
-                child: SizedBox(
-                  width: footerWidth,
-                  child: buildFixedTotalRow(
-                    keys, 
-                    displayedList, 
-                    color,
-                    columnWidths: columnWidths,
-                    dataList: dataList,
-                    reportType: reportType,
-                    explicitWidth: footerWidth, // 명시적 너비 전달
-                  ),
-                ),
-              );
-            } else {
-              return buildFixedTotalRow(
-                keys, 
-                displayedList, 
-                color,
-                columnWidths: columnWidths,
-                dataList: dataList,
-                reportType: reportType,
-                explicitWidth: footerWidth, // 명시적 너비 전달
-              );
-            }
-          },
-        ),
-      ],
     );
   }
 
@@ -2590,17 +1566,24 @@ class ReportTableBuilder {
     String? unit,
     Map<String, double>? columnWidths,
   }) {
-    // 디버깅: constraints 정보 출력
+    // 디버깅: 괄호/구문 오류 확인을 위한 로깅
     debugPrint('═══════════════════════════════════════════════════════');
-    debugPrint('📊 [ReportTableBuilder:1512] _buildTableContent 시작');
+    debugPrint('🔍 [구문 검사] _buildTableContent 함수 시작');
     debugPrint('   → 파일: report_table_builder.dart');
-    debugPrint('   → 라인: 1512');
+    debugPrint('   → 라인: ${1493}');
+    debugPrint('   → 함수명: _buildTableContent');
+    debugPrint('   → 파라미터 개수: 11');
     debugPrint('   → reportType: $reportType');
     debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
     debugPrint('   → constraints.maxHeight: ${constraints.maxHeight}');
     debugPrint('   → constraints.minWidth: ${constraints.minWidth}');
     debugPrint('   → constraints.minHeight: ${constraints.minHeight}');
     debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
+    debugPrint('   → displayedList.length: ${displayedList.length}');
+    debugPrint('   → keys.length: ${keys.length}');
+    debugPrint('   → columns.length: ${columns.length}');
+    debugPrint('   → dataList.length: ${dataList.length}');
+    debugPrint('   → columnWidths: ${columnWidths != null}');
     
     final needsHorizontalScroll = horizontalScrollController != null || 
                                   reportType == ReportType.ventas || 
@@ -2741,6 +1724,13 @@ class ReportTableBuilder {
     
     final tableWidth = calculateTableWidth();
     
+    // 디버깅: 괄호/구문 오류 확인을 위한 로깅
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [구문 검사] _buildTableWithHorizontalScroll 함수 본문 시작');
+    debugPrint('   → 파일: report_table_builder.dart');
+    debugPrint('   → 라인: ${1601}');
+    debugPrint('   → calculateTableWidth() 호출 완료: $tableWidth');
+    
     return SingleChildScrollView(
       controller: horizontalScrollController,
       scrollDirection: Axis.horizontal,
@@ -2776,8 +1766,23 @@ class ReportTableBuilder {
     String? unit,
     Map<String, double>? columnWidths,
   }) {
-    // 디버깅: constraints 정보 출력
+    // 디버깅: 괄호/구문 오류 확인을 위한 로깅
     debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [구문 검사] _buildTableWithoutHorizontalScroll 함수 시작');
+    debugPrint('   → 파일: report_table_builder.dart');
+    debugPrint('   → 라인: ${1681}');
+    debugPrint('   → 함수명: _buildTableWithoutHorizontalScroll');
+    debugPrint('   → 파라미터 개수: 11');
+    debugPrint('   → reportType: $reportType');
+    debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
+    debugPrint('   → constraints.maxHeight: ${constraints.maxHeight}');
+    debugPrint('   → displayedList.length: ${displayedList.length}');
+    debugPrint('   → keys.length: ${keys.length}');
+    debugPrint('   → columns.length: ${columns.length}');
+    debugPrint('   → dataList.length: ${dataList.length}');
+    debugPrint('   → columnWidths: ${columnWidths != null}');
+    
+    // 디버깅: constraints 정보 출력
     debugPrint('📊 [ReportTableBuilder:1706] _buildTableWithoutHorizontalScroll 시작');
     debugPrint('   → 파일: report_table_builder.dart');
     debugPrint('   → 라인: 1706');
@@ -2798,21 +1803,15 @@ class ReportTableBuilder {
     
     final tableWidget = Builder(
       builder: (context) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
-          if (renderBox != null) {
-            debugPrint('   → [ReportTableBuilder:1727] SizedBox 실제 렌더링 크기 (PostFrameCallback)');
-            debugPrint('      → SizedBox width: ${renderBox.size.width}');
-            debugPrint('      → SizedBox height: ${renderBox.size.height}');
-            debugPrint('      → 예상 width: ${tableWidth ?? "Infinity"}');
-            if (tableWidth != null) {
-              debugPrint('      → 차이: ${renderBox.size.width - tableWidth}');
-            }
-          }
-        });
+        // 디버깅: Builder 내부 시작
+        debugPrint('   → [ReportTableBuilder:1725] Builder 내부 시작');
         
-        debugPrint('   → [ReportTableBuilder:1728] _buildDataTable 호출 시작');
-        final dataTableWidget = buildDataTable(
+        return ConstrainedBox(
+          constraints: BoxConstraints(
+            minWidth: tableWidth ?? 0,
+            maxWidth: tableWidth ?? double.infinity,
+          ),
+          child: buildDataTable(
           reportType: reportType,
           displayedList: displayedList,
           keys: keys,
@@ -2823,63 +1822,41 @@ class ReportTableBuilder {
           onRowTap: onRowTap,
           unit: unit,
           columnWidths: columnWidths,
+          ),
         );
-        
-        // tableWidth가 유효한 경우에만 SizedBox로 감싸기
-        return tableWidth != null
-            ? SizedBox(
-                width: tableWidth,
-                child: dataTableWidget,
-              )
-            : dataTableWidget;
       },
     );
     
-    // tableWidth가 유효한 경우에만 ConstrainedBox로 감싸기
-    final constrainedBox = hasValidWidth && tableWidth != null
-        ? ConstrainedBox(
-            constraints: BoxConstraints(
-              minWidth: tableWidth,
-              maxWidth: tableWidth,
-            ),
-            child: tableWidget,
-          )
-        : tableWidget;
-    
+    debugPrint('   → [ReportTableBuilder:1608] _buildTableWithoutHorizontalScroll 호출 완료, Builder로 감싸기');
     return Builder(
       builder: (context) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
           if (renderBox != null) {
             debugPrint('═══════════════════════════════════════════════════════');
-            debugPrint('📊 [ReportTableBuilder:1742] _buildTableWithoutHorizontalScroll 실제 렌더링 크기 (PostFrameCallback)');
+            debugPrint('📊 [ReportTableBuilder:1610] _buildTableContent 실제 렌더링 크기 (PostFrameCallback)');
             debugPrint('   → 파일: report_table_builder.dart');
-            debugPrint('   → 라인: 1742');
-            debugPrint('   → ConstrainedBox width: ${renderBox.size.width}');
-            debugPrint('   → ConstrainedBox height: ${renderBox.size.height}');
-            debugPrint('   → 예상 tableWidth: ${tableWidth ?? "Infinity"}');
-            if (tableWidth != null) {
-              debugPrint('   → 차이: ${renderBox.size.width - tableWidth}');
-            }
-            
-            // 자식 위젯 크기 확인
-            int childIndex = 0;
-            renderBox.visitChildren((child) {
-              if (child is RenderBox) {
-                debugPrint('   → [ReportTableBuilder:1752] 자식 RenderBox #$childIndex');
-                debugPrint('      → width: ${child.size.width}');
-                debugPrint('      → height: ${child.size.height}');
-                childIndex++;
-              }
-            });
+            debugPrint('   → 라인: 1610');
+            debugPrint('   → width: ${renderBox.size.width}');
+            debugPrint('   → height: ${renderBox.size.height}');
+            debugPrint('   → 예상 width: ${constraints.maxWidth}');
+            debugPrint('   → 차이: ${renderBox.size.width - constraints.maxWidth}');
                                 } else {
-            debugPrint('   ⚠️ [ReportTableBuilder:1742] RenderBox를 찾을 수 없습니다!');
+            debugPrint('   ⚠️ [ReportTableBuilder:1610] RenderBox를 찾을 수 없습니다!');
           }
         });
-        debugPrint('   → [ReportTableBuilder:1755] constrainedBox 반환');
-        return constrainedBox;
+        debugPrint('   → [ReportTableBuilder:1618] tableWidget 반환');
+        return tableWidget;
       },
     );
+  }
+  
+  // 디버깅: 괄호/구문 오류 확인을 위한 헬퍼 함수
+  static void _checkBracketBalance(String functionName, int startLine) {
+    debugPrint('🔍 [구문 검사] $functionName 함수 괄호 균형 확인');
+    debugPrint('   → 파일: report_table_builder.dart');
+    debugPrint('   → 시작 라인: $startLine');
+    debugPrint('   → 함수명: $functionName');
   }
 
   /// DataTable 위젯 빌드
@@ -2895,11 +1872,326 @@ class ReportTableBuilder {
     String? unit,
     Map<String, double>? columnWidths,
   }) {
-    // items 및 ingresos 보고서는 전체 폭을 차지하도록 설정
-    final isItemsOrIngresos = reportType == ReportType.items || reportType == ReportType.ingresos;
+    // 디버깅: 괄호/구문 오류 확인을 위한 로깅
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [구문 검사] buildDataTable 함수 시작');
+    debugPrint('   → 파일: report_table_builder.dart');
+    debugPrint('   → 라인: ${1788}');
+    debugPrint('   → 함수명: buildDataTable');
+    debugPrint('   → 파라미터 개수: 10');
+    debugPrint('   → reportType: $reportType');
+    debugPrint('   → displayedList.length: ${displayedList.length}');
+    debugPrint('   → keys.length: ${keys.length}');
+    debugPrint('   → columns.length: ${columns.length}');
+    debugPrint('   → dataList.length: ${dataList.length}');
+    debugPrint('   → columnWidths: ${columnWidths != null}');
+    debugPrint('   → unit: $unit');
+    debugPrint('   → onRowDoubleTap: ${onRowDoubleTap != null}');
+    debugPrint('   → onRowTap: ${onRowTap != null}');
     
-    // 칼럼 너비 설정 (기본값)
-    // 넓은 화면에서 모든 칼럼이 보이도록 크기 조정
+    // 디버깅: 괄호 균형 확인
+    _checkBracketBalance('buildDataTable', 1788);
+    
+    // sortColumn과 sortAscending은 buildTableFromList에서 전달받아야 하는데,
+    // buildDataTable에서는 직접 접근할 수 없으므로 파라미터로 받아야 합니다.
+    // 하지만 현재 구조에서는 buildTableFromList에서만 사용되므로,
+    // buildDataTable 내부에서 null로 처리합니다.
+    String? sortColumn;
+    bool sortAscending = false;
+    
+    // 디버깅: sortColumn과 sortAscending 확인
+    debugPrint('   → sortColumn: $sortColumn');
+    debugPrint('   → sortAscending: $sortAscending');
+    
+    // alertas 보고서는 Table 위젯 사용
+    if (reportType == ReportType.alertas) {
+      debugPrint('   → [Alertas] Table 위젯 사용');
+      // Table 위젯을 사용하는 코드는 buildTableFromList에 있으므로,
+      // 여기서는 DataTable을 사용합니다.
+    }
+    
+    // ============================================================
+    // 📱 Ventas 테이블 헤더 디버깅 - 핸드폰에서 헤더가 안 보이는 문제 분석
+    // ============================================================
+    // ventas 보고서는 headingRowHeight가 0으로 설정되어 있어서 DataTable의 기본 헤더가 숨겨짐
+    // 별도 헤더 행이 필요하지만 현재는 null로 설정되어 있음
+    final isVentas = reportType == ReportType.ventas;
+    final headingRowHeight = isVentas ? 0.0 : 56.0;
+    
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('📱 [Ventas DataTable] buildDataTable 호출');
+    debugPrint('   → reportType: $reportType');
+    debugPrint('   → isVentas: $isVentas');
+    debugPrint('   → headingRowHeight: $headingRowHeight (ventas는 0으로 설정됨)');
+    debugPrint('   → keys.length: ${keys.length}');
+    debugPrint('   → columns.length: ${columns.length}');
+    debugPrint('   → displayedList.length: ${displayedList.length}');
+    debugPrint('   ⚠️ [문제] ventas는 headingRowHeight가 0이므로 DataTable 헤더가 표시되지 않음');
+    debugPrint('   ⚠️ [문제] 별도 헤더 행(headerRow)도 null이므로 헤더가 전혀 표시되지 않음');
+    debugPrint('═══════════════════════════════════════════════════════');
+    
+    return DataTable(
+      columnSpacing: reportType == ReportType.alertas ? 1 : 8,
+      dataRowMinHeight: reportType == ReportType.alertas ? 72 : 48,
+      dataRowMaxHeight: reportType == ReportType.alertas ? 84 : 56,
+      headingRowHeight: headingRowHeight,
+      headingRowColor: MaterialStateProperty.all(Colors.transparent),
+      sortColumnIndex: sortColumn != null && keys.contains(sortColumn) 
+          ? keys.indexOf(sortColumn) 
+          : null,
+      sortAscending: sortAscending,
+      columns: columns,
+      rows: displayedList.map((item) {
+        // 디버깅: DataRow 생성 시작
+        debugPrint('   → [buildDataTable] DataRow 생성 - item 타입: ${item.runtimeType}');
+        
+        if (item is Map<String, dynamic>) {
+          var cells = keys.map((key) {
+            final value = item[key];
+            String formattedValue;
+            
+            // codigo 관련 칼럼은 문자로 처리
+            final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1' || key == 'vcode';
+            
+            // year 필드 포맷팅
+            final keyLower = key.toLowerCase();
+            if (keyLower == 'year' && value != null) {
+              final yearStr = value.toString();
+              if (yearStr.contains('-')) {
+                formattedValue = yearStr.split('-')[0];
+              } else {
+                formattedValue = yearStr;
+              }
+            }
+            // month 필드 포맷팅
+            else if (keyLower == 'month' && value != null) {
+              final monthStr = value.toString();
+              if (monthStr.length >= 7 && monthStr.contains('-')) {
+                formattedValue = monthStr.substring(0, 7);
+              } else {
+                formattedValue = monthStr;
+              }
+            } else {
+              formattedValue = isCodigoColumn 
+                  ? (value?.toString() ?? 'N/A')
+                  : ReportUtils.formatValue(value, fieldName: key, reportType: reportType);
+            }
+            
+            // 숫자 컬럼 확인
+            final isAmountColumn = keyLower.contains('costo') ||
+                                   keyLower.contains('importe') ||
+                                   keyLower.contains('ingreso') ||
+                                   keyLower.contains('precio') ||
+                                   keyLower.contains('pre') ||
+                                   keyLower.contains('venta') ||
+                                   keyLower.contains('cantidad') ||
+                                   keyLower.contains('count') ||
+                                   keyLower.contains('total') ||
+                                   keyLower == 'sucursal' ||
+                                   (keyLower.startsWith('t') &&
+                                    (keyLower.contains('cant') ||
+                                     keyLower.contains('event') ||
+                                     keyLower.contains('prendas')));
+            
+            final isNumeric = (key != 'codigo' && key != 'codigo1' && key != 'tcode' && key != 'id_codigo1' && key != 'vcode')
+                ? (ReportUtils.isNumeric(value) || isAmountColumn)
+                : false;
+            
+            // alertas 보고서는 내용이 잘리지 않도록 설정
+            if (reportType == ReportType.alertas) {
+              final cellWidth = columnWidths?[key] ?? 150.0;
+              
+              final cellWidget = Align(
+                alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+                child: Text(
+                  formattedValue,
+                  style: const TextStyle(fontSize: 14),
+                  maxLines: null,
+                  overflow: TextOverflow.visible,
+                ),
+              );
+              
+              return DataCell(
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minWidth: cellWidth,
+                    maxWidth: cellWidth,
+                  ),
+                  child: cellWidget,
+                ),
+              );
+            } else {
+              // 다른 보고서는 기본 DataCell 사용
+              return DataCell(
+                Align(
+                  alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+                  child: Text(
+                    formattedValue,
+                    style: const TextStyle(fontSize: 14),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              );
+            }
+          }).toList();
+          
+          // 셀 개수 확인
+          assert(cells.length == keys.length, 
+            'Row cells count (${cells.length}) must match keys count (${keys.length})');
+          
+          return DataRow(cells: cells);
+        } else {
+          // Map이 아닌 경우
+          final formattedValue = ReportUtils.formatValue(item);
+          final isNumeric = ReportUtils.isNumeric(item);
+          final cells = List.generate(keys.length, (index) {
+            return DataCell(
+              Align(
+                alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+                child: Text(
+                  index == 0 ? formattedValue : '',
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ),
+            );
+          });
+          
+          return DataRow(cells: cells);
+        }
+      }).toList(),
+    );
+    
+    // 디버깅: 괄호/구문 오류 확인을 위한 로깅
+    debugPrint('🔍 [구문 검사] buildDataTable 함수 종료');
+    debugPrint('   → 파일: report_table_builder.dart');
+    debugPrint('   → 라인: ${1927}');
+    debugPrint('   → 함수명: buildDataTable');
+    debugPrint('   → 반환 타입: Widget');
+    debugPrint('   → 괄호 닫힘 확인: OK');
+  }
+
+  /// DataTable의 rows 생성
+  static List<DataRow> _buildDataTableRows({
+    required List<dynamic> displayedList,
+    required List<String> keys,
+    required ReportType reportType,
+    Function(Map<String, dynamic>)? onRowDoubleTap,
+    Function(Map<String, dynamic>)? onRowTap,
+    String? unit,
+    required List<dynamic> dataList,
+    required Color color,
+    bool includeTotalRow = true, // footer 포함 여부
+    Map<String, double>? columnWidths,
+  }) {
+    // 디버깅: 함수 진입 확인
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [구문 검사] _buildDataTableRows 함수 시작');
+    debugPrint('   → 파일: report_table_builder.dart');
+    debugPrint('   → 라인: ${1979}');
+    debugPrint('   → 함수명: _buildDataTableRows');
+    debugPrint('   → 파라미터 개수: 9');
+    debugPrint('   → reportType: $reportType');
+    debugPrint('   → displayedList.length: ${displayedList.length}');
+    debugPrint('   → keys.length: ${keys.length}');
+    debugPrint('   → dataList.length: ${dataList.length}');
+    debugPrint('   → columnWidths 전달됨: ${columnWidths != null}');
+    debugPrint('   → includeTotalRow: $includeTotalRow');
+    debugPrint('   → onRowDoubleTap: ${onRowDoubleTap != null}');
+    debugPrint('   → onRowTap: ${onRowTap != null}');
+    debugPrint('   → unit: $unit');
+    
+    final rows = <DataRow>[];
+    
+    // 디버깅: 데이터 행 생성 시작
+    final isItemsOrIngresos = reportType == ReportType.items || reportType == ReportType.ingresos;
+    debugPrint('   → isItemsOrIngresos: $isItemsOrIngresos');
+    
+    if (isItemsOrIngresos && displayedList.isNotEmpty) {
+      debugPrint('═══════════════════════════════════════════════════════');
+      debugPrint('📊 [_buildDataTableRows] 데이터 행 생성 시작');
+      debugPrint('   → keys: $keys');
+      debugPrint('   → displayedList.length: ${displayedList.length}');
+      debugPrint('   → columnWidths 전달: ${columnWidths != null}');
+    }
+    
+    // 데이터 행 생성
+    debugPrint('   → [데이터 행 생성] displayedList.map 시작');
+    rows.addAll(displayedList.map((item) {
+      debugPrint('   → [데이터 행 생성] item 타입: ${item.runtimeType}');
+      if (item is Map<String, dynamic>) {
+        debugPrint('   → [데이터 행 생성] Map 타입 - _buildDataRowFromMap 호출');
+        return _buildDataRowFromMap(
+          item: item,
+          keys: keys,
+          reportType: reportType,
+          onRowDoubleTap: onRowDoubleTap,
+          onRowTap: onRowTap,
+          unit: unit,
+          columnWidths: columnWidths,
+        );
+      } else {
+        debugPrint('   → [데이터 행 생성] Map이 아닌 타입 - _buildDataRowFromNonMap 호출');
+        return _buildDataRowFromNonMap(
+          item: item,
+          keys: keys,
+          reportType: reportType,
+          columnWidths: columnWidths,
+        );
+      }
+    }));
+    
+    debugPrint('   → [데이터 행 생성] 완료 - rows.length: ${rows.length}');
+    
+    // 합계 행 추가 (includeTotalRow가 true인 경우만)
+    if (includeTotalRow) {
+      debugPrint('   → [합계 행 추가] includeTotalRow가 true - 합계 행 추가 시작');
+      final totalDataList = (reportType == ReportType.items || reportType == ReportType.ingresos) 
+          ? displayedList 
+          : dataList;
+      debugPrint('   → [합계 행 추가] totalDataList.length: ${totalDataList.length}');
+      rows.add(_buildTotalRow(keys, totalDataList, color, reportType: reportType));
+      debugPrint('   → [합계 행 추가] 완료 - rows.length: ${rows.length}');
+    } else {
+      debugPrint('   → [합계 행 추가] includeTotalRow가 false - 합계 행 추가 스킵');
+    }
+    
+    debugPrint('🔍 [구문 검사] _buildDataTableRows 함수 종료');
+    debugPrint('   → 반환 rows.length: ${rows.length}');
+    debugPrint('═══════════════════════════════════════════════════════');
+    
+    return rows;
+  }
+
+  /// Map 형태의 데이터에서 DataRow 생성
+  static DataRow _buildDataRowFromMap({
+    required Map<String, dynamic> item,
+    required List<String> keys,
+    required ReportType reportType,
+    Function(Map<String, dynamic>)? onRowDoubleTap,
+    Function(Map<String, dynamic>)? onRowTap,
+    String? unit,
+    Map<String, double>? columnWidths,
+  }) {
+    // 디버깅: 함수 진입 확인
+    debugPrint('   → [구문 검사] _buildDataRowFromMap 함수 시작');
+    debugPrint('      → 파일: report_table_builder.dart');
+    debugPrint('      → 라인: ${2037}');
+    debugPrint('      → 함수명: _buildDataRowFromMap');
+    debugPrint('      → 파라미터 개수: 7');
+    debugPrint('      → reportType: $reportType');
+    debugPrint('      → keys.length: ${keys.length}');
+    debugPrint('      → item.keys.length: ${item.keys.length}');
+    debugPrint('      → columnWidths 전달됨: ${columnWidths != null}');
+    debugPrint('      → onRowDoubleTap: ${onRowDoubleTap != null}');
+    debugPrint('      → onRowTap: ${onRowTap != null}');
+    debugPrint('      → unit: $unit');
+    
+    // items/ingresos/alertas 보고서는 칼럼 너비를 설정하여 헤더와 일치시킴
+    final isItemsOrIngresos = reportType == ReportType.items || reportType == ReportType.ingresos;
+    final isAlertas = reportType == ReportType.alertas;
+    
+    debugPrint('      → isItemsOrIngresos: $isItemsOrIngresos');
+    debugPrint('      → isAlertas: $isAlertas');
     final defaultColumnWidths = <String, double>{
       // Items 보고서
       'codigo1': 200,  // codigo1 칼럼 너비 증가 (120 -> 200)
@@ -2930,576 +2222,30 @@ class ReportTableBuilder {
     
     final finalColumnWidths = columnWidths ?? defaultColumnWidths;
     
-    debugPrint('═══════════════════════════════════════════════════════');
-    debugPrint('📊 [ReportTableBuilder:1772] _buildDataTable 시작');
-    debugPrint('   → 파일: report_table_builder.dart');
-    debugPrint('   → 라인: 1772');
-    debugPrint('   → reportType: $reportType');
-    debugPrint('   → isItemsOrIngresos: $isItemsOrIngresos');
-    debugPrint('   → columns.length: ${columns.length}');
-    debugPrint('   → displayedList.length: ${displayedList.length}');
-    debugPrint('   → keys.length: ${keys.length}');
-    
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        debugPrint('═══════════════════════════════════════════════════════');
-        debugPrint('📊 [ReportTableBuilder:1781] _buildDataTable LayoutBuilder 시작');
-        debugPrint('   → 파일: report_table_builder.dart');
-        debugPrint('   → 라인: 1781');
-        debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
-        debugPrint('   → constraints.maxHeight: ${constraints.maxHeight}');
-        debugPrint('   → constraints.minWidth: ${constraints.minWidth}');
-        debugPrint('   → constraints.minHeight: ${constraints.minHeight}');
-        
-        debugPrint('   → [ReportTableBuilder:1789] DataTable 생성 시작');
-        // items/ingresos/alertas/fventas는 별도 헤더를 사용하므로 DataTable 헤더 높이를 0으로 설정
-        final headingRowHeight = (isItemsOrIngresos || reportType == ReportType.alertas || reportType == ReportType.fventas)
-            ? 0.0 
-            : ((reportType == ReportType.ventas || reportType == ReportType.clientes) ? 40.0 : 56.0);
-        
-        // items/ingresos/alertas의 경우 칼럼 너비를 설정하여 헤더와 일치시킴
-        final isAlertas = reportType == ReportType.alertas;
-        final adjustedColumns = (isItemsOrIngresos || isAlertas)
-            ? columns.asMap().entries.map((entry) {
-                final index = entry.key;
-                final column = entry.value;
-                final key = keys[index];
-                final columnWidth = finalColumnWidths[key] ?? 150.0;
-                
-                // 디버깅: DataTable 칼럼 너비 정보 출력 (첫 번째 칼럼만)
-                if (index == 0 && (isItemsOrIngresos || isAlertas)) {
-                  debugPrint('═══════════════════════════════════════════════════════');
-                  debugPrint('📊 [DataTable] _buildDataTable 칼럼 너비 정보');
-                  debugPrint('   → keys: $keys');
-                  debugPrint('   → keys.length: ${keys.length}');
-                  debugPrint('   → columns.length: ${columns.length}');
-                  debugPrint('   → isItemsOrIngresos: $isItemsOrIngresos');
-                  debugPrint('   → columnWidths 전달됨: ${columnWidths != null}');
-                  debugPrint('   → finalColumnWidths: $finalColumnWidths');
-                  double dataTableCumulativeX = 0.0;
-                  for (int i = 0; i < keys.length; i++) {
-                    final k = keys[i];
-                    final w = finalColumnWidths[k] ?? 150.0;
-                    debugPrint('   → [DataTable] 칼럼 #$i: key="$k", width=$w, x=$dataTableCumulativeX, DataColumn label SizedBox width=$w');
-                    dataTableCumulativeX += w;
-                    if (i < keys.length - 1) {
-                      final actualColumnSpacing = (reportType == ReportType.alertas) ? 1 : 8;
-                      dataTableCumulativeX += actualColumnSpacing; // alertas는 1, 다른 보고서는 8
-                      debugPrint('      → columnSpacing($actualColumnSpacing) 추가 후 x=$dataTableCumulativeX');
-                    }
-                  }
-                  debugPrint('   → [DataTable] 총 너비: $dataTableCumulativeX');
-                  final actualColumnSpacing = reportType == ReportType.alertas ? 1 : 8;
-                  debugPrint('   → [DataTable] columnSpacing: $actualColumnSpacing (reportType: $reportType, alertas: ${reportType == ReportType.alertas})');
-                }
-                
-                return DataColumn(
-                  label: SizedBox(
-                    width: columnWidth,
-                    child: column.label,
-                  ),
-                  onSort: column.onSort,
-                  numeric: column.numeric,
-                );
-              }).toList()
-            : columns;
-        
-        // items/ingresos 보고서는 줄간격을 2/3로 조정 (48 -> 32, 56 -> 37)
-        final dataRowMinHeight = (reportType == ReportType.items || reportType == ReportType.ingresos)
-            ? 32.0  // 48 * 2/3 = 32
-            : (reportType == ReportType.ventas || reportType == ReportType.clientes) 
-                ? 32.0 
-                : (reportType == ReportType.alertas ? null : 48.0);
-        
-        final dataRowMaxHeight = (reportType == ReportType.items || reportType == ReportType.ingresos)
-            ? 37.0  // 56 * 2/3 ≈ 37
-            : (reportType == ReportType.ventas || reportType == ReportType.clientes) 
-                ? 40.0 
-                : (reportType == ReportType.alertas ? null : 56.0);
-        
-        final dataTable = DataTable(
-          columnSpacing: 8,
-          dataRowMinHeight: dataRowMinHeight,
-          dataRowMaxHeight: dataRowMaxHeight,
-          headingRowHeight: headingRowHeight,
-          headingRowColor: MaterialStateProperty.all(Colors.transparent),
-          columns: adjustedColumns,
-          rows: _buildDataTableRows(
-            displayedList: displayedList,
-            keys: keys,
-            reportType: reportType,
-            onRowDoubleTap: onRowDoubleTap,
-            onRowTap: onRowTap,
-            unit: unit,
-            dataList: dataList,
-            color: color,
-            includeTotalRow: !isItemsOrIngresos && reportType != ReportType.alertas && reportType != ReportType.fventas, // items/ingresos/alertas/fventas는 footer를 별도로 표시
-            columnWidths: finalColumnWidths,
-          ),
-        );
-        
-        debugPrint('   → [ReportTableBuilder:1808] SizedBox 생성 시작');
-        debugPrint('      → width: ${constraints.maxWidth.isFinite ? constraints.maxWidth : "Infinity"}');
-        
-        // constraints.maxWidth가 Infinity인 경우 ConstrainedBox를 사용하지 않음
-        final hasValidWidth = constraints.maxWidth.isFinite && constraints.maxWidth > 0;
-        
-        // items 및 ingresos 보고서는 전체 폭을 강제하기 위해 ConstrainedBox 추가
-        final sizedBox = isItemsOrIngresos && hasValidWidth
-            ? ConstrainedBox(
-                constraints: BoxConstraints(
-                  minWidth: constraints.maxWidth,
-                  maxWidth: constraints.maxWidth,
-                ),
-                child: SizedBox(
-                  width: constraints.maxWidth,
-                  child: dataTable,
-                ),
-              )
-            : (hasValidWidth
-                ? SizedBox(
-                    width: constraints.maxWidth,
-                    child: dataTable,
-                  )
-                : dataTable); // Infinity인 경우 제약 없이 반환
-        
-        return Builder(
-          builder: (context) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
-              if (renderBox != null) {
-                debugPrint('═══════════════════════════════════════════════════════');
-                debugPrint('📊 [ReportTableBuilder:1815] _buildDataTable 실제 렌더링 크기 (PostFrameCallback)');
-                debugPrint('   → 파일: report_table_builder.dart');
-                debugPrint('   → 라인: 1815');
-                debugPrint('   → SizedBox width: ${renderBox.size.width}');
-                debugPrint('   → SizedBox height: ${renderBox.size.height}');
-                debugPrint('   → 예상 width: ${constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity}');
-                debugPrint('   → 차이: ${renderBox.size.width - (constraints.maxWidth > 0 ? constraints.maxWidth : 0)}');
-                
-                // DataTable 내부 크기 확인 (자식 RenderObject 찾기)
-                int childIndex = 0;
-                renderBox.visitChildren((child) {
-                  if (child is RenderBox) {
-                    debugPrint('   → [ReportTableBuilder:1824] 자식 RenderBox #$childIndex');
-                    debugPrint('      → width: ${child.size.width}');
-                    debugPrint('      → height: ${child.size.height}');
-                    
-                    // DataTable의 실제 칼럼 위치 측정 (items/ingresos/alertas)
-                    final isAlertas = reportType == ReportType.alertas;
-                    if ((isItemsOrIngresos || isAlertas) && childIndex == 0) {
-                      debugPrint('═══════════════════════════════════════════════════════');
-                      debugPrint('📊 [DataTable] 실제 렌더링 위치 측정');
-                      debugPrint('   → DataTable 전체 width: ${child.size.width}');
-                      debugPrint('   → DataTable 전체 height: ${child.size.height}');
-                      debugPrint('   → DataTable localToGlobal(0,0): ${child.localToGlobal(Offset.zero)}');
-                      
-                      // DataTable의 RenderTable 찾기
-                      RenderBox? tableBox;
-                      void findTable(RenderBox? box, int depth) {
-                        if (box == null || depth > 5) return;
-                        
-                        if (box.runtimeType.toString().contains('RenderTable')) {
-                          tableBox = box;
-                          return;
-                        }
-                        
-                        box.visitChildren((grandChild) {
-                          if (grandChild is RenderBox) {
-                            findTable(grandChild, depth + 1);
-                          }
-                        });
-                      }
-                      
-                      findTable(child, 0);
-                      
-                      if (tableBox != null) {
-                        debugPrint('   → [DataTable] RenderTable 찾음: width=${tableBox!.size.width}');
-                        debugPrint('   → [DataTable] RenderTable 타입: ${tableBox!.runtimeType}');
-                        
-                        // RenderTable의 모든 자식 출력 (구조 파악용)
-                        int childCount = 0;
-                        tableBox!.visitChildren((child) {
-                          if (child is RenderBox) {
-                            // 디버그 로그 제거됨
-                            childCount++;
-                          }
-                        });
-                        debugPrint('   → [DataTable] RenderTable 총 자식 수: $childCount');
-                        
-                        // RenderTable의 행 찾기 (재귀적으로)
-                        RenderBox? headerRowBox;
-                        RenderBox? firstDataRowBox;
-                        int rowIndex = 0;
-                        final List<Map<String, dynamic>> allRows = [];
-                        
-                        void findRows(RenderBox? box, int depth) {
-                          if (box == null || depth > 15) return;
-                          
-                          final typeName = box.runtimeType.toString();
-                          final boxWidth = box.size.width;
-                          final boxHeight = box.size.height;
-                          
-                          // RenderTableRow 또는 RenderFlex를 찾음
-                          if (typeName.contains('RenderTableRow') || 
-                              (typeName.contains('RenderFlex') && boxWidth > 100 && boxHeight > 0)) {
-                            allRows.add({
-                              'index': rowIndex,
-                              'depth': depth,
-                              'width': boxWidth,
-                              'height': boxHeight,
-                              'type': typeName,
-                            });
-                            
-                            if (rowIndex == 0) {
-                              headerRowBox = box;
-                              debugPrint('   → [DataTable] 헤더 행 찾음 (depth=$depth): width=$boxWidth, height=$boxHeight, 타입=$typeName');
-                            } else if (rowIndex == 1) {
-                              firstDataRowBox = box;
-                              debugPrint('   → [DataTable] 첫 번째 데이터 행 찾음 (depth=$depth): width=$boxWidth, height=$boxHeight, 타입=$typeName');
-                            }
-                            rowIndex++;
-                            return;
-                          }
-                          
-                          box.visitChildren((child) {
-                            if (child is RenderBox) {
-                              findRows(child, depth + 1);
-                            }
-                          });
-                        }
-                        
-                        findRows(tableBox, 0);
-                        
-                        // 모든 행 정보 출력
-                        debugPrint('   ═══════════════════════════════════════════════════════');
-                        debugPrint('   📊 [DataTable] 모든 행 정보 (총 ${allRows.length}개)');
-                        for (var row in allRows) {
-                          debugPrint('      행 #${row['index']}: depth=${row['depth']}, width=${row['width']}, height=${row['height']}, 타입=${row['type']}');
-                        }
-                        debugPrint('   ═══════════════════════════════════════════════════════');
-                        
-                        // 헤더와 데이터 칼럼 정보를 저장할 리스트
-                        final List<Map<String, dynamic>> headerCellInfo = [];
-                        final List<Map<String, dynamic>> dataCellInfo = [];
-                        
-                        // 헤더 행의 각 칼럼 위치 측정
-                        if (headerRowBox != null) {
-                          final rowPosition = headerRowBox!.localToGlobal(Offset.zero);
-                          int headerColumnIndex = 0;
-                          double headerCumulativeX = 0.0;
-                          
-                          final List<Map<String, dynamic>> allHeaderBoxes = [];
-                          
-                          void findHeaderCells(RenderBox? box, int depth) {
-                            if (box == null || depth > 15) return;
-                            
-                            final typeName = box.runtimeType.toString();
-                            final boxWidth = box.size.width;
-                            final boxHeight = box.size.height;
-                            
-                            // 모든 박스 정보 수집
-                            if (boxWidth > 10 && boxHeight > 0) {
-                              final cellGlobalPosition = box.localToGlobal(Offset.zero);
-                              final cellX = cellGlobalPosition.dx - rowPosition.dx;
-                              allHeaderBoxes.add({
-                                'x': cellX,
-                                'width': boxWidth,
-                                'height': boxHeight,
-                                'type': typeName,
-                                'depth': depth,
-                              });
-                            }
-                            
-                            // DataCell 또는 RenderConstrainedBox를 찾음
-                            if ((typeName.contains('RenderConstrainedBox') || 
-                                typeName.contains('RenderParagraph') ||
-                                (typeName.contains('RenderFlex') && boxWidth < 1000 && boxWidth > 50)) &&
-                                headerColumnIndex < keys.length) {
-                              final cellGlobalPosition = box.localToGlobal(Offset.zero);
-                              final cellX = cellGlobalPosition.dx - rowPosition.dx;
-                              final key = keys[headerColumnIndex];
-                              final expectedWidth = finalColumnWidths[key] ?? 150.0;
-                              
-                              headerCellInfo.add({
-                                'index': headerColumnIndex,
-                                'key': key,
-                                'x': cellX,
-                                'width': boxWidth,
-                                'expectedWidth': expectedWidth,
-                                'difference': boxWidth - expectedWidth,
-                                'type': typeName,
-                                'depth': depth,
-                              });
-                              
-                              debugPrint('   → [DataTable 헤더] 칼럼 #$headerColumnIndex (key="$key"): 실제 x=$cellX, width=$boxWidth, 예상 width=$expectedWidth, 차이=${boxWidth - expectedWidth}, 타입=$typeName, depth=$depth');
-                              headerCumulativeX += boxWidth;
-                              if (headerColumnIndex < keys.length - 1) {
-                                headerCumulativeX += 8; // columnSpacing
-                              }
-                              headerColumnIndex++;
-                              return;
-                            }
-                            
-                            box.visitChildren((child) {
-                              if (child is RenderBox && headerColumnIndex < keys.length) {
-                                findHeaderCells(child, depth + 1);
-                              }
-                            });
-                          }
-                          
-                          findHeaderCells(headerRowBox, 0);
-                          
-                          // 모든 헤더 박스 정보 출력
-                          debugPrint('   ═══════════════════════════════════════════════════════');
-                          debugPrint('   📊 [DataTable 헤더] 모든 박스 정보 (총 ${allHeaderBoxes.length}개)');
-                          for (var box in allHeaderBoxes) {
-                            debugPrint('      x=${box['x']}, width=${box['width']}, height=${box['height']}, 타입=${box['type']}, depth=${box['depth']}');
-                          }
-                          debugPrint('   ═══════════════════════════════════════════════════════');
-                          
-                          // 헤더 칼럼 정보 요약 출력
-                          debugPrint('   ═══════════════════════════════════════════════════════');
-                          debugPrint('   📊 [DataTable 헤더] 칼럼 위치 요약');
-                          for (var info in headerCellInfo) {
-                            debugPrint('      칼럼 #${info['index']} (${info['key']}): x=${info['x']}, width=${info['width']}, 예상=${info['expectedWidth']}, 차이=${info['difference']}');
-                          }
-                          debugPrint('   ═══════════════════════════════════════════════════════');
-                        }
-                        
-                        // 첫 번째 데이터 행의 각 칼럼 위치 측정
-                        if (firstDataRowBox != null) {
-                          final rowPosition = firstDataRowBox!.localToGlobal(Offset.zero);
-                          int dataColumnIndex = 0;
-                          double dataCumulativeX = 0.0;
-                          
-                          final List<Map<String, dynamic>> allDataBoxes = [];
-                          
-                          void findDataCells(RenderBox? box, int depth) {
-                            if (box == null || depth > 15) return;
-                            
-                            final typeName = box.runtimeType.toString();
-                            final boxWidth = box.size.width;
-                            final boxHeight = box.size.height;
-                            
-                            // 모든 박스 정보 수집
-                            if (boxWidth > 10 && boxHeight > 0) {
-                              final cellGlobalPosition = box.localToGlobal(Offset.zero);
-                              final cellX = cellGlobalPosition.dx - rowPosition.dx;
-                              allDataBoxes.add({
-                                'x': cellX,
-                                'width': boxWidth,
-                                'height': boxHeight,
-                                'type': typeName,
-                                'depth': depth,
-                              });
-                            }
-                            
-                            // DataCell 또는 RenderConstrainedBox를 찾음
-                            if ((typeName.contains('RenderConstrainedBox') || 
-                                typeName.contains('RenderParagraph') ||
-                                (typeName.contains('RenderFlex') && boxWidth < 1000 && boxWidth > 50)) &&
-                                dataColumnIndex < keys.length) {
-                              final cellGlobalPosition = box.localToGlobal(Offset.zero);
-                              final cellX = cellGlobalPosition.dx - rowPosition.dx;
-                              final key = keys[dataColumnIndex];
-                              final expectedWidth = finalColumnWidths[key] ?? 150.0;
-                              
-                              dataCellInfo.add({
-                                'index': dataColumnIndex,
-                                'key': key,
-                                'x': cellX,
-                                'width': boxWidth,
-                                'expectedWidth': expectedWidth,
-                                'difference': boxWidth - expectedWidth,
-                                'type': typeName,
-                                'depth': depth,
-                              });
-                              
-                              debugPrint('   → [DataTable 데이터] 칼럼 #$dataColumnIndex (key="$key"): 실제 x=$cellX, width=$boxWidth, 예상 width=$expectedWidth, 차이=${boxWidth - expectedWidth}, 타입=$typeName, depth=$depth');
-                              dataCumulativeX += boxWidth;
-                              if (dataColumnIndex < keys.length - 1) {
-                                dataCumulativeX += 8; // columnSpacing
-                              }
-                              dataColumnIndex++;
-                              return;
-                            }
-                            
-                            box.visitChildren((child) {
-                              if (child is RenderBox && dataColumnIndex < keys.length) {
-                                findDataCells(child, depth + 1);
-                              }
-                            });
-                          }
-                          
-                          findDataCells(firstDataRowBox, 0);
-                          
-                          // 모든 데이터 박스 정보 출력
-                          debugPrint('   ═══════════════════════════════════════════════════════');
-                          debugPrint('   📊 [DataTable 데이터] 모든 박스 정보 (총 ${allDataBoxes.length}개)');
-                          for (var box in allDataBoxes) {
-                            debugPrint('      x=${box['x']}, width=${box['width']}, height=${box['height']}, 타입=${box['type']}, depth=${box['depth']}');
-                          }
-                          debugPrint('   ═══════════════════════════════════════════════════════');
-                          
-                          // 데이터 칼럼 정보 요약 출력
-                          debugPrint('   ═══════════════════════════════════════════════════════');
-                          debugPrint('   📊 [DataTable 데이터] 칼럼 위치 요약');
-                          for (var info in dataCellInfo) {
-                            debugPrint('      칼럼 #${info['index']} (${info['key']}): x=${info['x']}, width=${info['width']}, 예상=${info['expectedWidth']}, 차이=${info['difference']}');
-                          }
-                          debugPrint('   ═══════════════════════════════════════════════════════');
-                        }
-                        
-                        // 헤더와 데이터 칼럼 위치 비교 (모든 측정 완료 후)
-                        if (headerCellInfo.isNotEmpty && dataCellInfo.isNotEmpty) {
-                          debugPrint('   ═══════════════════════════════════════════════════════');
-                          debugPrint('   📊 [비교] 헤더 vs 데이터 칼럼 위치');
-                          for (int i = 0; i < keys.length && i < headerCellInfo.length && i < dataCellInfo.length; i++) {
-                            final headerInfo = headerCellInfo[i];
-                            final dataInfo = dataCellInfo[i];
-                            final xDiff = (headerInfo['x'] as double) - (dataInfo['x'] as double);
-                            final widthDiff = (headerInfo['width'] as double) - (dataInfo['width'] as double);
-                            debugPrint('      칼럼 #$i (${keys[i]}): 헤더 x=${headerInfo['x']}, 데이터 x=${dataInfo['x']}, x 차이=$xDiff, 헤더 width=${headerInfo['width']}, 데이터 width=${dataInfo['width']}, width 차이=$widthDiff');
-                          }
-                          debugPrint('   ═══════════════════════════════════════════════════════');
-                        }
-                      } else {
-                        debugPrint('   ⚠️ [DataTable] RenderTable을 찾을 수 없습니다');
-                      }
-                    }
-                    
-                    childIndex++;
-                  }
-                });
-                
-                if (childIndex == 0) {
-                  debugPrint('   ⚠️ [ReportTableBuilder:1824] 자식 RenderBox가 없습니다!');
-                }
-              } else {
-                debugPrint('   ⚠️ [ReportTableBuilder:1815] RenderBox를 찾을 수 없습니다!');
-              }
-            });
-            debugPrint('   → [ReportTableBuilder:1832] sizedBox 반환');
-            return sizedBox;
-          },
-        );
-      },
-    );
-  }
-
-  /// DataTable의 rows 생성
-  static List<DataRow> _buildDataTableRows({
-    required List<dynamic> displayedList,
-    required List<String> keys,
-    required ReportType reportType,
-    Function(Map<String, dynamic>)? onRowDoubleTap,
-    Function(Map<String, dynamic>)? onRowTap,
-    String? unit,
-    required List<dynamic> dataList,
-    required Color color,
-    bool includeTotalRow = true, // footer 포함 여부
-    Map<String, double>? columnWidths,
-  }) {
-    final rows = <DataRow>[];
-    
-    // 디버깅: 데이터 행 생성 시작
-    final isItemsOrIngresos = reportType == ReportType.items || reportType == ReportType.ingresos;
-    if (isItemsOrIngresos && displayedList.isNotEmpty) {
-      debugPrint('═══════════════════════════════════════════════════════');
-      debugPrint('📊 [_buildDataTableRows] 데이터 행 생성 시작');
-      debugPrint('   → keys: $keys');
-      debugPrint('   → displayedList.length: ${displayedList.length}');
-      debugPrint('   → columnWidths 전달: ${columnWidths != null}');
-    }
-    
-    // 데이터 행 생성
-    rows.addAll(displayedList.map((item) {
-      if (item is Map<String, dynamic>) {
-        return _buildDataRowFromMap(
-          item: item,
-          keys: keys,
-          reportType: reportType,
-          onRowDoubleTap: onRowDoubleTap,
-          onRowTap: onRowTap,
-          unit: unit,
-          columnWidths: columnWidths,
-        );
-      } else {
-        return _buildDataRowFromNonMap(
-          item: item,
-          keys: keys,
-          reportType: reportType,
-          columnWidths: columnWidths,
-        );
-      }
-    }));
-    
-    // 합계 행 추가 (includeTotalRow가 true인 경우만)
-    if (includeTotalRow) {
-      final totalDataList = (reportType == ReportType.items || reportType == ReportType.ingresos) 
-          ? displayedList 
-          : dataList;
-      rows.add(_buildTotalRow(keys, totalDataList, color, reportType: reportType));
-    }
-    
-    return rows;
-  }
-
-  /// Map 형태의 데이터에서 DataRow 생성
-  static DataRow _buildDataRowFromMap({
-    required Map<String, dynamic> item,
-    required List<String> keys,
-    required ReportType reportType,
-    Function(Map<String, dynamic>)? onRowDoubleTap,
-    Function(Map<String, dynamic>)? onRowTap,
-    String? unit,
-    Map<String, double>? columnWidths,
-  }) {
-    // items/ingresos/alertas 보고서는 칼럼 너비를 설정하여 헤더와 일치시킴
-    final isItemsOrIngresos = reportType == ReportType.items || reportType == ReportType.ingresos;
-    final isAlertas = reportType == ReportType.alertas;
-    final defaultColumnWidths = <String, double>{
-      'codigo1': 200,  // codigo1 칼럼 너비 증가 (150 -> 200)
-      'desc1': 300,
-      'ProductName': 450,  // ProductName 칼럼을 충분히 넓게 설정 (유지)
-      'tprendas': 120,
-      'timporte': 150,
-      'codigo': 150,
-      'descripcion': 300,
-      'tevent': 120,
-      'tcant': 150,
-      'tIngreso': 150,
-      'tingreso': 150,
-      'cntEvent': 120,
-      'cntevent': 120,
-      'fecha': 60,   // 120 -> 60 (절반)
-      'hora': 50,    // 100 -> 50 (절반)
-      'evento': 1000, // 500 -> 1000 (2배)
-      'progname': 75, // 150 -> 75 (절반)
-      'sucursal': 50, // 100 -> 50 (절반)
-    };
-    final finalColumnWidths = columnWidths ?? defaultColumnWidths;
-    
     // 디버깅: 데이터 행 칼럼 너비 정보 출력 (1번만 출력)
     if ((isItemsOrIngresos || isAlertas) && ReportTableBuilder._debugRowCount == 0) {
-      debugPrint('═══════════════════════════════════════════════════════');
+      final actualPadding = isAlertas ? 1 : 16;
+      final actualColumnSpacing = isAlertas ? 1 : 8;
+      
+        debugPrint('═══════════════════════════════════════════════════════');
       debugPrint('📊 [데이터 행] _buildDataRowFromMap 칼럼 너비 정보');
-      debugPrint('   → keys: $keys');
-      debugPrint('   → keys.length: ${keys.length}');
-      debugPrint('   → isItemsOrIngresos: $isItemsOrIngresos');
+                  debugPrint('   → keys: $keys');
+                  debugPrint('   → keys.length: ${keys.length}');
+                  debugPrint('   → isItemsOrIngresos: $isItemsOrIngresos');
       debugPrint('   → isAlertas: $isAlertas');
-      debugPrint('   → columnWidths 전달됨: ${columnWidths != null}');
-      debugPrint('   → finalColumnWidths: $finalColumnWidths');
+                  debugPrint('   → columnWidths 전달됨: ${columnWidths != null}');
+                  debugPrint('   → finalColumnWidths: $finalColumnWidths');
+      debugPrint('   → 실제 DataCell padding: $actualPadding (alertas: $isAlertas)');
+      debugPrint('   → 실제 columnSpacing: $actualColumnSpacing (alertas: $isAlertas)');
       double dataRowCumulativeX = 0.0;
-      for (int i = 0; i < keys.length; i++) {
+                  for (int i = 0; i < keys.length; i++) {
         final key = keys[i];
         final columnWidth = finalColumnWidths[key] ?? 150.0;
-        debugPrint('   → [데이터 행] 칼럼 #$i: key="$key", width=$columnWidth, x=$dataRowCumulativeX, DataCell padding=16');
+        debugPrint('   → [데이터 행] 칼럼 #$i: key="$key", width=$columnWidth, x=$dataRowCumulativeX, DataCell padding=$actualPadding');
         dataRowCumulativeX += columnWidth;
-        if (i < keys.length - 1) {
-          dataRowCumulativeX += 8; // columnSpacing
-          debugPrint('      → columnSpacing(8) 추가 후 x=$dataRowCumulativeX');
+                    if (i < keys.length - 1) {
+          dataRowCumulativeX += actualColumnSpacing; // alertas는 1, 다른 보고서는 8
+          debugPrint('      → columnSpacing($actualColumnSpacing) 추가 후 x=$dataRowCumulativeX');
         }
       }
       debugPrint('   → [데이터 행] 총 너비: $dataRowCumulativeX');
@@ -3516,32 +2262,29 @@ class ReportTableBuilder {
       // items/ingresos/alertas 보고서는 각 셀의 너비를 설정하여 헤더와 일치시킴
       if (isItemsOrIngresos || isAlertas) {
         final columnWidth = finalColumnWidths[key] ?? 150.0;
-        // alertas 보고서는 padding을 1로 설정
+        // alertas 보고서는 padding을 최소화하여 내용이 더 넓게 보이도록 설정
         if (isAlertas) {
-          // cell.child가 Align인 경우 Align의 child를 Padding과 SizedBox로 감싸기
+          debugPrint('🔍 [Alertas _buildDataRowFromMap] DataCell 생성 - key: $key, columnWidth: $columnWidth, padding: 최소화');
+          // cell.child가 Align인 경우 Align의 child를 SizedBox로 감싸기 (Padding 제거)
           if (cell.child is Align) {
             final align = cell.child as Align;
+            debugPrint('   → cell.child는 Align 타입');
             return DataCell(
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 1), // padding을 1로 설정
-                child: SizedBox(
-                  width: columnWidth,
-                  child: Align(
-                    alignment: align.alignment,
-                    child: align.child,
-                  ),
+              SizedBox(
+                    width: columnWidth,
+                child: Align(
+                  alignment: align.alignment,
+                  child: align.child,
                 ),
               ),
             );
           }
-          // cell.child가 다른 타입인 경우 Padding과 SizedBox로 감싸기
+          // cell.child가 다른 타입인 경우 SizedBox로 감싸기 (Padding 제거)
+          debugPrint('   → cell.child는 ${cell.child.runtimeType} 타입');
           return DataCell(
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 1), // padding을 1로 설정
-              child: SizedBox(
-                width: columnWidth,
-                child: cell.child,
-              ),
+            SizedBox(
+              width: columnWidth,
+              child: cell.child,
             ),
           );
         }
@@ -3586,10 +2329,10 @@ class ReportTableBuilder {
         onRowTap: onRowTap,
         unit: unit,
       );
-                              }
-                              
-                              return DataRow(cells: cells);
-                            }
+    }
+    
+    return DataRow(cells: cells);
+  }
 
   /// Map이 아닌 데이터에서 DataRow 생성
   static DataRow _buildDataRowFromNonMap({
@@ -3598,22 +2341,42 @@ class ReportTableBuilder {
     required ReportType reportType,
     Map<String, double>? columnWidths,
   }) {
-                            final formattedValue = ReportUtils.formatValue(item);
-                            final isNumeric = ReportUtils.isNumeric(item);
+    // 디버깅: 함수 진입 확인
+    debugPrint('   → [구문 검사] _buildDataRowFromNonMap 함수 시작');
+    debugPrint('      → 파일: report_table_builder.dart');
+    debugPrint('      → 라인: ${2192}');
+    debugPrint('      → 함수명: _buildDataRowFromNonMap');
+    debugPrint('      → 파라미터 개수: 4');
+    debugPrint('      → reportType: $reportType');
+    debugPrint('      → keys.length: ${keys.length}');
+    debugPrint('      → item 타입: ${item.runtimeType}');
+    debugPrint('      → columnWidths 전달됨: ${columnWidths != null}');
+    
+    final formattedValue = ReportUtils.formatValue(item);
+    final isNumeric = ReportUtils.isNumeric(item);
+    
+    debugPrint('      → formattedValue: $formattedValue');
+    debugPrint('      → isNumeric: $isNumeric');
+    
     final cells = List.generate(keys.length, (index) {
-                                return DataCell(
-                                  Align(
-                                    alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
-                                    child: Text(
-                                      index == 0 ? formattedValue : '',
-                                      style: TextStyle(
-                                        fontSize: reportType == ReportType.ventas ? 12 : 14,
-                                        height: reportType == ReportType.ventas ? 1.0 : 1.2,
-                                      ),
-                                    ),
-                                  ),
-                                );
+      debugPrint('      → [셀 생성] index: $index, keys.length: ${keys.length}');
+      return DataCell(
+        Align(
+          alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+          child: Text(
+            index == 0 ? formattedValue : '',
+            style: TextStyle(
+              fontSize: reportType == ReportType.ventas ? 12 : 14,
+              height: reportType == ReportType.ventas ? 1.0 : 1.2,
+            ),
+          ),
+        ),
+      );
     });
+    
+    debugPrint('   → [구문 검사] _buildDataRowFromNonMap 함수 종료');
+    debugPrint('      → 반환 cells.length: ${cells.length}');
+    
     return DataRow(cells: cells);
   }
 
@@ -3623,76 +2386,95 @@ class ReportTableBuilder {
     required dynamic value,
     required ReportType reportType,
   }) {
-                                  String formattedValue;
-                                  final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1' || key == 'vcode';
-                                  final keyLower = key.toLowerCase();
+    // 디버깅: 함수 진입 확인 (너무 많이 출력되지 않도록 제한)
+    if (ReportTableBuilder._debugCellCount < 10) {
+      debugPrint('   → [구문 검사] _buildDataCell 함수 시작');
+      debugPrint('      → 파일: report_table_builder.dart');
+      debugPrint('      → 라인: ${2218}');
+      debugPrint('      → 함수명: _buildDataCell');
+      debugPrint('      → 파라미터 개수: 3');
+      debugPrint('      → key: $key');
+      debugPrint('      → value 타입: ${value.runtimeType}');
+      debugPrint('      → value: $value');
+      debugPrint('      → reportType: $reportType');
+      ReportTableBuilder._debugCellCount++;
+    }
+    
+    String formattedValue;
+    final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1' || key == 'vcode';
+    final keyLower = key.toLowerCase();
+    
+    if (ReportTableBuilder._debugCellCount <= 10) {
+      debugPrint('      → isCodigoColumn: $isCodigoColumn');
+      debugPrint('      → keyLower: $keyLower');
+    }
     
     // year 필드 포맷팅
-                                  if (keyLower == 'year' && value != null) {
-                                    final yearStr = value.toString();
+    if (keyLower == 'year' && value != null) {
+      final yearStr = value.toString();
       formattedValue = yearStr.contains('-') ? yearStr.split('-')[0] : yearStr;
     }
     // month 필드 포맷팅
-                                  else if (keyLower == 'month' && value != null) {
-                                    final monthStr = value.toString();
+    else if (keyLower == 'month' && value != null) {
+      final monthStr = value.toString();
       formattedValue = (monthStr.length >= 7 && monthStr.contains('-')) 
           ? monthStr.substring(0, 7) 
           : monthStr;
-                                  } else {
-                                    formattedValue = isCodigoColumn 
-                                        ? (value?.toString() ?? 'N/A')
-                                        : ReportUtils.formatValue(value, fieldName: key, reportType: reportType);
-                                  }
-                                
-    // 숫자 컬럼 체크
-                                final isAmountColumn = keyLower.contains('costo') ||
-                                                       keyLower.contains('importe') ||
-                                                       keyLower.contains('ingreso') ||
-                                                       keyLower.contains('precio') ||
-                                                       keyLower.contains('pre') ||
-                                                       keyLower.contains('venta') ||
-                                                       keyLower.contains('cantidad') ||
-                                                       keyLower.contains('count') ||
-                                                       keyLower.contains('total') ||
-                           keyLower == 'sucursal' ||
-                                                       (keyLower.startsWith('t') &&
-                                                        (keyLower.contains('cant') ||
-                                                         keyLower.contains('event') ||
-                                                         keyLower.contains('prendas')));
-                                
-                                final isNumeric = (key != 'codigo' && key != 'codigo1' && key != 'tcode' && key != 'id_codigo1' && key != 'vcode')
-                                    ? (ReportUtils.isNumeric(value) || isAmountColumn)
-                                    : false;
+    } else {
+      formattedValue = isCodigoColumn 
+          ? (value?.toString() ?? 'N/A')
+          : ReportUtils.formatValue(value, fieldName: key, reportType: reportType);
+    }
     
-                                final isAlertas = reportType == ReportType.alertas;
-                                final isEventoColumn = keyLower == 'evento';
-                                
-                                return DataCell(
-                                  Align(
-                                    alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
-                                    child: isAlertas
-                                        ? Wrap(
-                                            children: [
-                                              Text(
-                                                formattedValue,
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  height: isEventoColumn ? 1.3 : 1.2,
-                                                ),
+    // 숫자 컬럼 체크
+    final isAmountColumn = keyLower.contains('costo') ||
+                           keyLower.contains('importe') ||
+                           keyLower.contains('ingreso') ||
+                           keyLower.contains('precio') ||
+                           keyLower.contains('pre') ||
+                           keyLower.contains('venta') ||
+                           keyLower.contains('cantidad') ||
+                           keyLower.contains('count') ||
+                           keyLower.contains('total') ||
+                           keyLower == 'sucursal' ||
+                           (keyLower.startsWith('t') &&
+                            (keyLower.contains('cant') ||
+                             keyLower.contains('event') ||
+                             keyLower.contains('prendas')));
+    
+    final isNumeric = (key != 'codigo' && key != 'codigo1' && key != 'tcode' && key != 'id_codigo1' && key != 'vcode')
+        ? (ReportUtils.isNumeric(value) || isAmountColumn)
+        : false;
+    
+    final isAlertas = reportType == ReportType.alertas;
+    final isEventoColumn = keyLower == 'evento';
+    
+    return DataCell(
+      Align(
+        alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+        child: isAlertas
+            ? Wrap(
+                children: [
+                  Text(
+                    formattedValue,
+                    style: TextStyle(
+                      fontSize: 14,
+                      height: isEventoColumn ? 1.3 : 1.2,
+                    ),
                     maxLines: null,
                     overflow: TextOverflow.visible,
-                                              ),
-                                            ],
-                                          )
-                                        : Text(
-                                            formattedValue,
-                                            style: TextStyle(
-                                              fontSize: reportType == ReportType.ventas ? 12 : 14,
-                                              height: reportType == ReportType.ventas ? 1.0 : 1.2,
-                                            ),
-                                          ),
-                                    ),
-                                  );
+                  ),
+                ],
+              )
+            : Text(
+                formattedValue,
+                style: TextStyle(
+                  fontSize: reportType == ReportType.ventas ? 12 : 14,
+                  height: reportType == ReportType.ventas ? 1.0 : 1.2,
+                ),
+              ),
+      ),
+    );
   }
 
   /// 셀에 제스처 추가
@@ -3704,37 +2486,60 @@ class ReportTableBuilder {
     Function(Map<String, dynamic>)? onRowTap,
     String? unit,
   }) {
+    // 디버깅: 제스처 추가 함수 진입 확인
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [구문 검사] _addGesturesToCells 함수 시작');
+    debugPrint('   → 파일: report_table_builder.dart');
+    debugPrint('   → 라인: ${2296}');
+    debugPrint('   → 함수명: _addGesturesToCells');
+    debugPrint('   → 파라미터 개수: 6');
+    debugPrint('   → cells.length: ${cells.length}');
+    debugPrint('   → reportType: $reportType');
+    debugPrint('   → onRowDoubleTap: ${onRowDoubleTap != null}');
+    debugPrint('   → onRowTap: ${onRowTap != null}');
+    debugPrint('   → unit: $unit');
+    
     return cells.map((cell) {
-                                        if (cell.child is Align) {
-                                          final align = cell.child as Align;
+      // 디버깅: 각 셀 처리 시작
+      debugPrint('   → [제스처 추가] 셀 처리 시작 - cell.child 타입: ${cell.child.runtimeType}');
+      
+      if (cell.child is Align) {
+        final align = cell.child as Align;
         // clientes 보고서는 항상 onTap 설정, ventas 보고서는 vcode 단위일 때만
         final shouldAddOnTap = onRowTap != null && 
             (reportType == ReportType.clientes || 
              (reportType == ReportType.ventas && unit == 'vcode'));
-                                          return DataCell(
-                                            GestureDetector(
+        
+        debugPrint('   → [제스처 추가] Align 타입 셀 처리');
+        debugPrint('      → shouldAddOnTap: $shouldAddOnTap');
+        debugPrint('      → onRowDoubleTap != null: ${onRowDoubleTap != null}');
+        
+        return DataCell(
+          GestureDetector(
             onTap: shouldAddOnTap ? () {
               debugPrint('🔍 [report_table_builder] _addGesturesToCells - 단일클릭 감지됨!');
               debugPrint('→ reportType: $reportType');
               debugPrint('→ unit: $unit');
-                                                onRowTap(item);
-                                              } : null,
-                                              onDoubleTap: onRowDoubleTap != null ? () {
+              onRowTap!(item);
+            } : null,
+            onDoubleTap: onRowDoubleTap != null ? () {
               debugPrint('🔍 [report_table_builder] _addGesturesToCells - 더블클릭 감지됨!');
               debugPrint('→ reportType: $reportType');
-                                                onRowDoubleTap(item);
-                                              } : null,
-                                              behavior: HitTestBehavior.opaque,
-                                              child: Container(
-                                                width: double.infinity,
-                                                height: double.infinity,
-                                                alignment: align.alignment,
-                                                child: align.child,
-                                              ),
-                                            ),
-                                          );
-                                        }
-                                        return cell;
+              onRowDoubleTap!(item);
+            } : null,
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              width: double.infinity,
+              height: double.infinity,
+              alignment: align.alignment,
+              child: align.child,
+            ),
+          ),
+        );
+      }
+      
+      debugPrint('   → [제스처 추가] Align이 아닌 셀 - 그대로 반환');
+      return cell;
     }).toList();
   }
 
@@ -3855,15 +2660,19 @@ class ReportTableBuilder {
     debugPrint('   → keys.length: ${keys.length}');
     debugPrint('   → columnWidths 전달됨: ${columnWidths != null}');
     debugPrint('   → finalColumnWidths: $finalColumnWidths');
+    final isAlertas = reportType == ReportType.alertas;
+    final footerPadding = isAlertas ? 1 : 16; // alertas는 1, 다른 보고서는 16
+    final footerColumnSpacing = isAlertas ? 1 : 8; // alertas는 1, 다른 보고서는 8
+    
     double footerCumulativeX = 0.0;
     for (int i = 0; i < keys.length; i++) {
       final key = keys[i];
       final columnWidth = finalColumnWidths[key] ?? 150.0;
-      debugPrint('   → [푸터] 칼럼 #$i: key="$key", width=$columnWidth, x=$footerCumulativeX, padding=16');
+      debugPrint('   → [푸터] 칼럼 #$i: key="$key", width=$columnWidth, x=$footerCumulativeX, padding=$footerPadding (alertas: $isAlertas)');
       footerCumulativeX += columnWidth;
       if (i < keys.length - 1) {
-        footerCumulativeX += 8; // columnSpacing
-        debugPrint('      → columnSpacing(8) 추가 후 x=$footerCumulativeX');
+        footerCumulativeX += footerColumnSpacing;
+        debugPrint('      → columnSpacing($footerColumnSpacing) 추가 후 x=$footerCumulativeX');
       }
     }
     debugPrint('   → [푸터] 총 너비: $footerCumulativeX');
@@ -3947,26 +2756,26 @@ class ReportTableBuilder {
             
             // Factura A와 B를 1줄로 표시
             final rowWidget = Row(
-              mainAxisSize: MainAxisSize.min,
-              children: keys.asMap().entries.map((entry) {
-                final index = entry.key;
-                final key = entry.value;
-                final columnWidth = finalColumnWidths[key] ?? 150.0;
-                
+                mainAxisSize: MainAxisSize.min,
+                children: keys.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final key = entry.value;
+                  final columnWidth = finalColumnWidths[key] ?? 150.0;
+                  
                 debugPrint('   → [푸터 셀] index=$index, key=$key, width=$columnWidth');
                 
                 // tipofactura 컬럼에 Factura A와 B 정보를 모두 표시
-                if (index == tipofacturaIndex) {
+                  if (index == tipofacturaIndex) {
                   final text = 'Factura A: ${fventasSummary!['countA']} | Factura B: ${fventasSummary!['countB']}';
                   debugPrint('   → [푸터 셀] tipofactura 컬럼 텍스트: "$text"');
                   debugPrint('   → [푸터 셀] tipofactura 컬럼 너비: $columnWidth');
                   
-                  return SizedBox(
-                    width: columnWidth,
-                    child: Container(
+                    return SizedBox(
+                      width: columnWidth,
+                      child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                      height: 56.0,
-                      child: Align(
+                        height: 56.0,
+                        child: Align(
                         alignment: Alignment.centerLeft,
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
@@ -3978,26 +2787,26 @@ class ReportTableBuilder {
                               fontWeight: FontWeight.bold,
                             ),
                             maxLines: 1,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                }
+                    );
+                  }
                 // monto 컬럼에 Factura A와 B의 monto 합계를 모두 표시
-                else if (index == montoIndex) {
+                  else if (index == montoIndex) {
                   final montoAText = ReportUtils.formatValue(fventasSummary!['montoA'] as double);
                   final montoBText = ReportUtils.formatValue(fventasSummary!['montoB'] as double);
                   final text = '$montoAText | $montoBText';
                   debugPrint('   → [푸터 셀] monto 컬럼 텍스트: "$text"');
                   debugPrint('   → [푸터 셀] monto 컬럼 너비: $columnWidth');
                   
-                  return SizedBox(
-                    width: columnWidth,
-                    child: Container(
+                    return SizedBox(
+                      width: columnWidth,
+                      child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                      height: 56.0,
-                      child: Align(
+                        height: 56.0,
+                        child: Align(
                         alignment: Alignment.centerRight,
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
@@ -4009,25 +2818,25 @@ class ReportTableBuilder {
                               fontWeight: FontWeight.bold,
                             ),
                             maxLines: 1,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                }
-                // 다른 컬럼은 빈 칸
-                else {
-                  return SizedBox(
-                    width: columnWidth,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      height: 56.0,
-                      child: const SizedBox.shrink(),
-                    ),
-                  );
-                }
-              }).toList(),
-            );
+                    );
+                  }
+                  // 다른 컬럼은 빈 칸
+                  else {
+                    return SizedBox(
+                      width: columnWidth,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        height: 56.0,
+                        child: const SizedBox.shrink(),
+                      ),
+                    );
+                  }
+                }).toList(),
+              );
             
             debugPrint('   → [FVentas 푸터] Row 위젯 생성 완료');
             debugPrint('   → [FVentas 푸터] Row children 개수: ${rowWidget.children.length}');
@@ -4049,14 +2858,23 @@ class ReportTableBuilder {
             debugPrint('   → 표시할 텍스트: "Total: $totalLogCount"');
             debugPrint('═══════════════════════════════════════════════════════');
             
-            // 첫 번째 칼럼 너비를 충분히 크게 설정 (최소 150)
-            final firstColumnWidth = keys.isNotEmpty 
-                ? ((finalColumnWidths[keys[0]] ?? 150.0) < 150.0 ? 150.0 : (finalColumnWidths[keys[0]] ?? 150.0))
+            // 첫 번째 칼럼 너비는 최소 150으로 설정하여 "Total: XX" 텍스트가 잘리지 않도록 함
+            final actualFirstColumnWidth = keys.isNotEmpty 
+                ? (finalColumnWidths[keys[0]] ?? 150.0)
                 : 150.0;
-            debugPrint('🔍 [Alertas 푸터] 첫 번째 칼럼 너비 (조정 후): $firstColumnWidth');
+            final firstColumnWidth = actualFirstColumnWidth < 150.0 ? 150.0 : actualFirstColumnWidth;
+            debugPrint('🔍 [Alertas 푸터] 첫 번째 칼럼 너비: $firstColumnWidth (실제: $actualFirstColumnWidth)');
             
             final totalText = 'Total: $totalLogCount';
             debugPrint('🔍 [Alertas 푸터] 생성할 텍스트: "$totalText"');
+            
+            // 총 너비 계산 (오버플로우 방지)
+            double totalFooterWidth = firstColumnWidth;
+            for (int i = 1; i < keys.length; i++) {
+              final columnWidth = finalColumnWidths[keys[i]] ?? 150.0;
+              totalFooterWidth += columnWidth + 1; // columnSpacing (1) 고려
+            }
+            debugPrint('🔍 [Alertas 푸터] 계산된 총 너비: $totalFooterWidth, explicitWidth: $explicitWidth');
             
             return Container(
               width: explicitWidth ?? double.infinity,
@@ -4069,42 +2887,47 @@ class ReportTableBuilder {
                   ),
                 ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // 첫 번째 칼럼에 총 로그 개수 표시 (충분한 너비, 최소 200)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 8), // padding을 1로 설정
-                    height: 56.0,
-                    constraints: const BoxConstraints(minWidth: 200), // 최소 너비 200으로 증가
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        totalText,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: reportColor,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.visible,
-                      ),
-                    ),
-                  ),
-                  // 나머지 칼럼은 빈 칸
-                  ...keys.skip(1).map((key) {
-                    final columnWidth = finalColumnWidths[key] ?? 150.0;
-                    debugPrint('🔍 [Alertas 푸터] 빈 칸 칼럼: $key, width: $columnWidth');
-                    return SizedBox(
-                      width: columnWidth + 1, // columnSpacing 고려
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                    // 첫 번째 칼럼에 총 로그 개수 표시 (최소 150 너비로 텍스트가 잘리지 않도록)
+                    SizedBox(
+                      width: firstColumnWidth,
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 8), // padding을 1로 설정
                         height: 56.0,
-                        child: const SizedBox.shrink(),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            totalText,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: reportColor,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.visible, // 텍스트가 잘리지 않도록 visible 사용
+                          ),
+                        ),
                       ),
-                    );
-                  }),
-                ],
+                    ),
+                    // 나머지 칼럼은 빈 칸
+                    ...keys.skip(1).map((key) {
+                      final columnWidth = finalColumnWidths[key] ?? 150.0;
+                      debugPrint('🔍 [Alertas 푸터] 빈 칸 칼럼: $key, width: $columnWidth');
+                      return SizedBox(
+                        width: columnWidth + 1, // columnSpacing 고려
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 8), // padding을 1로 설정
+                          height: 56.0,
+                          child: const SizedBox.shrink(),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
               ),
             );
           }
@@ -4245,15 +3068,19 @@ class ReportTableBuilder {
     debugPrint('   → columns.length: ${columns.length}');
     debugPrint('   → columnWidths 전달됨: ${columnWidths != null}');
     debugPrint('   → finalColumnWidths: $finalColumnWidths');
+    final isAlertas = reportType == ReportType.alertas;
+    final headerColumnSpacing = isAlertas ? 1 : 8; // alertas는 1, 다른 보고서는 8
+    final headerPadding = isAlertas ? 1 : 16; // alertas는 1, 다른 보고서는 16
+    
     double headerCumulativeX = 0.0;
     for (int i = 0; i < keys.length; i++) {
       final key = keys[i];
       final columnWidth = finalColumnWidths[key] ?? 150.0;
-      debugPrint('   → [헤더] 칼럼 #$i: key="$key", width=$columnWidth, x=$headerCumulativeX, padding=16');
+      debugPrint('   → [헤더] 칼럼 #$i: key="$key", width=$columnWidth, x=$headerCumulativeX, padding=$headerPadding (alertas: $isAlertas)');
       headerCumulativeX += columnWidth;
       if (i < keys.length - 1) {
-        headerCumulativeX += 8; // columnSpacing
-        debugPrint('      → columnSpacing(8) 추가 후 x=$headerCumulativeX');
+        headerCumulativeX += headerColumnSpacing;
+        debugPrint('      → columnSpacing($headerColumnSpacing) 추가 후 x=$headerCumulativeX');
       }
     }
     debugPrint('   → [헤더] 총 너비: $headerCumulativeX');
@@ -4346,10 +3173,11 @@ class ReportTableBuilder {
                 child: Container(
                   // DataTable의 DataCell은 기본적으로 horizontal padding이 16이므로, 헤더도 동일하게 맞춤
                   // Container의 padding을 0으로 설정하고, 내부에 Padding 위젯을 사용하여 DataTable과 동일한 구조로 만듦
+                  // alertas 보고서는 padding을 1로 설정
                   padding: EdgeInsets.zero,
                   height: (reportType == ReportType.items || reportType == ReportType.ingresos) ? 37 : 56, // items/ingresos는 37, 다른 보고서는 56
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), // DataTable의 DataCell과 동일한 padding
+                    padding: EdgeInsets.symmetric(horizontal: isAlertas ? 1 : 16, vertical: 8), // alertas는 1, 다른 보고서는 16
                     child: Align(
                       alignment: isNumericHeader ? Alignment.centerRight : Alignment.centerLeft,
                       child: Row(
@@ -4383,8 +3211,8 @@ class ReportTableBuilder {
                 ),
               ),
             ),
-            // 마지막 칼럼이 아니면 columnSpacing(8px) 추가
-            if (index < columns.length - 1) const SizedBox(width: 8),
+            // 마지막 칼럼이 아니면 columnSpacing 추가 (alertas는 1, 다른 보고서는 8)
+            if (index < columns.length - 1) SizedBox(width: headerColumnSpacing.toDouble()),
           ];
         }).toList(),
           );

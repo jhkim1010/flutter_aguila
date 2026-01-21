@@ -11,6 +11,7 @@ import '../services/pdf_service.dart';
 import '../services/excel_service.dart';
 import '../l10n/app_localizations.dart';
 import '../utils/platform_utils.dart';
+import '../utils/mobile_layout_helper.dart';
 import '../utils/report_data_utils.dart';
 import '../widgets/report_utils.dart';
 import '../widgets/items_date_range_selector.dart';
@@ -162,6 +163,15 @@ class _ReportScreenState extends State<ReportScreen> {
   @override
   void initState() {
     super.initState();
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [initState] ReportScreen 초기화');
+    debugPrint('   → 파일: report_screen.dart');
+    debugPrint('   → 라인: ${163}');
+    debugPrint('   → reportType: ${widget.reportType}');
+    debugPrint('   → initialFilteringWord: ${widget.initialFilteringWord}');
+    debugPrint('   → initialFilteringWord가 null인지: ${widget.initialFilteringWord == null}');
+    debugPrint('   → initialFilteringWord가 비어있는지: ${widget.initialFilteringWord?.isEmpty ?? true}');
+    
     _databaseService = DatabaseService(serverUrl: widget.serverUrl);
     // 스크롤 리스너 추가 (무한 스크롤)
     _scrollController.addListener(_onScroll);
@@ -169,9 +179,21 @@ class _ReportScreenState extends State<ReportScreen> {
     _filteringWordController.addListener(_onFilteringWordChangedDebounced);
     
     // 초기 필터링 단어 설정
-    if (widget.initialFilteringWord != null && widget.initialFilteringWord!.isNotEmpty) {
+    // alertas가 아닌 보고서로 이동할 때는 initialFilteringWord를 무시하고 초기화
+    if (widget.reportType != ReportType.alertas) {
+      debugPrint('   → alertas가 아닌 보고서 - filteringWord 초기화');
+      debugPrint('      → 초기화 전 _filteringWordController.text: "${_filteringWordController.text}"');
+      _filteringWordController.clear();
+      debugPrint('      → 초기화 후 _filteringWordController.text: "${_filteringWordController.text}"');
+    } else if (widget.initialFilteringWord != null && widget.initialFilteringWord!.isNotEmpty) {
+      debugPrint('   → alertas 보고서 - initialFilteringWord 설정: "${widget.initialFilteringWord}"');
       _filteringWordController.text = widget.initialFilteringWord!;
+    } else {
+      debugPrint('   → initialFilteringWord가 null이거나 비어있음 - filteringWord 초기화');
+      _filteringWordController.clear();
     }
+    debugPrint('   → 최종 _filteringWordController.text: "${_filteringWordController.text}"');
+    debugPrint('═══════════════════════════════════════════════════════');
     
     // 초기 정렬 정보 설정
     if (widget.initialSortColumn != null) {
@@ -243,6 +265,24 @@ class _ReportScreenState extends State<ReportScreen> {
     _loadData();
   }
 
+  /// alertas에서 다른 보고서로 이동할 때 filteringWord를 초기화하는 헬퍼 함수
+  String? _getInitialFilteringWordForNavigation(ReportType currentReportType, ReportType targetReportType) {
+    final isFromAlertas = currentReportType == ReportType.alertas;
+    final isToAlertas = targetReportType == ReportType.alertas;
+    final shouldClearFilteringWord = isFromAlertas && !isToAlertas;
+    
+    debugPrint('🔍 [_getInitialFilteringWordForNavigation]');
+    debugPrint('   → 현재 reportType: $currentReportType');
+    debugPrint('   → 이동할 reportType: $targetReportType');
+    debugPrint('   → isFromAlertas: $isFromAlertas');
+    debugPrint('   → isToAlertas: $isToAlertas');
+    debugPrint('   → shouldClearFilteringWord: $shouldClearFilteringWord');
+    debugPrint('   → 현재 initialFilteringWord: ${widget.initialFilteringWord}');
+    debugPrint('   → 반환할 initialFilteringWord: ${shouldClearFilteringWord ? null : widget.initialFilteringWord}');
+    
+    return shouldClearFilteringWord ? null : widget.initialFilteringWord;
+  }
+
   @override
   void didUpdateWidget(ReportScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -260,12 +300,90 @@ class _ReportScreenState extends State<ReportScreen> {
     
     // reportType이 변경되었을 때 데이터 다시 로드
     if (oldWidget.reportType != widget.reportType) {
-      print('🔄 ReportType 변경 감지: ${oldWidget.reportType} → ${widget.reportType}');
+      debugPrint('═══════════════════════════════════════════════════════');
+      debugPrint('🔄 [didUpdateWidget] ReportType 변경 감지');
+      debugPrint('   → 파일: report_screen.dart');
+      debugPrint('   → 라인: ${262}');
+      debugPrint('   → oldWidget.reportType: ${oldWidget.reportType}');
+      debugPrint('   → widget.reportType: ${widget.reportType}');
+      debugPrint('   → filteringWord 초기값: "${_filteringWordController.text}"');
+      debugPrint('   → filteringWord 길이: ${_filteringWordController.text.length}');
+      
       // 상태 초기화
       _data = null;
       _errorMessage = null;
       _isLoading = true;
-      _filteringWordController.clear();
+      
+      // alertas에서 다른 보고서로 이동할 때만 filteringWord 초기화 (기간은 유지)
+      final isFromAlertas = oldWidget.reportType == ReportType.alertas;
+      final isToAlertas = widget.reportType == ReportType.alertas;
+      
+      debugPrint('   → isFromAlertas: $isFromAlertas');
+      debugPrint('   → isToAlertas: $isToAlertas');
+      debugPrint('   → 조건 확인: isFromAlertas && !isToAlertas = ${isFromAlertas && !isToAlertas}');
+      debugPrint('   → 조건 확인: !isFromAlertas && !isToAlertas = ${!isFromAlertas && !isToAlertas}');
+      
+      if (isFromAlertas && !isToAlertas) {
+        debugPrint('═══════════════════════════════════════════════════════');
+        debugPrint('🔄 [Alertas → 다른 보고서] filteringWord 초기화 시작');
+        debugPrint('   → 초기화 전 filteringWord: "${_filteringWordController.text}"');
+        debugPrint('   → 초기화 전 filteringWord 길이: ${_filteringWordController.text.length}');
+        debugPrint('   → _filteringWordController.clear() 호출');
+        
+        _filteringWordController.clear();
+        
+        // clear() 호출 후 즉시 확인
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          debugPrint('   → [PostFrameCallback] 초기화 후 filteringWord: "${_filteringWordController.text}"');
+          debugPrint('   → [PostFrameCallback] 초기화 후 filteringWord 길이: ${_filteringWordController.text.length}');
+          debugPrint('   → [PostFrameCallback] filteringWord가 비어있는지: ${_filteringWordController.text.isEmpty}');
+        });
+        
+        debugPrint('   → 초기화 직후 filteringWord: "${_filteringWordController.text}"');
+        debugPrint('   → 초기화 직후 filteringWord 길이: ${_filteringWordController.text.length}');
+        
+        // alertas 관련 상태도 초기화
+        debugPrint('   → alertas 관련 상태 초기화');
+        debugPrint('      → _alertasVCancelado: $_alertasVCancelado → false');
+        debugPrint('      → _alertasJefe: $_alertasJefe → false');
+        debugPrint('      → _alertasWeb: $_alertasWeb → false');
+        
+        _alertasVCancelado = false;
+        _alertasJefe = false;
+        _alertasWeb = false;
+        
+        debugPrint('🔄 [Alertas → 다른 보고서] filteringWord 초기화 완료');
+        debugPrint('═══════════════════════════════════════════════════════');
+      } else if (!isFromAlertas && !isToAlertas) {
+        debugPrint('═══════════════════════════════════════════════════════');
+        debugPrint('🔄 [다른 보고서 → 다른 보고서] filteringWord 초기화 시작');
+        debugPrint('   → 초기화 전 filteringWord: "${_filteringWordController.text}"');
+        debugPrint('   → 초기화 전 filteringWord 길이: ${_filteringWordController.text.length}');
+        debugPrint('   → _filteringWordController.clear() 호출');
+        
+        // alertas가 아닌 다른 보고서에서 다른 보고서로 이동할 때는 filteringWord 초기화
+        _filteringWordController.clear();
+        
+        // clear() 호출 후 즉시 확인
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          debugPrint('   → [PostFrameCallback] 초기화 후 filteringWord: "${_filteringWordController.text}"');
+          debugPrint('   → [PostFrameCallback] 초기화 후 filteringWord 길이: ${_filteringWordController.text.length}');
+          debugPrint('   → [PostFrameCallback] filteringWord가 비어있는지: ${_filteringWordController.text.isEmpty}');
+        });
+        
+        debugPrint('   → 초기화 직후 filteringWord: "${_filteringWordController.text}"');
+        debugPrint('   → 초기화 직후 filteringWord 길이: ${_filteringWordController.text.length}');
+        debugPrint('🔄 [다른 보고서 → 다른 보고서] filteringWord 초기화 완료');
+        debugPrint('═══════════════════════════════════════════════════════');
+      } else {
+        debugPrint('═══════════════════════════════════════════════════════');
+        debugPrint('🔄 [Alertas 유지 또는 Alertas로 이동] filteringWord 유지');
+        debugPrint('   → filteringWord: "${_filteringWordController.text}"');
+        debugPrint('   → filteringWord 길이: ${_filteringWordController.text.length}');
+        debugPrint('═══════════════════════════════════════════════════════');
+      }
+      // alertas로 이동하거나 alertas 내에서 변경될 때는 filteringWord 유지
+      
       _selectedSucursal = null;
       
       // 보고서 타입별 상태 초기화
@@ -292,9 +410,14 @@ class _ReportScreenState extends State<ReportScreen> {
       _closeClienteDetailOverlay();
     }
       
-      // Items, Ingresos, Gastos, Alertas 및 Clientes 보고서의 경우 기본 날짜 설정 (오늘 날짜 또는 초기값)
+      // Items, Ingresos, Gastos, Alertas 및 Clientes 보고서의 경우 기본 날짜 설정
+      // alertas에서 다른 보고서로 이동할 때는 날짜 유지 (초기화하지 않음)
       if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas || widget.reportType == ReportType.clientes) {
-        if (widget.initialItemsStartDate != null && widget.initialItemsEndDate != null) {
+        // alertas에서 다른 보고서로 이동할 때는 날짜 유지
+        if (isFromAlertas && !isToAlertas) {
+          print('🔄 Alertas에서 다른 보고서로 이동 - 날짜 유지: $_itemsStartDate ~ $_itemsEndDate');
+          // 날짜는 그대로 유지 (초기화하지 않음)
+        } else if (widget.initialItemsStartDate != null && widget.initialItemsEndDate != null) {
           _itemsStartDate = widget.initialItemsStartDate;
           _itemsEndDate = widget.initialItemsEndDate;
         } else {
@@ -340,14 +463,33 @@ class _ReportScreenState extends State<ReportScreen> {
   
   /// filteringWord 변경 감지 (debounced) - 0.1초보다 빠른 입력은 묶어서 처리
   void _onFilteringWordChangedDebounced() {
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [_onFilteringWordChangedDebounced] filteringWord 변경 감지');
+    debugPrint('   → 파일: report_screen.dart');
+    debugPrint('   → 라인: ${400}');
+    debugPrint('   → 현재 filteringWord: "${_filteringWordController.text}"');
+    debugPrint('   → 현재 filteringWord 길이: ${_filteringWordController.text.length}');
+    debugPrint('   → 이전 filteringWord: "$_lastFilteringWord"');
+    debugPrint('   → reportType: ${widget.reportType}');
+    
     // 이전 타이머 취소
     _filteringWordDebounceTimer?.cancel();
     
     // debounce를 위해 타이머 사용 (100ms 후 실행)
     _filteringWordDebounceTimer = Timer(const Duration(milliseconds: 100), () {
-      if (!mounted) return;
+      if (!mounted) {
+        debugPrint('   → [Debounce Timer] mounted가 false - 취소');
+        return;
+      }
       final finalWord = _filteringWordController.text.trim();
-      if (finalWord == _lastFilteringWord) return; // 변경사항이 없으면 취소
+      debugPrint('   → [Debounce Timer] finalWord: "$finalWord"');
+      debugPrint('   → [Debounce Timer] _lastFilteringWord: "$_lastFilteringWord"');
+      debugPrint('   → [Debounce Timer] 변경사항 있음: ${finalWord != _lastFilteringWord}');
+      
+      if (finalWord == _lastFilteringWord) {
+        debugPrint('   → [Debounce Timer] 변경사항 없음 - 취소');
+        return; // 변경사항이 없으면 취소
+      }
       
       // 프레임 완료 후 상태 업데이트를 보장하여 mouse_tracker assertion 오류 방지
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1555,6 +1697,17 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   Future<void> _loadData({String? filteringWord}) async {
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [_loadData] 함수 호출');
+    debugPrint('   → 파일: report_screen.dart');
+    debugPrint('   → 라인: ${1659}');
+    debugPrint('   → reportType: ${widget.reportType}');
+    debugPrint('   → 파라미터 filteringWord: $filteringWord');
+    debugPrint('   → _filteringWordController.text: "${_filteringWordController.text}"');
+    debugPrint('   → _filteringWordController.text.trim(): "${_filteringWordController.text.trim()}"');
+    debugPrint('   → _filteringWordController.text.isEmpty: ${_filteringWordController.text.isEmpty}');
+    debugPrint('   → _filteringWordController.text.length: ${_filteringWordController.text.length}');
+    
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -1641,30 +1794,55 @@ class _ReportScreenState extends State<ReportScreen> {
           debugPrint('   → API 응답 받음: ${data.containsKey('data') ? (data['data'] is List ? (data['data'] as List).length : (data['data'] is Map ? 'Map 구조' : '알 수 없음')) : 0}개 항목');
           break;
         case ReportType.clientes:
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [Clientes Report] _loadData 시작');
+          debugPrint('   → 파라미터 filteringWord: $filteringWord');
+          debugPrint('   → _filteringWordController.text: "${_filteringWordController.text}"');
+          debugPrint('   → _filteringWordController.text.trim(): "${_filteringWordController.text.trim()}"');
+          debugPrint('   → _filteringWordController.text.isEmpty: ${_filteringWordController.text.isEmpty}');
+          debugPrint('   → _filteringWordController.text.length: ${_filteringWordController.text.length}');
+          
           final currentFilteringWord = filteringWord ?? _filteringWordController.text.trim();
+          debugPrint('   → currentFilteringWord: "$currentFilteringWord"');
+          debugPrint('   → currentFilteringWord.isEmpty: ${currentFilteringWord.isEmpty}');
+          debugPrint('   → currentFilteringWord.length: ${currentFilteringWord.length}');
+          
           final filters = <String, dynamic>{};
           
           // 날짜 범위 필터 추가 (달력이 선택된 경우에만)
           if (_itemsStartDate != null && _itemsEndDate != null) {
             filters['fecha_inicio'] = DateFormat('yyyy-MM-dd').format(_itemsStartDate!);
             filters['fecha_fin'] = DateFormat('yyyy-MM-dd').format(_itemsEndDate!);
+            debugPrint('   → 날짜 필터 추가: ${filters['fecha_inicio']} ~ ${filters['fecha_fin']}');
+          } else {
+            debugPrint('   → 날짜 필터 없음');
           }
           
           if (_clientesResponsableIns != null) {
             filters['responsable_ins'] = _clientesResponsableIns;
+            debugPrint('   → responsable_ins 필터 추가: ${filters['responsable_ins']}');
           }
           if (_clientesProvincia != null) {
             filters['provincia'] = _clientesProvincia;
+            debugPrint('   → provincia 필터 추가: ${filters['provincia']}');
           }
           if (_clientesDeudores) {
             filters['deudores'] = '1';
+            debugPrint('   → deudores 필터 추가');
           }
           if (_clientesReservadores) {
             filters['reservadores'] = '1';
+            debugPrint('   → reservadores 필터 추가');
           }
           if (currentFilteringWord.isNotEmpty) {
             filters['filtering_word'] = currentFilteringWord;
+            debugPrint('   → filtering_word 필터 추가: "${filters['filtering_word']}"');
+          } else {
+            debugPrint('   → filtering_word 필터 없음 (비어있음)');
           }
+          
+          debugPrint('   → 최종 filters: $filters');
+          debugPrint('═══════════════════════════════════════════════════════');
           
           // 정렬 파라미터 추가
           if (_clientesSortColumn != null) {
@@ -2673,21 +2851,37 @@ class _ReportScreenState extends State<ReportScreen> {
       builder: (context, constraints) {
         debugPrint('   → LayoutBuilder: constraints.maxWidth=${constraints.maxWidth}, constraints.maxHeight=${constraints.maxHeight}');
         
-        final isLargeScreen = constraints.maxWidth >= 800;
-        final orientation = MediaQuery.of(context).orientation;
-        final isMobilePortrait = !isLargeScreen && orientation == Orientation.portrait;
-        final platformType = PlatformUtils.getPlatformType(context);
-        final isMobile = platformType == PlatformType.mobile;
+        // ============================================================
+        // 📱 모바일 화면 구성 정보 가져오기
+        // ============================================================
+        // MobileLayoutHelper를 사용하여 핸드폰의 수직/수평 화면 구성을 집중적으로 처리
+        // 대형 화면(태블릿, 데스크톱)에는 영향을 미치지 않도록 설계됨
+        final layoutInfo = MobileLayoutHelper.getLayoutInfo(context);
+        
+        // 기존 호환성을 위한 변수들 (하위 호환성 유지)
+        final isLargeScreen = layoutInfo.isLargeScreen;
+        final orientation = layoutInfo.orientation;
+        final platformType = layoutInfo.platformType;
+        final isMobile = layoutInfo.isMobilePlatform;
+        final isMobilePortrait = layoutInfo.isMobilePhonePortrait;
+        final isMobilePhone = layoutInfo.isMobilePhone;
         
         debugPrint('   → isLargeScreen: $isLargeScreen');
-        debugPrint('   → orientation: $orientation');
-        debugPrint('   → platformType: $platformType');
+        debugPrint('   → orientation: ${layoutInfo.orientation}');
+        debugPrint('   → platformType: ${layoutInfo.platformType}');
         debugPrint('   → isMobile: $isMobile');
+        debugPrint('   → isMobilePhone: $isMobilePhone');
+        debugPrint('   → isMobilePhonePortrait: ${layoutInfo.isMobilePhonePortrait}');
+        debugPrint('   → isMobilePhoneLandscape: ${layoutInfo.isMobilePhoneLandscape}');
         
+        // ============================================================
+        // 📱 핸드폰 AppBar 다중 줄 구성 결정
+        // ============================================================
         // 핸드폰의 경우: 넓은 화면(가로 모드)이면 1줄, 좁은 화면(세로 모드)이면 2줄 또는 3줄
-        // 데스크톱/태블릿의 경우: 기존 로직 유지
-        final needsMultiLineAppBar = isMobile
-            ? isMobilePortrait && (
+        // 데스크톱/태블릿의 경우: 기존 로직 유지 (대형 화면 보호)
+        // 주의: isMobilePhone을 사용하여 태블릿을 제외한 핸드폰만 대상으로 함
+        final needsMultiLineAppBar = isMobilePhone
+            ? layoutInfo.isMobilePhonePortrait && (
                 widget.reportType == ReportType.ventas ||
                 widget.reportType == ReportType.items ||
                 widget.reportType == ReportType.ingresos ||
@@ -2704,17 +2898,46 @@ class _ReportScreenState extends State<ReportScreen> {
                 widget.reportType == ReportType.fventas
               );
         
-        // ventas 보고서의 경우:
-        // - 모바일 폰 세로 모드: 3줄 (iPhone, Android phone)
-        // - 모바일 폰 가로 모드: 2줄 (iPhone, Android phone)
-        // - 태블릿 (iPad, Android tablet): 데스크톱과 동일하게 처리
-        final isTablet = PlatformUtils.isIPad(context) || 
-                         (platformType == PlatformType.mobile && isLargeScreen);
-        final isMobilePhone = isMobile && !isTablet;
-        final isMobilePhoneLandscape = isMobilePhone && orientation == Orientation.landscape;
-        final needsThreeLineAppBar = isMobilePhone && isMobilePortrait && widget.reportType == ReportType.ventas;
+        // ============================================================
+        // 📱 AppBar 줄 수 결정 로직
+        // ============================================================
+        // 각 보고서 타입별로 핸드폰 화면 크기에 따라 AppBar 줄 수 결정:
+        // - 핸드폰 세로 모드 (좁은 화면): 컨트롤이 많으면 3줄, 적으면 2줄
+        // - 핸드폰 가로 모드 (넓은 화면): 1줄 또는 2줄
+        // - 태블릿/데스크톱: 1줄 (대형 화면 보호)
+        // 주의: isMobilePhone을 사용하여 태블릿을 제외한 핸드폰만 대상으로 함
+        
+        // 3줄 AppBar가 필요한 보고서 타입들 (컨트롤이 많아서 공간 확보 필요)
+        final needsThreeLineAppBar = isMobilePhone && layoutInfo.isMobilePhonePortrait && (
+          widget.reportType == ReportType.ventas ||      // Unit 버튼, 체크박스 3개, 날짜 버튼 2개, sucursal 등
+          widget.reportType == ReportType.clientes ||    // Responsable Ins, Provincias, 체크박스 2개, 필터링 단어, 날짜 선택기 2개
+          widget.reportType == ReportType.alertas ||     // VCancelado, Jefe, WEB 버튼, 날짜 선택기, sucursal, 필터링 단어
+          widget.reportType == ReportType.stocks ||      // Tipo, Temporada 콤보박스, 필터링 단어 (필요시 확장)
+          widget.reportType == ReportType.codigos ||     // Tipo, Temporada 콤보박스, 필터링 단어 (필요시 확장)
+          widget.reportType == ReportType.todocodigos    // Tipo, Temporada 콤보박스, 필터링 단어 (필요시 확장)
+        );
+        
+        // 2줄 AppBar가 필요한 경우:
+        // - 3줄이 필요하지 않은 보고서 중에서 멀티라인이 필요한 경우
+        // - 핸드폰 가로 모드에서 ventas 보고서 (가로 모드에서는 공간이 넓어서 2줄로 충분)
         final needsTwoLineAppBar = (needsMultiLineAppBar && !needsThreeLineAppBar) || 
-                                    (isMobilePhoneLandscape && widget.reportType == ReportType.ventas);
+                                    (layoutInfo.isMobilePhoneLandscape && widget.reportType == ReportType.ventas);
+        
+        // ============================================================
+        // 📱 AppBar 구성 디버깅 정보 출력
+        // ============================================================
+        debugPrint('═══════════════════════════════════════════════════════════');
+        debugPrint('📱 [AppBar 구성] AppBar 줄 수 결정 로직 실행');
+        debugPrint('   → reportType: ${widget.reportType}');
+        debugPrint('   → isMobilePhone: $isMobilePhone');
+        debugPrint('   → isMobilePhonePortrait: ${layoutInfo.isMobilePhonePortrait}');
+        debugPrint('   → isMobilePhoneLandscape: ${layoutInfo.isMobilePhoneLandscape}');
+        debugPrint('   → isLargeScreen: $isLargeScreen');
+        debugPrint('   → needsMultiLineAppBar: $needsMultiLineAppBar');
+        debugPrint('   → needsThreeLineAppBar: $needsThreeLineAppBar');
+        debugPrint('   → needsTwoLineAppBar: $needsTwoLineAppBar');
+        debugPrint('   → 최종 toolbarHeight: ${needsThreeLineAppBar ? kToolbarHeight * 3 : (needsTwoLineAppBar ? kToolbarHeight * 2 : null)}');
+        debugPrint('═══════════════════════════════════════════════════════════');
 
     // useFullWidth가 true이면 Scaffold를 반환하지 않고 AppBar와 body를 포함한 위젯 반환
     if (widget.useFullWidth) {
@@ -2741,57 +2964,116 @@ class _ReportScreenState extends State<ReportScreen> {
         title: widget.reportType == ReportType.stocks
             ? LayoutBuilder(
                 builder: (context, constraints) {
-                  final isLargeScreen = constraints.maxWidth >= 800;
-                  final orientation = MediaQuery.of(context).orientation;
-                  final platformType = PlatformUtils.getPlatformType(context);
-                  final isMobile = platformType == PlatformType.mobile;
-                  // 핸드폰의 경우: 세로 모드일 때만 2줄, 가로 모드일 때는 1줄
-                  final isMobilePortrait = isMobile && !isLargeScreen && orientation == Orientation.portrait;
+                  // ============================================================
+                  // 📱 Stocks 보고서 AppBar - 모바일 화면 구성 처리
+                  // ============================================================
+                  // MobileLayoutHelper를 사용하여 핸드폰의 수직/수평 화면 구성을 처리
+                  // 대형 화면에는 영향을 미치지 않도록 주의
+                  final layoutInfo = MobileLayoutHelper.getLayoutInfo(context);
+                  final isLargeScreen = layoutInfo.isLargeScreen;
+                  final isMobilePortrait = layoutInfo.isMobilePhonePortrait;
                   
-                  // 핸드폰 세로 모드: 2줄로 배치
+                  // 핸드폰 세로 모드: 3줄로 배치 (컨트롤이 많아서 공간 확보 필요)
+                  // 핸드폰 가로 모드: 1줄로 배치 (가로 모드에서는 공간이 넓어서 충분)
+                  // 태블릿/데스크톱: 1줄로 배치 (대형 화면 보호)
                   if (isMobilePortrait) {
+                    debugPrint('═══════════════════════════════════════════════════════════');
+                    debugPrint('📱 [Stocks AppBar] 핸드폰 세로 모드 - 3줄 구성');
+                    debugPrint('   → _tiposList.length: ${_tiposList.length}');
+                    debugPrint('   → _temporadasList.length: ${_temporadasList.length}');
+                    debugPrint('═══════════════════════════════════════════════════════════');
+                    
                     return Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // 첫 번째 줄: 아이콘, 제목
-                        Row(
-                          children: [
-                            Icon(reportIcon, color: Colors.white),
-                            const SizedBox(width: 8),
-                            Flexible(
-                              child: Text(
-                                reportTitle,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 16),
-                              ),
-                            ),
-                          ],
+                        Builder(
+                          builder: (rowContext) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              final renderObject = rowContext.findRenderObject();
+                              if (renderObject != null && renderObject is RenderBox) {
+                                debugPrint('   📱 [Stocks AppBar] 첫 번째 Row 렌더링 크기:');
+                                debugPrint('      → width: ${renderObject.size.width}');
+                                debugPrint('      → height: ${renderObject.size.height}');
+                              }
+                            });
+                            return Row(
+                              children: [
+                                Icon(reportIcon, color: Colors.white),
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    reportTitle,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 16),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
                         ),
                         const SizedBox(height: 4),
-                        // 두 번째 줄: Tipo, Temporada 콤보박스, 필터링 단어 필드
-                        Row(
-                          children: [
-                            if (_tiposList.length > 1 || _temporadasList.length > 1) ...[
-                              if (_tiposList.length > 1) ...[
-                                _buildTipoSelector(),
-                                const SizedBox(width: 8),
+                        // 두 번째 줄: Tipo, Temporada 콤보박스
+                        Builder(
+                          builder: (rowContext) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              final renderObject = rowContext.findRenderObject();
+                              if (renderObject != null && renderObject is RenderBox) {
+                                debugPrint('   📱 [Stocks AppBar] 두 번째 Row 렌더링 크기:');
+                                debugPrint('      → width: ${renderObject.size.width}');
+                                debugPrint('      → height: ${renderObject.size.height}');
+                              }
+                            });
+                            return Row(
+                              children: [
+                                if (_tiposList.length > 1 || _temporadasList.length > 1) ...[
+                                  if (_tiposList.length > 1) ...[
+                                    Flexible(
+                                      child: _buildTipoSelector(),
+                                    ),
+                                    const SizedBox(width: 8),
+                                  ],
+                                  if (_temporadasList.length > 1) ...[
+                                    Flexible(
+                                      child: _buildTemporadaSelector(),
+                                    ),
+                                  ],
+                                ],
                               ],
-                              if (_temporadasList.length > 1) ...[
-                                _buildTemporadaSelector(),
-                                const SizedBox(width: 8),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 4),
+                        // 세 번째 줄: 필터링 단어 필드
+                        Builder(
+                          builder: (rowContext) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              final renderObject = rowContext.findRenderObject();
+                              if (renderObject != null && renderObject is RenderBox) {
+                                debugPrint('   📱 [Stocks AppBar] 세 번째 Row 렌더링 크기:');
+                                debugPrint('      → width: ${renderObject.size.width}');
+                                debugPrint('      → height: ${renderObject.size.height}');
+                              }
+                            });
+                            return Row(
+                              children: [
+                                Expanded(
+                                  child: _buildFilteringWordFieldInAppBar(),
+                                ),
                               ],
-                            ],
-                            Expanded(
-                              child: _buildFilteringWordFieldInAppBar(),
-                            ),
-                          ],
+                            );
+                          },
                         ),
                       ],
                     );
                   }
                   
-                  // 넓은 화면: 1줄로 배치
+                  // ============================================================
+                  // 📱 넓은 화면 (가로 모드 또는 태블릿/데스크톱): 1줄로 배치
+                  // ============================================================
+                  // 핸드폰 가로 모드, 태블릿, 데스크톱 모두 1줄 레이아웃 사용
+                  // 대형 화면에는 모바일 전용 로직이 적용되지 않음
                   return Row(
                     children: [
                       Icon(reportIcon, color: Colors.white),
@@ -2819,16 +3101,20 @@ class _ReportScreenState extends State<ReportScreen> {
             : (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas || widget.reportType == ReportType.fventas || widget.reportType == ReportType.clientes)
                 ? LayoutBuilder(
                     builder: (context, constraints) {
-                      final isLargeScreen = constraints.maxWidth >= 800;
-                      final orientation = MediaQuery.of(context).orientation;
-                      final isMobilePortrait = !isLargeScreen && orientation == Orientation.portrait;
+                      // ============================================================
+                      // 📱 Items/Ingresos/Gastos/Alertas/Fventas/Clientes 보고서 AppBar
+                      // ============================================================
+                      // MobileLayoutHelper를 사용하여 핸드폰의 수직/수평 화면 구성을 처리
+                      final layoutInfo = MobileLayoutHelper.getLayoutInfo(context);
+                      final isMobilePortrait = layoutInfo.isMobilePhonePortrait;
                       
-                      // 좁은 화면: 2줄로 배치
+                      // 핸드폰 세로 모드: 2줄로 배치 (컨트롤이 많아서 공간 확보 필요)
+                      // 핸드폰 가로 모드, 태블릿, 데스크톱: 1줄로 배치 (대형 화면 보호)
                       if (isMobilePortrait) {
-                        // Clientes 보고서의 경우 특별한 레이아웃
+                        // Clientes 보고서의 경우 특별한 레이아웃 (3줄 구성)
                         if (widget.reportType == ReportType.clientes) {
                           debugPrint('═══════════════════════════════════════════════════════════');
-                          debugPrint('🔍 [Clientes AppBar] AppBar 빌드 시작');
+                          debugPrint('🔍 [Clientes AppBar] AppBar 빌드 시작 - 3줄 구성');
                           debugPrint('   → reportType: ${widget.reportType}');
                           debugPrint('   → _itemsStartDate: $_itemsStartDate');
                           debugPrint('   → _itemsEndDate: $_itemsEndDate');
@@ -2838,88 +3124,138 @@ class _ReportScreenState extends State<ReportScreen> {
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              // 첫 번째 줄: 아이콘, 제목, 필터들, 메뉴 버튼, 공유 버튼
-                              Row(
-                                children: [
-                                  Icon(reportIcon, color: Colors.white),
-                                  const SizedBox(width: 8),
-                                  Flexible(
-                                    child: Text(
-                                      reportTitle,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(fontSize: 16),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  // Responsable Ins 콤보박스
-                                  _buildClientesResponsableInsSelector(),
-                                  const SizedBox(width: 8),
-                                  // Provincias 콤보박스
-                                  _buildClientesProvinciaSelector(),
-                                  const SizedBox(width: 8),
-                                  // Deudores 체크박스
-                                  _buildClientesDeudoresCheckbox(),
-                                  const SizedBox(width: 8),
-                                  // Reservadores 체크박스
-                                  _buildClientesReservadoresCheckbox(),
-                                  const SizedBox(width: 8),
-                                  // FilteringWord 필드
-                                  Expanded(
-                                    child: _buildFilteringWordFieldInAppBar(),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  // 메뉴 버튼
-                                  PopupMenuButton<ReportType>(
-                                    icon: const Icon(Icons.more_vert, color: Colors.white, size: 18),
-                                    tooltip: 'Menú',
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                    iconSize: 18,
-                                    onSelected: (ReportType reportType) {
-                                      if (reportType != widget.reportType) {
-                                        Navigator.pushReplacement(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) => ReportScreen(
-                                              serverUrl: widget.serverUrl,
-                                              reportType: reportType,
-                                              initialDate: widget.initialDate,
-                                              initialItemsStartDate: widget.initialItemsStartDate,
-                                              initialItemsEndDate: widget.initialItemsEndDate,
-                                              initialFilteringWord: widget.initialFilteringWord,
-                                              initialSortColumn: widget.initialSortColumn,
-                                              initialSortAscending: widget.initialSortAscending,
-                                              onStateChanged: widget.onStateChanged,
-                                              onItemsDateRangeChanged: widget.onItemsDateRangeChanged,
-                                              useFullWidth: widget.useFullWidth,
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                    },
-                                    itemBuilder: (BuildContext context) {
-                    debugPrint('🔍 [PopupMenuButton] itemBuilder 호출됨!');
-                    final items = _buildReportMenuItems();
-                    debugPrint('🔍 [PopupMenuButton] 메뉴 아이템 개수: ${items.length}');
-                    for (int i = 0; i < items.length; i++) {
-                      debugPrint('🔍 [PopupMenuButton] 아이템 #$i: ${items[i].runtimeType}');
-                    }
-                    return items;
-                  },
-                                  ),
-                                  // 공유 버튼
-                                  if (_data != null)
-                                    IconButton(
-                                      icon: const Icon(Icons.share, color: Colors.white, size: 18),
-                                      tooltip: 'Compartir como PDF',
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(),
-                                      iconSize: 18,
-                                      onPressed: () => _shareReport(),
-                                    ),
-                                ],
+                              // 첫 번째 줄: 아이콘, 제목, 메뉴 버튼, 공유 버튼
+                              Builder(
+                                builder: (rowContext) {
+                                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                                    final renderObject = rowContext.findRenderObject();
+                                    if (renderObject != null && renderObject is RenderBox) {
+                                      debugPrint('   📱 [Clientes AppBar] 첫 번째 Row 렌더링 크기:');
+                                      debugPrint('      → width: ${renderObject.size.width}');
+                                      debugPrint('      → height: ${renderObject.size.height}');
+                                    }
+                                  });
+                                  return Row(
+                                    children: [
+                                      Icon(reportIcon, color: Colors.white),
+                                      const SizedBox(width: 8),
+                                      Flexible(
+                                        child: Text(
+                                          reportTitle,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(fontSize: 16),
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      // 메뉴 버튼
+                                      PopupMenuButton<ReportType>(
+                                        icon: const Icon(Icons.more_vert, color: Colors.white, size: 18),
+                                        tooltip: 'Menú',
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                        iconSize: 18,
+                                        onSelected: (ReportType reportType) {
+                                          if (reportType != widget.reportType) {
+                                            Navigator.pushReplacement(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) => ReportScreen(
+                                                  serverUrl: widget.serverUrl,
+                                                  reportType: reportType,
+                                                  initialDate: widget.initialDate,
+                                                  initialItemsStartDate: widget.initialItemsStartDate,
+                                                  initialItemsEndDate: widget.initialItemsEndDate,
+                                                  initialFilteringWord: _getInitialFilteringWordForNavigation(widget.reportType, reportType),
+                                                  initialSortColumn: widget.initialSortColumn,
+                                                  initialSortAscending: widget.initialSortAscending,
+                                                  onStateChanged: widget.onStateChanged,
+                                                  onItemsDateRangeChanged: widget.onItemsDateRangeChanged,
+                                                  useFullWidth: widget.useFullWidth,
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        },
+                                        itemBuilder: (BuildContext context) {
+                                          debugPrint('🔍 [PopupMenuButton] itemBuilder 호출됨!');
+                                          final items = _buildReportMenuItems();
+                                          debugPrint('🔍 [PopupMenuButton] 메뉴 아이템 개수: ${items.length}');
+                                          for (int i = 0; i < items.length; i++) {
+                                            debugPrint('🔍 [PopupMenuButton] 아이템 #$i: ${items[i].runtimeType}');
+                                          }
+                                          return items;
+                                        },
+                                      ),
+                                      // 공유 버튼
+                                      if (_data != null)
+                                        IconButton(
+                                          icon: const Icon(Icons.share, color: Colors.white, size: 18),
+                                          tooltip: 'Compartir como PDF',
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(),
+                                          iconSize: 18,
+                                          onPressed: () => _shareReport(),
+                                        ),
+                                    ],
+                                  );
+                                },
                               ),
-                              // 두 번째 줄: 달력 2개
+                              const SizedBox(height: 4),
+                              // 두 번째 줄: Responsable Ins, Provincias 콤보박스, 체크박스들
+                              Builder(
+                                builder: (rowContext) {
+                                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                                    final renderObject = rowContext.findRenderObject();
+                                    if (renderObject != null && renderObject is RenderBox) {
+                                      debugPrint('   📱 [Clientes AppBar] 두 번째 Row 렌더링 크기:');
+                                      debugPrint('      → width: ${renderObject.size.width}');
+                                      debugPrint('      → height: ${renderObject.size.height}');
+                                    }
+                                  });
+                                  return Row(
+                                    children: [
+                                      // Responsable Ins 콤보박스
+                                      Flexible(
+                                        child: _buildClientesResponsableInsSelector(),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      // Provincias 콤보박스
+                                      Flexible(
+                                        child: _buildClientesProvinciaSelector(),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      // Deudores 체크박스
+                                      _buildClientesDeudoresCheckbox(),
+                                      const SizedBox(width: 8),
+                                      // Reservadores 체크박스
+                                      _buildClientesReservadoresCheckbox(),
+                                    ],
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 4),
+                              // 세 번째 줄: FilteringWord 필드, 날짜 선택기
+                              Builder(
+                                builder: (rowContext) {
+                                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                                    final renderObject = rowContext.findRenderObject();
+                                    if (renderObject != null && renderObject is RenderBox) {
+                                      debugPrint('   📱 [Clientes AppBar] 세 번째 Row 렌더링 크기:');
+                                      debugPrint('      → width: ${renderObject.size.width}');
+                                      debugPrint('      → height: ${renderObject.size.height}');
+                                    }
+                                  });
+                                  return Row(
+                                    children: [
+                                      Expanded(
+                                        child: _buildFilteringWordFieldInAppBar(),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 4),
+                              // 네 번째 줄: 달력 2개
                               Builder(
                                 builder: (context) {
                                   debugPrint('═══════════════════════════════════════════════════════════');
@@ -2961,161 +3297,173 @@ class _ReportScreenState extends State<ReportScreen> {
                             ],
                           );
                         }
-                        // Alertas 보고서의 경우 특별한 레이아웃
+                        // Alertas 보고서의 경우 특별한 레이아웃 (3줄 구성)
                         if (widget.reportType == ReportType.alertas) {
+                          debugPrint('═══════════════════════════════════════════════════════════');
+                          debugPrint('🔍 [Alertas AppBar] AppBar 빌드 시작 - 3줄 구성');
+                          debugPrint('   → reportType: ${widget.reportType}');
+                          debugPrint('═══════════════════════════════════════════════════════════');
+                          
                           return Column(
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // 첫 번째 줄: 아이콘, 제목, VCancelado 버튼, Jefe 버튼, 메뉴 버튼, 공유 버튼
-                              Row(
-                                children: [
-                                  Icon(reportIcon, color: Colors.white),
-                                  const SizedBox(width: 8),
-                                  Flexible(
-                                    child: Text(
-                                      reportTitle,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(fontSize: 16),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  // VCancelado 버튼
-                                  TextButton(
-                                    onPressed: () {
-                                      setState(() {
-                                        _alertasVCancelado = !_alertasVCancelado;
-                                        _alertasJefe = false; // 다른 버튼 비활성화
-                                        if (_alertasVCancelado) {
-                                          // VCancelado 버튼이 활성화되면 filteringWord에 "VCancelado" 입력
-                                          _filteringWordController.text = 'VCancelado';
-                                        } else {
-                                          // VCancelado 버튼이 비활성화되면 filteringWord 초기화
-                                          _filteringWordController.text = '';
-                                        }
-                                      });
-                                      _loadData();
-                                    },
-                                    style: TextButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      minimumSize: Size.zero,
-                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                      backgroundColor: _alertasVCancelado 
-                                          ? Colors.white.withOpacity(0.3) 
-                                          : Colors.transparent,
-                                    ),
-                                    child: Text(
-                                      'VCancelado',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: _alertasVCancelado ? FontWeight.bold : FontWeight.normal,
+                              // 첫 번째 줄: 아이콘, 제목, 메뉴 버튼, 공유 버튼
+                              Builder(
+                                builder: (rowContext) {
+                                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                                    final renderObject = rowContext.findRenderObject();
+                                    if (renderObject != null && renderObject is RenderBox) {
+                                      debugPrint('   📱 [Alertas AppBar] 첫 번째 Row 렌더링 크기:');
+                                      debugPrint('      → width: ${renderObject.size.width}');
+                                      debugPrint('      → height: ${renderObject.size.height}');
+                                    }
+                                  });
+                                  return Row(
+                                    children: [
+                                      Icon(reportIcon, color: Colors.white),
+                                      const SizedBox(width: 8),
+                                      Flexible(
+                                        child: Text(
+                                          reportTitle,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(fontSize: 16),
+                                        ),
                                       ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  // Jefe 버튼
-                                  TextButton(
-                                    onPressed: () {
-                                      setState(() {
-                                        _alertasJefe = !_alertasJefe;
-                                        _alertasVCancelado = false; // 다른 버튼 비활성화
-                                        if (_alertasJefe) {
-                                          // Jefe 버튼이 활성화되면 filteringWord에 "jefe" 입력
-                                          _filteringWordController.text = 'jefe';
-                                        } else {
-                                          // Jefe 버튼이 비활성화되면 filteringWord 초기화
-                                          _filteringWordController.text = '';
-                                        }
-                                      });
-                                      _loadData();
-                                    },
-                                    style: TextButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      minimumSize: Size.zero,
-                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                      backgroundColor: _alertasJefe 
-                                          ? Colors.white.withOpacity(0.3) 
-                                          : Colors.transparent,
-                                    ),
-                                    child: Text(
-                                      'Jefe',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: _alertasJefe ? FontWeight.bold : FontWeight.normal,
+                                      const Spacer(),
+                                      // 메뉴 버튼
+                                      PopupMenuButton<ReportType>(
+                                        icon: const Icon(Icons.more_vert, color: Colors.white, size: 18),
+                                        tooltip: 'Menú',
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                        iconSize: 18,
+                                        onSelected: (ReportType reportType) {
+                                          if (reportType != widget.reportType) {
+                                            Navigator.pushReplacement(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) => ReportScreen(
+                                                  serverUrl: widget.serverUrl,
+                                                  reportType: reportType,
+                                                  initialDate: widget.initialDate,
+                                                  initialItemsStartDate: widget.initialItemsStartDate,
+                                                  initialItemsEndDate: widget.initialItemsEndDate,
+                                                  initialFilteringWord: _getInitialFilteringWordForNavigation(widget.reportType, reportType),
+                                                  initialSortColumn: widget.initialSortColumn,
+                                                  initialSortAscending: widget.initialSortAscending,
+                                                  onStateChanged: widget.onStateChanged,
+                                                  onItemsDateRangeChanged: widget.onItemsDateRangeChanged,
+                                                  useFullWidth: widget.useFullWidth,
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        },
+                                        itemBuilder: (BuildContext context) {
+                                          debugPrint('🔍 [PopupMenuButton] itemBuilder 호출됨!');
+                                          final items = _buildReportMenuItems();
+                                          debugPrint('🔍 [PopupMenuButton] 메뉴 아이템 개수: ${items.length}');
+                                          for (int i = 0; i < items.length; i++) {
+                                            debugPrint('🔍 [PopupMenuButton] 아이템 #$i: ${items[i].runtimeType}');
+                                          }
+                                          return items;
+                                        },
                                       ),
-                                    ),
-                                  ),
-                                  const Spacer(),
-                                  // 메뉴 버튼
-                                  PopupMenuButton<ReportType>(
-                                    icon: const Icon(Icons.more_vert, color: Colors.white, size: 18),
-                                    tooltip: 'Menú',
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                    iconSize: 18,
-                                    onSelected: (ReportType reportType) {
-                                      if (reportType != widget.reportType) {
-                                        Navigator.pushReplacement(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) => ReportScreen(
-                                              serverUrl: widget.serverUrl,
-                                              reportType: reportType,
-                                              initialDate: widget.initialDate,
-                                              initialItemsStartDate: widget.initialItemsStartDate,
-                                              initialItemsEndDate: widget.initialItemsEndDate,
-                                              initialFilteringWord: widget.initialFilteringWord,
-                                              initialSortColumn: widget.initialSortColumn,
-                                              initialSortAscending: widget.initialSortAscending,
-                                              onStateChanged: widget.onStateChanged,
-                                              onItemsDateRangeChanged: widget.onItemsDateRangeChanged,
-                                              useFullWidth: widget.useFullWidth,
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                    },
-                                    itemBuilder: (BuildContext context) {
-                    debugPrint('🔍 [PopupMenuButton] itemBuilder 호출됨!');
-                    final items = _buildReportMenuItems();
-                    debugPrint('🔍 [PopupMenuButton] 메뉴 아이템 개수: ${items.length}');
-                    for (int i = 0; i < items.length; i++) {
-                      debugPrint('🔍 [PopupMenuButton] 아이템 #$i: ${items[i].runtimeType}');
-                    }
-                    return items;
-                  },
-                                  ),
-                                  // 공유 버튼
-                                  if (_data != null)
-                                    IconButton(
-                                      icon: const Icon(Icons.share, color: Colors.white, size: 18),
-                                      tooltip: 'Compartir como PDF',
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(),
-                                      iconSize: 18,
-                                      onPressed: () => _shareReport(),
-                                    ),
-                                ],
+                                      // 공유 버튼
+                                      if (_data != null)
+                                        IconButton(
+                                          icon: const Icon(Icons.share, color: Colors.white, size: 18),
+                                          tooltip: 'Compartir como PDF',
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(),
+                                          iconSize: 18,
+                                          onPressed: () => _shareReport(),
+                                        ),
+                                    ],
+                                  );
+                                },
                               ),
                               const SizedBox(height: 4),
-                              // 두 번째 줄: 날짜 선택기, 버튼들, Sucursal 선택기, 필터링 단어 필드
-                              LayoutBuilder(
-                                builder: (context, constraints) {
-                                  debugPrint('═══════════════════════════════════════════════════════════');
-                                  debugPrint('🔍 [Clientes AppBar - 일반 AppBar] 두 번째 줄 LayoutBuilder 호출됨');
-                                  debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
-                                  debugPrint('   → constraints.maxHeight: ${constraints.maxHeight}');
-                                  debugPrint('   → constraints.isTight: ${constraints.isTight}');
-                                  debugPrint('   → constraints.isNormalized: ${constraints.isNormalized}');
-                                  debugPrint('═══════════════════════════════════════════════════════════');
-
-                                  if (constraints.maxWidth.isInfinite) {
-                                    debugPrint('⚠️ [Clientes AppBar - 일반 AppBar] constraints.maxWidth가 무한대입니다!');
-                                    return const SizedBox.shrink();
-                                  }
-
+                              // 두 번째 줄: VCancelado, Jefe, WEB 버튼
+                              Builder(
+                                builder: (rowContext) {
+                                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                                    final renderObject = rowContext.findRenderObject();
+                                    if (renderObject != null && renderObject is RenderBox) {
+                                      debugPrint('   📱 [Alertas AppBar] 두 번째 Row 렌더링 크기:');
+                                      debugPrint('      → width: ${renderObject.size.width}');
+                                      debugPrint('      → height: ${renderObject.size.height}');
+                                    }
+                                  });
+                                  return Row(
+                                    children: [
+                                      // VCancelado 버튼
+                                      Flexible(
+                                        child: _buildAlertasFilterButton('VCancelado', _alertasVCancelado, () {
+                                          setState(() {
+                                            _alertasVCancelado = !_alertasVCancelado;
+                                            _alertasJefe = false;
+                                            _alertasWeb = false;
+                                            if (_alertasVCancelado) {
+                                              _filteringWordController.text = 'VCancelado';
+                                            } else {
+                                              _filteringWordController.text = '';
+                                            }
+                                          });
+                                          _loadData();
+                                        }),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      // Jefe 버튼
+                                      Flexible(
+                                        child: _buildAlertasFilterButton('Jefe', _alertasJefe, () {
+                                          setState(() {
+                                            _alertasJefe = !_alertasJefe;
+                                            _alertasVCancelado = false;
+                                            _alertasWeb = false;
+                                            if (_alertasJefe) {
+                                              _filteringWordController.text = 'Jefe';
+                                            } else {
+                                              _filteringWordController.text = '';
+                                            }
+                                          });
+                                          _loadData();
+                                        }),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      // WEB 버튼
+                                      Flexible(
+                                        child: _buildAlertasFilterButton('WEB', _alertasWeb, () {
+                                          setState(() {
+                                            _alertasWeb = !_alertasWeb;
+                                            _alertasVCancelado = false;
+                                            _alertasJefe = false;
+                                            if (_alertasWeb) {
+                                              _filteringWordController.text = 'WEB';
+                                            } else {
+                                              _filteringWordController.text = '';
+                                            }
+                                          });
+                                          _loadData();
+                                        }),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 4),
+                              // 세 번째 줄: 날짜 선택기, Sucursal 선택기, 필터링 단어 필드
+                              Builder(
+                                builder: (rowContext) {
+                                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                                    final renderObject = rowContext.findRenderObject();
+                                    if (renderObject != null && renderObject is RenderBox) {
+                                      debugPrint('   📱 [Alertas AppBar] 세 번째 Row 렌더링 크기:');
+                                      debugPrint('      → width: ${renderObject.size.width}');
+                                      debugPrint('      → height: ${renderObject.size.height}');
+                                    }
+                                  });
                                   return Row(
                                     children: [
                                       Expanded(
@@ -3139,51 +3487,6 @@ class _ReportScreenState extends State<ReportScreen> {
                                           },
                                         ),
                                       ),
-                                  // Alertas 보고서의 경우 VCancelado, Jefe, WEB 버튼 추가
-                                  if (widget.reportType == ReportType.alertas) ...[
-                                    const SizedBox(width: 8),
-                                    _buildAlertasFilterButton('VCancelado', _alertasVCancelado, () {
-                                      setState(() {
-                                        _alertasVCancelado = !_alertasVCancelado;
-                                        _alertasJefe = false;
-                                        _alertasWeb = false;
-                                        if (_alertasVCancelado) {
-                                          _filteringWordController.text = 'VCancelado';
-                                        } else {
-                                          _filteringWordController.text = '';
-                                        }
-                                      });
-                                      _loadData();
-                                    }),
-                                    const SizedBox(width: 4),
-                                    _buildAlertasFilterButton('Jefe', _alertasJefe, () {
-                                      setState(() {
-                                        _alertasJefe = !_alertasJefe;
-                                        _alertasVCancelado = false;
-                                        _alertasWeb = false;
-                                        if (_alertasJefe) {
-                                          _filteringWordController.text = 'Jefe';
-                                        } else {
-                                          _filteringWordController.text = '';
-                                        }
-                                      });
-                                      _loadData();
-                                    }),
-                                    const SizedBox(width: 4),
-                                    _buildAlertasFilterButton('WEB', _alertasWeb, () {
-                                      setState(() {
-                                        _alertasWeb = !_alertasWeb;
-                                        _alertasVCancelado = false;
-                                        _alertasJefe = false;
-                                        if (_alertasWeb) {
-                                          _filteringWordController.text = 'WEB';
-                                        } else {
-                                          _filteringWordController.text = '';
-                                        }
-                                      });
-                                      _loadData();
-                                    }),
-                                  ],
                                       if (_availableSucursales != null && _availableSucursales!.length > 1) ...[
                                         const SizedBox(width: 8),
                                         Flexible(
@@ -3306,7 +3609,7 @@ class _ReportScreenState extends State<ReportScreen> {
                                             initialDate: widget.initialDate,
                                             initialItemsStartDate: widget.initialItemsStartDate,
                                             initialItemsEndDate: widget.initialItemsEndDate,
-                                            initialFilteringWord: widget.initialFilteringWord,
+                                            initialFilteringWord: _getInitialFilteringWordForNavigation(widget.reportType, reportType),
                                             initialSortColumn: widget.initialSortColumn,
                                             initialSortAscending: widget.initialSortAscending,
                                             onStateChanged: widget.onStateChanged,
@@ -3505,20 +3808,28 @@ class _ReportScreenState extends State<ReportScreen> {
                           debugPrint('   → 라인: ~3102');
                           debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
                           
-                          final isLargeScreen = constraints.maxWidth >= 800;
-                          final orientation = MediaQuery.of(context).orientation;
-                          final platformType = PlatformUtils.getPlatformType(context);
-                          final isMobile = platformType == PlatformType.mobile;
-                          // 핸드폰의 경우: 세로 모드일 때만 3줄, 가로 모드일 때는 1줄
-                          final isMobilePortrait = isMobile && !isLargeScreen && orientation == Orientation.portrait;
+                          // ============================================================
+                          // 📱 Ventas 보고서 AppBar - 모바일 화면 구성 처리
+                          // ============================================================
+                          // MobileLayoutHelper를 사용하여 핸드폰의 수직/수평 화면 구성을 집중적으로 처리
+                          // 대형 화면에는 영향을 미치지 않도록 주의
+                          final layoutInfo = MobileLayoutHelper.getLayoutInfo(context);
+                          final isLargeScreen = layoutInfo.isLargeScreen;
+                          final isMobilePortrait = layoutInfo.isMobilePhonePortrait;
+                          final isMobilePhoneLandscape = layoutInfo.isMobilePhoneLandscape;
                           
                           debugPrint('   → isLargeScreen: $isLargeScreen');
-                          debugPrint('   → orientation: $orientation');
-                          debugPrint('   → platformType: $platformType');
-                          debugPrint('   → isMobile: $isMobile');
-                          debugPrint('   → isMobilePortrait: $isMobilePortrait');
+                          debugPrint('   → orientation: ${layoutInfo.orientation}');
+                          debugPrint('   → platformType: ${layoutInfo.platformType}');
+                          debugPrint('   → isMobilePhone: ${layoutInfo.isMobilePhone}');
+                          debugPrint('   → isMobilePhonePortrait: $isMobilePortrait');
+                          debugPrint('   → isMobilePhoneLandscape: $isMobilePhoneLandscape');
                           
-                          // 핸드폰 세로 모드: 3줄로 배치
+                          // ============================================================
+                          // 📱 핸드폰 세로 모드: 3줄로 배치
+                          // ============================================================
+                          // Ventas 보고서는 컨트롤이 많아서 핸드폰 세로 모드에서는 3줄이 필요함
+                          // 태블릿/데스크톱에는 영향을 미치지 않음 (대형 화면 보호)
                           if (isMobilePortrait) {
                             debugPrint('   → isMobilePortrait = true → 핸드폰 세로 모드 레이아웃 사용');
                             final mediaQuery = MediaQuery.of(context);
@@ -3603,7 +3914,7 @@ class _ReportScreenState extends State<ReportScreen> {
                                                 initialDate: widget.initialDate,
                                                 initialItemsStartDate: widget.initialItemsStartDate,
                                                 initialItemsEndDate: widget.initialItemsEndDate,
-                                                initialFilteringWord: widget.initialFilteringWord,
+                                                initialFilteringWord: _getInitialFilteringWordForNavigation(widget.reportType, reportType),
                                                 initialSortColumn: widget.initialSortColumn,
                                                 initialSortAscending: widget.initialSortAscending,
                                                 onStateChanged: widget.onStateChanged,
@@ -4079,13 +4390,12 @@ class _ReportScreenState extends State<ReportScreen> {
                             );
                           }
                           
-                          // 모바일 폰 가로 모드 체크 (iPhone, Android phone)
-                          final isTablet = PlatformUtils.isIPad(context) || 
-                                           (platformType == PlatformType.mobile && isLargeScreen);
-                          final isMobilePhone = isMobile && !isTablet;
-                          final isMobilePhoneLandscape = isMobilePhone && orientation == Orientation.landscape;
-                          
-                          // 모바일 폰 가로 모드: 2줄로 배치 (컨트롤이 많아서 오버랩 방지)
+                          // ============================================================
+                          // 📱 핸드폰 가로 모드: 2줄로 배치
+                          // ============================================================
+                          // 핸드폰 가로 모드에서는 공간이 넓어지지만 여전히 제한적이므로 2줄로 배치
+                          // 태블릿/데스크톱에는 영향을 미치지 않음 (대형 화면 보호)
+                          // layoutInfo에서 이미 계산된 isMobilePhoneLandscape 사용
                           if (isMobilePhoneLandscape) {
                             debugPrint('   → 모바일 폰 가로 모드 (iPhone/Android): 2줄 Column 사용');
                             return Column(
@@ -4270,14 +4580,15 @@ class _ReportScreenState extends State<ReportScreen> {
                     : widget.reportType == ReportType.ventas
                     ? LayoutBuilder(
                         builder: (context, constraints) {
-                          final isLargeScreen = constraints.maxWidth >= 800;
-                          final orientation = MediaQuery.of(context).orientation;
-                          final platformType = PlatformUtils.getPlatformType(context);
-                          final isMobile = platformType == PlatformType.mobile;
-                          // 핸드폰의 경우: 세로 모드일 때만 3줄, 가로 모드일 때는 1줄
-                          final isMobilePortrait = isMobile && !isLargeScreen && orientation == Orientation.portrait;
+                          // ============================================================
+                          // 📱 Ventas 보고서 AppBar Actions - 모바일 화면 구성 처리
+                          // ============================================================
+                          // MobileLayoutHelper를 사용하여 핸드폰의 수직/수평 화면 구성을 처리
+                          final layoutInfo = MobileLayoutHelper.getLayoutInfo(context);
+                          final isMobilePortrait = layoutInfo.isMobilePhonePortrait;
                           
-                          // 핸드폰 세로 모드: 3줄로 배치
+                          // 핸드폰 세로 모드: 3줄로 배치 (컨트롤이 많아서 공간 확보 필요)
+                          // 핸드폰 가로 모드, 태블릿, 데스크톱: 1줄로 배치 (대형 화면 보호)
                           if (isMobilePortrait) {
                             return Column(
                               mainAxisSize: MainAxisSize.min,
@@ -4314,7 +4625,7 @@ class _ReportScreenState extends State<ReportScreen> {
                                                 initialDate: widget.initialDate,
                                                 initialItemsStartDate: widget.initialItemsStartDate,
                                                 initialItemsEndDate: widget.initialItemsEndDate,
-                                                initialFilteringWord: widget.initialFilteringWord,
+                                                initialFilteringWord: _getInitialFilteringWordForNavigation(widget.reportType, reportType),
                                                 initialSortColumn: widget.initialSortColumn,
                                                 initialSortAscending: widget.initialSortAscending,
                                                 onStateChanged: widget.onStateChanged,
@@ -4865,57 +5176,114 @@ class _ReportScreenState extends State<ReportScreen> {
                     : (widget.reportType == ReportType.codigos || widget.reportType == ReportType.todocodigos)
                         ? LayoutBuilder(
                             builder: (context, constraints) {
-                              final isLargeScreen = constraints.maxWidth >= 800;
-                              final orientation = MediaQuery.of(context).orientation;
-                              final platformType = PlatformUtils.getPlatformType(context);
-                              final isMobile = platformType == PlatformType.mobile;
-                              // 핸드폰의 경우: 세로 모드일 때만 2줄, 가로 모드일 때는 1줄
-                              final isMobilePortrait = isMobile && !isLargeScreen && orientation == Orientation.portrait;
+                              // ============================================================
+                              // 📱 Codigos/Todocodigos 보고서 AppBar - 모바일 화면 구성 처리
+                              // ============================================================
+                              // MobileLayoutHelper를 사용하여 핸드폰의 수직/수평 화면 구성을 처리
+                              final layoutInfo = MobileLayoutHelper.getLayoutInfo(context);
+                              final isMobilePortrait = layoutInfo.isMobilePhonePortrait;
                               
-                              // 핸드폰 세로 모드: 2줄로 배치
+                              // 핸드폰 세로 모드: 3줄로 배치 (컨트롤이 많아서 공간 확보 필요)
+                              // 핸드폰 가로 모드, 태블릿, 데스크톱: 1줄로 배치 (대형 화면 보호)
                               if (isMobilePortrait) {
+                                debugPrint('═══════════════════════════════════════════════════════════');
+                                debugPrint('📱 [Codigos/Todocodigos AppBar] 핸드폰 세로 모드 - 3줄 구성');
+                                debugPrint('   → reportType: ${widget.reportType}');
+                                debugPrint('   → _tiposList.length: ${_tiposList.length}');
+                                debugPrint('   → _temporadasList.length: ${_temporadasList.length}');
+                                debugPrint('═══════════════════════════════════════════════════════════');
+                                
                                 return Column(
                                   mainAxisSize: MainAxisSize.min,
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     // 첫 번째 줄: 아이콘, 제목
-                                    Row(
-                                      children: [
-                                        Icon(reportIcon, color: Colors.white),
-                                        const SizedBox(width: 8),
-                                        Flexible(
-                                          child: Text(
-                                            reportTitle,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(fontSize: 16),
-                                          ),
-                                        ),
-                                      ],
+                                    Builder(
+                                      builder: (rowContext) {
+                                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                                          final renderObject = rowContext.findRenderObject();
+                                          if (renderObject != null && renderObject is RenderBox) {
+                                            debugPrint('   📱 [Codigos/Todocodigos AppBar] 첫 번째 Row 렌더링 크기:');
+                                            debugPrint('      → width: ${renderObject.size.width}');
+                                            debugPrint('      → height: ${renderObject.size.height}');
+                                          }
+                                        });
+                                        return Row(
+                                          children: [
+                                            Icon(reportIcon, color: Colors.white),
+                                            const SizedBox(width: 8),
+                                            Flexible(
+                                              child: Text(
+                                                reportTitle,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(fontSize: 16),
+                                              ),
+                                            ),
+                                          ],
+                                        );
+                                      },
                                     ),
                                     const SizedBox(height: 4),
-                                    // 두 번째 줄: Tipo, Temporada 콤보박스, 필터링 단어 필드
-                                    Row(
-                                      children: [
-                                        if (_tiposList.length > 1 || _temporadasList.length > 1) ...[
-                                          if (_tiposList.length > 1) ...[
-                                            _buildTipoSelector(),
-                                            const SizedBox(width: 8),
+                                    // 두 번째 줄: Tipo, Temporada 콤보박스
+                                    Builder(
+                                      builder: (rowContext) {
+                                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                                          final renderObject = rowContext.findRenderObject();
+                                          if (renderObject != null && renderObject is RenderBox) {
+                                            debugPrint('   📱 [Codigos/Todocodigos AppBar] 두 번째 Row 렌더링 크기:');
+                                            debugPrint('      → width: ${renderObject.size.width}');
+                                            debugPrint('      → height: ${renderObject.size.height}');
+                                          }
+                                        });
+                                        return Row(
+                                          children: [
+                                            if (_tiposList.length > 1 || _temporadasList.length > 1) ...[
+                                              if (_tiposList.length > 1) ...[
+                                                Flexible(
+                                                  child: _buildTipoSelector(),
+                                                ),
+                                                const SizedBox(width: 8),
+                                              ],
+                                              if (_temporadasList.length > 1) ...[
+                                                Flexible(
+                                                  child: _buildTemporadaSelector(),
+                                                ),
+                                              ],
+                                            ],
                                           ],
-                                          if (_temporadasList.length > 1) ...[
-                                            _buildTemporadaSelector(),
-                                            const SizedBox(width: 8),
+                                        );
+                                      },
+                                    ),
+                                    const SizedBox(height: 4),
+                                    // 세 번째 줄: 필터링 단어 필드
+                                    Builder(
+                                      builder: (rowContext) {
+                                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                                          final renderObject = rowContext.findRenderObject();
+                                          if (renderObject != null && renderObject is RenderBox) {
+                                            debugPrint('   📱 [Codigos/Todocodigos AppBar] 세 번째 Row 렌더링 크기:');
+                                            debugPrint('      → width: ${renderObject.size.width}');
+                                            debugPrint('      → height: ${renderObject.size.height}');
+                                          }
+                                        });
+                                        return Row(
+                                          children: [
+                                            Expanded(
+                                              child: _buildFilteringWordFieldInAppBar(),
+                                            ),
                                           ],
-                                        ],
-                                        Expanded(
-                                          child: _buildFilteringWordFieldInAppBar(),
-                                        ),
-                                      ],
+                                        );
+                                      },
                                     ),
                                   ],
                                 );
                               }
                               
-                              // 넓은 화면: 1줄로 배치
+                              // ============================================================
+                              // 📱 넓은 화면 (가로 모드 또는 태블릿/데스크톱): 1줄로 배치
+                              // ============================================================
+                              // 핸드폰 가로 모드, 태블릿, 데스크톱 모두 1줄 레이아웃 사용
+                              // 대형 화면에는 모바일 전용 로직이 적용되지 않음
                               return Row(
                                 children: [
                                   Icon(reportIcon, color: Colors.white),
@@ -5018,16 +5386,15 @@ class _ReportScreenState extends State<ReportScreen> {
                           ),
         backgroundColor: reportColor,
         actions: () {
-          // 모바일 폰 가로 모드 디버깅 (iPhone, Android phone)
-          final orientation = MediaQuery.of(context).orientation;
-          final platformType = PlatformUtils.getPlatformType(context);
-          final isMobile = platformType == PlatformType.mobile;
-          final mediaQuery = MediaQuery.of(context);
-          final isTablet = PlatformUtils.isIPad(context) || 
-                           (platformType == PlatformType.mobile && mediaQuery.size.width >= 800);
-          final isMobilePhone = isMobile && !isTablet;
-          final isMobilePhoneLandscape = isMobilePhone && orientation == Orientation.landscape;
+          // ============================================================
+          // 📱 AppBar Actions - 모바일 화면 구성 처리
+          // ============================================================
+          // MobileLayoutHelper를 사용하여 핸드폰의 수직/수평 화면 구성을 처리
+          // 대형 화면에는 영향을 미치지 않도록 주의
+          final layoutInfo = MobileLayoutHelper.getLayoutInfo(context);
+          final isMobilePhoneLandscape = layoutInfo.isMobilePhoneLandscape;
           
+          // 디버깅: 핸드폰 가로 모드일 때만 디버그 정보 출력
           if (isMobilePhoneLandscape && widget.reportType == ReportType.ventas) {
             debugPrint('═══════════════════════════════════════════════════════');
             debugPrint('📱 [모바일 폰 가로 모드 디버깅] Ventas AppBar Actions');
@@ -5093,7 +5460,7 @@ class _ReportScreenState extends State<ReportScreen> {
                             initialDate: widget.initialDate,
                             initialItemsStartDate: widget.initialItemsStartDate,
                             initialItemsEndDate: widget.initialItemsEndDate,
-                            initialFilteringWord: widget.initialFilteringWord,
+                            initialFilteringWord: _getInitialFilteringWordForNavigation(widget.reportType, reportType),
                             initialSortColumn: widget.initialSortColumn,
                             initialSortAscending: widget.initialSortAscending,
                             onStateChanged: widget.onStateChanged,
@@ -5181,23 +5548,25 @@ class _ReportScreenState extends State<ReportScreen> {
                     )
                   : Builder(
                       builder: (context) {
-                        // 핸드폰 세로 모드 디버깅
-                        final mediaQuery = MediaQuery.of(context);
-                        final orientation = mediaQuery.orientation;
-                        final platformType = PlatformUtils.getPlatformType(context);
-                        final isMobile = platformType == PlatformType.mobile;
-                        final isMobilePortrait = isMobile && orientation == Orientation.portrait && mediaQuery.size.width < 800;
+                        // ============================================================
+                        // 📱 Body - 모바일 화면 구성 처리
+                        // ============================================================
+                        // MobileLayoutHelper를 사용하여 핸드폰의 수직/수평 화면 구성을 처리
+                        // 대형 화면에는 영향을 미치지 않도록 주의
+                        final layoutInfo = MobileLayoutHelper.getLayoutInfo(context);
+                        final isMobilePortrait = layoutInfo.isMobilePhonePortrait;
                         
+                        // 디버깅: 핸드폰 세로 모드일 때만 디버그 정보 출력
                         if (isMobilePortrait && widget.reportType == ReportType.ventas) {
                           debugPrint('═══════════════════════════════════════════════════════');
                           debugPrint('📱 [핸드폰 세로 모드] Body 디버깅');
                           debugPrint('   → 파일: report_screen.dart');
                           debugPrint('   → 라인: ~4659');
-                          debugPrint('   → MediaQuery.size: ${mediaQuery.size}');
-                          debugPrint('   → MediaQuery.padding: ${mediaQuery.padding}');
-                          debugPrint('   → orientation: $orientation');
-                          debugPrint('   → platformType: $platformType');
-                          debugPrint('   → isMobile: $isMobile');
+                          debugPrint('   → MediaQuery.size: ${layoutInfo.screenSize}');
+                          debugPrint('   → MediaQuery.padding: ${MediaQuery.of(context).padding}');
+                          debugPrint('   → orientation: ${layoutInfo.orientation}');
+                          debugPrint('   → platformType: ${layoutInfo.platformType}');
+                          debugPrint('   → isMobile: ${layoutInfo.isMobilePlatform}');
                           debugPrint('   → isMobilePortrait: $isMobilePortrait');
                           debugPrint('   → useFullWidth: ${widget.useFullWidth}');
                           debugPrint('   → reportType: ${widget.reportType}');
@@ -5387,14 +5756,15 @@ class _ReportScreenState extends State<ReportScreen> {
       title: widget.reportType == ReportType.stocks
           ? LayoutBuilder(
               builder: (context, constraints) {
-                final isLargeScreen = constraints.maxWidth >= 800;
-                final orientation = MediaQuery.of(context).orientation;
-                final platformType = PlatformUtils.getPlatformType(context);
-                final isMobile = platformType == PlatformType.mobile;
-                // 핸드폰의 경우: 세로 모드일 때만 2줄, 가로 모드일 때는 1줄
-                final isMobilePortrait = isMobile && !isLargeScreen && orientation == Orientation.portrait;
+                // ============================================================
+                // 📱 Stocks 보고서 AppBar (useFullWidth) - 모바일 화면 구성 처리
+                // ============================================================
+                // MobileLayoutHelper를 사용하여 핸드폰의 수직/수평 화면 구성을 처리
+                final layoutInfo = MobileLayoutHelper.getLayoutInfo(context);
+                final isMobilePortrait = layoutInfo.isMobilePhonePortrait;
                 
-                // 핸드폰 세로 모드: 2줄로 배치
+                // 핸드폰 세로 모드: 2줄로 배치 (컨트롤이 많아서 공간 확보 필요)
+                // 핸드폰 가로 모드, 태블릿, 데스크톱: 1줄로 배치 (대형 화면 보호)
                 if (isMobilePortrait) {
                   return Column(
                     mainAxisSize: MainAxisSize.min,
@@ -5465,14 +5835,15 @@ class _ReportScreenState extends State<ReportScreen> {
           : (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos || widget.reportType == ReportType.gastos || widget.reportType == ReportType.alertas || widget.reportType == ReportType.fventas || widget.reportType == ReportType.clientes)
               ? LayoutBuilder(
                   builder: (context, constraints) {
-                    final isLargeScreen = constraints.maxWidth >= 800;
-                    final orientation = MediaQuery.of(context).orientation;
-                    final platformType = PlatformUtils.getPlatformType(context);
-                    final isMobile = platformType == PlatformType.mobile;
-                    // 핸드폰의 경우: 세로 모드일 때만 2줄, 가로 모드일 때는 1줄
-                    final isMobilePortrait = isMobile && !isLargeScreen && orientation == Orientation.portrait;
+                    // ============================================================
+                    // 📱 Items/Ingresos/Gastos/Alertas/Fventas/Clientes 보고서 AppBar (useFullWidth)
+                    // ============================================================
+                    // MobileLayoutHelper를 사용하여 핸드폰의 수직/수평 화면 구성을 처리
+                    final layoutInfo = MobileLayoutHelper.getLayoutInfo(context);
+                    final isMobilePortrait = layoutInfo.isMobilePhonePortrait;
                     
-                    // 핸드폰 세로 모드: 2줄로 배치
+                    // 핸드폰 세로 모드: 2줄로 배치 (컨트롤이 많아서 공간 확보 필요)
+                    // 핸드폰 가로 모드, 태블릿, 데스크톱: 1줄로 배치 (대형 화면 보호)
                     if (isMobilePortrait) {
                       // Clientes 보고서의 경우 특별한 레이아웃
                       if (widget.reportType == ReportType.clientes) {
@@ -5528,7 +5899,7 @@ class _ReportScreenState extends State<ReportScreen> {
                                             initialDate: widget.initialDate,
                                             initialItemsStartDate: widget.initialItemsStartDate,
                                             initialItemsEndDate: widget.initialItemsEndDate,
-                                            initialFilteringWord: widget.initialFilteringWord,
+                                            initialFilteringWord: _getInitialFilteringWordForNavigation(widget.reportType, reportType),
                                             initialSortColumn: widget.initialSortColumn,
                                             initialSortAscending: widget.initialSortAscending,
                                             onStateChanged: widget.onStateChanged,
@@ -5709,7 +6080,7 @@ class _ReportScreenState extends State<ReportScreen> {
                                             initialDate: widget.initialDate,
                                             initialItemsStartDate: widget.initialItemsStartDate,
                                             initialItemsEndDate: widget.initialItemsEndDate,
-                                            initialFilteringWord: widget.initialFilteringWord,
+                                            initialFilteringWord: _getInitialFilteringWordForNavigation(widget.reportType, reportType),
                                             initialSortColumn: widget.initialSortColumn,
                                             initialSortAscending: widget.initialSortAscending,
                                             onStateChanged: widget.onStateChanged,
@@ -6291,14 +6662,15 @@ class _ReportScreenState extends State<ReportScreen> {
               : widget.reportType == ReportType.ventas
                   ? LayoutBuilder(
                       builder: (context, constraints) {
-                        final isLargeScreen = constraints.maxWidth >= 800;
-                        final orientation = MediaQuery.of(context).orientation;
-                        final platformType = PlatformUtils.getPlatformType(context);
-                        final isMobile = platformType == PlatformType.mobile;
-                        // 핸드폰의 경우: 세로 모드일 때만 2줄, 가로 모드일 때는 1줄
-                        final isMobilePortrait = isMobile && !isLargeScreen && orientation == Orientation.portrait;
+                        // ============================================================
+                        // 📱 Ventas 보고서 AppBar (useFullWidth) - 모바일 화면 구성 처리
+                        // ============================================================
+                        // MobileLayoutHelper를 사용하여 핸드폰의 수직/수평 화면 구성을 처리
+                        final layoutInfo = MobileLayoutHelper.getLayoutInfo(context);
+                        final isMobilePortrait = layoutInfo.isMobilePhonePortrait;
                         
-                        // 핸드폰 세로 모드: 2줄로 배치
+                        // 핸드폰 세로 모드: 2줄로 배치 (컨트롤이 많아서 공간 확보 필요)
+                        // 핸드폰 가로 모드, 태블릿, 데스크톱: 1줄로 배치 (대형 화면 보호)
                         if (isMobilePortrait) {
                           return Column(
                             mainAxisSize: MainAxisSize.min,
@@ -6444,20 +6816,22 @@ class _ReportScreenState extends State<ReportScreen> {
                           );
                         }
                         
-                        // 넓은 화면: 1줄로 배치
+                        // ============================================================
+                        // 📱 넓은 화면 (태블릿/데스크톱): 1줄로 배치
+                        // ============================================================
                         // 디버깅: _buildAppBar 내부 ventas title 렌더링
                         debugPrint('═══════════════════════════════════════════════════════');
                         debugPrint('📅 [_buildAppBar] Ventas AppBar title 렌더링');
                         debugPrint('   → 파일: report_screen.dart');
                         debugPrint('   → 라인: ~5098');
                         debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
-                        debugPrint('   → isLargeScreen: $isLargeScreen');
-                        debugPrint('   → orientation: $orientation');
-                        debugPrint('   → platformType: $platformType');
-                        debugPrint('   → isMobile: $isMobile');
+                        debugPrint('   → isLargeScreen: ${layoutInfo.isLargeScreen}');
+                        debugPrint('   → orientation: ${layoutInfo.orientation}');
+                        debugPrint('   → platformType: ${layoutInfo.platformType}');
+                        debugPrint('   → isMobile: ${layoutInfo.isMobilePlatform}');
                         debugPrint('   → isMobilePortrait: $isMobilePortrait');
                         
-                        final isDesktopOrTablet = platformType == PlatformType.desktop || PlatformUtils.isIPad(context);
+                        final isDesktopOrTablet = layoutInfo.platformType == PlatformType.desktop || PlatformUtils.isIPad(context);
                         debugPrint('   → isDesktopOrTablet: $isDesktopOrTablet');
                         
                         if (isDesktopOrTablet) {
@@ -6791,51 +7165,104 @@ class _ReportScreenState extends State<ReportScreen> {
                   : (widget.reportType == ReportType.codigos || widget.reportType == ReportType.todocodigos)
                       ? LayoutBuilder(
                           builder: (context, constraints) {
-                            final isLargeScreen = constraints.maxWidth >= 800;
-                            final orientation = MediaQuery.of(context).orientation;
-                            final platformType = PlatformUtils.getPlatformType(context);
-                            final isMobile = platformType == PlatformType.mobile;
-                            // 핸드폰의 경우: 세로 모드일 때만 2줄, 가로 모드일 때는 1줄
-                            final isMobilePortrait = isMobile && !isLargeScreen && orientation == Orientation.portrait;
+                            // ============================================================
+                            // 📱 Codigos/Todocodigos 보고서 AppBar (useFullWidth) - 모바일 화면 구성 처리
+                            // ============================================================
+                            // MobileLayoutHelper를 사용하여 핸드폰의 수직/수평 화면 구성을 처리
+                            final layoutInfo = MobileLayoutHelper.getLayoutInfo(context);
+                            final isMobilePortrait = layoutInfo.isMobilePhonePortrait;
                             
-                            // 핸드폰 세로 모드: 2줄로 배치
+                            // 핸드폰 세로 모드: 3줄로 배치 (컨트롤이 많아서 공간 확보 필요)
+                            // 핸드폰 가로 모드, 태블릿, 데스크톱: 1줄로 배치 (대형 화면 보호)
                             if (isMobilePortrait) {
+                              debugPrint('═══════════════════════════════════════════════════════════');
+                              debugPrint('📱 [Codigos/Todocodigos AppBar (useFullWidth)] 핸드폰 세로 모드 - 3줄 구성');
+                              debugPrint('   → reportType: ${widget.reportType}');
+                              debugPrint('   → _tiposList.length: ${_tiposList.length}');
+                              debugPrint('   → _temporadasList.length: ${_temporadasList.length}');
+                              debugPrint('═══════════════════════════════════════════════════════════');
+                              
                               return Column(
                                 mainAxisSize: MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   // 첫 번째 줄: 아이콘, 제목
-                                  Row(
-                                    children: [
-                                      Icon(reportIcon, color: Colors.white),
-                                      const SizedBox(width: 8),
-                                      Flexible(
-                                        child: Text(
-                                          reportTitle,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(fontSize: 16),
-                                        ),
-                                      ),
-                                    ],
+                                  Builder(
+                                    builder: (rowContext) {
+                                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                                        final renderObject = rowContext.findRenderObject();
+                                        if (renderObject != null && renderObject is RenderBox) {
+                                          debugPrint('   📱 [Codigos/Todocodigos AppBar (useFullWidth)] 첫 번째 Row 렌더링 크기:');
+                                          debugPrint('      → width: ${renderObject.size.width}');
+                                          debugPrint('      → height: ${renderObject.size.height}');
+                                        }
+                                      });
+                                      return Row(
+                                        children: [
+                                          Icon(reportIcon, color: Colors.white),
+                                          const SizedBox(width: 8),
+                                          Flexible(
+                                            child: Text(
+                                              reportTitle,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(fontSize: 16),
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    },
                                   ),
                                   const SizedBox(height: 4),
-                                  // 두 번째 줄: Tipo, Temporada 콤보박스, 필터링 단어 필드
-                                  Row(
-                                    children: [
-                                      if (_tiposList.length > 1 || _temporadasList.length > 1) ...[
-                                        if (_tiposList.length > 1) ...[
-                                          _buildTipoSelector(),
-                                          const SizedBox(width: 8),
+                                  // 두 번째 줄: Tipo, Temporada 콤보박스
+                                  Builder(
+                                    builder: (rowContext) {
+                                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                                        final renderObject = rowContext.findRenderObject();
+                                        if (renderObject != null && renderObject is RenderBox) {
+                                          debugPrint('   📱 [Codigos/Todocodigos AppBar (useFullWidth)] 두 번째 Row 렌더링 크기:');
+                                          debugPrint('      → width: ${renderObject.size.width}');
+                                          debugPrint('      → height: ${renderObject.size.height}');
+                                        }
+                                      });
+                                      return Row(
+                                        children: [
+                                          if (_tiposList.length > 1 || _temporadasList.length > 1) ...[
+                                            if (_tiposList.length > 1) ...[
+                                              Flexible(
+                                                child: _buildTipoSelector(),
+                                              ),
+                                              const SizedBox(width: 8),
+                                            ],
+                                            if (_temporadasList.length > 1) ...[
+                                              Flexible(
+                                                child: _buildTemporadaSelector(),
+                                              ),
+                                            ],
+                                          ],
                                         ],
-                                        if (_temporadasList.length > 1) ...[
-                                          _buildTemporadaSelector(),
-                                          const SizedBox(width: 8),
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 4),
+                                  // 세 번째 줄: 필터링 단어 필드
+                                  Builder(
+                                    builder: (rowContext) {
+                                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                                        final renderObject = rowContext.findRenderObject();
+                                        if (renderObject != null && renderObject is RenderBox) {
+                                          debugPrint('   📱 [Codigos/Todocodigos AppBar (useFullWidth)] 세 번째 Row 렌더링 크기:');
+                                          debugPrint('      → width: ${renderObject.size.width}');
+                                          debugPrint('      → height: ${renderObject.size.height}');
+                                        }
+                                      });
+                                      return Row(
+                                        children: [
+                                          Expanded(
+                                            child: _buildFilteringWordFieldInAppBar(),
+                                          ),
                                         ],
-                                      ],
-                                      Expanded(
-                                        child: _buildFilteringWordFieldInAppBar(),
-                                      ),
-                                    ],
+                                      );
+                                    },
                                   ),
                                 ],
                               );
@@ -8122,6 +8549,30 @@ class _ReportScreenState extends State<ReportScreen> {
 
   // Stocks 보고서 전용 콘텐츠 빌드
   Widget _buildStocksContent(Map<String, dynamic> data) {
+    // ============================================================
+    // 📱 Stocks 화면 깨짐 현상 디버깅
+    // ============================================================
+    final layoutInfo = MobileLayoutHelper.getLayoutInfo(context);
+    final isMobilePhone = layoutInfo.isMobilePhone;
+    final isMobilePhonePortrait = layoutInfo.isMobilePhonePortrait;
+    final isMobilePhoneLandscape = layoutInfo.isMobilePhoneLandscape;
+    final screenSize = layoutInfo.screenSize;
+    
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('📱 [Stocks] _buildStocksContent 시작');
+    debugPrint('   → isMobilePhone: $isMobilePhone');
+    debugPrint('   → isMobilePhonePortrait: $isMobilePhonePortrait');
+    debugPrint('   → isMobilePhoneLandscape: $isMobilePhoneLandscape');
+    debugPrint('   → screenSize: $screenSize');
+    debugPrint('   → screenWidth: ${screenSize.width}');
+    debugPrint('   → screenHeight: ${screenSize.height}');
+    debugPrint('   → data.containsKey("data"): ${data.containsKey("data")}');
+    if (data.containsKey('data')) {
+      final dataList = data['data'] as List?;
+      debugPrint('   → data["data"] is List: ${dataList is List}');
+      debugPrint('   → dataList.length: ${dataList?.length ?? 0}');
+    }
+    debugPrint('═══════════════════════════════════════════════════════');
     // bcolorview 값에 따라 색상 결정
     Color stocksColor;
     if (data.containsKey('filters') && data['filters'] is Map) {
@@ -11302,10 +11753,34 @@ class _ReportScreenState extends State<ReportScreen> {
 
   // Codigos 보고서 콘텐츠 빌드
   Widget _buildCodigosContent(Map<String, dynamic> data) {
+    // ============================================================
+    // 📱 Codigos/Todocodigos 화면 깨짐 현상 디버깅
+    // ============================================================
+    final layoutInfo = MobileLayoutHelper.getLayoutInfo(context);
+    final isMobilePhone = layoutInfo.isMobilePhone;
+    final isMobilePhonePortrait = layoutInfo.isMobilePhonePortrait;
+    final isMobilePhoneLandscape = layoutInfo.isMobilePhoneLandscape;
+    final screenSize = layoutInfo.screenSize;
+    
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('📱 [Codigos/Todocodigos] _buildCodigosContent 시작');
+    debugPrint('   → reportType: ${widget.reportType}');
+    debugPrint('   → isMobilePhone: $isMobilePhone');
+    debugPrint('   → isMobilePhonePortrait: $isMobilePhonePortrait');
+    debugPrint('   → isMobilePhoneLandscape: $isMobilePhoneLandscape');
+    debugPrint('   → screenSize: $screenSize');
+    debugPrint('   → screenWidth: ${screenSize.width}');
+    debugPrint('   → screenHeight: ${screenSize.height}');
+    debugPrint('═══════════════════════════════════════════════════════');
+    
     final dataList = data['data'] as List;
     if (dataList.isEmpty) {
+      debugPrint('   ⚠️ [Codigos/Todocodigos] dataList가 비어있음');
       return const Center(child: Text('No data available'));
     }
+    
+    debugPrint('   → dataList.length: ${dataList.length}');
+    debugPrint('   → _selectedCodigo: ${_selectedCodigo != null ? "있음" : "null"}');
 
     // 첫 번째 항목에서 모든 칼럼 키 추출
     final firstItem = dataList[0] as Map<String, dynamic>;
@@ -11316,6 +11791,9 @@ class _ReportScreenState extends State<ReportScreen> {
         : firstItem.keys
             .where((key) => key != 'id_woocommerce' && key != 'id_woocommerce_producto')
             .toList();
+    
+    debugPrint('   → columnKeys.length: ${columnKeys.length}');
+    debugPrint('   → columnKeys: $columnKeys');
     
     // 칼럼별 너비 설정
     final columnWidths = <String, double>{
@@ -11406,11 +11884,72 @@ class _ReportScreenState extends State<ReportScreen> {
       columnDisplayNames: columnDisplayNames,
     );
 
-    return Row(
-      children: [
-        Expanded(
-          flex: _selectedCodigo != null ? 1 : 1,
-          child: CodigosBuilder.buildContent(
+    // ============================================================
+    // 📱 Codigos/Todocodigos Row 레이아웃 디버깅
+    // ============================================================
+    // 핸드폰에서 화면 깨짐 현상 원인 파악을 위한 디버깅
+    final mediaQuery = MediaQuery.of(context);
+    final availableWidth = mediaQuery.size.width;
+    final availableHeight = mediaQuery.size.height;
+    
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('📱 [Codigos/Todocodigos] Row 레이아웃 빌드 시작');
+    debugPrint('   → reportType: ${widget.reportType}');
+    debugPrint('   → _selectedCodigo != null: ${_selectedCodigo != null}');
+    debugPrint('   → availableWidth: $availableWidth');
+    debugPrint('   → availableHeight: $availableHeight');
+    debugPrint('   → isMobilePhone: $isMobilePhone');
+    debugPrint('   → isMobilePhonePortrait: $isMobilePhonePortrait');
+    debugPrint('   → isMobilePhoneLandscape: $isMobilePhoneLandscape');
+    debugPrint('   → Row children 개수: ${_selectedCodigo != null ? 2 : 1}');
+    debugPrint('   → 첫 번째 Expanded flex: ${_selectedCodigo != null ? 1 : 1}');
+    debugPrint('   → 두 번째 Expanded flex: ${_selectedCodigo != null ? 1 : 0} (없음)');
+    debugPrint('═══════════════════════════════════════════════════════');
+    
+    return Builder(
+      builder: (context) {
+        // 렌더링 후 실제 크기 측정
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+          if (renderBox != null) {
+            debugPrint('═══════════════════════════════════════════════════════');
+            debugPrint('📱 [Codigos/Todocodigos] Row 실제 렌더링 크기');
+            debugPrint('   → Row width: ${renderBox.size.width}');
+            debugPrint('   → Row height: ${renderBox.size.height}');
+            debugPrint('   → 예상 width: $availableWidth');
+            debugPrint('   → 차이: ${renderBox.size.width - availableWidth}');
+            
+            // Row의 자식들 확인
+            int childIndex = 0;
+            renderBox.visitChildren((child) {
+              if (child is RenderBox) {
+                debugPrint('   → [Row 자식 #$childIndex]');
+                debugPrint('      → width: ${child.size.width}');
+                debugPrint('      → height: ${child.size.height}');
+                debugPrint('      → 타입: ${child.runtimeType}');
+                childIndex++;
+              }
+            });
+            debugPrint('═══════════════════════════════════════════════════════');
+          }
+        });
+        
+        return Row(
+          children: [
+            Expanded(
+              flex: _selectedCodigo != null ? 1 : 1,
+              child: Builder(
+                builder: (leftContext) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    final RenderBox? renderBox = leftContext.findRenderObject() as RenderBox?;
+                    if (renderBox != null) {
+                      debugPrint('📱 [Codigos/Todocodigos] 왼쪽 Expanded 실제 크기');
+                      debugPrint('   → width: ${renderBox.size.width}');
+                      debugPrint('   → height: ${renderBox.size.height}');
+                    }
+                  });
+                  
+                  return CodigosBuilder.buildContent(
             data: data,
             context: context,
             scrollController: _scrollController,
@@ -11465,16 +12004,33 @@ class _ReportScreenState extends State<ReportScreen> {
             columnWidths: columnWidths,
             headerWidget: headerWidget,
             editedCodigoIdentifier: _editedCodigoIdentifier,
-            reportType: widget.reportType,
-          ),
-        ),
-        // 오른쪽: 선택된 Codigo 편집 UI
-        if (_selectedCodigo != null)
-          Expanded(
-            flex: 1,
-            child: _buildCodigoEditPanel(),
-          ),
-      ],
+                    reportType: widget.reportType,
+                  );
+                },
+              ),
+            ),
+            // 오른쪽: 선택된 Codigo 편집 UI
+            if (_selectedCodigo != null)
+              Expanded(
+                flex: 1,
+                child: Builder(
+                  builder: (rightContext) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      final RenderBox? renderBox = rightContext.findRenderObject() as RenderBox?;
+                      if (renderBox != null) {
+                        debugPrint('📱 [Codigos/Todocodigos] 오른쪽 Expanded 실제 크기');
+                        debugPrint('   → width: ${renderBox.size.width}');
+                        debugPrint('   → height: ${renderBox.size.height}');
+                      }
+                    });
+                    
+                    return _buildCodigoEditPanel();
+                  },
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 

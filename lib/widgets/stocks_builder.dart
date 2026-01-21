@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'report_utils.dart';
+import '../utils/mobile_layout_helper.dart';
 
 /// Stocks 보고서 UI 빌더
 class StocksBuilder {
@@ -43,9 +44,48 @@ class StocksBuilder {
     final extraPadding = 20.0; // 오른쪽 끝 패턴 방지를 위한 추가 공간
     final totalWidth = rowContentWidth + containerPadding + extraPadding; // 실제 컨텐츠 너비
     final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
     final needsHorizontalScroll = totalWidth > screenWidth;
+    
+    // ============================================================
+    // 📱 Stocks 화면 깨짐 현상 디버깅
+    // ============================================================
+    // 핸드폰에서 화면 깨짐 현상 원인 파악을 위한 디버깅
+    final layoutInfo = MobileLayoutHelper.getLayoutInfo(context);
+    final isMobilePhone = layoutInfo.isMobilePhone;
+    final isMobilePhonePortrait = layoutInfo.isMobilePhonePortrait;
+    final isMobilePhoneLandscape = layoutInfo.isMobilePhoneLandscape;
+    
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('📱 [Stocks Builder] buildContent 시작');
+    debugPrint('   → isMobilePhone: $isMobilePhone');
+    debugPrint('   → isMobilePhonePortrait: $isMobilePhonePortrait');
+    debugPrint('   → isMobilePhoneLandscape: $isMobilePhoneLandscape');
+    debugPrint('   → screenWidth: $screenWidth');
+    debugPrint('   → screenHeight: $screenHeight');
+    debugPrint('   → totalWidth: $totalWidth');
+    debugPrint('   → needsHorizontalScroll: $needsHorizontalScroll');
+    debugPrint('   → dataList.length: ${dataList.length}');
+    debugPrint('   → filteredDataList.length: ${filteredDataList.length}');
+    debugPrint('═══════════════════════════════════════════════════════');
 
-    return Column(
+    return Builder(
+      builder: (context) {
+        // 렌더링 후 실제 크기 측정
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+          if (renderBox != null) {
+            debugPrint('═══════════════════════════════════════════════════════');
+            debugPrint('📱 [Stocks Builder] Column 실제 렌더링 크기');
+            debugPrint('   → Column width: ${renderBox.size.width}');
+            debugPrint('   → Column height: ${renderBox.size.height}');
+            debugPrint('   → 예상 width: $screenWidth');
+            debugPrint('   → 차이: ${renderBox.size.width - screenWidth}');
+            debugPrint('═══════════════════════════════════════════════════════');
+          }
+        });
+        
+        return Column(
       children: [
         // 백그라운드 로딩 인디케이터
         if (isLoadingMore)
@@ -169,6 +209,8 @@ class StocksBuilder {
                 ),
         ),
       ],
+    );
+      },
     );
   }
 
