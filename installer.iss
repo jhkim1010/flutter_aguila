@@ -2,14 +2,14 @@
 ; For creating Windows installer for Flutter app
 
 #define MyAppName "Be COOL"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "11.0.0"
 #define MyAppPublisher "Cool Sistema"
 #define MyAppURL "https://coolsistema.com"
 #define MyAppExeName "Be_Cool.exe"
 
 [Setup]
 ; App information
-AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}
+AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
