@@ -1,0 +1,6 @@
+# Ensure installer.iss is treated as text with consistent line endings
+installer.iss text eol=lf
+
+# Prevent Git from modifying line endings for this file
+*.iss text eol=lf
+
