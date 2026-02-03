@@ -1,4 +1,4 @@
-; Inno Setup script file
+﻿; Inno Setup script file
 ; For creating Windows installer for Flutter app
 
 #define MyAppName "Be COOL"

@@ -197,27 +197,26 @@ if (Test-Path $IssFile) {
         
         # Try to fix common malformed patterns
         # Pattern 1: $11.0.0" -> #define MyAppVersion "11.0.0"
-        $IssContent = $IssContent -replace '\$\d+\.\d+\.\d+"', "#define MyAppVersion `"$Version`""
-        
-        # Pattern 2: Missing #define MyAppVersion line (add after MyAppName)
-        if ($IssContent -notmatch '#define\s+MyAppVersion') {
+        # Extract version number first if it exists
+        $versionMatch = $IssContent -match '\$(\d+\.\d+\.\d+)"'
+        if ($versionMatch) {
+            $extractedVersion = $matches[1]
+            Write-Host "   Found version number: $extractedVersion" -ForegroundColor Cyan
+            $IssContent = $IssContent -replace '\$\d+\.\d+\.\d+"', "#define MyAppVersion `"$extractedVersion`""
+        } else {
+            # Pattern 2: Missing #define MyAppVersion line (add after MyAppName)
+            Write-Host "   No version number found, using version from pubspec.yaml: $Version" -ForegroundColor Cyan
             $IssContent = $IssContent -replace '(#define MyAppName "[^"]*")', "`$1`r`n#define MyAppVersion `"$Version`""
         }
         
-        # Pattern 3: If still not found, try to find version number and fix
-        if ($IssContent -notmatch '#define\s+MyAppVersion') {
-            # Extract version from malformed line like $11.0.0"
-            $versionMatch = $IssContent -match '\$(\d+\.\d+\.\d+)"'
-            if ($versionMatch) {
-                $extractedVersion = $matches[1]
-                $IssContent = $IssContent -replace '\$\d+\.\d+\.\d+"', "#define MyAppVersion `"$extractedVersion`""
-            } else {
-                # If no version found, use the version from pubspec.yaml
-                $IssContent = $IssContent -replace '(#define MyAppName "[^"]*")', "`$1`r`n#define MyAppVersion `"$Version`""
-            }
+        # Verify the fix worked
+        $hasMyAppVersionAfter = $IssContent -match '#define\s+MyAppVersion\s+"[^"]*"'
+        if ($hasMyAppVersionAfter) {
+            Write-Host "   ✅ Fixed MyAppVersion definition" -ForegroundColor Green
+        } else {
+            Write-Host "   ❌ Failed to fix MyAppVersion. Please check installer.iss manually." -ForegroundColor Red
+            exit 1
         }
-        
-        Write-Host "   ✅ Fixed MyAppVersion definition" -ForegroundColor Green
     } else {
         # Update version information if properly defined
         $IssContent = $IssContent -replace '(#define MyAppVersion ")[^"]*(")', "`$1$Version`$2"
