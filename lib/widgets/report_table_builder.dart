@@ -613,9 +613,27 @@ class ReportTableBuilder {
         ),
         onSort: isSortable && onSort != null
             ? (columnIndex, ascending) {
+                debugPrint('═══════════════════════════════════════════════════════');
+                debugPrint('🔍 [ReportTableBuilder] DataColumn onSort 콜백 호출');
+                debugPrint('   → reportType: $reportType');
+                debugPrint('   → key: $key');
+                debugPrint('   → columnIndex: $columnIndex');
+                debugPrint('   → ascending: $ascending');
+                debugPrint('   → isSortable: $isSortable');
+                debugPrint('   → onSort != null: ${onSort != null}');
+                debugPrint('   → keys.length: ${keys.length}');
+                debugPrint('   → keys: $keys');
+                
                 // DataTable이 전달하는 columnIndex는 columns 리스트의 인덱스이므로
                 // keys 리스트의 인덱스와 동일합니다
-                onSort(columnIndex, ascending);
+                if (columnIndex >= 0 && columnIndex < keys.length) {
+                  debugPrint('   → 유효한 columnIndex, onSort 호출');
+                  onSort(columnIndex, ascending);
+                  debugPrint('   ✅ onSort 호출 완료');
+                } else {
+                  debugPrint('   ⚠️ 경고: columnIndex($columnIndex)가 유효 범위를 벗어남 (0~${keys.length - 1})');
+                }
+                debugPrint('═══════════════════════════════════════════════════════');
               }
             : null,
       );

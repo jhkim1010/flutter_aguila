@@ -22,7 +22,18 @@ class ItemsBuilder {
     Color? reportColor,
     String? selectedCategoryCode,
     Function(String?)? onCategorySelected,
+    String? selectedColorCode,
+    Function(String?)? onColorSelected,
   }) {
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [Items Builder] buildContent 시작');
+    debugPrint('   → PlatformUtils.isDesktop(): ${PlatformUtils.isDesktop()}');
+    debugPrint('   → PlatformUtils.isIPad(context): ${PlatformUtils.isIPad(context)}');
+    debugPrint('   → MediaQuery.of(context).size: ${MediaQuery.of(context).size}');
+    debugPrint('   → data.keys: ${data.keys.toList()}');
+    debugPrint('   → selectedCategoryCode: $selectedCategoryCode');
+    debugPrint('   → selectedColorCode: $selectedColorCode');
+    
     // 공통 데이터 추출
     final extractedData = _extractCommonData(
       data: data,
@@ -38,17 +49,28 @@ class ItemsBuilder {
       reportColor: reportColor,
       selectedCategoryCode: selectedCategoryCode,
       onCategorySelected: onCategorySelected,
+      selectedColorCode: selectedColorCode,
+      onColorSelected: onColorSelected,
     );
+
+    debugPrint('   → extractedData.summaryCard != null: ${extractedData.summaryCard != null}');
+    debugPrint('   → extractedData.summaryByCompanyTable != null: ${extractedData.summaryByCompanyTable != null}');
+    debugPrint('   → extractedData.summaryByCategoryTable != null: ${extractedData.summaryByCategoryTable != null}');
+    debugPrint('   → extractedData.summaryByColorTable != null: ${extractedData.summaryByColorTable != null}');
+    debugPrint('   → extractedData.productsTable != null: ${extractedData.productsTable != null}');
 
     // 화면 크기에 따라 적절한 레이아웃 선택
     if (PlatformUtils.isDesktop()) {
       // macOS, Windows 대형 화면
+      debugPrint('   ✅ 대형 화면 레이아웃 선택: _buildContentForDesktop');
       return _buildContentForDesktop(extractedData);
     } else if (PlatformUtils.isIPad(context)) {
       // iPad 태블릿 화면
+      debugPrint('   ✅ 태블릿 화면 레이아웃 선택: _buildContentForTablet');
       return _buildContentForTablet(extractedData);
     } else {
       // 모바일 화면
+      debugPrint('   ✅ 모바일 화면 레이아웃 선택: _buildContentForMobile');
       return _buildContentForMobile(extractedData);
     }
   }
@@ -68,6 +90,8 @@ class ItemsBuilder {
     Color? reportColor,
     String? selectedCategoryCode,
     Function(String?)? onCategorySelected,
+    String? selectedColorCode,
+    Function(String?)? onColorSelected,
   }) {
     // summary 카드 (모바일 폰에서는 표시하지 않음)
     Widget? summaryCard;
@@ -83,11 +107,13 @@ class ItemsBuilder {
 
     // summary_by_company 테이블
     Widget? summaryByCompanyTable;
+    debugPrint('🔍 [Items Builder] summary_by_company 테이블 추출 시작');
     if (data.containsKey('data') && 
         data['data'] is Map &&
         (data['data'] as Map).containsKey('summary_by_company') &&
         (data['data'] as Map)['summary_by_company'] is List) {
       final summaryByCompanyList = (data['data'] as Map)['summary_by_company'] as List;
+      debugPrint('   → summary_by_company 리스트 발견: length=${summaryByCompanyList.length}');
       // 데이터가 있을 때만 테이블 생성
       if (summaryByCompanyList.isNotEmpty) {
         summaryByCompanyTable = _buildSummaryByCompanyTable(
@@ -98,16 +124,24 @@ class ItemsBuilder {
           sortAscending: sortAscending,
           reportColor: reportColor,
         );
+        debugPrint('   → summaryByCompanyTable 생성됨');
+      } else {
+        debugPrint('   ⚠️ summary_by_company 리스트가 비어있음');
       }
+    } else {
+      debugPrint('   ⚠️ summary_by_company 데이터를 찾을 수 없음');
     }
+    debugPrint('   → 최종 summaryByCompanyTable != null: ${summaryByCompanyTable != null}');
 
     // summary_by_category 테이블
     Widget? summaryByCategoryTable;
+    debugPrint('🔍 [Items Builder] summary_by_category 테이블 추출 시작');
     if (data.containsKey('data') && 
         data['data'] is Map &&
         (data['data'] as Map).containsKey('summary_by_category') &&
         (data['data'] as Map)['summary_by_category'] is List) {
       final summaryByCategoryList = (data['data'] as Map)['summary_by_category'] as List;
+      debugPrint('   → summary_by_category 리스트 발견: length=${summaryByCategoryList.length}');
       // 데이터가 있을 때만 테이블 생성
       if (summaryByCategoryList.isNotEmpty) {
         summaryByCategoryTable = _buildSummaryByCategoryTable(
@@ -120,18 +154,32 @@ class ItemsBuilder {
           selectedCategoryCode: selectedCategoryCode,
           onCategorySelected: onCategorySelected,
         );
+        debugPrint('   → summaryByCategoryTable 생성됨');
+      } else {
+        debugPrint('   ⚠️ summary_by_category 리스트가 비어있음');
       }
+    } else {
+      debugPrint('   ⚠️ summary_by_category 데이터를 찾을 수 없음');
     }
+    debugPrint('   → 최종 summaryByCategoryTable != null: ${summaryByCategoryTable != null}');
 
     // summary_by_color 테이블
     Widget? summaryByColorTable;
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [Items Builder] summary_by_color 테이블 추출 시작');
+    debugPrint('   → data.containsKey("data"): ${data.containsKey("data")}');
     if (data.containsKey('data') && 
         data['data'] is Map &&
         (data['data'] as Map).containsKey('summary_by_color') &&
         (data['data'] as Map)['summary_by_color'] is List) {
       final summaryByColorList = (data['data'] as Map)['summary_by_color'] as List;
-      // 데이터가 있을 때만 테이블 생성
-      if (summaryByColorList.isNotEmpty) {
+      debugPrint('   → summary_by_color 리스트 발견: length=${summaryByColorList.length}');
+      debugPrint('   → summaryByColorList.isNotEmpty: ${summaryByColorList.isNotEmpty}');
+      
+      // 대형화면에서는 데이터가 비어있어도 테이블 생성 (레이아웃 유지)
+      final isDesktop = PlatformUtils.isDesktop();
+      if (summaryByColorList.isNotEmpty || isDesktop) {
+        debugPrint('   → summary_by_color 테이블 생성 (isNotEmpty: ${summaryByColorList.isNotEmpty}, isDesktop: $isDesktop)');
         summaryByColorTable = _buildSummaryByColorTable(
           summaryByColorList,
           context,
@@ -139,9 +187,25 @@ class ItemsBuilder {
           sortColumn: sortColumn,
           sortAscending: sortAscending,
           reportColor: reportColor,
+          selectedColorCode: selectedColorCode,
+          onColorSelected: onColorSelected,
         );
+      } else {
+        debugPrint('   ⚠️ summary_by_color 리스트가 비어있고 모바일 화면이므로 테이블 생성 안 함');
+      }
+    } else {
+      debugPrint('   ⚠️ summary_by_color 데이터를 찾을 수 없음');
+      if (!data.containsKey('data')) {
+        debugPrint('     → data에 "data" 키가 없음');
+      } else if (data['data'] is! Map) {
+        debugPrint('     → data["data"]가 Map이 아님: ${data["data"].runtimeType}');
+      } else if (!(data['data'] as Map).containsKey('summary_by_color')) {
+        debugPrint('     → data["data"]에 "summary_by_color" 키가 없음');
+        debugPrint('     → data["data"].keys: ${(data['data'] as Map).keys.toList()}');
       }
     }
+    debugPrint('   → 최종 summaryByColorTable != null: ${summaryByColorTable != null}');
+    debugPrint('═══════════════════════════════════════════════════════');
 
     // products 테이블
     Widget? productsTable;
@@ -190,14 +254,29 @@ class ItemsBuilder {
               debugPrint('   → productsList.length (selectedCategoryCode 필터링 후): ${productsList.length}');
             }
             
-            if (productsList.isNotEmpty) {
+            // selectedColorCode 필터 적용은 서버에서 color_id로 처리하므로 클라이언트 측 필터링 제거
+            // 서버에서 이미 필터링된 데이터를 받으므로 추가 필터링 불필요
+            if (selectedColorCode != null && selectedColorCode.isNotEmpty) {
               debugPrint('═══════════════════════════════════════════════════════');
-              debugPrint('📊 [ItemsBuilder] productsTable 생성 시작');
+              debugPrint('🔍 [Items Builder] selectedColorCode 확인 (서버에서 필터링됨)');
+              debugPrint('   → selectedColorCode: $selectedColorCode');
               debugPrint('   → productsList.length: ${productsList.length}');
-              debugPrint('   → displayedItemsCount: $displayedItemsCount');
-              debugPrint('   → itemsPerPage: $itemsPerPage');
-              debugPrint('   → scrollController: ${scrollController != null}');
-              debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
+              debugPrint('   → 참고: 서버에서 color_id=$selectedColorCode로 이미 필터링된 데이터를 받음');
+              debugPrint('═══════════════════════════════════════════════════════');
+            }
+            
+            // productsTable 생성 (빈 리스트여도 대형화면에서는 테이블 표시)
+            debugPrint('═══════════════════════════════════════════════════════');
+            debugPrint('📊 [ItemsBuilder] productsTable 생성 시작');
+            debugPrint('   → productsList.length: ${productsList.length}');
+            debugPrint('   → displayedItemsCount: $displayedItemsCount');
+            debugPrint('   → itemsPerPage: $itemsPerPage');
+            debugPrint('   → scrollController: ${scrollController != null}');
+            debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
+            debugPrint('   → PlatformUtils.isDesktop(): ${PlatformUtils.isDesktop()}');
+            
+            if (productsList.isNotEmpty) {
+              debugPrint('   ✅ productsList가 비어있지 않음 - 테이블 생성');
               
               productsTable = ReportTableBuilder.buildTableFromList(
                 productsList,
@@ -210,19 +289,60 @@ class ItemsBuilder {
                 horizontalScrollController: horizontalScrollController,
                 reportColor: reportColor,
                 onSort: (columnIndex, ascending) {
+                  debugPrint('═══════════════════════════════════════════════════════');
+                  debugPrint('🔍 [Items Builder] productsTable onSort 콜백 호출');
+                  debugPrint('   → columnIndex: $columnIndex');
+                  debugPrint('   → ascending: $ascending');
+                  debugPrint('   → productsList.length: ${productsList.length}');
+                  
                   final allKeys = productsList.isNotEmpty 
                       ? (productsList.first as Map<String, dynamic>).keys.toList()
                       : <String>[];
+                  debugPrint('   → allKeys: $allKeys');
+                  debugPrint('   → allKeys.length: ${allKeys.length}');
+                  
                   if (columnIndex >= 0 && columnIndex < allKeys.length) {
                     final key = allKeys[columnIndex];
+                    debugPrint('   → 선택된 정렬 키: $key');
+                    debugPrint('   → 현재 sortColumn: $sortColumn');
+                    debugPrint('   → 현재 sortAscending: $sortAscending');
+                    debugPrint('   → onSort 호출: onSort($key, $ascending)');
                     onSort(key, ascending);
+                    debugPrint('   ✅ onSort 호출 완료');
+                  } else {
+                    debugPrint('   ⚠️ 경고: columnIndex($columnIndex)가 유효 범위를 벗어남 (0~${allKeys.length - 1})');
                   }
+                  debugPrint('═══════════════════════════════════════════════════════');
                 },
               );
               
               debugPrint('   → productsTable: 생성됨 (타입: ${productsTable.runtimeType})');
             } else {
               debugPrint('   ⚠️ [ItemsBuilder] productsList가 비어있습니다! (필터링 후)');
+              
+              // 대형화면에서는 빈 테이블이라도 표시 (레이아웃 유지)
+              if (PlatformUtils.isDesktop()) {
+                debugPrint('   → 대형화면: 빈 테이블 생성 (레이아웃 유지)');
+                productsTable = ReportTableBuilder.buildTableFromList(
+                  <Map<String, dynamic>>[],
+                  displayedItemsCount,
+                  itemsPerPage,
+                  scrollController,
+                  ReportType.items,
+                  sortColumn: sortColumn,
+                  sortAscending: sortAscending,
+                  horizontalScrollController: horizontalScrollController,
+                  reportColor: reportColor,
+                  onSort: (columnIndex, ascending) {
+                    debugPrint('🔍 [Items Builder] 빈 productsTable onSort 콜백 호출');
+                    debugPrint('   → columnIndex: $columnIndex, ascending: $ascending');
+                    // 빈 테이블에서는 정렬할 데이터가 없지만 콜백은 유지
+                  },
+                );
+                debugPrint('   → 빈 productsTable 생성 완료');
+              } else {
+                debugPrint('   → 모바일/태블릿: productsTable을 null로 유지');
+              }
             }
           } else {
             debugPrint('   ⚠️ [ItemsBuilder] data["data"]["products"]가 List가 아닙니다!');
@@ -259,72 +379,229 @@ class ItemsBuilder {
     debugPrint('   → productsTable != null: ${data.productsTable != null}');
     debugPrint('   → productsTable 타입: ${data.productsTable?.runtimeType}');
     
-    // summary 테이블이 하나라도 있는 경우: 좌우 분할 레이아웃
-    if ((data.summaryByCompanyTable != null || data.summaryByCategoryTable != null || data.summaryByColorTable != null) && 
-        data.productsTable != null) {
-      debugPrint('   → 좌우 분할 레이아웃 사용');
-      return Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 헤더 부분 (summaryCard)
-            if (data.summaryCard != null) ...[
-              data.summaryCard!,
-              const SizedBox(height: 24),
-            ],
-            // 좌우 분할 레이아웃 (크기 조정 가능)
-            Expanded(
-              child: _ResizableSplitView(
-                leftChild: _buildLeftPanel(
-                  summaryByCompanyTable: data.summaryByCompanyTable,
-                  summaryByCategoryTable: data.summaryByCategoryTable,
-                  summaryByColorTable: data.summaryByColorTable,
+    // 조건 체크 상세 디버깅
+    final hasSummaryTable = data.summaryByCompanyTable != null || 
+                           data.summaryByCategoryTable != null || 
+                           data.summaryByColorTable != null;
+    final hasProductsTable = data.productsTable != null;
+    
+    debugPrint('   → hasSummaryTable: $hasSummaryTable');
+    debugPrint('   → hasProductsTable: $hasProductsTable');
+    debugPrint('   → summaryByCompanyTable != null: ${data.summaryByCompanyTable != null}');
+    debugPrint('   → summaryByCategoryTable != null: ${data.summaryByCategoryTable != null}');
+    debugPrint('   → summaryByColorTable != null: ${data.summaryByColorTable != null}');
+    debugPrint('   → 조건1 (summary && products): ${hasSummaryTable && hasProductsTable}');
+    debugPrint('   → 조건2 (!summary && products): ${!hasSummaryTable && hasProductsTable}');
+    debugPrint('   → 조건3 (summary && !products): ${hasSummaryTable && !hasProductsTable}');
+    debugPrint('   → PlatformUtils.isDesktop(): ${PlatformUtils.isDesktop()}');
+    
+    // summary 테이블이 하나라도 있고 products 테이블이 있는 경우: 좌우 분할 레이아웃
+    // 대형화면에서는 productsTable이 null이어도 빈 테이블로 표시 (레이아웃 유지)
+    if (hasSummaryTable && hasProductsTable) {
+      debugPrint('   ✅ 좌우 분할 레이아웃 사용');
+      debugPrint('   → Column children 개수: ${data.summaryCard != null ? 2 : 1}');
+      debugPrint('   → Expanded 사용: true');
+      
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          debugPrint('   → LayoutBuilder constraints: ${constraints.maxWidth} x ${constraints.maxHeight}');
+          debugPrint('   → constraints.isTight: ${constraints.isTight}');
+          debugPrint('   → constraints.hasBoundedHeight: ${constraints.hasBoundedHeight}');
+          debugPrint('   → constraints.hasBoundedWidth: ${constraints.hasBoundedWidth}');
+          
+          return Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 헤더 부분 (summaryCard)
+                if (data.summaryCard != null) ...[
+                  data.summaryCard!,
+                  const SizedBox(height: 24),
+                ],
+                // 좌우 분할 레이아웃 (크기 조정 가능)
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, expandedConstraints) {
+                      debugPrint('   → Expanded 내부 constraints: ${expandedConstraints.maxWidth} x ${expandedConstraints.maxHeight}');
+                      debugPrint('   → Expanded constraints.isTight: ${expandedConstraints.isTight}');
+                      debugPrint('   → Expanded constraints.hasBoundedHeight: ${expandedConstraints.hasBoundedHeight}');
+                      
+                      return _ResizableSplitView(
+                        leftChild: _buildLeftPanel(
+                          summaryByCompanyTable: data.summaryByCompanyTable,
+                          summaryByCategoryTable: data.summaryByCategoryTable,
+                          summaryByColorTable: data.summaryByColorTable,
+                        ),
+                        rightChild: _buildRightPanel(
+                          productsTable: data.productsTable!,
+                        ),
+                      );
+                    },
+                  ),
                 ),
-                rightChild: _buildRightPanel(
-                  productsTable: data.productsTable!,
-                ),
-              ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       );
     }
 
-    // summary 테이블이 모두 없고 products 테이블만 있는 경우: 100% 폭으로 표시
-    if (data.summaryByCompanyTable == null && 
-        data.summaryByCategoryTable == null && 
-        data.summaryByColorTable == null && 
-        data.productsTable != null) {
-      debugPrint('   → 100% 폭 레이아웃 사용 (summary 없음)');
-      return Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 헤더 부분 (summaryCard)
-            if (data.summaryCard != null) ...[
-              data.summaryCard!,
-              const SizedBox(height: 24),
-            ],
-            // products 테이블만 100% 폭으로 표시
-            _buildRightPanel(
-              productsTable: data.productsTable!,
-              useExpanded: false,
+    // summary 테이블이 모두 없고 products 테이블만 있는 경우
+    // 대형화면에서는 왼쪽 패널을 유지하기 위해 좌우 분할 레이아웃 사용
+    if (!hasSummaryTable && hasProductsTable) {
+      final isDesktop = PlatformUtils.isDesktop();
+      
+      if (isDesktop) {
+        debugPrint('   ✅ 대형화면: summary 없어도 좌우 분할 레이아웃 사용 (왼쪽 패널 유지)');
+        debugPrint('   → Column children 개수: ${data.summaryCard != null ? 2 : 1}');
+        debugPrint('   → Expanded 사용: true');
+        
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            debugPrint('   → LayoutBuilder constraints: ${constraints.maxWidth} x ${constraints.maxHeight}');
+            
+            return Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 헤더 부분 (summaryCard)
+                  if (data.summaryCard != null) ...[
+                    data.summaryCard!,
+                    const SizedBox(height: 24),
+                  ],
+                  // 좌우 분할 레이아웃 (빈 왼쪽 패널 + products 테이블)
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, expandedConstraints) {
+                        debugPrint('   → Expanded 내부 constraints: ${expandedConstraints.maxWidth} x ${expandedConstraints.maxHeight}');
+                        
+                        return _ResizableSplitView(
+                          leftChild: _buildLeftPanel(
+                            summaryByCompanyTable: data.summaryByCompanyTable,
+                            summaryByCategoryTable: data.summaryByCategoryTable,
+                            summaryByColorTable: data.summaryByColorTable,
+                          ),
+                          rightChild: _buildRightPanel(
+                            productsTable: data.productsTable!,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      } else {
+        debugPrint('   ✅ 모바일/태블릿: 100% 폭 레이아웃 사용 (summary 없음)');
+        debugPrint('   → Column children 개수: ${data.summaryCard != null ? 2 : 1}');
+        debugPrint('   → Expanded 사용: false');
+        
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            debugPrint('   → LayoutBuilder constraints: ${constraints.maxWidth} x ${constraints.maxHeight}');
+            
+            return Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 헤더 부분 (summaryCard)
+                  if (data.summaryCard != null) ...[
+                    data.summaryCard!,
+                    const SizedBox(height: 24),
+                  ],
+                  // products 테이블만 100% 폭으로 표시
+                  _buildRightPanel(
+                    productsTable: data.productsTable!,
+                    useExpanded: false,
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      }
+    }
+
+    // summary 테이블이 있고 products 테이블이 없는 경우: 대형화면에서는 빈 테이블 표시
+    if (hasSummaryTable && !hasProductsTable) {
+      debugPrint('   ⚠️ summary는 있지만 productsTable이 null');
+      debugPrint('   → 대형화면: 좌우 분할 레이아웃 유지 (빈 productsTable 표시)');
+      
+      // 빈 productsTable 생성
+      final emptyProductsTable = ReportTableBuilder.buildTableFromList(
+        <Map<String, dynamic>>[],
+        100,
+        100,
+        data.scrollController,
+        ReportType.items,
+        sortColumn: null,
+        sortAscending: true,
+        horizontalScrollController: null,
+        reportColor: null,
+        onSort: (columnIndex, ascending) {
+          debugPrint('🔍 [Items Builder] 빈 productsTable onSort (대형화면 레이아웃 유지용)');
+        },
+      );
+      
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          debugPrint('   → LayoutBuilder constraints: ${constraints.maxWidth} x ${constraints.maxHeight}');
+          
+          return Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 헤더 부분 (summaryCard)
+                if (data.summaryCard != null) ...[
+                  data.summaryCard!,
+                  const SizedBox(height: 24),
+                ],
+                // 좌우 분할 레이아웃 (빈 productsTable 사용)
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, expandedConstraints) {
+                      debugPrint('   → Expanded 내부 constraints: ${expandedConstraints.maxWidth} x ${expandedConstraints.maxHeight}');
+                      
+                      return _ResizableSplitView(
+                        leftChild: _buildLeftPanel(
+                          summaryByCompanyTable: data.summaryByCompanyTable,
+                          summaryByCategoryTable: data.summaryByCategoryTable,
+                          summaryByColorTable: data.summaryByColorTable,
+                        ),
+                        rightChild: _buildRightPanel(
+                          productsTable: emptyProductsTable,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       );
     }
 
     // 그 외의 경우: 세로로 배치
-    debugPrint('   → 세로 배치 레이아웃 사용 (기본)');
+    debugPrint('   ⚠️ 세로 배치 레이아웃 사용 (기본) - 예상치 못한 케이스');
+    debugPrint('   → hasSummaryTable: $hasSummaryTable');
+    debugPrint('   → hasProductsTable: $hasProductsTable');
     debugPrint('═══════════════════════════════════════════════════════');
     return _buildVerticalLayout(data);
   }
 
   /// iPad 태블릿 화면용 레이아웃 (현재는 desktop과 동일하게 처리)
   static Widget _buildContentForTablet(_ExtractedData data) {
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [큰 화면 디버깅] _buildContentForTablet 시작');
+    debugPrint('   → 태블릿 화면: desktop과 동일하게 처리');
+    debugPrint('═══════════════════════════════════════════════════════');
     // 현재는 desktop과 동일하게 처리 (나중에 별도 레이아웃으로 변경 가능)
     return _buildContentForDesktop(data);
   }
@@ -340,6 +617,18 @@ class ItemsBuilder {
     Widget? summaryByCategoryTable,
     Widget? summaryByColorTable,
   }) {
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [큰 화면 디버깅] _buildLeftPanel 시작');
+    debugPrint('   → summaryByCompanyTable != null: ${summaryByCompanyTable != null}');
+    debugPrint('   → summaryByCategoryTable != null: ${summaryByCategoryTable != null}');
+    debugPrint('   → summaryByColorTable != null: ${summaryByColorTable != null}');
+    
+    final childrenCount = (summaryByCompanyTable != null ? 1 : 0) +
+                         (summaryByCategoryTable != null ? 1 : 0) +
+                         (summaryByColorTable != null ? 1 : 0);
+    debugPrint('   → 예상 children 개수: $childrenCount');
+    debugPrint('═══════════════════════════════════════════════════════');
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -401,6 +690,17 @@ class ItemsBuilder {
         debugPrint('   → constraints.maxHeight: ${constraints.maxHeight}');
         debugPrint('   → constraints.minWidth: ${constraints.minWidth}');
         debugPrint('   → constraints.minHeight: ${constraints.minHeight}');
+        debugPrint('   → constraints.isTight: ${constraints.isTight}');
+        debugPrint('   → constraints.hasBoundedHeight: ${constraints.hasBoundedHeight}');
+        debugPrint('   → constraints.hasBoundedWidth: ${constraints.hasBoundedWidth}');
+        
+        // 제약 조건 검증
+        if (useExpanded && !constraints.hasBoundedHeight) {
+          debugPrint('   ⚠️ 경고: useExpanded=true인데 높이가 제한되지 않았습니다!');
+        }
+        if (constraints.maxHeight.isInfinite && useExpanded) {
+          debugPrint('   ⚠️ 경고: useExpanded=true인데 maxHeight가 무한대입니다!');
+        }
         
         final content = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -416,7 +716,24 @@ class ItemsBuilder {
             const SizedBox(height: 8),
             if (useExpanded)
               Expanded(
-                child: productsTable,
+                child: LayoutBuilder(
+                  builder: (context, expandedConstraints) {
+                    debugPrint('🔍 [큰 화면 디버깅] _buildRightPanel 내부 Expanded');
+                    debugPrint('   → expandedConstraints.maxWidth: ${expandedConstraints.maxWidth}');
+                    debugPrint('   → expandedConstraints.maxHeight: ${expandedConstraints.maxHeight}');
+                    debugPrint('   → expandedConstraints.isTight: ${expandedConstraints.isTight}');
+                    debugPrint('   → expandedConstraints.hasBoundedHeight: ${expandedConstraints.hasBoundedHeight}');
+                    
+                    if (!expandedConstraints.hasBoundedHeight) {
+                      debugPrint('   ❌ 오류: Expanded 내부 높이가 제한되지 않았습니다!');
+                    }
+                    if (expandedConstraints.maxHeight.isInfinite) {
+                      debugPrint('   ❌ 오류: Expanded 내부 maxHeight가 무한대입니다!');
+                    }
+                    
+                    return productsTable;
+                  },
+                ),
               )
             else
               productsTable,
@@ -427,15 +744,9 @@ class ItemsBuilder {
         debugPrint('   → useExpanded: $useExpanded');
         debugPrint('   → content 타입: ${content.runtimeType}');
         
-        final result = useExpanded
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                mainAxisSize: MainAxisSize.max,
-                children: [
-                  Expanded(child: content),
-                ],
-              )
-            : content;
+        // useExpanded가 true일 때는 이미 Column 내부에 Expanded가 있으므로
+        // 추가로 감쌀 필요 없음
+        final result = content;
         
         debugPrint('   → result 타입: ${result.runtimeType}');
         debugPrint('═══════════════════════════════════════════════════════');
@@ -447,11 +758,20 @@ class ItemsBuilder {
 
   /// 세로 배치 레이아웃 (재사용 가능한 헬퍼 함수)
   static Widget _buildVerticalLayout(_ExtractedData data) {
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [큰 화면 디버깅] _buildVerticalLayout 시작');
+    debugPrint('   → summaryByCompanyTable != null: ${data.summaryByCompanyTable != null}');
+    debugPrint('   → summaryByCategoryTable != null: ${data.summaryByCategoryTable != null}');
+    debugPrint('   → summaryByColorTable != null: ${data.summaryByColorTable != null}');
+    debugPrint('   → productsTable != null: ${data.productsTable != null}');
+    debugPrint('   → scrollController != null: ${data.scrollController != null}');
+    
     // summary 테이블이 모두 없고 products 테이블만 있는 경우: 100% 폭으로 표시
     if (data.summaryByCompanyTable == null && 
         data.summaryByCategoryTable == null && 
         data.summaryByColorTable == null && 
         data.productsTable != null) {
+      debugPrint('   ✅ 세로 배치: products만 있음 (100% 폭)');
       return SingleChildScrollView(
         controller: data.scrollController,
         child: Padding(
@@ -474,6 +794,7 @@ class ItemsBuilder {
     }
 
     // summary 테이블이 있는 경우: 세로로 배치
+    debugPrint('   ✅ 세로 배치: summary 테이블 포함');
     return SingleChildScrollView(
       controller: data.scrollController,
       child: Padding(
@@ -997,9 +1318,54 @@ class ItemsBuilder {
     String? sortColumn,
     bool sortAscending = true,
     Color? reportColor,
+    String? selectedColorCode,
+    Function(String?)? onColorSelected,
   }) {
-    if (summaryByColorList.isEmpty) {
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [Items Builder] _buildSummaryByColorTable 시작');
+    debugPrint('   → summaryByColorList.length: ${summaryByColorList.length}');
+    debugPrint('   → selectedColorCode: $selectedColorCode');
+    debugPrint('   → onColorSelected != null: ${onColorSelected != null}');
+    
+    // 대형화면에서는 빈 리스트여도 테이블 표시 (레이아웃 유지)
+    final isDesktop = PlatformUtils.isDesktop();
+    if (summaryByColorList.isEmpty && !isDesktop) {
+      debugPrint('   ⚠️ summaryByColorList가 비어있고 모바일 화면이므로 빈 위젯 반환');
       return const SizedBox.shrink();
+    }
+    
+    if (summaryByColorList.isEmpty && isDesktop) {
+      debugPrint('   ⚠️ summaryByColorList가 비어있지만 대형화면이므로 빈 테이블 표시 (레이아웃 유지)');
+      // 빈 테이블 반환 (헤더만 표시)
+      return SingleChildScrollView(
+        scrollDirection: Axis.vertical,
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
+            columnSpacing: 8,
+            dataRowMinHeight: 32,
+            dataRowMaxHeight: 37,
+            headingRowColor: MaterialStateProperty.all((reportColor ?? Colors.purple).withOpacity(0.1)),
+            columns: [
+              const DataColumn(label: Text('Código', style: TextStyle(fontWeight: FontWeight.bold))),
+              const DataColumn(label: Text('Color', style: TextStyle(fontWeight: FontWeight.bold))),
+              const DataColumn(
+                label: Text('Total Cantidad', style: TextStyle(fontWeight: FontWeight.bold)),
+                numeric: true,
+              ),
+            ],
+            rows: [
+              DataRow(
+                cells: [
+                  const DataCell(Text('No hay datos')),
+                  const DataCell(Text('')),
+                  const DataCell(Text('')),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     final color = reportColor ?? Colors.purple;
@@ -1133,8 +1499,32 @@ class ItemsBuilder {
       
       final cantidadNum = num.tryParse(totalCantidad.toString().replaceAll(',', '')) ?? 0;
       final formattedCantidad = NumberFormat('#,##0').format(cantidadNum);
+      
+      final isSelected = selectedColorCode != null && colorCode == selectedColorCode;
+      
+      debugPrint('   → 색상 행 생성: colorCode=$colorCode, colorName=$colorName, isSelected=$isSelected');
 
       return DataRow(
+        selected: isSelected,
+        onSelectChanged: onColorSelected != null ? (selected) {
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [Items Builder] Color 선택 콜백 호출');
+          debugPrint('   → colorCode: $colorCode');
+          debugPrint('   → colorName: $colorName');
+          debugPrint('   → selected: $selected');
+          debugPrint('   → onColorSelected != null: ${onColorSelected != null}');
+          
+          if (selected != null && selected) {
+            // 선택된 경우: 해당 색상 코드로 필터링
+            debugPrint('   → 색상 선택: $colorCode');
+            onColorSelected(colorCode);
+          } else {
+            // 선택 해제된 경우: 필터 제거
+            debugPrint('   → 색상 선택 해제');
+            onColorSelected(null);
+          }
+          debugPrint('═══════════════════════════════════════════════════════');
+        } : null,
         cells: [
           DataCell(Text(colorCode)),
           DataCell(Text(colorName)),
@@ -1147,6 +1537,9 @@ class ItemsBuilder {
         ],
       );
     }).toList();
+    
+    debugPrint('   → 생성된 rows 개수: ${rows.length}');
+    debugPrint('═══════════════════════════════════════════════════════');
 
     return SingleChildScrollView(
       scrollDirection: Axis.vertical,
@@ -1265,6 +1658,43 @@ class _ResizableSplitViewState extends State<_ResizableSplitView> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        debugPrint('═══════════════════════════════════════════════════════');
+        debugPrint('🔍 [큰 화면 디버깅] _ResizableSplitView build');
+        debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
+        debugPrint('   → constraints.maxHeight: ${constraints.maxHeight}');
+        debugPrint('   → constraints.isTight: ${constraints.isTight}');
+        debugPrint('   → constraints.hasBoundedHeight: ${constraints.hasBoundedHeight}');
+        debugPrint('   → constraints.hasBoundedWidth: ${constraints.hasBoundedWidth}');
+        debugPrint('   → _leftWidth: $_leftWidth');
+        debugPrint('   → _minLeftWidth: $_minLeftWidth');
+        debugPrint('   → _maxLeftWidth: $_maxLeftWidth');
+        debugPrint('   → _dividerWidth: $_dividerWidth');
+        debugPrint('   → leftChild 타입: ${widget.leftChild.runtimeType}');
+        debugPrint('   → rightChild 타입: ${widget.rightChild.runtimeType}');
+        
+        // 제약 조건 검증
+        if (constraints.maxWidth.isInfinite) {
+          debugPrint('   ⚠️ 경고: constraints.maxWidth가 무한대입니다!');
+        }
+        if (constraints.maxHeight.isInfinite) {
+          debugPrint('   ⚠️ 경고: constraints.maxHeight가 무한대입니다!');
+        }
+        if (!constraints.hasBoundedHeight) {
+          debugPrint('   ⚠️ 경고: 높이가 제한되지 않았습니다!');
+        }
+        if (!constraints.hasBoundedWidth) {
+          debugPrint('   ⚠️ 경고: 너비가 제한되지 않았습니다!');
+        }
+        
+        final availableWidth = constraints.maxWidth - _leftWidth - _dividerWidth;
+        debugPrint('   → 사용 가능한 오른쪽 패널 너비: $availableWidth');
+        
+        if (availableWidth < 0) {
+          debugPrint('   ❌ 오류: 사용 가능한 너비가 음수입니다!');
+        }
+        
+        debugPrint('═══════════════════════════════════════════════════════');
+        
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1302,7 +1732,16 @@ class _ResizableSplitViewState extends State<_ResizableSplitView> {
             ),
             // 오른쪽 패널
             Expanded(
-              child: widget.rightChild,
+              child: LayoutBuilder(
+                builder: (context, rightConstraints) {
+                  debugPrint('🔍 [큰 화면 디버깅] 오른쪽 패널 Expanded 내부');
+                  debugPrint('   → rightConstraints.maxWidth: ${rightConstraints.maxWidth}');
+                  debugPrint('   → rightConstraints.maxHeight: ${rightConstraints.maxHeight}');
+                  debugPrint('   → rightConstraints.isTight: ${rightConstraints.isTight}');
+                  
+                  return widget.rightChild;
+                },
+              ),
             ),
           ],
         );

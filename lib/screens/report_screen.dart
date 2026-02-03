@@ -120,8 +120,20 @@ class _ReportScreenState extends State<ReportScreen> {
   // Items 보고서용 선택된 category 코드
   String? _selectedCategoryCode;
   
+  // Items 보고서용 선택된 color 코드
+  String? _selectedColorCode;
+  
   // Ingresos 보고서용 선택된 category 코드
   String? _selectedIngresosCategoryCode;
+  
+  // Ingresos 보고서용 선택된 color 코드
+  String? _selectedIngresosColorCode;
+  
+  // Codigos 보고서용 선택된 color 코드
+  String? _selectedCodigosColorCode;
+  
+  // Stocks 보고서용 선택된 color 코드
+  String? _selectedStocksColorCode;
   
   // Ingresos 보고서용 선택된 company 코드
   String? _selectedIngresosCompanyCode;
@@ -1727,6 +1739,11 @@ class _ReportScreenState extends State<ReportScreen> {
           if (_selectedTemporadaId != null) {
             filters['temporada_id'] = _selectedTemporadaId;
           }
+          if (_selectedStocksColorCode != null) {
+            filters['color_id'] = _selectedStocksColorCode;
+          }
+          debugPrint('   → [Stocks] 전달할 filters: $filters');
+          debugPrint('   → [Stocks] color_id: $_selectedStocksColorCode');
           data = await _databaseService.getStocksReport(
             filteringWord: currentFilteringWord.isNotEmpty ? currentFilteringWord : null,
             sortColumn: _stocksSortColumn,
@@ -1782,9 +1799,13 @@ class _ReportScreenState extends State<ReportScreen> {
           if (_selectedTemporadaId != null) {
             filters['temporada_id'] = _selectedTemporadaId;
           }
+          if (_selectedColorCode != null) {
+            filters['color_id'] = _selectedColorCode;
+          }
           
           debugPrint('   → 전달할 filters: $filters');
           debugPrint('   → filteringWord: ${currentFilteringWord.isNotEmpty ? currentFilteringWord : null}');
+          debugPrint('   → color_id: $_selectedColorCode');
           
           data = await _databaseService.getItemsReport(
             filteringWord: currentFilteringWord.isNotEmpty ? currentFilteringWord : null,
@@ -2095,6 +2116,11 @@ class _ReportScreenState extends State<ReportScreen> {
           if (_selectedTemporadaId != null) {
             filters['temporada_id'] = _selectedTemporadaId;
           }
+          if (_selectedIngresosColorCode != null) {
+            filters['color_id'] = _selectedIngresosColorCode;
+          }
+          debugPrint('   → [Ingresos] 전달할 filters: $filters');
+          debugPrint('   → [Ingresos] color_id: $_selectedIngresosColorCode');
           data = await _databaseService.getIngresosReport(
             filteringWord: currentFilteringWord.isNotEmpty ? currentFilteringWord : null,
             filters: filters,
@@ -2111,6 +2137,11 @@ class _ReportScreenState extends State<ReportScreen> {
           if (_selectedTemporadaId != null) {
             filters['temporada_id'] = _selectedTemporadaId;
           }
+          if (_selectedCodigosColorCode != null) {
+            filters['color_id'] = _selectedCodigosColorCode;
+          }
+          debugPrint('   → [Codigos] 전달할 filters: $filters');
+          debugPrint('   → [Codigos] color_id: $_selectedCodigosColorCode');
           data = await _databaseService.getCodigos(
             filteringWord: currentFilteringWord.isNotEmpty ? currentFilteringWord : null,
             sortColumn: _codigosSortColumn,
@@ -2413,6 +2444,17 @@ class _ReportScreenState extends State<ReportScreen> {
       final filteringWord = _filteringWordController.text.trim();
       Map<String, dynamic> response;
       
+      final filters = <String, dynamic>{};
+      if (_selectedTipoId != null) {
+        filters['tipo_id'] = _selectedTipoId;
+      }
+      if (_selectedTemporadaId != null) {
+        filters['temporada_id'] = _selectedTemporadaId;
+      }
+      if (_selectedCodigosColorCode != null) {
+        filters['color_id'] = _selectedCodigosColorCode;
+      }
+      
       if (widget.reportType == ReportType.todocodigos) {
         print('📄 다음 Todocodigos 페이지 로드 중... (id_todocodigo=$_codigosNextIdCodigo)');
         response = await _databaseService.getTodocodigos(
@@ -2420,6 +2462,7 @@ class _ReportScreenState extends State<ReportScreen> {
           filteringWord: filteringWord.isNotEmpty ? filteringWord : null,
           sortColumn: _codigosSortColumn,
           sortAscending: _codigosSortAscending,
+          filters: filters.isNotEmpty ? filters : null,
         );
       } else {
         print('📄 다음 Codigos 페이지 로드 중... (id_codigo=$_codigosNextIdCodigo)');
@@ -2428,6 +2471,7 @@ class _ReportScreenState extends State<ReportScreen> {
           filteringWord: filteringWord.isNotEmpty ? filteringWord : null,
           sortColumn: _codigosSortColumn,
           sortAscending: _codigosSortAscending,
+          filters: filters.isNotEmpty ? filters : null,
         );
       }
       
@@ -2501,11 +2545,23 @@ class _ReportScreenState extends State<ReportScreen> {
     try {
       print('📄 다음 Stocks 페이지 로드 중... (max_utime=$_stocksNextMaxUtime)');
       final filteringWord = _filteringWordController.text.trim();
+      final filters = <String, dynamic>{};
+      if (_selectedTipoId != null) {
+        filters['tipo_id'] = _selectedTipoId;
+      }
+      if (_selectedTemporadaId != null) {
+        filters['temporada_id'] = _selectedTemporadaId;
+      }
+      if (_selectedStocksColorCode != null) {
+        filters['color_id'] = _selectedStocksColorCode;
+      }
+      
       final response = await _databaseService.getStocksReport(
         maxUtime: _stocksNextMaxUtime,
         filteringWord: filteringWord.isNotEmpty ? filteringWord : null,
         sortColumn: _stocksSortColumn,
         sortAscending: _stocksSortAscending,
+        filters: filters.isNotEmpty ? filters : null,
       );
       
       // 새 데이터 추가
@@ -3009,6 +3065,60 @@ class _ReportScreenState extends State<ReportScreen> {
                                     style: const TextStyle(fontSize: 16),
                                   ),
                                 ),
+                                const Spacer(),
+                                // 메뉴 버튼
+                                PopupMenuButton<ReportType>(
+                                  icon: const Icon(Icons.more_vert, color: Colors.white, size: 18),
+                                  tooltip: 'Menú',
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  iconSize: 18,
+                                  onSelected: (ReportType reportType) {
+                                    debugPrint('🔍 [Stocks AppBar] PopupMenuButton onSelected: $reportType');
+                                    if (reportType != widget.reportType) {
+                                      Navigator.pushReplacement(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => ReportScreen(
+                                            serverUrl: widget.serverUrl,
+                                            reportType: reportType,
+                                            initialDate: widget.initialDate,
+                                            initialItemsStartDate: widget.initialItemsStartDate,
+                                            initialItemsEndDate: widget.initialItemsEndDate,
+                                            initialFilteringWord: widget.initialFilteringWord,
+                                            initialSortColumn: widget.initialSortColumn,
+                                            initialSortAscending: widget.initialSortAscending,
+                                            onStateChanged: widget.onStateChanged,
+                                            onItemsDateRangeChanged: widget.onItemsDateRangeChanged,
+                                            useFullWidth: widget.useFullWidth,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  itemBuilder: (BuildContext context) {
+                                    debugPrint('🔍 [Stocks AppBar] PopupMenuButton itemBuilder 호출됨!');
+                                    final items = _buildReportMenuItems();
+                                    debugPrint('🔍 [Stocks AppBar] PopupMenuButton 메뉴 아이템 개수: ${items.length}');
+                                    for (int i = 0; i < items.length; i++) {
+                                      debugPrint('🔍 [Stocks AppBar] PopupMenuButton 아이템 #$i: ${items[i].runtimeType}');
+                                    }
+                                    return items;
+                                  },
+                                ),
+                                // 공유 버튼
+                                if (_data != null)
+                                  IconButton(
+                                    icon: const Icon(Icons.share, color: Colors.white, size: 18),
+                                    tooltip: 'Compartir como PDF',
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    iconSize: 18,
+                                    onPressed: () {
+                                      debugPrint('🔍 [Stocks AppBar] 공유 버튼 클릭됨');
+                                      _shareReport();
+                                    },
+                                  ),
                               ],
                             );
                           },
@@ -7484,6 +7594,18 @@ class _ReportScreenState extends State<ReportScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isLargeScreen = constraints.maxWidth >= 800;
+        
+        // Stocks 화면 디버깅
+        if (widget.reportType == ReportType.stocks) {
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('📱 [Stocks] LayoutBuilder 빌드');
+          debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
+          debugPrint('   → constraints.maxHeight: ${constraints.maxHeight}');
+          debugPrint('   → isLargeScreen: $isLargeScreen');
+          debugPrint('   → MediaQuery size: ${MediaQuery.of(context).size}');
+          debugPrint('═══════════════════════════════════════════════════════');
+        }
+        
         return Column(
           children: [
             // 작은 화면에서만 날짜 범위 선택 UI 표시 (큰 화면은 AppBar에 있음)
@@ -7559,13 +7681,39 @@ class _ReportScreenState extends State<ReportScreen> {
     final data = _data!;
     
     // Stocks 보고서의 경우 특별 처리
-    if (widget.reportType == ReportType.stocks && 
-        data.containsKey('data') && 
-        data['data'] is List) {
-      // 성능 최적화: RepaintBoundary로 감싸서 불필요한 리페인트 방지
-      return RepaintBoundary(
-        child: _buildStocksContent(data),
-      );
+    if (widget.reportType == ReportType.stocks) {
+      debugPrint('═══════════════════════════════════════════════════════');
+      debugPrint('📱 [Stocks] _buildReportContent에서 Stocks 처리 시작');
+      debugPrint('   → data.containsKey("data"): ${data.containsKey("data")}');
+      if (data.containsKey('data')) {
+        debugPrint('   → data["data"] 타입: ${data['data'].runtimeType}');
+        if (data['data'] is List) {
+          final stocksList = data['data'] as List;
+          debugPrint('   → data["data"] 길이: ${stocksList.length}');
+          if (stocksList.isNotEmpty) {
+            debugPrint('   → 첫 번째 항목: ${stocksList.first}');
+            if (stocksList.first is Map) {
+              debugPrint('   → 첫 번째 항목 키: ${(stocksList.first as Map).keys.toList()}');
+            }
+          }
+        } else {
+          debugPrint('   ⚠️ data["data"]가 List가 아님: ${data['data'].runtimeType}');
+        }
+      } else {
+        debugPrint('   ⚠️ data에 "data" 키가 없음');
+      }
+      debugPrint('   → MediaQuery size: ${MediaQuery.of(context).size}');
+      debugPrint('═══════════════════════════════════════════════════════');
+      
+      if (data.containsKey('data') && data['data'] is List) {
+        // 성능 최적화: RepaintBoundary로 감싸서 불필요한 리페인트 방지
+        return RepaintBoundary(
+          child: _buildStocksContent(data),
+        );
+      } else {
+        debugPrint('   ⚠️ Stocks 데이터 형식이 올바르지 않음 - 기본 위젯 반환');
+        return const Center(child: Text('No hay datos disponibles'));
+      }
     }
     
     // Codigos 및 Todo Codigos 보고서의 경우 특별 처리
@@ -7702,8 +7850,20 @@ class _ReportScreenState extends State<ReportScreen> {
             debugPrint('🔍 [ReportScreen] Category 선택 콜백 호출: $categoryCode');
             setState(() {
               _selectedCategoryCode = categoryCode;
+              _selectedColorCode = null; // 카테고리 선택 시 색상 선택 해제
               debugPrint('🔍 [ReportScreen] _selectedCategoryCode 업데이트: $_selectedCategoryCode');
             });
+          },
+          selectedColorCode: _selectedColorCode,
+          onColorSelected: (colorCode) {
+            debugPrint('🔍 [ReportScreen] Items Color 선택 콜백 호출: $colorCode');
+            setState(() {
+              _selectedColorCode = colorCode;
+              _selectedCategoryCode = null; // 색상 선택 시 카테고리 선택 해제
+              debugPrint('🔍 [ReportScreen] _selectedColorCode 업데이트: $_selectedColorCode');
+            });
+            // 색상 선택 시 API 재요청
+            _reloadDataWithFilters();
           },
         ),
       );
@@ -7744,8 +7904,11 @@ class _ReportScreenState extends State<ReportScreen> {
             setState(() {
               _selectedIngresosCategoryCode = categoryCode;
               _selectedIngresosCompanyCode = null; // 카테고리 선택 시 회사 선택 해제
+              _selectedIngresosColorCode = null; // 카테고리 선택 시 색상 선택 해제
               debugPrint('🔍 [ReportScreen] _selectedIngresosCategoryCode 업데이트: $_selectedIngresosCategoryCode');
             });
+            // 카테고리 선택 시 API 재요청
+            _reloadDataWithFilters();
           },
           selectedCompanyCode: _selectedIngresosCompanyCode,
           onCompanySelected: (companyCode) {
@@ -7753,8 +7916,23 @@ class _ReportScreenState extends State<ReportScreen> {
             setState(() {
               _selectedIngresosCompanyCode = companyCode;
               _selectedIngresosCategoryCode = null; // 회사 선택 시 카테고리 선택 해제
+              _selectedIngresosColorCode = null; // 회사 선택 시 색상 선택 해제
               debugPrint('🔍 [ReportScreen] _selectedIngresosCompanyCode 업데이트: $_selectedIngresosCompanyCode');
             });
+            // 회사 선택 시 API 재요청
+            _reloadDataWithFilters();
+          },
+          selectedColorCode: _selectedIngresosColorCode,
+          onColorSelected: (colorCode) {
+            debugPrint('🔍 [ReportScreen] Ingresos Color 선택 콜백 호출: $colorCode');
+            setState(() {
+              _selectedIngresosColorCode = colorCode;
+              _selectedIngresosCategoryCode = null; // 색상 선택 시 카테고리 선택 해제
+              _selectedIngresosCompanyCode = null; // 색상 선택 시 회사 선택 해제
+              debugPrint('🔍 [ReportScreen] _selectedIngresosColorCode 업데이트: $_selectedIngresosColorCode');
+            });
+            // 색상 선택 시 API 재요청
+            _reloadDataWithFilters();
           },
           reportColor: ingresosColor,
         ),

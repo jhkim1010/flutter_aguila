@@ -24,6 +24,8 @@ class IngresosBuilder {
     Function(String?)? onCategorySelected,
     String? selectedCompanyCode,
     Function(String?)? onCompanySelected,
+    String? selectedColorCode,
+    Function(String?)? onColorSelected,
   }) {
     // 공통 데이터 추출
     final extractedData = _extractCommonData(
@@ -42,6 +44,8 @@ class IngresosBuilder {
       onCategorySelected: onCategorySelected,
       selectedCompanyCode: selectedCompanyCode,
       onCompanySelected: onCompanySelected,
+      selectedColorCode: selectedColorCode,
+      onColorSelected: onColorSelected,
     );
 
     // 화면 크기에 따라 적절한 레이아웃 선택
@@ -74,6 +78,8 @@ class IngresosBuilder {
     Function(String?)? onCategorySelected,
     String? selectedCompanyCode,
     Function(String?)? onCompanySelected,
+    String? selectedColorCode,
+    Function(String?)? onColorSelected,
   }) {
     // summary 카드 (모바일 폰에서는 표시하지 않음)
     Widget? summaryCard;
@@ -147,6 +153,8 @@ class IngresosBuilder {
           sortColumn: sortColumn,
           sortAscending: sortAscending,
           reportColor: reportColor,
+          selectedColorCode: selectedColorCode,
+          onColorSelected: onColorSelected,
         );
       }
     }
@@ -213,6 +221,12 @@ class IngresosBuilder {
               }).toList();
               debugPrint('   → productsList.length (selectedCompanyCode 필터링 후): ${productsList.length}');
             }
+            
+            // selectedColorCode 필터 적용 (클라이언트 측 필터링은 제거 - 서버에서 처리)
+            // 주석 처리: 서버에서 color_id로 필터링하므로 클라이언트 측 필터링 불필요
+            // if (selectedColorCode != null && selectedColorCode.isNotEmpty) {
+            //   ...
+            // }
             
             if (productsList.isNotEmpty) {
               debugPrint('═══════════════════════════════════════════════════════');
@@ -1058,8 +1072,17 @@ class IngresosBuilder {
     String? sortColumn,
     bool sortAscending = true,
     Color? reportColor,
+    String? selectedColorCode,
+    Function(String?)? onColorSelected,
   }) {
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [Ingresos Builder] _buildSummaryByColorTable 시작');
+    debugPrint('   → summaryByColorList.length: ${summaryByColorList.length}');
+    debugPrint('   → selectedColorCode: $selectedColorCode');
+    debugPrint('   → onColorSelected != null: ${onColorSelected != null}');
+    
     if (summaryByColorList.isEmpty) {
+      debugPrint('   ⚠️ summaryByColorList가 비어있음');
       return const SizedBox.shrink();
     }
 
@@ -1194,8 +1217,32 @@ class IngresosBuilder {
       
       final cantidadNum = num.tryParse(totalCantidad.toString().replaceAll(',', '')) ?? 0;
       final formattedCantidad = NumberFormat('#,##0').format(cantidadNum);
+      
+      final isSelected = selectedColorCode != null && colorCode == selectedColorCode;
+      
+      debugPrint('   → 색상 행 생성: colorCode=$colorCode, colorName=$colorName, isSelected=$isSelected');
 
       return DataRow(
+        selected: isSelected,
+        onSelectChanged: onColorSelected != null ? (selected) {
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [Ingresos Builder] Color 선택 콜백 호출');
+          debugPrint('   → colorCode: $colorCode');
+          debugPrint('   → colorName: $colorName');
+          debugPrint('   → selected: $selected');
+          debugPrint('   → onColorSelected != null: ${onColorSelected != null}');
+          
+          if (selected != null && selected) {
+            // 선택된 경우: 해당 색상 코드로 필터링
+            debugPrint('   → 색상 선택: $colorCode');
+            onColorSelected(colorCode);
+          } else {
+            // 선택 해제된 경우: 필터 제거
+            debugPrint('   → 색상 선택 해제');
+            onColorSelected(null);
+          }
+          debugPrint('═══════════════════════════════════════════════════════');
+        } : null,
         cells: [
           DataCell(Text(colorCode)),
           DataCell(Text(colorName)),
@@ -1208,6 +1255,9 @@ class IngresosBuilder {
         ],
       );
     }).toList();
+    
+    debugPrint('   → 생성된 rows 개수: ${rows.length}');
+    debugPrint('═══════════════════════════════════════════════════════');
 
     return SingleChildScrollView(
       scrollDirection: Axis.vertical,
