@@ -1,0 +1,20 @@
+=== 플랫폼 정보: 대형화면 (Desktop: macos) ===
+
+Launching lib/main.dart on macOS in debug mode...
+Building macOS application...                                   
+lib/widgets/report_table_builder.dart:2647:27: Error: A value of type 'AlignmentGeometry' can't be assigned to a variable of type 'Alignment?'.
+ - 'AlignmentGeometry' is from 'package:flutter/src/painting/alignment.dart' ('/usr/local/share/flutter/packages/flutter/lib/src/painting/alignment.dart').
+ - 'Alignment' is from 'package:flutter/src/painting/alignment.dart' ('/usr/local/share/flutter/packages/flutter/lib/src/painting/alignment.dart').
+        alignment = align.alignment;
+                          ^
+lib/widgets/report_table_builder.dart:2656:29: Error: A value of type 'AlignmentGeometry' can't be assigned to a variable of type 'Alignment?'.
+ - 'AlignmentGeometry' is from 'package:flutter/src/painting/alignment.dart' ('/usr/local/share/flutter/packages/flutter/lib/src/painting/alignment.dart').
+ - 'Alignment' is from 'package:flutter/src/painting/alignment.dart' ('/usr/local/share/flutter/packages/flutter/lib/src/painting/alignment.dart').
+          alignment = align.alignment;
+                            ^
+Target kernel_snapshot_program failed: Exception
+Failed to package /Users/marcoskim/Trabajos_Programming/flutter_aguila.
+Command PhaseScriptExecution failed with a nonzero exit code
+** BUILD FAILED **
+
+Error: Build process failed

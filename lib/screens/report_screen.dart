@@ -44,6 +44,7 @@ class ReportScreen extends StatefulWidget {
   final Function(DateTime?, DateTime?)? onItemsDateRangeChanged; // items 보고서 날짜 범위 변경 콜백
   final bool useFullWidth; // 전체 너비 사용 여부 (resumen del dia에서 사용 시 true)
   final VoidCallback? onMenuPressed; // 메뉴 버튼 콜백 (useFullWidth가 true일 때 좁은 화면에서 사용)
+  final List<String>? initialAvailableSucursales; // 초기 사용 가능한 sucursal 목록 (resumen del dia에서 전달)
 
   const ReportScreen({
     super.key,
@@ -60,6 +61,7 @@ class ReportScreen extends StatefulWidget {
     this.onItemsDateRangeChanged,
     this.useFullWidth = false,
     this.onMenuPressed,
+    this.initialAvailableSucursales,
   });
 
   @override
@@ -96,6 +98,7 @@ class _ReportScreenState extends State<ReportScreen> {
   bool _ventasDescontado = false; // Ventas 보고서용 descontado 필터
   bool _ventasReservado = false; // Ventas 보고서용 reservado 필터
   bool _ventasCredito = false; // Ventas 보고서용 credito 필터
+  bool _ventasMovidos = false; // Ventas 보고서용 movidos 필터
   bool _alertasVCancelado = false; // Alertas 보고서용 v_cancelado 필터
   bool _alertasJefe = false; // Alertas 보고서용 jefe 필터
   bool _alertasWeb = false; // Alertas 보고서용 web 필터
@@ -206,6 +209,12 @@ class _ReportScreenState extends State<ReportScreen> {
     }
     debugPrint('   → 최종 _filteringWordController.text: "${_filteringWordController.text}"');
     debugPrint('═══════════════════════════════════════════════════════');
+    
+    // 초기 사용 가능한 sucursal 목록 설정 (resumen del dia에서 전달된 경우)
+    if (widget.initialAvailableSucursales != null && widget.initialAvailableSucursales!.isNotEmpty) {
+      _availableSucursales = widget.initialAvailableSucursales;
+      debugPrint('🔍 [initState] initialAvailableSucursales 설정됨: $_availableSucursales');
+    }
     
     // 초기 정렬 정보 설정
     if (widget.initialSortColumn != null) {
@@ -507,7 +516,13 @@ class _ReportScreenState extends State<ReportScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         final currentWord = _filteringWordController.text.trim();
-        if (currentWord != finalWord) return; // 입력이 계속 변경 중이면 취소
+        // 한글 입력 시 조합 중인 문자(composing)가 있을 수 있으므로,
+        // finalWord와 currentWord가 다르더라도 처리 (debounce 타이머가 이미 지연되었으므로)
+        // 단, finalWord가 _lastFilteringWord와 같으면 이미 처리된 것이므로 스킵
+        if (currentWord == _lastFilteringWord) {
+          debugPrint('   → [PostFrameCallback] 이미 처리된 값 - 스킵');
+          return;
+        }
         
         _lastFilteringWord = currentWord;
         
@@ -1640,10 +1655,14 @@ class _ReportScreenState extends State<ReportScreen> {
         'fecha_inicio': DateFormat('yyyy-MM-dd').format(startDate),
         'fecha_fin': DateFormat('yyyy-MM-dd').format(endDate),
       };
+      if (_selectedSucursal != null) {
+        filters['sucursal'] = _selectedSucursal;
+      }
       
       debugPrint('🔍 [ReportScreen] Gastos Detail만 API 요청 시작');
       debugPrint('   → rubroCode: $rubroCode');
       debugPrint('   → filteringWord: ${currentFilteringWord.isNotEmpty ? currentFilteringWord : null}');
+      debugPrint('   → sucursal: $_selectedSucursal');
       
       final data = await _databaseService.getGastosReport(
         filteringWord: currentFilteringWord.isNotEmpty ? currentFilteringWord : null,
@@ -1742,8 +1761,12 @@ class _ReportScreenState extends State<ReportScreen> {
           if (_selectedStocksColorCode != null) {
             filters['color_id'] = _selectedStocksColorCode;
           }
+          if (_selectedSucursal != null) {
+            filters['sucursal'] = _selectedSucursal;
+          }
           debugPrint('   → [Stocks] 전달할 filters: $filters');
           debugPrint('   → [Stocks] color_id: $_selectedStocksColorCode');
+          debugPrint('   → [Stocks] sucursal: $_selectedSucursal');
           data = await _databaseService.getStocksReport(
             filteringWord: currentFilteringWord.isNotEmpty ? currentFilteringWord : null,
             sortColumn: _stocksSortColumn,
@@ -1802,10 +1825,14 @@ class _ReportScreenState extends State<ReportScreen> {
           if (_selectedColorCode != null) {
             filters['color_id'] = _selectedColorCode;
           }
+          if (_selectedSucursal != null) {
+            filters['sucursal'] = _selectedSucursal;
+          }
           
           debugPrint('   → 전달할 filters: $filters');
           debugPrint('   → filteringWord: ${currentFilteringWord.isNotEmpty ? currentFilteringWord : null}');
           debugPrint('   → color_id: $_selectedColorCode');
+          debugPrint('   → sucursal: $_selectedSucursal');
           
           data = await _databaseService.getItemsReport(
             filteringWord: currentFilteringWord.isNotEmpty ? currentFilteringWord : null,
@@ -1855,6 +1882,10 @@ class _ReportScreenState extends State<ReportScreen> {
             filters['reservadores'] = '1';
             debugPrint('   → reservadores 필터 추가');
           }
+          if (_selectedSucursal != null) {
+            filters['sucursal'] = _selectedSucursal;
+            debugPrint('   → sucursal 필터 추가: ${filters['sucursal']}');
+          }
           if (currentFilteringWord.isNotEmpty) {
             filters['filtering_word'] = currentFilteringWord;
             debugPrint('   → filtering_word 필터 추가: "${filters['filtering_word']}"');
@@ -1902,11 +1933,15 @@ class _ReportScreenState extends State<ReportScreen> {
             'fecha_inicio': DateFormat('yyyy-MM-dd').format(startDate),
             'fecha_fin': DateFormat('yyyy-MM-dd').format(endDate),
           };
+          if (_selectedSucursal != null) {
+            filters['sucursal'] = _selectedSucursal;
+          }
           debugPrint('🔍 [ReportScreen] Gastos API 요청 시작');
           debugPrint('   → rubroCode: null (전체 데이터 로드)');
           debugPrint('   → filteringWord: ${currentFilteringWord.isNotEmpty ? currentFilteringWord : null}');
           debugPrint('   → fecha_inicio: ${filters['fecha_inicio']}');
           debugPrint('   → fecha_fin: ${filters['fecha_fin']}');
+          debugPrint('   → sucursal: $_selectedSucursal');
           // 첫 로드 시 전체 데이터를 가져옴 (summary_by_rubro 포함)
           data = await _databaseService.getGastosReport(
             filteringWord: currentFilteringWord.isNotEmpty ? currentFilteringWord : null,
@@ -1971,6 +2006,23 @@ class _ReportScreenState extends State<ReportScreen> {
           if (_ventasCredito) {
             filters['credito'] = '1';
           }
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [Ventas _loadData] movidos 필터 확인');
+          debugPrint('   → _ventasMovidos: $_ventasMovidos');
+          debugPrint('   → _ventasMovidos 타입: ${_ventasMovidos.runtimeType}');
+          if (_ventasMovidos) {
+            filters['movidos'] = '1';
+            debugPrint('   → movidos 필터 추가됨: filters["movidos"] = "1"');
+          } else {
+            debugPrint('   → movidos 필터 추가 안 됨 (_ventasMovidos가 false)');
+            // movidos가 false일 때는 필터에서 제거 (명시적으로)
+            filters.remove('movidos');
+          }
+          debugPrint('   → 최종 filters: $filters');
+          debugPrint('═══════════════════════════════════════════════════════');
+          if (_selectedSucursal != null) {
+            filters['sucursal'] = _selectedSucursal;
+          }
           
           debugPrint('      - API 요청 파라미터:');
           debugPrint('         * currentDate: $currentDate');
@@ -1981,6 +2033,8 @@ class _ReportScreenState extends State<ReportScreen> {
           debugPrint('         * descontado: $_ventasDescontado');
           debugPrint('         * reservado: $_ventasReservado');
           debugPrint('         * credito: $_ventasCredito');
+          debugPrint('         * movidos: $_ventasMovidos');
+          debugPrint('         * sucursal: $_selectedSucursal');
           
           debugPrint('      → getVentasReport API 호출 시작');
           data = await _databaseService.getVentasReport(
@@ -2037,7 +2091,10 @@ class _ReportScreenState extends State<ReportScreen> {
             'fecha_inicio': DateFormat('yyyy-MM-dd').format(startDate),
             'fecha_fin': DateFormat('yyyy-MM-dd').format(endDate),
           };
-          print('📅 FVentas 보고서 요청 - 최종 날짜 범위: ${filters['fecha_inicio']} ~ ${filters['fecha_fin']}, filteringWord: $currentFilteringWord, unit: $_ventasUnit');
+          if (_selectedSucursal != null) {
+            filters['sucursal'] = _selectedSucursal;
+          }
+          print('📅 FVentas 보고서 요청 - 최종 날짜 범위: ${filters['fecha_inicio']} ~ ${filters['fecha_fin']}, filteringWord: $currentFilteringWord, unit: $_ventasUnit, sucursal: $_selectedSucursal');
           // fventas 보고서의 filteringWord는 클라이언트 측에서만 필터링 (cuit, cliente 필드)
           // 서버로 전달하지 않음
           data = await _databaseService.getFVentasReport(
@@ -2093,6 +2150,11 @@ class _ReportScreenState extends State<ReportScreen> {
             'fecha_inicio': DateFormat('yyyy-MM-dd').format(startDate),
             'fecha_fin': DateFormat('yyyy-MM-dd').format(endDate),
           };
+          if (_selectedSucursal != null) {
+            filters['sucursal'] = _selectedSucursal;
+          }
+          debugPrint('   → [Alertas] 전달할 filters: $filters');
+          debugPrint('   → [Alertas] sucursal: $_selectedSucursal');
           // VCancelado 필터는 filteringWord를 통해 처리 (서버 필터 제거)
           data = await _databaseService.getAlertasReport(
             filteringWord: currentFilteringWord.isNotEmpty ? currentFilteringWord : null,
@@ -2119,8 +2181,12 @@ class _ReportScreenState extends State<ReportScreen> {
           if (_selectedIngresosColorCode != null) {
             filters['color_id'] = _selectedIngresosColorCode;
           }
+          if (_selectedSucursal != null) {
+            filters['sucursal'] = _selectedSucursal;
+          }
           debugPrint('   → [Ingresos] 전달할 filters: $filters');
           debugPrint('   → [Ingresos] color_id: $_selectedIngresosColorCode');
+          debugPrint('   → [Ingresos] sucursal: $_selectedSucursal');
           data = await _databaseService.getIngresosReport(
             filteringWord: currentFilteringWord.isNotEmpty ? currentFilteringWord : null,
             filters: filters,
@@ -2140,8 +2206,12 @@ class _ReportScreenState extends State<ReportScreen> {
           if (_selectedCodigosColorCode != null) {
             filters['color_id'] = _selectedCodigosColorCode;
           }
+          if (_selectedSucursal != null) {
+            filters['sucursal'] = _selectedSucursal;
+          }
           debugPrint('   → [Codigos] 전달할 filters: $filters');
           debugPrint('   → [Codigos] color_id: $_selectedCodigosColorCode');
+          debugPrint('   → [Codigos] sucursal: $_selectedSucursal');
           data = await _databaseService.getCodigos(
             filteringWord: currentFilteringWord.isNotEmpty ? currentFilteringWord : null,
             sortColumn: _codigosSortColumn,
@@ -2194,6 +2264,11 @@ class _ReportScreenState extends State<ReportScreen> {
           if (_selectedTemporadaId != null) {
             filters['temporada_id'] = _selectedTemporadaId;
           }
+          if (_selectedSucursal != null) {
+            filters['sucursal'] = _selectedSucursal;
+          }
+          debugPrint('   → [TodoCodigos] 전달할 filters: $filters');
+          debugPrint('   → [TodoCodigos] sucursal: $_selectedSucursal');
           data = await _databaseService.getTodocodigos(
             filteringWord: currentFilteringWord.isNotEmpty ? currentFilteringWord : null,
             sortColumn: _codigosSortColumn,
@@ -2358,26 +2433,138 @@ class _ReportScreenState extends State<ReportScreen> {
         
         _data = data;
         _isLoading = false;
-        _availableSucursales = sucursales;
+        
+        // Items, Ingresos, Gastos 보고서의 경우 데이터에서 sucursal 목록 추출
+        // 단, 필터링되지 않은 전체 데이터에서만 추출 (sucursal 필터가 없을 때만)
+        List<String>? extractedSucursales = sucursales;
+        if (widget.reportType == ReportType.items || 
+            widget.reportType == ReportType.ingresos || 
+            widget.reportType == ReportType.gastos) {
+          debugPrint('🔍 [Items/Ingresos/Gastos] 데이터에서 sucursal 목록 추출 시작');
+          debugPrint('   → reportType: ${widget.reportType}');
+          debugPrint('   → _selectedSucursal: $_selectedSucursal');
+          debugPrint('   → _availableSucursales (현재): $_availableSucursales');
+          
+          // sucursal 필터가 없거나, 아직 _availableSucursales가 설정되지 않은 경우에만 추출
+          // 이미 _availableSucursales가 있으면 유지 (필터링된 결과에서 추출하지 않음)
+          if (_selectedSucursal == null && (_availableSucursales == null || _availableSucursales!.isEmpty)) {
+            debugPrint('   → sucursal 필터 없음 또는 목록 미설정 - 추출 진행');
+            final Set<String> sucursalSet = <String>{};
+            
+            if (widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos) {
+              // Items와 Ingresos: products 리스트에서 추출
+              if (data.containsKey('data') && data['data'] is Map) {
+                final dataMap = data['data'] as Map<String, dynamic>;
+                if (dataMap.containsKey('products') && dataMap['products'] is List) {
+                  final productsList = dataMap['products'] as List;
+                  debugPrint('   → productsList.length: ${productsList.length}');
+                  
+                  for (var product in productsList) {
+                    if (product is Map<String, dynamic> && product.containsKey('sucursal')) {
+                      final sucursal = product['sucursal']?.toString();
+                      if (sucursal != null && sucursal.isNotEmpty) {
+                        sucursalSet.add(sucursal);
+                      }
+                    }
+                  }
+                }
+              }
+            } else if (widget.reportType == ReportType.gastos) {
+              // Gastos: detail 또는 data 리스트에서 추출
+              if (data.containsKey('data')) {
+                if (data['data'] is Map) {
+                  final dataMap = data['data'] as Map<String, dynamic>;
+                  if (dataMap.containsKey('detail') && dataMap['detail'] is List) {
+                    final detailList = dataMap['detail'] as List;
+                    debugPrint('   → detailList.length: ${detailList.length}');
+                    
+                    for (var item in detailList) {
+                      if (item is Map<String, dynamic> && item.containsKey('sucursal')) {
+                        final sucursal = item['sucursal']?.toString();
+                        if (sucursal != null && sucursal.isNotEmpty) {
+                          sucursalSet.add(sucursal);
+                        }
+                      }
+                    }
+                  }
+                } else if (data['data'] is List) {
+                  final dataList = data['data'] as List;
+                  debugPrint('   → dataList.length: ${dataList.length}');
+                  
+                  for (var item in dataList) {
+                    if (item is Map<String, dynamic> && item.containsKey('sucursal')) {
+                      final sucursal = item['sucursal']?.toString();
+                      if (sucursal != null && sucursal.isNotEmpty) {
+                        sucursalSet.add(sucursal);
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            
+            extractedSucursales = sucursalSet.toList()..sort();
+            debugPrint('   → 추출된 sucursales: $extractedSucursales');
+          } else {
+            debugPrint('   → sucursal 필터 있음 또는 목록 이미 설정됨 - 기존 목록 유지');
+            debugPrint('   → _availableSucursales 유지: $_availableSucursales');
+            extractedSucursales = _availableSucursales; // 기존 목록 유지
+          }
+        }
+        
+        // resumen del dia에서 전달된 initialAvailableSucursales가 있으면 항상 그것을 사용
+        // (API 응답에서 추출한 목록이 더 많아도 덮어쓰지 않음)
+        if (widget.initialAvailableSucursales != null && widget.initialAvailableSucursales!.isNotEmpty) {
+          _availableSucursales = widget.initialAvailableSucursales;
+          debugPrint('🔍 [Sucursal] resumen del dia에서 전달된 목록으로 설정 (API 응답 무시)');
+        } else {
+          _availableSucursales = extractedSucursales;
+        }
         
         debugPrint('═══════════════════════════════════════════════════════');
-        debugPrint('🔍 [Ventas Sucursal 디버깅] setState에서 _availableSucursales 설정');
+        debugPrint('🔍 [Sucursal 디버깅] setState에서 _availableSucursales 설정');
         debugPrint('   → reportType: ${widget.reportType}');
-        debugPrint('   → sucursales: $sucursales');
-        debugPrint('   → _availableSucursales: $_availableSucursales');
+        debugPrint('   → initialAvailableSucursales: ${widget.initialAvailableSucursales}');
+        debugPrint('   → sucursales (API): $sucursales');
+        debugPrint('   → extractedSucursales: $extractedSucursales');
+        debugPrint('   → _availableSucursales (최종): $_availableSucursales');
         debugPrint('   → _availableSucursales == null: ${_availableSucursales == null}');
+        debugPrint('   → _selectedSucursal (현재): $_selectedSucursal');
         if (_availableSucursales != null) {
           debugPrint('   → _availableSucursales.length: ${_availableSucursales!.length}');
           debugPrint('   → _availableSucursales.length > 1: ${_availableSucursales!.length > 1}');
+          debugPrint('   → _availableSucursales 내용: ${_availableSucursales!.join(", ")}');
+          
+          // 선택된 sucursal이 목록에 포함되어 있는지 확인
+          if (_selectedSucursal != null) {
+            final isSelectedSucursalInList = _availableSucursales!.contains(_selectedSucursal);
+            debugPrint('   → 선택된 sucursal ($_selectedSucursal)이 목록에 포함되어 있는가: $isSelectedSucursalInList');
+            
+            // 선택된 sucursal이 목록에 없으면 추가
+            if (!isSelectedSucursalInList) {
+              debugPrint('   ⚠️ 선택된 sucursal ($_selectedSucursal)이 목록에 없어서 추가합니다.');
+              _availableSucursales!.add(_selectedSucursal!);
+              _availableSucursales!.sort((a, b) {
+                final aNum = int.tryParse(a) ?? 0;
+                final bNum = int.tryParse(b) ?? 0;
+                return aNum.compareTo(bNum);
+              });
+              debugPrint('   → 업데이트된 _availableSucursales: ${_availableSucursales!.join(", ")}');
+            }
+          }
         }
         debugPrint('═══════════════════════════════════════════════════════');
         
         // 성능 최적화: 데이터 변경 시 합계 계산 캐시 무효화
         ReportTotalRowBuilder.clearCache();
-        // sucursal이 1개 이하이면 필터 초기화
-        if (sucursales == null || sucursales.length <= 1) {
-          _selectedSucursal = null;
-          debugPrint('🔍 [Ventas Sucursal 디버깅] sucursal이 1개 이하이므로 _selectedSucursal = null');
+        // sucursal이 1개 이하이면 필터 초기화 (단, 선택된 sucursal이 있으면 유지)
+        if (_availableSucursales == null || (_availableSucursales!.length <= 1 && _selectedSucursal == null)) {
+          if (_selectedSucursal != null) {
+            debugPrint('🔍 [Sucursal 디버깅] sucursal이 1개 이하이지만 선택된 값이 있어서 유지: $_selectedSucursal');
+          } else {
+            _selectedSucursal = null;
+            debugPrint('🔍 [Sucursal 디버깅] sucursal이 1개 이하이므로 _selectedSucursal = null');
+          }
         }
         // 데이터가 로드되면 처음 100개만 표시
         if (data.containsKey('data')) {
@@ -3816,8 +4003,8 @@ class _ReportScreenState extends State<ReportScreen> {
                             ),
                           ),
                           const SizedBox(width: 16),
-                          // 지점 선택 UI (큰 화면에서만, sucursal이 1개 이상일 때만 표시)
-                          if (isLargeScreen && _availableSucursales != null && _availableSucursales!.length > 1) ...[
+                          // 지점 선택 UI (sucursal이 2개 이상일 때만 표시)
+                          if (_availableSucursales != null && _availableSucursales!.length > 1) ...[
                               _buildSucursalSelector(),
                               const SizedBox(width: 16),
                           ],
@@ -4176,6 +4363,37 @@ class _ReportScreenState extends State<ReportScreen> {
                                     const SizedBox(width: 2),
                                     const Text(
                                       'Crédito',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Checkbox(
+                                      value: _ventasMovidos,
+                                      onChanged: (value) {
+                                        debugPrint('🔍 [Ventas AppBar] Movidos 체크박스 클릭: $value');
+                                        setState(() {
+                                          _ventasMovidos = value ?? false;
+                                        });
+                                        _loadData();
+                                      },
+                                      checkColor: Colors.white,
+                                      fillColor: MaterialStateProperty.resolveWith<Color>(
+                                        (Set<MaterialState> states) {
+                                          if (states.contains(MaterialState.selected)) {
+                                            return Colors.white.withOpacity(0.3);
+                                          }
+                                          return Colors.transparent;
+                                        },
+                                      ),
+                                      side: const BorderSide(color: Colors.white, width: 1.5),
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    const SizedBox(width: 2),
+                                    const Text(
+                                      'Movidos',
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontSize: 11,
@@ -4598,6 +4816,24 @@ class _ReportScreenState extends State<ReportScreen> {
                                         _loadData();
                                       }),
                                     ),
+                                    const SizedBox(width: 4),
+                                    Flexible(
+                                      child: _buildVentasFilterComboBox('Movidos', _ventasMovidos, (value) {
+                                        debugPrint('═══════════════════════════════════════════════════════');
+                                        debugPrint('🔍 [Ventas AppBar] Movidos 콤보박스 변경');
+                                        debugPrint('   → 이전 값: $_ventasMovidos');
+                                        debugPrint('   → 새 값: $value');
+                                        debugPrint('   → setState 호출 전');
+                                        setState(() {
+                                          _ventasMovidos = value;
+                                        });
+                                        debugPrint('   → setState 호출 후: _ventasMovidos = $_ventasMovidos');
+                                        debugPrint('   → _loadData() 호출 시작');
+                                        _loadData();
+                                        debugPrint('   → _loadData() 호출 완료');
+                                        debugPrint('═══════════════════════════════════════════════════════');
+                                      }),
+                                    ),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: _buildFilteringWordFieldInAppBar(),
@@ -4677,6 +4913,22 @@ class _ReportScreenState extends State<ReportScreen> {
                                   _ventasCredito = value;
                                 });
                                 _loadData();
+                              }),
+                              const SizedBox(width: 4),
+                              _buildVentasFilterComboBox('Movidos', _ventasMovidos, (value) {
+                                debugPrint('═══════════════════════════════════════════════════════');
+                                debugPrint('🔍 [Ventas AppBar] Movidos 콤보박스 변경');
+                                debugPrint('   → 이전 값: $_ventasMovidos');
+                                debugPrint('   → 새 값: $value');
+                                debugPrint('   → setState 호출 전');
+                                setState(() {
+                                  _ventasMovidos = value;
+                                });
+                                debugPrint('   → setState 호출 후: _ventasMovidos = $_ventasMovidos');
+                                debugPrint('   → _loadData() 호출 시작');
+                                _loadData();
+                                debugPrint('   → _loadData() 호출 완료');
+                                debugPrint('═══════════════════════════════════════════════════════');
                               }),
                               const SizedBox(width: 8),
                               // filteringWord
@@ -5194,6 +5446,24 @@ class _ReportScreenState extends State<ReportScreen> {
                                         _loadData();
                                       }),
                                     ),
+                                    const SizedBox(width: 4),
+                                    Flexible(
+                                      child: _buildVentasFilterComboBox('Movidos', _ventasMovidos, (value) {
+                                        debugPrint('═══════════════════════════════════════════════════════');
+                                        debugPrint('🔍 [Ventas AppBar] Movidos 콤보박스 변경');
+                                        debugPrint('   → 이전 값: $_ventasMovidos');
+                                        debugPrint('   → 새 값: $value');
+                                        debugPrint('   → setState 호출 전');
+                                        setState(() {
+                                          _ventasMovidos = value;
+                                        });
+                                        debugPrint('   → setState 호출 후: _ventasMovidos = $_ventasMovidos');
+                                        debugPrint('   → _loadData() 호출 시작');
+                                        _loadData();
+                                        debugPrint('   → _loadData() 호출 완료');
+                                        debugPrint('═══════════════════════════════════════════════════════');
+                                      }),
+                                    ),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: _buildFilteringWordFieldInAppBar(),
@@ -5273,6 +5543,22 @@ class _ReportScreenState extends State<ReportScreen> {
                                   _ventasCredito = value;
                                 });
                                 _loadData();
+                              }),
+                              const SizedBox(width: 4),
+                              _buildVentasFilterComboBox('Movidos', _ventasMovidos, (value) {
+                                debugPrint('═══════════════════════════════════════════════════════');
+                                debugPrint('🔍 [Ventas AppBar] Movidos 콤보박스 변경');
+                                debugPrint('   → 이전 값: $_ventasMovidos');
+                                debugPrint('   → 새 값: $value');
+                                debugPrint('   → setState 호출 전');
+                                setState(() {
+                                  _ventasMovidos = value;
+                                });
+                                debugPrint('   → setState 호출 후: _ventasMovidos = $_ventasMovidos');
+                                debugPrint('   → _loadData() 호출 시작');
+                                _loadData();
+                                debugPrint('   → _loadData() 호출 완료');
+                                debugPrint('═══════════════════════════════════════════════════════');
                               }),
                               const SizedBox(width: 8),
                               // filteringWord
@@ -6629,8 +6915,8 @@ class _ReportScreenState extends State<ReportScreen> {
                                 ),
                               ),
                               const SizedBox(width: 16),
-                              // 지점 선택 UI (큰 화면에서만, sucursal이 1개 이상일 때만 표시)
-                              if (isLargeScreen && _availableSucursales != null && _availableSucursales!.length > 1) ...[
+                              // 지점 선택 UI (sucursal이 2개 이상일 때만 표시)
+                              if (_availableSucursales != null && _availableSucursales!.length > 1) ...[
                                   _buildSucursalSelector(),
                                   const SizedBox(width: 16),
                               ],
@@ -7150,6 +7436,37 @@ class _ReportScreenState extends State<ReportScreen> {
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
+                                const SizedBox(width: 8),
+                                Checkbox(
+                                  value: _ventasMovidos,
+                                  onChanged: (value) {
+                                    debugPrint('🔍 [Ventas AppBar] Movidos 체크박스 클릭: $value');
+                                    setState(() {
+                                      _ventasMovidos = value ?? false;
+                                    });
+                                    _loadData();
+                                  },
+                                  checkColor: Colors.white,
+                                  fillColor: MaterialStateProperty.resolveWith<Color>(
+                                    (Set<MaterialState> states) {
+                                      if (states.contains(MaterialState.selected)) {
+                                        return Colors.white.withOpacity(0.3);
+                                      }
+                                      return Colors.transparent;
+                                    },
+                                  ),
+                                  side: const BorderSide(color: Colors.white, width: 1.5),
+                                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                const SizedBox(width: 2),
+                                const Text(
+                                  'Movidos',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
                               ],
                             ),
                             const SizedBox(width: 8),
@@ -7168,7 +7485,7 @@ class _ReportScreenState extends State<ReportScreen> {
                               // Unit 선택 콤보
                               _buildVentasUnitButtonsInAppBar(),
                               const SizedBox(width: 8),
-                              // Descontado, Reservado, Crédito 체크박스
+                              // Descontado, Reservado, Crédito, Movidos 체크박스
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
@@ -7255,6 +7572,37 @@ class _ReportScreenState extends State<ReportScreen> {
                                   const SizedBox(width: 2),
                                   const Text(
                                     'Crédito',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Checkbox(
+                                    value: _ventasMovidos,
+                                    onChanged: (value) {
+                                      debugPrint('🔍 [Ventas AppBar] Movidos 체크박스 클릭: $value');
+                                      setState(() {
+                                        _ventasMovidos = value ?? false;
+                                      });
+                                      _loadData();
+                                    },
+                                    checkColor: Colors.white,
+                                    fillColor: MaterialStateProperty.resolveWith<Color>(
+                                      (Set<MaterialState> states) {
+                                        if (states.contains(MaterialState.selected)) {
+                                          return Colors.white.withOpacity(0.3);
+                                        }
+                                        return Colors.transparent;
+                                      },
+                                    ),
+                                    side: const BorderSide(color: Colors.white, width: 1.5),
+                                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  const SizedBox(width: 2),
+                                  const Text(
+                                    'Movidos',
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 12,
@@ -7478,47 +7826,93 @@ class _ReportScreenState extends State<ReportScreen> {
                               ],
                             ),
       backgroundColor: reportColor,
-      actions: (needsThreeLineAppBar || needsTwoLineAppBar || (widget.reportType == ReportType.clientes && isLargeScreen) || (widget.reportType == ReportType.alertas && isLargeScreen))
-          ? [] // 좁은 화면 또는 clientes/alertas 보고서 넓은 화면에서는 title에 이미 메뉴 버튼과 공유 버튼이 있으므로 actions 비활성화
-          : [
-              // 보고서 선택 드롭다운 메뉴
-              PopupMenuButton<ReportType>(
-                icon: const Icon(Icons.assessment, color: Colors.white),
-                tooltip: 'Reportes',
-                onSelected: (ReportType reportType) {
-                  if (reportType != widget.reportType) {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ReportScreen(
-                          serverUrl: widget.serverUrl,
-                          reportType: reportType,
-                          initialDate: widget.initialDate,
-                          initialItemsStartDate: widget.initialItemsStartDate,
-                          initialItemsEndDate: widget.initialItemsEndDate,
-                          initialFilteringWord: widget.initialFilteringWord,
-                          initialSortColumn: widget.initialSortColumn,
-                          initialSortAscending: widget.initialSortAscending,
-                          onStateChanged: widget.onStateChanged,
-                          onItemsDateRangeChanged: widget.onItemsDateRangeChanged,
-                          useFullWidth: widget.useFullWidth,
-                        ),
-                      ),
-                    );
-                  }
-                },
-                itemBuilder: (BuildContext context) => _buildReportMenuItems(),
-              ),
-              // 공유 버튼 (macOS/Windows: Excel, 기타: PDF)
-              if (_data != null)
-                IconButton(
-                  icon: const Icon(Icons.share, color: Colors.white),
-                  tooltip: Platform.isMacOS || Platform.isWindows 
-                      ? 'Compartir como Excel' 
-                      : 'Compartir como PDF',
-                  onPressed: () => _shareReport(),
-                ),
-            ],
+      actions: () {
+        // 디버깅: actions 설정 로직 확인
+        debugPrint('═══════════════════════════════════════════════════════');
+        debugPrint('🔍 [AppBar Actions] 설정 로직 확인');
+        debugPrint('   → reportType: ${widget.reportType}');
+        debugPrint('   → isLargeScreen: $isLargeScreen');
+        debugPrint('   → needsThreeLineAppBar: $needsThreeLineAppBar');
+        debugPrint('   → needsTwoLineAppBar: $needsTwoLineAppBar');
+        debugPrint('   → useFullWidth: ${widget.useFullWidth}');
+        
+        // 대형 화면에서 title 내부에 메뉴 버튼과 공유 버튼이 있는 보고서들
+        final hasButtonsInTitle = isLargeScreen && (
+          widget.reportType == ReportType.items ||
+          widget.reportType == ReportType.ingresos ||
+          widget.reportType == ReportType.gastos ||
+          widget.reportType == ReportType.ventas ||
+          widget.reportType == ReportType.fventas ||
+          widget.reportType == ReportType.alertas ||
+          widget.reportType == ReportType.clientes ||
+          widget.reportType == ReportType.stocks ||
+          widget.reportType == ReportType.codigos ||
+          widget.reportType == ReportType.todocodigos
+        );
+        
+        debugPrint('   → hasButtonsInTitle: $hasButtonsInTitle');
+        
+        // 좁은 화면 또는 대형 화면에서 title에 버튼이 있는 경우 actions 비활성화
+        final shouldDisableActions = needsThreeLineAppBar || 
+                                     needsTwoLineAppBar || 
+                                     hasButtonsInTitle;
+        
+        debugPrint('   → shouldDisableActions: $shouldDisableActions');
+        debugPrint('═══════════════════════════════════════════════════════');
+        
+        if (shouldDisableActions) {
+          return <Widget>[]; // title에 이미 메뉴 버튼과 공유 버튼이 있으므로 actions 비활성화
+        }
+        
+        return <Widget>[
+          // 보고서 선택 드롭다운 메뉴
+          PopupMenuButton<ReportType>(
+            icon: const Icon(Icons.assessment, color: Colors.white),
+            tooltip: 'Reportes',
+            onSelected: (ReportType reportType) {
+              debugPrint('🔍 [AppBar Actions] PopupMenuButton onSelected: $reportType');
+              if (reportType != widget.reportType) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ReportScreen(
+                      serverUrl: widget.serverUrl,
+                      reportType: reportType,
+                      initialDate: widget.initialDate,
+                      initialItemsStartDate: widget.initialItemsStartDate,
+                      initialItemsEndDate: widget.initialItemsEndDate,
+                      initialFilteringWord: widget.initialFilteringWord,
+                      initialSortColumn: widget.initialSortColumn,
+                      initialSortAscending: widget.initialSortAscending,
+                      onStateChanged: widget.onStateChanged,
+                      onItemsDateRangeChanged: widget.onItemsDateRangeChanged,
+                      useFullWidth: widget.useFullWidth,
+                    ),
+                  ),
+                );
+              }
+            },
+            itemBuilder: (BuildContext context) {
+              debugPrint('🔍 [AppBar Actions] PopupMenuButton itemBuilder 호출됨!');
+              final items = _buildReportMenuItems();
+              debugPrint('🔍 [AppBar Actions] PopupMenuButton 메뉴 아이템 개수: ${items.length}');
+              return items;
+            },
+          ),
+          // 공유 버튼 (macOS/Windows: Excel, 기타: PDF)
+          if (_data != null)
+            IconButton(
+              icon: const Icon(Icons.share, color: Colors.white),
+              tooltip: Platform.isMacOS || Platform.isWindows 
+                  ? 'Compartir como Excel' 
+                  : 'Compartir como PDF',
+              onPressed: () {
+                debugPrint('🔍 [AppBar Actions] 공유 버튼 클릭됨');
+                _shareReport();
+              },
+            ),
+        ];
+      }(),
     );
   }
 
@@ -8288,7 +8682,8 @@ class _ReportScreenState extends State<ReportScreen> {
                     reportColor: itemsColor,
                     unit: widget.reportType == ReportType.ventas ? _ventasUnit : null,
                     onRowDoubleTap: widget.reportType == ReportType.ventas ? _handleRowDoubleTap : null,
-                    onRowTap: null, // vcode 단위에서는 단일 클릭 비활성화 (더블 클릭만 사용)
+                    onRowTap: widget.reportType == ReportType.ventas && 
+                              _ventasUnit != 'vcode' ? _handleRowTap : null, // day/month/year 단위에서는 단일 클릭으로 sucursal 필터링
                     onSort: (columnIndex, ascending) {
                       setState(() {
                         // 키 목록을 정렬된 데이터에서 가져오기 (report_table_builder와 동일한 순서 보장)
@@ -8485,7 +8880,8 @@ class _ReportScreenState extends State<ReportScreen> {
             reportColor: widget.reportType == ReportType.ventas ? Colors.purple : null,
             unit: widget.reportType == ReportType.ventas ? _ventasUnit : null,
             onRowDoubleTap: widget.reportType == ReportType.ventas ? _handleRowDoubleTap : null,
-            onRowTap: null, // vcode 단위에서는 단일 클릭 비활성화 (더블 클릭만 사용)
+            onRowTap: widget.reportType == ReportType.ventas && 
+                      _ventasUnit != 'vcode' ? _handleRowTap : null, // day/month/year 단위에서는 단일 클릭으로 sucursal 필터링
             onSort: widget.reportType == ReportType.ventas
                 ? (columnIndex, ascending) {
                     setState(() {
@@ -9494,9 +9890,21 @@ class _ReportScreenState extends State<ReportScreen> {
           );
         }).toList(),
         onChanged: (String? newValue) {
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [_buildVentasFilterComboBox] onChanged 호출됨');
+          debugPrint('   → label: $label');
+          debugPrint('   → 현재 value: $value');
+          debugPrint('   → newValue: $newValue');
           if (newValue != null) {
-            onChanged(newValue == 'Sí');
+            final boolValue = newValue == 'Sí';
+            debugPrint('   → 변환된 bool 값: $boolValue');
+            debugPrint('   → onChanged 콜백 호출 시작');
+            onChanged(boolValue);
+            debugPrint('   → onChanged 콜백 호출 완료');
+          } else {
+            debugPrint('   ⚠️ newValue가 null이므로 콜백 호출 안 함');
           }
+          debugPrint('═══════════════════════════════════════════════════════');
         },
         selectedItemBuilder: (BuildContext context) {
           return options.map<Widget>((String option) {
@@ -9891,8 +10299,11 @@ class _ReportScreenState extends State<ReportScreen> {
 
   /// 행 더블 클릭 핸들러 - 세부 내역 보기
   void _handleRowDoubleTap(Map<String, dynamic> rowData) {
-    print('🔵🔵🔵 더블 클릭 감지됨! 🔵🔵🔵');
-    print('🔵 reportType: ${widget.reportType}, ventasUnit: $_ventasUnit');
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔵🔵🔵 더블 클릭 감지됨! 🔵🔵🔵');
+    debugPrint('🔵 reportType: ${widget.reportType}, ventasUnit: $_ventasUnit');
+    debugPrint('🔵 rowData: $rowData');
+    debugPrint('🔵 rowData keys: ${rowData.keys.toList()}');
     
     if (widget.reportType != ReportType.ventas) {
       print('❌ reportType이 ventas가 아닙니다: ${widget.reportType}');
@@ -9901,13 +10312,19 @@ class _ReportScreenState extends State<ReportScreen> {
     
     // vcode 단위에서는 더블 클릭으로 vdetalle 상세 정보 보기
     if (_ventasUnit == 'vcode') {
-      print('🔵 vcode 단위 더블 클릭 - vdetalle 요청');
+      debugPrint('═══════════════════════════════════════════════════════');
+      debugPrint('🔵🔵🔵 VCODE 단위 더블 클릭 처리 시작! 🔵🔵🔵');
+      debugPrint('   → vcode 단위 더블 클릭 - vdetalle 요청');
+      debugPrint('   → rowData keys: ${rowData.keys.toList()}');
+      debugPrint('   → rowData: $rowData');
+      debugPrint('═══════════════════════════════════════════════════════');
       _handleVcodeRowTap(rowData);
       return;
     }
     
-    print('🔍 더블 클릭 - 현재 unit: $_ventasUnit, rowData keys: ${rowData.keys.toList()}');
-    print('🔍 rowData: $rowData');
+    debugPrint('   → 더블 클릭 - 현재 unit: $_ventasUnit');
+    debugPrint('   → rowData keys: ${rowData.keys.toList()}');
+    debugPrint('   → rowData: $rowData');
     
     DateTime? selectedDate;
     String? newUnit;
@@ -10005,95 +10422,343 @@ class _ReportScreenState extends State<ReportScreen> {
         print('❌ year 값을 찾을 수 없습니다. rowData: $rowData');
       }
     } else if (_ventasUnit == 'month') {
-      print('🔵🔵🔵 MONTH 단위 더블 클릭 처리 시작! 🔵🔵🔵');
+      debugPrint('═══════════════════════════════════════════════════════');
+      debugPrint('🔵🔵🔵 MONTH 단위 더블 클릭 처리 시작! 🔵🔵🔵');
+      debugPrint('   → rowData keys: ${rowData.keys.toList()}');
+      debugPrint('   → rowData: $rowData');
+      
       // month 단위: 해당 월의 day 단위로 변경
       // 다양한 필드명 시도
       dynamic monthValue = rowData['month'] ?? 
                         rowData['Month'] ?? 
                         rowData['MONTH'];
       
+      debugPrint('   → [1차 시도] month 필드 직접 확인: $monthValue');
+      
       // month 필드가 없으면 다른 필드에서 찾기
       if (monthValue == null) {
+        debugPrint('   → [2차 시도] 다른 필드에서 날짜 형식 찾기');
         monthValue = rowData.values.firstWhere(
-          (v) => v != null && v.toString().contains('-') && v.toString().split('-').length >= 2,
+          (v) {
+            if (v == null) return false;
+            final str = v.toString();
+            // "YYYY-MM" 또는 "YYYY-MM-DD" 형식 확인
+            final hasDash = str.contains('-');
+            final parts = str.split('-');
+            final isValidFormat = hasDash && parts.length >= 2 && parts.length <= 3;
+            if (isValidFormat) {
+              debugPrint('      → 후보 발견: $str');
+            }
+            return isValidFormat;
+          },
           orElse: () => null,
         );
+        debugPrint('   → [2차 시도] 결과: $monthValue');
       }
       
-      print('🔍 month 단위 - monthValue: $monthValue, rowData keys: ${rowData.keys.toList()}');
-      print('🔍 rowData: $rowData');
+      debugPrint('   → 최종 monthValue: $monthValue');
       
       if (monthValue != null) {
         final monthStr = monthValue.toString();
-        print('🔍 monthStr: $monthStr');
+        debugPrint('   → monthStr: $monthStr');
         
         // "YYYY-MM-DD" 또는 "YYYY-MM" 형식 파싱
         final parts = monthStr.split('-');
-        print('🔍 parts: $parts, length: ${parts.length}');
+        debugPrint('   → parts: $parts, length: ${parts.length}');
         
         if (parts.length >= 2) {
           final year = int.tryParse(parts[0]);
           final month = int.tryParse(parts[1]);
-          print('🔍 파싱 결과 - year: $year, month: $month');
+          debugPrint('   → 파싱 결과 - year: $year, month: $month');
           
           if (year != null && month != null && month >= 1 && month <= 12) {
             newUnit = 'day';
             newStartDate = DateTime(year, month, 1);
             newEndDate = DateTime(year, month + 1, 0); // 해당 월의 마지막 날
-            print('✅ month -> day: ${year}년 ${month}월 (${newStartDate} ~ ${newEndDate})');
+            debugPrint('   ✅ month -> day: ${year}년 ${month}월 (${newStartDate} ~ ${newEndDate})');
           } else {
-            print('❌ year 또는 month 값이 유효하지 않습니다: year=$year, month=$month');
+            debugPrint('   ❌ year 또는 month 값이 유효하지 않습니다: year=$year, month=$month');
           }
         } else {
-          print('❌ monthStr을 파싱할 수 없습니다. parts.length=${parts.length}');
+          debugPrint('   ❌ monthStr을 파싱할 수 없습니다. parts.length=${parts.length}');
         }
       } else {
-        print('❌ month 값을 찾을 수 없습니다. rowData: $rowData');
+        debugPrint('   ❌ month 값을 찾을 수 없습니다.');
+        debugPrint('   ❌ rowData의 모든 키: ${rowData.keys.toList()}');
+        debugPrint('   ❌ rowData의 모든 값: ${rowData.values.toList()}');
       }
+      debugPrint('═══════════════════════════════════════════════════════');
     } else if (_ventasUnit == 'day') {
+      debugPrint('═══════════════════════════════════════════════════════');
+      debugPrint('🔵🔵🔵 DAY 단위 더블 클릭 처리 시작! 🔵🔵🔵');
+      debugPrint('   → rowData keys: ${rowData.keys.toList()}');
+      debugPrint('   → rowData: $rowData');
+      
       // day 단위: 해당 날짜의 vcode 단위로 변경
       // 다양한 필드명 시도
-      final fechaValue = rowData['fecha'] ?? 
+      dynamic fechaValue = rowData['fecha'] ?? 
                         rowData['Fecha'] ?? 
-                        rowData['FECHA'] ??
-                        rowData.values.firstWhere(
-                          (v) => v != null && v.toString().split('-').length == 3,
-                          orElse: () => null,
-                        );
+                        rowData['FECHA'];
       
-      print('🔍 day 단위 - fechaValue: $fechaValue');
+      debugPrint('   → [1차 시도] fecha 필드 직접 확인: $fechaValue');
+      
+      // fecha 필드가 없으면 다른 필드에서 찾기
+      if (fechaValue == null) {
+        debugPrint('   → [2차 시도] 다른 필드에서 날짜 형식 찾기 (YYYY-MM-DD)');
+        fechaValue = rowData.values.firstWhere(
+          (v) {
+            if (v == null) return false;
+            final str = v.toString();
+            // "YYYY-MM-DD" 형식 확인 (정확히 3개의 부분)
+            final parts = str.split('-');
+            final isValidFormat = parts.length == 3;
+            if (isValidFormat) {
+              debugPrint('      → 후보 발견: $str');
+            }
+            return isValidFormat;
+          },
+          orElse: () => null,
+        );
+        debugPrint('   → [2차 시도] 결과: $fechaValue');
+      }
+      
+      debugPrint('   → 최종 fechaValue: $fechaValue');
       
       if (fechaValue != null) {
         final fechaStr = fechaValue.toString();
+        debugPrint('   → fechaStr: $fechaStr');
+        
         // "YYYY-MM-DD" 형식 파싱
         final parts = fechaStr.split('-');
+        debugPrint('   → parts: $parts, length: ${parts.length}');
+        
         if (parts.length >= 3) {
           final year = int.tryParse(parts[0]);
           final month = int.tryParse(parts[1]);
           final day = int.tryParse(parts[2]);
+          debugPrint('   → 파싱 결과 - year: $year, month: $month, day: $day');
+          
           if (year != null && month != null && day != null) {
             newUnit = 'vcode';
             selectedDate = DateTime(year, month, day);
             newStartDate = selectedDate;
             newEndDate = selectedDate;
-            print('✅ day -> vcode: ${year}년 ${month}월 ${day}일');
+            debugPrint('   ✅ day -> vcode: ${year}년 ${month}월 ${day}일');
+          } else {
+            debugPrint('   ❌ year, month, day 값 중 하나가 유효하지 않습니다: year=$year, month=$month, day=$day');
           }
+        } else {
+          debugPrint('   ❌ fechaStr을 파싱할 수 없습니다. parts.length=${parts.length}');
         }
+      } else {
+        debugPrint('   ❌ fecha 값을 찾을 수 없습니다.');
+        debugPrint('   ❌ rowData의 모든 키: ${rowData.keys.toList()}');
+        debugPrint('   ❌ rowData의 모든 값: ${rowData.values.toList()}');
       }
+      debugPrint('═══════════════════════════════════════════════════════');
     }
     
     // unit과 날짜 범위 변경
     if (newUnit != null && newStartDate != null && newEndDate != null) {
-      print('✅ 변경 적용: unit=$newUnit, startDate=$newStartDate, endDate=$newEndDate');
+      debugPrint('═══════════════════════════════════════════════════════');
+      debugPrint('✅ 변경 적용: unit=$newUnit, startDate=$newStartDate, endDate=$newEndDate');
+      debugPrint('   → 이전 unit: $_ventasUnit');
+      debugPrint('   → 이전 startDate: $_ventasStartDate');
+      debugPrint('   → 이전 endDate: $_ventasEndDate');
       setState(() {
         _ventasUnit = newUnit!;
         _ventasStartDate = newStartDate;
         _ventasEndDate = newEndDate;
       });
+      debugPrint('   → 변경 후 unit: $_ventasUnit');
+      debugPrint('   → 변경 후 startDate: $_ventasStartDate');
+      debugPrint('   → 변경 후 endDate: $_ventasEndDate');
+      debugPrint('   → _loadData() 호출 시작');
       _loadData();
+      debugPrint('   → _loadData() 호출 완료');
+      debugPrint('═══════════════════════════════════════════════════════');
     } else {
-      print('❌ 변경 실패: newUnit=$newUnit, newStartDate=$newStartDate, newEndDate=$newEndDate');
+      debugPrint('═══════════════════════════════════════════════════════');
+      debugPrint('❌ 변경 실패: newUnit=$newUnit, newStartDate=$newStartDate, newEndDate=$newEndDate');
+      debugPrint('   → 현재 unit: $_ventasUnit');
+      debugPrint('   → 더블 클릭 처리 실패 - 필수 값이 null입니다');
+      debugPrint('═══════════════════════════════════════════════════════');
     }
+  }
+
+  /// Ventas 보고서 행 단일 클릭 핸들러 - day/month/year 단위에서 sucursal 필터링
+  void _handleRowTap(Map<String, dynamic> rowData) {
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔵🔵🔵 단일 클릭 감지됨! (sucursal 필터링) 🔵🔵🔵');
+    debugPrint('🔵 reportType: ${widget.reportType}, ventasUnit: $_ventasUnit');
+    debugPrint('🔵 rowData: $rowData');
+    debugPrint('🔵 rowData keys: ${rowData.keys.toList()}');
+    
+    if (widget.reportType != ReportType.ventas) {
+      debugPrint('❌ reportType이 ventas가 아닙니다: ${widget.reportType}');
+      return;
+    }
+    
+    // vcode 단위에서는 단일 클릭을 사용하지 않음
+    if (_ventasUnit == 'vcode') {
+      debugPrint('❌ vcode 단위에서는 단일 클릭을 사용하지 않습니다');
+      return;
+    }
+    
+    // day/month/year 단위에서만 sucursal 필터링
+    if (_ventasUnit != 'day' && _ventasUnit != 'month' && _ventasUnit != 'year') {
+      debugPrint('❌ day/month/year 단위가 아닙니다: $_ventasUnit');
+      return;
+    }
+    
+    // sucursal 값 추출
+    dynamic sucursalValue = rowData['sucursal'] ?? 
+                           rowData['Sucursal'] ?? 
+                           rowData['SUCURSAL'];
+    
+    debugPrint('   → 추출된 sucursal 값: $sucursalValue');
+    
+    if (sucursalValue == null) {
+      debugPrint('   ❌ sucursal 값을 찾을 수 없습니다.');
+      debugPrint('   ❌ rowData의 모든 키: ${rowData.keys.toList()}');
+      debugPrint('   ❌ rowData의 모든 값: ${rowData.values.toList()}');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sucursal 정보를 찾을 수 없습니다.')),
+        );
+      }
+      return;
+    }
+    
+    // sucursal 값을 문자열로 변환
+    final sucursalStr = sucursalValue.toString();
+    debugPrint('   → sucursal 문자열: $sucursalStr');
+    
+    // year 단위일 때는 unit을 month로 변경하고 날짜 범위 설정
+    if (_ventasUnit == 'year') {
+      debugPrint('   → [Year 단위] unit을 month로 변경하고 sucursal 필터링');
+      
+      // 연도 추출
+      dynamic yearValue = rowData['year'] ?? rowData['Year'] ?? rowData['YEAR'];
+      
+      if (yearValue != null) {
+        final yearStr = yearValue.toString();
+        if (yearStr.contains('-')) {
+          final parts = yearStr.split('-');
+          if (parts.isNotEmpty) {
+            yearValue = parts[0];
+          }
+        }
+      }
+      
+      if (yearValue == null) {
+        final fechaValue = rowData['fecha'] ?? rowData['Fecha'] ?? rowData['FECHA'];
+        if (fechaValue != null) {
+          final fechaStr = fechaValue.toString();
+          if (fechaStr.length == 4 && int.tryParse(fechaStr) != null) {
+            yearValue = fechaStr;
+          } else if (fechaStr.contains('-')) {
+            final parts = fechaStr.split('-');
+            if (parts.isNotEmpty) {
+              yearValue = parts[0];
+            }
+          }
+        }
+      }
+      
+      if (yearValue == null) {
+        yearValue = rowData.values.firstWhere(
+          (v) {
+            if (v == null) return false;
+            final str = v.toString();
+            if (str.length == 4 && int.tryParse(str) != null) {
+              return true;
+            }
+            if (str.contains('-')) {
+              final parts = str.split('-');
+              if (parts.isNotEmpty && parts[0].length == 4 && int.tryParse(parts[0]) != null) {
+                return true;
+              }
+            }
+            return false;
+          },
+          orElse: () => null,
+        );
+        if (yearValue != null && yearValue.toString().contains('-')) {
+          final parts = yearValue.toString().split('-');
+          if (parts.isNotEmpty) {
+            yearValue = parts[0];
+          }
+        }
+      }
+      
+      debugPrint('   → 추출된 연도: $yearValue');
+      
+      if (yearValue != null) {
+        final yearStr = yearValue.toString();
+        final year = yearStr.contains('-') 
+            ? int.tryParse(yearStr.split('-')[0])
+            : int.tryParse(yearStr);
+            
+        if (year != null && year >= 2000 && year <= DateTime.now().year) {
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('   → [Year 단위] sucursal 클릭 처리 시작');
+          debugPrint('      → unit 변경: year -> month');
+          debugPrint('      → sucursal 선택: $sucursalStr');
+          debugPrint('      → year: $year');
+          debugPrint('      → 날짜 범위: ${DateTime(year, 1, 1)} ~ ${DateTime(year, 12, 31)}');
+          debugPrint('      → 이전 _selectedSucursal: $_selectedSucursal');
+          debugPrint('      → 이전 _ventasUnit: $_ventasUnit');
+          
+          setState(() {
+            _ventasUnit = 'month';
+            _selectedSucursal = sucursalStr;
+            _ventasStartDate = DateTime(year, 1, 1);
+            _ventasEndDate = DateTime(year, 12, 31);
+          });
+          
+          debugPrint('      → 변경 후 _selectedSucursal: $_selectedSucursal');
+          debugPrint('      → 변경 후 _ventasUnit: $_ventasUnit');
+          debugPrint('      → 변경 후 _ventasStartDate: $_ventasStartDate');
+          debugPrint('      → 변경 후 _ventasEndDate: $_ventasEndDate');
+          debugPrint('      → _availableSucursales: $_availableSucursales');
+          debugPrint('      → _loadData() 호출 시작 (unit=month, sucursal=$sucursalStr)');
+          
+          _loadData();
+          
+          debugPrint('      → _loadData() 호출 완료');
+          debugPrint('      → 콤보박스가 업데이트되어야 함: _selectedSucursal=$_selectedSucursal');
+          debugPrint('═══════════════════════════════════════════════════════');
+          return;
+        } else {
+          debugPrint('   ❌ year 값이 유효하지 않습니다: $year');
+        }
+      } else {
+        debugPrint('   ❌ year 값을 찾을 수 없습니다.');
+      }
+    }
+    
+    // month/day 단위에서는 기존 동작 유지 (sucursal 필터링만)
+    // 이미 선택된 sucursal과 같으면 필터 해제 (null로 설정)
+    if (_selectedSucursal == sucursalStr) {
+      debugPrint('   → 이미 선택된 sucursal과 같음 - 필터 해제');
+      setState(() {
+        _selectedSucursal = null;
+      });
+      debugPrint('   → _loadData() 호출 시작 (필터 해제)');
+      _loadData();
+      debugPrint('   → _loadData() 호출 완료');
+    } else {
+      debugPrint('   → 새 sucursal 선택: $sucursalStr');
+      setState(() {
+        _selectedSucursal = sucursalStr;
+      });
+      debugPrint('   → _loadData() 호출 시작 (sucursal 필터 적용)');
+      _loadData();
+      debugPrint('   → _loadData() 호출 완료');
+    }
+    
+    debugPrint('═══════════════════════════════════════════════════════');
   }
 
   /// Cliente 행 탭 핸들러 - cliente 상세 정보 보기 (모달리스 대화상자)
@@ -11640,13 +12305,36 @@ class _ReportScreenState extends State<ReportScreen> {
 
   // 지점 선택 UI (AppBar용) - ReportFilterWidgets로 이동
   Widget _buildSucursalSelector() {
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [_buildSucursalSelector] 호출됨');
+    debugPrint('   → reportType: ${widget.reportType}');
+    debugPrint('   → _selectedSucursal: $_selectedSucursal');
+    debugPrint('   → _availableSucursales: $_availableSucursales');
+    if (_availableSucursales != null) {
+      debugPrint('   → _availableSucursales.length: ${_availableSucursales!.length}');
+      debugPrint('   → _availableSucursales 내용: ${_availableSucursales!.join(", ")}');
+      if (_selectedSucursal != null) {
+        debugPrint('   → 선택된 sucursal ($_selectedSucursal)이 목록에 포함되어 있는가: ${_availableSucursales!.contains(_selectedSucursal)}');
+      }
+    }
+    debugPrint('═══════════════════════════════════════════════════════');
+    
     return ReportFilterWidgets.buildSucursalSelector(
       selectedSucursal: _selectedSucursal,
       availableSucursales: _availableSucursales,
       onChanged: (String? value) {
+        debugPrint('═══════════════════════════════════════════════════════');
+        debugPrint('🔍 [Sucursal 콤보박스 변경]');
+        debugPrint('   → 이전 값: $_selectedSucursal');
+        debugPrint('   → 새 값: $value');
+        debugPrint('   → reportType: ${widget.reportType}');
+        debugPrint('═══════════════════════════════════════════════════════');
         setState(() {
           _selectedSucursal = value;
         });
+        // 모든 보고서의 경우 데이터 재로드
+        debugPrint('🔍 [Sucursal 선택] ${widget.reportType} 보고서 - 데이터 재로드');
+        _loadData();
       },
       reportColor: _getReportColor(),
     );
@@ -11687,11 +12375,6 @@ class _ReportScreenState extends State<ReportScreen> {
     }
     
     // ventas가 아닌 경우 기존 로직 사용
-    if (_availableSucursales != null && _availableSucursales!.length > 1) {
-      return _buildSucursalSelector();
-    }
-    return null;
-    
     if (_availableSucursales != null && _availableSucursales!.length > 1) {
       return _buildSucursalSelector();
     }

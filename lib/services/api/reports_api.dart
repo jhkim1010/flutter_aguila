@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'http_request_handler.dart';
 
 /// 보고서 관련 API
@@ -56,10 +57,24 @@ class ReportsApi {
     if (filters != null) {
       filters.forEach((key, value) {
         if (value != null) {
-          queryParams[key] = value.toString();
+          // sucursal의 경우 숫자로 변환 시도 (서버에서 숫자로 파싱할 수 있도록)
+          if (key == 'sucursal' && value is String) {
+            // 문자열이 숫자인지 확인하고 그대로 전송 (서버에서 파싱)
+            queryParams[key] = value;
+          } else {
+            queryParams[key] = value.toString();
+          }
         }
       });
     }
+    
+    // 디버깅: Items 보고서 요청 파라미터 로깅
+    debugPrint('📋 [Items Report API] 요청 파라미터:');
+    debugPrint('   → endpoint: $endpoint');
+    debugPrint('   → filtering_word: ${queryParams['filtering_word'] ?? 'null'}');
+    debugPrint('   → sucursal: ${queryParams['sucursal'] ?? 'null'}');
+    debugPrint('   → sucursal 타입: ${queryParams['sucursal']?.runtimeType ?? 'null'}');
+    debugPrint('   → 전체 queryParams: $queryParams');
     
     return await _httpHandler.performGetRequest(
       endpoint,

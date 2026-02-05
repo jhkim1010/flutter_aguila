@@ -585,12 +585,29 @@ class ReportTableBuilder {
       final index = entry.key;
       final key = entry.value;
       final isSorted = sortColumn == key;
-      final isSortable = (reportType == ReportType.items || reportType == ReportType.ingresos) && 
-          (key == 'codigo' || key == 'codigo1' || key == 'descripcion' || key == 'desc1' || 
-           key == 'tprendas' || key == 'timporte' || key == 'tIngreso' || key == 'tingreso' ||
-           key == 'tevent' || key == 'tcant' || key == 'cntEvent' || key == 'cntevent') ||
-          reportType == ReportType.ventas || // ventas 보고서는 모든 컬럼 정렬 가능
-          reportType == ReportType.clientes; // clientes 보고서는 모든 컬럼 정렬 가능
+      // Items 및 Ingresos 보고서는 모든 컬럼 정렬 가능 (이전에는 특정 키만 허용했지만, 모든 칼럼 정렬 가능하도록 변경)
+      final isSortable = reportType == ReportType.items || 
+                         reportType == ReportType.ingresos ||
+                         reportType == ReportType.ventas || // ventas 보고서는 모든 컬럼 정렬 가능
+                         reportType == ReportType.clientes; // clientes 보고서는 모든 컬럼 정렬 가능
+      
+      // 디버깅: items/ingresos 보고서의 정렬 가능 여부 확인
+      if (reportType == ReportType.items || reportType == ReportType.ingresos) {
+        debugPrint('═══════════════════════════════════════════════════════');
+        debugPrint('🔍 [Items/Ingresos] 칼럼 정렬 가능 여부 확인');
+        debugPrint('   → 칼럼 #$index ($key)');
+        debugPrint('   → isSortable: $isSortable');
+        debugPrint('   → onSort != null: ${onSort != null}');
+        debugPrint('   → 최종 정렬 가능: ${isSortable && onSort != null}');
+        if (!isSortable) {
+          debugPrint('   ⚠️ 정렬 불가: key가 허용 목록에 없음');
+          debugPrint('   → 허용된 키: codigo, codigo1, descripcion, desc1, tprendas, timporte, tIngreso, tingreso, tevent, tcant, cntEvent, cntevent');
+        }
+        if (isSortable && onSort == null) {
+          debugPrint('   ⚠️ 정렬 불가: onSort 콜백이 null');
+        }
+        debugPrint('═══════════════════════════════════════════════════════');
+      }
       
       return DataColumn(
         label: Row(
@@ -1018,11 +1035,11 @@ class ReportTableBuilder {
                       // ============================================================
                       // 📱 헤더 생성 - 핸드폰에서 ventas 헤더가 안 보이는 문제 디버깅
                       // ============================================================
-                      // ventas/clientes/fventas는 별도 헤더 행을 사용하지 않음 (DataTable의 headingRowHeight가 0)
-                      // 하지만 수평 스크롤이 있는 경우 별도 헤더가 필요할 수 있음
-                      final isVentasOrClientesOrFventas = reportType == ReportType.ventas || 
-                                                          reportType == ReportType.clientes || 
-                                                          reportType == ReportType.fventas;
+                      // ventas 보고서는 모든 unit에서 헤더를 표시해야 함 (더블 클릭 기능과 헤더 표시는 충돌하지 않음)
+                      // clientes/fventas는 별도 헤더 행을 사용하지 않음
+                      final isVentas = reportType == ReportType.ventas;
+                      final isClientesOrFventas = reportType == ReportType.clientes || reportType == ReportType.fventas;
+                      final shouldHideHeaderRow = isClientesOrFventas;
                       
                       // 핸드폰 화면 구성 정보 확인
                       final layoutInfo = MobileLayoutHelper.getLayoutInfo(context);
@@ -1033,7 +1050,10 @@ class ReportTableBuilder {
                       debugPrint('═══════════════════════════════════════════════════════');
                       debugPrint('📱 [Ventas 헤더 디버깅] 헤더 생성 시작');
                       debugPrint('   → reportType: $reportType');
-                      debugPrint('   → isVentasOrClientesOrFventas: $isVentasOrClientesOrFventas');
+                      debugPrint('   → unit: $unit');
+                      debugPrint('   → isVentas: $isVentas');
+                      debugPrint('   → isClientesOrFventas: $isClientesOrFventas');
+                      debugPrint('   → shouldHideHeaderRow: $shouldHideHeaderRow');
                       debugPrint('   → isMobilePhone: $isMobilePhone');
                       debugPrint('   → isMobilePhonePortrait: $isMobilePhonePortrait');
                       debugPrint('   → isMobilePhoneLandscape: $isMobilePhoneLandscape');
@@ -1043,7 +1063,7 @@ class ReportTableBuilder {
                       debugPrint('   → columns.length: ${columns.length}');
                       debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
                       
-                      final headerRow = isVentasOrClientesOrFventas
+                      final headerRow = shouldHideHeaderRow
                           ? null 
                           : buildHeaderRow(keys, columns, color, sortColumn, sortAscending, onSort, columnWidths: columnWidths, reportType: reportType);
                       
@@ -1054,16 +1074,17 @@ class ReportTableBuilder {
                         debugPrint('   → keys.length: ${keys.length}');
                         debugPrint('   → keys: $keys');
                         debugPrint('   → displayedList.length: ${displayedList.length}');
-                        debugPrint('   → headerRow: ${headerRow != null ? "생성됨" : "null (ventas는 별도 헤더 없음)"}');
+                        debugPrint('   → unit: $unit');
+                        debugPrint('   → headerRow: ${headerRow != null ? "생성됨" : "null"}');
+                        if (isVentas) {
+                          debugPrint('   → [Ventas $unit] headerRow=${headerRow != null ? "생성됨" : "null"} (모든 unit에서 헤더 표시)');
+                        }
                         debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
                         debugPrint('   → isMobilePhone: $isMobilePhone');
                         debugPrint('   → isMobilePhonePortrait: $isMobilePhonePortrait');
                         debugPrint('   → isMobilePhoneLandscape: $isMobilePhoneLandscape');
                         debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
                         debugPrint('   → constraints.maxHeight: ${constraints.maxHeight}');
-                        debugPrint('   ⚠️ [문제] ventas는 headerRow가 null이므로 별도 헤더가 표시되지 않음');
-                        debugPrint('   ⚠️ [문제] DataTable의 headingRowHeight가 0으로 설정되어 있음');
-                        debugPrint('   ⚠️ [문제] 핸드폰에서 헤더가 안 보이는 원인: 별도 헤더 행이 없고 DataTable 헤더도 숨겨져 있음');
                         debugPrint('═══════════════════════════════════════════════════════');
                       }
                       
@@ -1244,6 +1265,8 @@ class ReportTableBuilder {
                                   onRowTap: onRowTap,
                                   unit: unit,
                                   columnWidths: columnWidths,
+                                  sortColumn: sortColumn,
+                                  sortAscending: sortAscending,
                                 );
                                 
                                 debugPrint('   → [ReportTableBuilder:705] _buildTableContent 호출 완료, Scrollbar + SingleChildScrollView로 감싸기');
@@ -1583,6 +1606,8 @@ class ReportTableBuilder {
     Function(Map<String, dynamic>)? onRowTap,
     String? unit,
     Map<String, double>? columnWidths,
+    String? sortColumn,
+    bool sortAscending = true,
   }) {
     // 디버깅: 괄호/구문 오류 확인을 위한 로깅
     debugPrint('═══════════════════════════════════════════════════════');
@@ -1626,6 +1651,8 @@ class ReportTableBuilder {
         onRowTap: onRowTap,
         unit: unit,
         columnWidths: columnWidths,
+        sortColumn: sortColumn,
+        sortAscending: sortAscending,
       );
       
       debugPrint('   → [ReportTableBuilder:1608] _buildTableWithoutHorizontalScroll 호출 완료, Builder로 감싸기');
@@ -1666,6 +1693,8 @@ class ReportTableBuilder {
         onRowTap: onRowTap,
         unit: unit,
         columnWidths: columnWidths,
+        sortColumn: sortColumn,
+        sortAscending: sortAscending,
       );
     } else {
       return _buildTableWithoutHorizontalScroll(
@@ -1680,6 +1709,8 @@ class ReportTableBuilder {
         onRowTap: onRowTap,
         unit: unit,
         columnWidths: columnWidths,
+        sortColumn: sortColumn,
+        sortAscending: sortAscending,
       );
     }
   }
@@ -1698,6 +1729,8 @@ class ReportTableBuilder {
     Function(Map<String, dynamic>)? onRowTap,
     String? unit,
     Map<String, double>? columnWidths,
+    String? sortColumn,
+    bool sortAscending = true,
   }) {
     // 테이블의 실제 너비 계산 (columnWidths 기반)
     double calculateTableWidth() {
@@ -1765,6 +1798,8 @@ class ReportTableBuilder {
           onRowTap: onRowTap,
           unit: unit,
           columnWidths: columnWidths,
+          sortColumn: sortColumn,
+          sortAscending: sortAscending,
         ),
       ),
     );
@@ -1783,6 +1818,8 @@ class ReportTableBuilder {
     Function(Map<String, dynamic>)? onRowTap,
     String? unit,
     Map<String, double>? columnWidths,
+    String? sortColumn,
+    bool sortAscending = true,
   }) {
     // 디버깅: 괄호/구문 오류 확인을 위한 로깅
     debugPrint('═══════════════════════════════════════════════════════');
@@ -1840,6 +1877,8 @@ class ReportTableBuilder {
           onRowTap: onRowTap,
           unit: unit,
           columnWidths: columnWidths,
+          sortColumn: sortColumn,
+          sortAscending: sortAscending,
           ),
         );
       },
@@ -1889,14 +1928,24 @@ class ReportTableBuilder {
     Function(Map<String, dynamic>)? onRowTap,
     String? unit,
     Map<String, double>? columnWidths,
+    String? sortColumn,
+    bool sortAscending = true,
   }) {
+    // 디버깅: buildDataTable 파라미터 확인
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [buildDataTable] 파라미터 확인');
+    debugPrint('   → reportType: $reportType');
+    debugPrint('   → onRowDoubleTap: ${onRowDoubleTap != null}');
+    debugPrint('   → onRowTap: ${onRowTap != null}');
+    debugPrint('   → unit: $unit');
+    debugPrint('═══════════════════════════════════════════════════════');
     // 디버깅: 괄호/구문 오류 확인을 위한 로깅
     debugPrint('═══════════════════════════════════════════════════════');
     debugPrint('🔍 [구문 검사] buildDataTable 함수 시작');
     debugPrint('   → 파일: report_table_builder.dart');
     debugPrint('   → 라인: ${1788}');
     debugPrint('   → 함수명: buildDataTable');
-    debugPrint('   → 파라미터 개수: 10');
+    debugPrint('   → 파라미터 개수: 12');
     debugPrint('   → reportType: $reportType');
     debugPrint('   → displayedList.length: ${displayedList.length}');
     debugPrint('   → keys.length: ${keys.length}');
@@ -1906,20 +1955,72 @@ class ReportTableBuilder {
     debugPrint('   → unit: $unit');
     debugPrint('   → onRowDoubleTap: ${onRowDoubleTap != null}');
     debugPrint('   → onRowTap: ${onRowTap != null}');
+    debugPrint('   → sortColumn: $sortColumn');
+    debugPrint('   → sortAscending: $sortAscending');
     
     // 디버깅: 괄호 균형 확인
     _checkBracketBalance('buildDataTable', 1788);
     
-    // sortColumn과 sortAscending은 buildTableFromList에서 전달받아야 하는데,
-    // buildDataTable에서는 직접 접근할 수 없으므로 파라미터로 받아야 합니다.
-    // 하지만 현재 구조에서는 buildTableFromList에서만 사용되므로,
-    // buildDataTable 내부에서 null로 처리합니다.
-    String? sortColumn;
-    bool sortAscending = false;
-    
-    // 디버깅: sortColumn과 sortAscending 확인
-    debugPrint('   → sortColumn: $sortColumn');
-    debugPrint('   → sortAscending: $sortAscending');
+    // 정렬 적용: displayedList를 정렬
+    List<dynamic> sortedDisplayedList = List.from(displayedList);
+    if (sortColumn != null && keys.contains(sortColumn)) {
+      debugPrint('═══════════════════════════════════════════════════════');
+      debugPrint('🔍 [buildDataTable] 정렬 적용');
+      debugPrint('   → sortColumn: $sortColumn');
+      debugPrint('   → sortAscending: $sortAscending');
+      debugPrint('   → 정렬 전 displayedList.length: ${displayedList.length}');
+      
+      sortedDisplayedList.sort((a, b) {
+        if (a is! Map<String, dynamic> || b is! Map<String, dynamic>) {
+          return 0;
+        }
+        
+        dynamic aValue = a[sortColumn];
+        dynamic bValue = b[sortColumn];
+        
+        // null 처리
+        if (aValue == null && bValue == null) return 0;
+        if (aValue == null) return sortAscending ? -1 : 1;
+        if (bValue == null) return sortAscending ? 1 : -1;
+        
+        // 숫자 필드 감지: totalCantidad, tcant, timporte, tIngreso, tingreso, cntEvent, cntevent 등
+        final isNumericField = sortColumn.toLowerCase().contains('cantidad') ||
+                              sortColumn.toLowerCase().contains('cant') ||
+                              sortColumn.toLowerCase().contains('importe') ||
+                              sortColumn.toLowerCase().contains('ingreso') ||
+                              sortColumn.toLowerCase().contains('event') ||
+                              sortColumn.toLowerCase().contains('prendas') ||
+                              sortColumn.toLowerCase().contains('total') ||
+                              sortColumn.toLowerCase().startsWith('t') && 
+                                (sortColumn.toLowerCase().contains('cant') ||
+                                 sortColumn.toLowerCase().contains('importe') ||
+                                 sortColumn.toLowerCase().contains('ingreso'));
+        
+        // 숫자 처리 (숫자 타입이거나 숫자 필드인 경우)
+        if (aValue is num && bValue is num) {
+          final comparison = aValue.compareTo(bValue);
+          return sortAscending ? comparison : -comparison;
+        } else if (isNumericField) {
+          // 숫자 필드인 경우 문자열을 숫자로 파싱
+          final aNum = num.tryParse(aValue.toString().replaceAll(',', '').replaceAll('\$', '').trim()) ?? 0;
+          final bNum = num.tryParse(bValue.toString().replaceAll(',', '').replaceAll('\$', '').trim()) ?? 0;
+          final comparison = aNum.compareTo(bNum);
+          debugPrint('   → [숫자 정렬] $sortColumn: $aNum vs $bNum, comparison: $comparison');
+          return sortAscending ? comparison : -comparison;
+        }
+        
+        // 문자열 처리
+        final aStr = aValue.toString().toLowerCase();
+        final bStr = bValue.toString().toLowerCase();
+        final comparison = aStr.compareTo(bStr);
+        return sortAscending ? comparison : -comparison;
+      });
+      
+      debugPrint('   → 정렬 후 sortedDisplayedList.length: ${sortedDisplayedList.length}');
+      debugPrint('═══════════════════════════════════════════════════════');
+    } else {
+      debugPrint('   → 정렬 없음: sortColumn이 null이거나 keys에 없음');
+    }
     
     // alertas 보고서는 Table 위젯 사용
     if (reportType == ReportType.alertas) {
@@ -1929,23 +2030,60 @@ class ReportTableBuilder {
     }
     
     // ============================================================
-    // 📱 Ventas 테이블 헤더 디버깅 - 핸드폰에서 헤더가 안 보이는 문제 분석
+    // 🔍 Items 보고서 헤더 중복 및 정렬 기능 디버깅
     // ============================================================
-    // ventas 보고서는 headingRowHeight가 0으로 설정되어 있어서 DataTable의 기본 헤더가 숨겨짐
-    // 별도 헤더 행이 필요하지만 현재는 null로 설정되어 있음
+    final isItems = reportType == ReportType.items;
+    final isIngresos = reportType == ReportType.ingresos;
+    final isItemsOrIngresos = isItems || isIngresos;
+    
+    // items/ingresos 보고서는 별도 헤더를 사용하므로 DataTable의 기본 헤더를 숨겨야 함
+    // ventas 보고서는 buildTableFromList에서 별도 헤더를 생성하므로 항상 headingRowHeight를 0으로 설정
+    // (모든 unit에서 별도 헤더를 사용하므로)
     final isVentas = reportType == ReportType.ventas;
-    final headingRowHeight = isVentas ? 0.0 : 56.0;
+    // ventas 보고서는 항상 별도 헤더를 사용하므로 DataTable의 기본 헤더를 숨김
+    final headingRowHeight = isVentas || isItemsOrIngresos ? 0.0 : 56.0;
     
     debugPrint('═══════════════════════════════════════════════════════');
-    debugPrint('📱 [Ventas DataTable] buildDataTable 호출');
+    debugPrint('🔍 [Items/Ingresos/Ventas DataTable] buildDataTable 호출 - 헤더 중복 및 정렬 디버깅');
     debugPrint('   → reportType: $reportType');
+    debugPrint('   → isItems: $isItems');
+    debugPrint('   → isIngresos: $isIngresos');
+    debugPrint('   → isItemsOrIngresos: $isItemsOrIngresos');
     debugPrint('   → isVentas: $isVentas');
-    debugPrint('   → headingRowHeight: $headingRowHeight (ventas는 0으로 설정됨)');
+    debugPrint('   → unit: $unit');
+    debugPrint('   → headingRowHeight: $headingRowHeight');
+    if (isVentas) {
+      debugPrint('   → [Ventas $unit] headingRowHeight=0 (buildTableFromList에서 별도 헤더 사용)');
+    } else if (isItemsOrIngresos) {
+      debugPrint('   → [Items/Ingresos] headingRowHeight=0 (별도 헤더 사용)');
+    } else {
+      debugPrint('   → [기타 보고서] headingRowHeight=56 (기본 헤더 사용)');
+    }
     debugPrint('   → keys.length: ${keys.length}');
     debugPrint('   → columns.length: ${columns.length}');
     debugPrint('   → displayedList.length: ${displayedList.length}');
-    debugPrint('   ⚠️ [문제] ventas는 headingRowHeight가 0이므로 DataTable 헤더가 표시되지 않음');
-    debugPrint('   ⚠️ [문제] 별도 헤더 행(headerRow)도 null이므로 헤더가 전혀 표시되지 않음');
+    
+    // 각 칼럼의 정렬 기능 확인
+    debugPrint('   → [정렬 기능 확인] 각 칼럼의 onSort 상태:');
+    for (int i = 0; i < columns.length; i++) {
+      final column = columns[i];
+      final key = i < keys.length ? keys[i] : 'unknown';
+      final hasOnSort = column.onSort != null;
+      debugPrint('      칼럼 #$i ($key): onSort=${hasOnSort ? "있음" : "없음"}');
+      if (hasOnSort) {
+        debugPrint('         → 정렬 가능: ✅');
+      } else {
+        debugPrint('         → 정렬 불가: ❌');
+      }
+    }
+    
+    if (isItemsOrIngresos) {
+      debugPrint('   ⚠️ [Items/Ingresos] headingRowHeight가 0이므로 DataTable 기본 헤더가 숨겨짐');
+      debugPrint('   ⚠️ [Items/Ingresos] 별도 헤더 행(buildHeaderRow)이 생성되어야 함');
+      debugPrint('   ⚠️ [문제 확인] 헤더가 중복되면: buildHeaderRow와 DataTable 헤더가 동시에 표시됨');
+      debugPrint('   ⚠️ [문제 확인] 정렬이 안 되면: column.onSort가 null이거나 제대로 전달되지 않음');
+    }
+    
     debugPrint('═══════════════════════════════════════════════════════');
     
     return DataTable(
@@ -1959,9 +2097,23 @@ class ReportTableBuilder {
           : null,
       sortAscending: sortAscending,
       columns: columns,
-      rows: displayedList.map((item) {
+      rows: sortedDisplayedList.map((item) {
         // 디버깅: DataRow 생성 시작
         debugPrint('   → [buildDataTable] DataRow 생성 - item 타입: ${item.runtimeType}');
+        
+        // onRowDoubleTap 또는 onRowTap이 있으면 _buildDataRowFromMap 사용 (제스처 지원)
+        if ((onRowDoubleTap != null || onRowTap != null) && item is Map<String, dynamic>) {
+          debugPrint('   → [buildDataTable] 제스처 지원 - _buildDataRowFromMap 호출');
+          return _buildDataRowFromMap(
+            item: item,
+            keys: keys,
+            reportType: reportType,
+            onRowDoubleTap: onRowDoubleTap,
+            onRowTap: onRowTap,
+            unit: unit,
+            columnWidths: null,
+          );
+        }
         
         if (item is Map<String, dynamic>) {
           var cells = keys.map((key) {
@@ -2521,43 +2673,90 @@ class ReportTableBuilder {
       // 디버깅: 각 셀 처리 시작
       debugPrint('   → [제스처 추가] 셀 처리 시작 - cell.child 타입: ${cell.child.runtimeType}');
       
+      Widget? childWidget;
+      AlignmentGeometry? alignment;
+      
+      // Align 타입인 경우
       if (cell.child is Align) {
         final align = cell.child as Align;
-        // clientes 보고서는 항상 onTap 설정, ventas 보고서는 vcode 단위일 때만
-        final shouldAddOnTap = onRowTap != null && 
-            (reportType == ReportType.clientes || 
-             (reportType == ReportType.ventas && unit == 'vcode'));
-        
+        childWidget = align.child;
+        alignment = align.alignment;
         debugPrint('   → [제스처 추가] Align 타입 셀 처리');
-        debugPrint('      → shouldAddOnTap: $shouldAddOnTap');
-        debugPrint('      → onRowDoubleTap != null: ${onRowDoubleTap != null}');
-        
-        return DataCell(
-          GestureDetector(
-            onTap: shouldAddOnTap ? () {
-              debugPrint('🔍 [report_table_builder] _addGesturesToCells - 단일클릭 감지됨!');
-              debugPrint('→ reportType: $reportType');
-              debugPrint('→ unit: $unit');
-              onRowTap!(item);
-            } : null,
-            onDoubleTap: onRowDoubleTap != null ? () {
-              debugPrint('🔍 [report_table_builder] _addGesturesToCells - 더블클릭 감지됨!');
-              debugPrint('→ reportType: $reportType');
-              onRowDoubleTap!(item);
-            } : null,
-            behavior: HitTestBehavior.opaque,
-            child: Container(
-              width: double.infinity,
-              height: double.infinity,
-              alignment: align.alignment,
-              child: align.child,
-            ),
-          ),
-        );
+      }
+      // SizedBox로 감싸진 경우 (items/ingresos/alertas 보고서)
+      else if (cell.child is SizedBox) {
+        final sizedBox = cell.child as SizedBox;
+        if (sizedBox.child is Align) {
+          final align = sizedBox.child as Align;
+          childWidget = align.child;
+          alignment = align.alignment;
+          debugPrint('   → [제스처 추가] SizedBox > Align 타입 셀 처리');
+        } else {
+          childWidget = sizedBox.child;
+          alignment = Alignment.centerLeft; // 기본 정렬
+          debugPrint('   → [제스처 추가] SizedBox 타입 셀 처리 (Align 없음)');
+        }
+      }
+      // 기타 위젯 타입
+      else {
+        childWidget = cell.child;
+        alignment = Alignment.centerLeft; // 기본 정렬
+        debugPrint('   → [제스처 추가] 기타 타입 셀 처리: ${cell.child.runtimeType}');
       }
       
-      debugPrint('   → [제스처 추가] Align이 아닌 셀 - 그대로 반환');
-      return cell;
+      if (childWidget == null) {
+        debugPrint('   → [제스처 추가] childWidget이 null - 그대로 반환');
+        return cell;
+      }
+      
+      // clientes 보고서는 항상 onTap 설정
+      // ventas 보고서는 day/month/year 단위일 때 onTap 설정 (sucursal 필터링용)
+      final shouldAddOnTap = onRowTap != null && 
+          (reportType == ReportType.clientes || 
+           (reportType == ReportType.ventas && unit != null && unit != 'vcode'));
+      
+      // ventas 보고서는 모든 unit에서 더블 클릭 지원 (year, month, day, vcode)
+      final shouldAddOnDoubleTap = onRowDoubleTap != null && 
+          (reportType == ReportType.ventas || reportType == ReportType.clientes);
+      
+      debugPrint('   → [제스처 추가] 제스처 설정');
+      debugPrint('      → shouldAddOnTap: $shouldAddOnTap');
+      debugPrint('      → shouldAddOnDoubleTap: $shouldAddOnDoubleTap');
+      debugPrint('      → onRowDoubleTap != null: ${onRowDoubleTap != null}');
+      debugPrint('      → onRowTap != null: ${onRowTap != null}');
+      debugPrint('      → reportType: $reportType');
+      debugPrint('      → unit: $unit');
+      
+      return DataCell(
+        GestureDetector(
+          onTap: shouldAddOnTap ? () {
+            debugPrint('🔍 [report_table_builder] _addGesturesToCells - 단일클릭 감지됨!');
+            debugPrint('→ reportType: $reportType');
+            debugPrint('→ unit: $unit');
+            debugPrint('→ item: $item');
+            onRowTap!(item);
+          } : null,
+          onDoubleTap: shouldAddOnDoubleTap ? () {
+            debugPrint('═══════════════════════════════════════════════════════');
+            debugPrint('🔍 [report_table_builder] _addGesturesToCells - 더블클릭 감지됨!');
+            debugPrint('   → reportType: $reportType');
+            debugPrint('   → unit: $unit');
+            debugPrint('   → item keys: ${item.keys.toList()}');
+            debugPrint('   → item: $item');
+            debugPrint('   → onRowDoubleTap 콜백 호출 시작');
+            onRowDoubleTap!(item);
+            debugPrint('   → onRowDoubleTap 콜백 호출 완료');
+            debugPrint('═══════════════════════════════════════════════════════');
+          } : null,
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            width: double.infinity,
+            height: double.infinity,
+            alignment: alignment ?? Alignment.centerLeft,
+            child: childWidget,
+          ),
+        ),
+      );
     }).toList();
   }
 
@@ -3040,11 +3239,41 @@ class ReportTableBuilder {
   }) {
     // 디버깅: 함수 진입 확인 (가장 먼저 실행)
     debugPrint('═══════════════════════════════════════════════════════');
-    debugPrint('🔍 [_buildHeaderRow] 함수 진입');
+    debugPrint('🔍 [buildHeaderRow] 함수 진입 - 헤더 중복 및 정렬 디버깅');
     debugPrint('   → keys: $keys');
     debugPrint('   → keys.length: ${keys.length}');
     debugPrint('   → columns.length: ${columns.length}');
     debugPrint('   → columnWidths 전달됨: ${columnWidths != null}');
+    debugPrint('   → reportType: $reportType');
+    debugPrint('   → sortColumn: $sortColumn');
+    debugPrint('   → sortAscending: $sortAscending');
+    debugPrint('   → onSort != null: ${onSort != null}');
+    
+    // Items/Ingresos 보고서인지 확인
+    final isItems = reportType == ReportType.items;
+    final isIngresos = reportType == ReportType.ingresos;
+    final isItemsOrIngresos = isItems || isIngresos;
+    
+    if (isItemsOrIngresos) {
+      debugPrint('   → [Items/Ingresos 헤더] 별도 헤더 행 생성 중');
+      debugPrint('   → [중복 확인] DataTable의 headingRowHeight가 0이어야 함');
+      debugPrint('   → [정렬 확인] 각 칼럼의 onSort 콜백 상태:');
+      
+      for (int i = 0; i < columns.length; i++) {
+        final column = columns[i];
+        final key = i < keys.length ? keys[i] : 'unknown';
+        final hasOnSort = column.onSort != null;
+        final isSorted = sortColumn == key;
+        debugPrint('      칼럼 #$i ($key):');
+        debugPrint('         → onSort=${hasOnSort ? "있음 ✅" : "없음 ❌"}');
+        debugPrint('         → isSorted=$isSorted');
+        if (hasOnSort) {
+          debugPrint('         → 정렬 아이콘 표시: ${isSorted ? "예 ✅" : "아니오"}');
+        } else {
+          debugPrint('         → ⚠️ 정렬 불가: column.onSort가 null');
+        }
+      }
+    }
     
     // 컬럼별 고정 너비 설정 (DataTable과 일치)
     // 넓은 화면에서 모든 칼럼이 보이도록 크기 조정
@@ -3175,19 +3404,45 @@ class ReportTableBuilder {
                                    key == 'tIngreso' || key == 'tingreso' || key == 'cntEvent' || key == 'cntevent' ||
                                    key == 'sucursal');
           
+          // column.onSort가 있으면 사용하고, 없으면 onSort 파라미터를 사용 (fallback)
+          final effectiveOnSort = column.onSort ?? onSort;
+          final canSort = effectiveOnSort != null;
+          
           return [
             SizedBox(
               width: columnWidth,
               child: InkWell(
-                onTap: column.onSort != null
+                onTap: canSort
                     ? () {
-                        if (isSorted) {
-                          column.onSort!(index, !sortAscending);
+                        debugPrint('═══════════════════════════════════════════════════════');
+                        debugPrint('🔍 [buildHeaderRow] 헤더 칼럼 클릭 이벤트');
+                        debugPrint('   → 칼럼 #$index ($key)');
+                        debugPrint('   → column.onSort != null: ${column.onSort != null}');
+                        debugPrint('   → onSort 파라미터 != null: ${onSort != null}');
+                        debugPrint('   → effectiveOnSort != null: $canSort');
+                        debugPrint('   → 현재 isSorted: $isSorted');
+                        debugPrint('   → 현재 sortAscending: $sortAscending');
+                        
+                        if (canSort) {
+                          final newAscending = isSorted ? !sortAscending : false;
+                          debugPrint('   → 새 정렬 방향: $newAscending (${isSorted ? "토글" : "첫 클릭"})');
+                          debugPrint('   → effectiveOnSort($index, $newAscending) 호출');
+                          effectiveOnSort!(index, newAscending);
+                          debugPrint('   ✅ onSort 호출 완료');
                         } else {
-                          column.onSort!(index, false); // 첫 클릭 시 내림차순
+                          debugPrint('   ⚠️ effectiveOnSort가 null이므로 정렬 불가');
                         }
+                        debugPrint('═══════════════════════════════════════════════════════');
                       }
-                    : null,
+                    : () {
+                        debugPrint('═══════════════════════════════════════════════════════');
+                        debugPrint('⚠️ [buildHeaderRow] 헤더 칼럼 클릭 - 정렬 불가');
+                        debugPrint('   → 칼럼 #$index ($key)');
+                        debugPrint('   → column.onSort == null: ${column.onSort == null}');
+                        debugPrint('   → onSort 파라미터 == null: ${onSort == null}');
+                        debugPrint('   → effectiveOnSort == null: 정렬 기능 없음');
+                        debugPrint('═══════════════════════════════════════════════════════');
+                      },
                 child: Container(
                   // DataTable의 DataCell은 기본적으로 horizontal padding이 16이므로, 헤더도 동일하게 맞춤
                   // Container의 padding을 0으로 설정하고, 내부에 Padding 위젯을 사용하여 DataTable과 동일한 구조로 만듦
@@ -3213,7 +3468,7 @@ class ReportTableBuilder {
                               textAlign: isNumericHeader ? TextAlign.right : TextAlign.left,
                             ),
                           ),
-                          if (isSorted && column.onSort != null)
+                          if (isSorted && canSort)
                             Padding(
                               padding: const EdgeInsets.only(left: 4),
                               child: Icon(
@@ -3604,13 +3859,27 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
   @override
   Widget build(BuildContext context) {
     debugPrint('═══════════════════════════════════════════════════════');
-    debugPrint('🔍 [큰 화면 디버깅] _ItemsTableWithMeasuredColumns build 시작');
-    debugPrint('   → reportType: ${widget.reportType}');
-    debugPrint('   → displayedList.length: ${widget.displayedList.length}');
-    debugPrint('   → dataList.length: ${widget.dataList.length}');
-    debugPrint('   → keys.length: ${widget.keys.length}');
-    debugPrint('   → scrollController: ${widget.scrollController != null}');
-    debugPrint('   → horizontalScrollController: ${widget.horizontalScrollController != null}');
+        debugPrint('🔍 [큰 화면 디버깅] _ItemsTableWithMeasuredColumns build 시작');
+        debugPrint('   → reportType: ${widget.reportType}');
+        debugPrint('   → displayedList.length: ${widget.displayedList.length}');
+        debugPrint('   → dataList.length: ${widget.dataList.length}');
+        debugPrint('   → keys.length: ${widget.keys.length}');
+        debugPrint('   → scrollController: ${widget.scrollController != null}');
+        debugPrint('   → horizontalScrollController: ${widget.horizontalScrollController != null}');
+        debugPrint('   → sortColumn: ${widget.sortColumn}');
+        debugPrint('   → sortAscending: ${widget.sortAscending}');
+        debugPrint('   → onSort != null: ${widget.onSort != null}');
+        debugPrint('   → columns.length: ${widget.columns.length}');
+        
+        // 각 칼럼의 정렬 기능 확인
+        debugPrint('   → [정렬 기능 확인] 각 칼럼의 onSort 상태:');
+        for (int i = 0; i < widget.columns.length; i++) {
+          final column = widget.columns[i];
+          final key = i < widget.keys.length ? widget.keys[i] : 'unknown';
+          final hasOnSort = column.onSort != null;
+          final isSorted = widget.sortColumn == key;
+          debugPrint('      칼럼 #$i ($key): onSort=${hasOnSort ? "있음 ✅" : "없음 ❌"}, isSorted=$isSorted');
+        }
     
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -3637,6 +3906,15 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
         debugPrint('   → columnWidthsForHeader: $columnWidthsForHeader');
         
         // 헤더와 푸터는 측정된 칼럼 너비 사용 (ProductName은 항상 기본값)
+        debugPrint('═══════════════════════════════════════════════════════');
+        debugPrint('🔍 [_ItemsTableWithMeasuredColumns] buildHeaderRow 호출 전');
+        debugPrint('   → widget.keys: ${widget.keys}');
+        debugPrint('   → widget.columns.length: ${widget.columns.length}');
+        debugPrint('   → widget.sortColumn: ${widget.sortColumn}');
+        debugPrint('   → widget.sortAscending: ${widget.sortAscending}');
+        debugPrint('   → widget.onSort != null: ${widget.onSort != null}');
+        debugPrint('   → columnWidthsForHeader: $columnWidthsForHeader');
+        
         final headerRow = ReportTableBuilder.buildHeaderRow(
           widget.keys,
           widget.columns,
@@ -3647,6 +3925,12 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
           columnWidths: columnWidthsForHeader,
           reportType: widget.reportType,
         );
+        
+        debugPrint('🔍 [_ItemsTableWithMeasuredColumns] buildHeaderRow 호출 후');
+        debugPrint('   → headerRow != null: ${headerRow != null}');
+        debugPrint('   → ⚠️ [중복 확인] DataTable의 headingRowHeight가 0이어야 함');
+        debugPrint('   → ⚠️ [정렬 확인] headerRow의 각 칼럼이 column.onSort를 사용해야 함');
+        debugPrint('═══════════════════════════════════════════════════════');
 
         // constraints.maxWidth가 Infinity인 경우 ConstrainedBox를 사용하지 않음
         final hasValidWidth = constraints.maxWidth.isFinite && constraints.maxWidth > 0;
@@ -3712,7 +3996,18 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
             final dataTable = Builder(
               key: _dataTableKey,
               builder: (context) {
-                return ReportTableBuilder.buildDataTable(
+                debugPrint('═══════════════════════════════════════════════════════');
+                debugPrint('🔍 [_ItemsTableWithMeasuredColumns] buildDataTable 호출 전');
+                debugPrint('   → widget.reportType: ${widget.reportType}');
+                debugPrint('   → widget.columns.length: ${widget.columns.length}');
+                debugPrint('   → ⚠️ [중복 확인] buildDataTable 내부에서 headingRowHeight가 0인지 확인 필요');
+                debugPrint('   → ⚠️ [정렬 확인] buildDataTable에서 sortColumn/sortAscending이 null/false로 하드코딩되어 있는지 확인 필요');
+                debugPrint('🔍 [_ItemsTableWithMeasuredColumns] buildDataTable 호출 - 정렬 파라미터 전달');
+                debugPrint('   → widget.sortColumn: ${widget.sortColumn}');
+                debugPrint('   → widget.sortAscending: ${widget.sortAscending}');
+                debugPrint('   → ⚠️ [해결] sortColumn과 sortAscending을 buildDataTable에 전달');
+                
+                final table = ReportTableBuilder.buildDataTable(
                   reportType: widget.reportType,
                   displayedList: widget.displayedList,
                   keys: widget.keys,
@@ -3723,7 +4018,17 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
                   onRowTap: widget.onRowTap,
                   unit: widget.unit,
                   columnWidths: columnWidthsForHeader,
+                  sortColumn: widget.sortColumn,
+                  sortAscending: widget.sortAscending,
                 );
+                
+                debugPrint('🔍 [_ItemsTableWithMeasuredColumns] buildDataTable 호출 후');
+                debugPrint('   → dataTable != null: ${table != null}');
+                debugPrint('   → ⚠️ [중복 확인] DataTable의 headingRowHeight가 0이면 헤더가 표시되지 않음');
+                debugPrint('   → ⚠️ [중복 확인] headingRowHeight가 0이 아니면 별도 헤더와 중복될 수 있음');
+                debugPrint('═══════════════════════════════════════════════════════');
+                
+                return table;
               },
             );
             

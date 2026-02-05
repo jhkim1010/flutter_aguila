@@ -105,9 +105,17 @@ class IngresosBuilder {
         summaryByCompanyTable = _buildSummaryByCompanyTable(
           summaryByCompanyList,
           context,
-          onSort: onSort,
-          sortColumn: sortColumn,
-          sortAscending: sortAscending,
+          onSort: (companySortColumn, companySortAscending) {
+            debugPrint('═══════════════════════════════════════════════════════');
+            debugPrint('🔍 [Ingresos Builder] Company 테이블 onSort 콜백 호출');
+            debugPrint('   → companySortColumn: $companySortColumn');
+            debugPrint('   → companySortAscending: $companySortAscending');
+            debugPrint('   → ⚠️ [해결] Company 테이블만 정렬되도록 독립적인 정렬 상태 필요');
+            // Company 테이블은 자체 정렬 상태를 가지므로 onSort를 호출하지 않음
+            debugPrint('═══════════════════════════════════════════════════════');
+          },
+          sortColumn: null, // Company 테이블은 독립적인 정렬 상태를 가짐
+          sortAscending: true,
           reportColor: reportColor,
           selectedCompanyCode: selectedCompanyCode,
           onCompanySelected: onCompanySelected,
@@ -127,9 +135,17 @@ class IngresosBuilder {
         summaryByCategoryTable = _buildSummaryByCategoryTable(
           summaryByCategoryList,
           context,
-          onSort: onSort,
-          sortColumn: sortColumn,
-          sortAscending: sortAscending,
+          onSort: (categorySortColumn, categorySortAscending) {
+            debugPrint('═══════════════════════════════════════════════════════');
+            debugPrint('🔍 [Ingresos Builder] Category 테이블 onSort 콜백 호출');
+            debugPrint('   → categorySortColumn: $categorySortColumn');
+            debugPrint('   → categorySortAscending: $categorySortAscending');
+            debugPrint('   → ⚠️ [해결] Category 테이블만 정렬되도록 독립적인 정렬 상태 필요');
+            // Category 테이블은 자체 정렬 상태를 가지므로 onSort를 호출하지 않음
+            debugPrint('═══════════════════════════════════════════════════════');
+          },
+          sortColumn: null, // Category 테이블은 독립적인 정렬 상태를 가짐
+          sortAscending: true,
           reportColor: reportColor,
           selectedCategoryCode: selectedCategoryCode,
           onCategorySelected: onCategorySelected,
@@ -149,9 +165,17 @@ class IngresosBuilder {
         summaryByColorTable = _buildSummaryByColorTable(
           summaryByColorList,
           context,
-          onSort: onSort,
-          sortColumn: sortColumn,
-          sortAscending: sortAscending,
+          onSort: (colorSortColumn, colorSortAscending) {
+            debugPrint('═══════════════════════════════════════════════════════');
+            debugPrint('🔍 [Ingresos Builder] Color 테이블 onSort 콜백 호출');
+            debugPrint('   → colorSortColumn: $colorSortColumn');
+            debugPrint('   → colorSortAscending: $colorSortAscending');
+            debugPrint('   → ⚠️ [해결] Color 테이블만 정렬되도록 독립적인 정렬 상태 필요');
+            // Color 테이블은 자체 정렬 상태를 가지므로 onSort를 호출하지 않음
+            debugPrint('═══════════════════════════════════════════════════════');
+          },
+          sortColumn: null, // Color 테이블은 독립적인 정렬 상태를 가짐
+          sortAscending: true,
           reportColor: reportColor,
           selectedColorCode: selectedColorCode,
           onColorSelected: onColorSelected,
@@ -703,175 +727,13 @@ class IngresosBuilder {
 
     final color = reportColor ?? Colors.blue;
     
-    // 정렬 적용
-    List<dynamic> sortedList = List.from(summaryByCompanyList);
-    if (sortColumn != null && onSort != null) {
-      sortedList.sort((a, b) {
-        if (a is! Map<String, dynamic> || b is! Map<String, dynamic>) {
-          return 0;
-        }
-
-        dynamic aValue;
-        dynamic bValue;
-
-        if (sortColumn == 'CompanyCode') {
-          aValue = a['CompanyCode'];
-          bValue = b['CompanyCode'];
-        } else if (sortColumn == 'CompanyName') {
-          aValue = a['CompanyName']?.toString() ?? '';
-          bValue = b['CompanyName']?.toString() ?? '';
-        } else if (sortColumn == 'totalCantidad') {
-          aValue = num.tryParse(a['totalCantidad']?.toString().replaceAll(',', '') ?? '0') ?? 0;
-          bValue = num.tryParse(b['totalCantidad']?.toString().replaceAll(',', '') ?? '0') ?? 0;
-        } else {
-          return 0;
-        }
-
-        if (aValue == null && bValue == null) return 0;
-        if (aValue == null) return sortAscending ? -1 : 1;
-        if (bValue == null) return sortAscending ? 1 : -1;
-
-        if (aValue is num && bValue is num) {
-          final comparison = aValue.compareTo(bValue);
-          return sortAscending ? comparison : -comparison;
-        }
-
-        final aStr = aValue.toString().toLowerCase();
-        final bStr = bValue.toString().toLowerCase();
-        final comparison = aStr.compareTo(bStr);
-        return sortAscending ? comparison : -comparison;
-      });
-    }
-    
-    // 컬럼 정의
-    final columns = [
-      DataColumn(
-        label: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Código',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            if (sortColumn == 'CompanyCode' && onSort != null)
-              Icon(
-                sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                size: 16,
-                color: color,
-              ),
-          ],
-        ),
-        onSort: onSort != null ? (columnIndex, ascending) {
-          if (sortColumn == 'CompanyCode') {
-            onSort('CompanyCode', !sortAscending);
-          } else {
-            onSort('CompanyCode', true);
-          }
-        } : null,
-      ),
-      DataColumn(
-        label: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Empresa',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            if (sortColumn == 'CompanyName' && onSort != null)
-              Icon(
-                sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                size: 16,
-                color: color,
-              ),
-          ],
-        ),
-        onSort: onSort != null ? (columnIndex, ascending) {
-          if (sortColumn == 'CompanyName') {
-            onSort('CompanyName', !sortAscending);
-          } else {
-            onSort('CompanyName', true);
-          }
-        } : null,
-      ),
-      DataColumn(
-        label: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Total Cantidad',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            if (sortColumn == 'totalCantidad' && onSort != null)
-              Icon(
-                sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                size: 16,
-                color: color,
-              ),
-          ],
-        ),
-        numeric: true,
-        onSort: onSort != null ? (columnIndex, ascending) {
-          if (sortColumn == 'totalCantidad') {
-            onSort('totalCantidad', !sortAscending);
-          } else {
-            onSort('totalCantidad', true);
-          }
-        } : null,
-      ),
-    ];
-
-    // 데이터 행 생성
-    final rows = sortedList.map<DataRow>((item) {
-      if (item is! Map<String, dynamic>) {
-        return DataRow(cells: columns.map((_) => const DataCell(Text(''))).toList());
-      }
-      
-      final companyCode = item['CompanyCode']?.toString() ?? '';
-      final companyName = item['CompanyName']?.toString() ?? '';
-      final totalCantidad = item['totalCantidad']?.toString() ?? '0';
-      
-      final cantidadNum = num.tryParse(totalCantidad.toString().replaceAll(',', '')) ?? 0;
-      final formattedCantidad = NumberFormat('#,##0').format(cantidadNum);
-      
-      final isSelected = selectedCompanyCode != null && companyCode == selectedCompanyCode;
-
-      return DataRow(
-        selected: isSelected,
-        onSelectChanged: onCompanySelected != null ? (selected) {
-          if (selected != null && selected) {
-            // 선택된 경우: 해당 회사 코드로 필터링
-            onCompanySelected(companyCode);
-          } else {
-            // 선택 해제된 경우: 필터 제거
-            onCompanySelected(null);
-          }
-        } : null,
-        cells: [
-          DataCell(Text(companyCode)),
-          DataCell(Text(companyName)),
-          DataCell(
-            Text(
-              formattedCantidad,
-              textAlign: TextAlign.right,
-            ),
-          ),
-        ],
-      );
-    }).toList();
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.vertical,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          columnSpacing: 8,
-          dataRowMinHeight: 32,  // items 보고서와 동일하게 2/3로 조정 (48 * 2/3 = 32)
-          dataRowMaxHeight: 37,  // items 보고서와 동일하게 2/3로 조정 (56 * 2/3 ≈ 37)
-          headingRowColor: MaterialStateProperty.all(color.withOpacity(0.1)),
-          columns: columns,
-          rows: rows,
-        ),
-      ),
+    // Company 테이블은 독립적인 정렬 상태를 가지도록 StatefulWidget으로 래핑
+    debugPrint('   → ✅ Company 테이블을 StatefulWidget으로 래핑하여 독립적인 정렬 상태 제공');
+    return _IngresosCompanyTableWithIndependentSort(
+      summaryByCompanyList: summaryByCompanyList,
+      color: color,
+      selectedCompanyCode: selectedCompanyCode,
+      onCompanySelected: onCompanySelected,
     );
   }
 
@@ -892,175 +754,13 @@ class IngresosBuilder {
 
     final color = reportColor ?? Colors.green;
     
-    // 정렬 적용
-    List<dynamic> sortedList = List.from(summaryByCategoryList);
-    if (sortColumn != null && onSort != null) {
-      sortedList.sort((a, b) {
-        if (a is! Map<String, dynamic> || b is! Map<String, dynamic>) {
-          return 0;
-        }
-
-        dynamic aValue;
-        dynamic bValue;
-
-        if (sortColumn == 'CategoryCode') {
-          aValue = a['CategoryCode'];
-          bValue = b['CategoryCode'];
-        } else if (sortColumn == 'CategoryName') {
-          aValue = a['CategoryName']?.toString() ?? '';
-          bValue = b['CategoryName']?.toString() ?? '';
-        } else if (sortColumn == 'totalCantidad') {
-          aValue = num.tryParse(a['totalCantidad']?.toString().replaceAll(',', '') ?? '0') ?? 0;
-          bValue = num.tryParse(b['totalCantidad']?.toString().replaceAll(',', '') ?? '0') ?? 0;
-        } else {
-          return 0;
-        }
-
-        if (aValue == null && bValue == null) return 0;
-        if (aValue == null) return sortAscending ? -1 : 1;
-        if (bValue == null) return sortAscending ? 1 : -1;
-
-        if (aValue is num && bValue is num) {
-          final comparison = aValue.compareTo(bValue);
-          return sortAscending ? comparison : -comparison;
-        }
-
-        final aStr = aValue.toString().toLowerCase();
-        final bStr = bValue.toString().toLowerCase();
-        final comparison = aStr.compareTo(bStr);
-        return sortAscending ? comparison : -comparison;
-      });
-    }
-    
-    // 컬럼 정의
-    final columns = [
-      DataColumn(
-        label: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Código',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            if (sortColumn == 'CategoryCode' && onSort != null)
-              Icon(
-                sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                size: 16,
-                color: color,
-              ),
-          ],
-        ),
-        onSort: onSort != null ? (columnIndex, ascending) {
-          if (sortColumn == 'CategoryCode') {
-            onSort('CategoryCode', !sortAscending);
-          } else {
-            onSort('CategoryCode', true);
-          }
-        } : null,
-      ),
-      DataColumn(
-        label: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Categoría',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            if (sortColumn == 'CategoryName' && onSort != null)
-              Icon(
-                sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                size: 16,
-                color: color,
-              ),
-          ],
-        ),
-        onSort: onSort != null ? (columnIndex, ascending) {
-          if (sortColumn == 'CategoryName') {
-            onSort('CategoryName', !sortAscending);
-          } else {
-            onSort('CategoryName', true);
-          }
-        } : null,
-      ),
-      DataColumn(
-        label: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Total Cantidad',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            if (sortColumn == 'totalCantidad' && onSort != null)
-              Icon(
-                sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                size: 16,
-                color: color,
-              ),
-          ],
-        ),
-        numeric: true,
-        onSort: onSort != null ? (columnIndex, ascending) {
-          if (sortColumn == 'totalCantidad') {
-            onSort('totalCantidad', !sortAscending);
-          } else {
-            onSort('totalCantidad', true);
-          }
-        } : null,
-      ),
-    ];
-
-    // 데이터 행 생성
-    final rows = sortedList.map<DataRow>((item) {
-      if (item is! Map<String, dynamic>) {
-        return DataRow(cells: columns.map((_) => const DataCell(Text(''))).toList());
-      }
-      
-      final categoryCode = item['CategoryCode']?.toString() ?? '';
-      final categoryName = item['CategoryName']?.toString() ?? '';
-      final totalCantidad = item['totalCantidad']?.toString() ?? '0';
-      
-      final cantidadNum = num.tryParse(totalCantidad.toString().replaceAll(',', '')) ?? 0;
-      final formattedCantidad = NumberFormat('#,##0').format(cantidadNum);
-      
-      final isSelected = selectedCategoryCode != null && categoryCode == selectedCategoryCode;
-
-      return DataRow(
-        selected: isSelected,
-        onSelectChanged: onCategorySelected != null ? (selected) {
-          if (selected != null && selected) {
-            // 선택된 경우: 해당 카테고리 코드로 필터링
-            onCategorySelected(categoryCode);
-          } else {
-            // 선택 해제된 경우: 필터 제거
-            onCategorySelected(null);
-          }
-        } : null,
-        cells: [
-          DataCell(Text(categoryCode)),
-          DataCell(Text(categoryName)),
-          DataCell(
-            Text(
-              formattedCantidad,
-              textAlign: TextAlign.right,
-            ),
-          ),
-        ],
-      );
-    }).toList();
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.vertical,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          columnSpacing: 8,
-          dataRowMinHeight: 32,  // items 보고서와 동일하게 2/3로 조정 (48 * 2/3 = 32)
-          dataRowMaxHeight: 37,  // items 보고서와 동일하게 2/3로 조정 (56 * 2/3 ≈ 37)
-          headingRowColor: MaterialStateProperty.all(color.withOpacity(0.1)),
-          columns: columns,
-          rows: rows,
-        ),
-      ),
+    // Category 테이블은 독립적인 정렬 상태를 가지도록 StatefulWidget으로 래핑
+    debugPrint('   → ✅ Category 테이블을 StatefulWidget으로 래핑하여 독립적인 정렬 상태 제공');
+    return _IngresosCategoryTableWithIndependentSort(
+      summaryByCategoryList: summaryByCategoryList,
+      color: color,
+      selectedCategoryCode: selectedCategoryCode,
+      onCategorySelected: onCategorySelected,
     );
   }
 
@@ -1088,190 +788,13 @@ class IngresosBuilder {
 
     final color = reportColor ?? Colors.purple;
     
-    // 정렬 적용
-    List<dynamic> sortedList = List.from(summaryByColorList);
-    if (sortColumn != null && onSort != null) {
-      sortedList.sort((a, b) {
-        if (a is! Map<String, dynamic> || b is! Map<String, dynamic>) {
-          return 0;
-        }
-
-        dynamic aValue;
-        dynamic bValue;
-
-        if (sortColumn == 'ColorCode') {
-          aValue = a['ColorCode'];
-          bValue = b['ColorCode'];
-        } else if (sortColumn == 'ColorName') {
-          aValue = a['ColorName']?.toString() ?? '';
-          bValue = b['ColorName']?.toString() ?? '';
-        } else if (sortColumn == 'totalCantidad') {
-          aValue = num.tryParse(a['totalCantidad']?.toString().replaceAll(',', '') ?? '0') ?? 0;
-          bValue = num.tryParse(b['totalCantidad']?.toString().replaceAll(',', '') ?? '0') ?? 0;
-        } else {
-          return 0;
-        }
-
-        if (aValue == null && bValue == null) return 0;
-        if (aValue == null) return sortAscending ? -1 : 1;
-        if (bValue == null) return sortAscending ? 1 : -1;
-
-        if (aValue is num && bValue is num) {
-          final comparison = aValue.compareTo(bValue);
-          return sortAscending ? comparison : -comparison;
-        }
-
-        final aStr = aValue.toString().toLowerCase();
-        final bStr = bValue.toString().toLowerCase();
-        final comparison = aStr.compareTo(bStr);
-        return sortAscending ? comparison : -comparison;
-      });
-    }
-    
-    // 컬럼 정의
-    final columns = [
-      DataColumn(
-        label: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Código',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            if (sortColumn == 'ColorCode' && onSort != null)
-              Icon(
-                sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                size: 16,
-                color: color,
-              ),
-          ],
-        ),
-        onSort: onSort != null ? (columnIndex, ascending) {
-          if (sortColumn == 'ColorCode') {
-            onSort('ColorCode', !sortAscending);
-          } else {
-            onSort('ColorCode', true);
-          }
-        } : null,
-      ),
-      DataColumn(
-        label: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Color',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            if (sortColumn == 'ColorName' && onSort != null)
-              Icon(
-                sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                size: 16,
-                color: color,
-              ),
-          ],
-        ),
-        onSort: onSort != null ? (columnIndex, ascending) {
-          if (sortColumn == 'ColorName') {
-            onSort('ColorName', !sortAscending);
-          } else {
-            onSort('ColorName', true);
-          }
-        } : null,
-      ),
-      DataColumn(
-        label: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Total Cantidad',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            if (sortColumn == 'totalCantidad' && onSort != null)
-              Icon(
-                sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                size: 16,
-                color: color,
-              ),
-          ],
-        ),
-        numeric: true,
-        onSort: onSort != null ? (columnIndex, ascending) {
-          if (sortColumn == 'totalCantidad') {
-            onSort('totalCantidad', !sortAscending);
-          } else {
-            onSort('totalCantidad', true);
-          }
-        } : null,
-      ),
-    ];
-
-    // 데이터 행 생성
-    final rows = sortedList.map<DataRow>((item) {
-      if (item is! Map<String, dynamic>) {
-        return DataRow(cells: columns.map((_) => const DataCell(Text(''))).toList());
-      }
-      
-      final colorCode = item['ColorCode']?.toString() ?? '';
-      final colorName = item['ColorName']?.toString() ?? '';
-      final totalCantidad = item['totalCantidad']?.toString() ?? '0';
-      
-      final cantidadNum = num.tryParse(totalCantidad.toString().replaceAll(',', '')) ?? 0;
-      final formattedCantidad = NumberFormat('#,##0').format(cantidadNum);
-      
-      final isSelected = selectedColorCode != null && colorCode == selectedColorCode;
-      
-      debugPrint('   → 색상 행 생성: colorCode=$colorCode, colorName=$colorName, isSelected=$isSelected');
-
-      return DataRow(
-        selected: isSelected,
-        onSelectChanged: onColorSelected != null ? (selected) {
-          debugPrint('═══════════════════════════════════════════════════════');
-          debugPrint('🔍 [Ingresos Builder] Color 선택 콜백 호출');
-          debugPrint('   → colorCode: $colorCode');
-          debugPrint('   → colorName: $colorName');
-          debugPrint('   → selected: $selected');
-          debugPrint('   → onColorSelected != null: ${onColorSelected != null}');
-          
-          if (selected != null && selected) {
-            // 선택된 경우: 해당 색상 코드로 필터링
-            debugPrint('   → 색상 선택: $colorCode');
-            onColorSelected(colorCode);
-          } else {
-            // 선택 해제된 경우: 필터 제거
-            debugPrint('   → 색상 선택 해제');
-            onColorSelected(null);
-          }
-          debugPrint('═══════════════════════════════════════════════════════');
-        } : null,
-        cells: [
-          DataCell(Text(colorCode)),
-          DataCell(Text(colorName)),
-          DataCell(
-            Text(
-              formattedCantidad,
-              textAlign: TextAlign.right,
-            ),
-          ),
-        ],
-      );
-    }).toList();
-    
-    debugPrint('   → 생성된 rows 개수: ${rows.length}');
-    debugPrint('═══════════════════════════════════════════════════════');
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.vertical,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          columnSpacing: 8,
-          dataRowMinHeight: 32,
-          dataRowMaxHeight: 37,
-          headingRowColor: MaterialStateProperty.all(color.withOpacity(0.1)),
-          columns: columns,
-          rows: rows,
-        ),
-      ),
+    // Color 테이블은 독립적인 정렬 상태를 가지도록 StatefulWidget으로 래핑
+    debugPrint('   → ✅ Color 테이블을 StatefulWidget으로 래핑하여 독립적인 정렬 상태 제공');
+    return _IngresosColorTableWithIndependentSort(
+      summaryByColorList: summaryByColorList,
+      color: color,
+      selectedColorCode: selectedColorCode,
+      onColorSelected: onColorSelected,
     );
   }
 }
@@ -1418,6 +941,681 @@ class _ResizableSplitViewState extends State<_ResizableSplitView> {
           ],
         );
       },
+    );
+  }
+}
+
+/// Ingresos Company 테이블을 위한 독립적인 정렬 상태를 가진 StatefulWidget
+class _IngresosCompanyTableWithIndependentSort extends StatefulWidget {
+  final List summaryByCompanyList;
+  final Color color;
+  final String? selectedCompanyCode;
+  final Function(String?)? onCompanySelected;
+
+  const _IngresosCompanyTableWithIndependentSort({
+    required this.summaryByCompanyList,
+    required this.color,
+    this.selectedCompanyCode,
+    this.onCompanySelected,
+  });
+
+  @override
+  State<_IngresosCompanyTableWithIndependentSort> createState() => _IngresosCompanyTableWithIndependentSortState();
+}
+
+class _IngresosCompanyTableWithIndependentSortState extends State<_IngresosCompanyTableWithIndependentSort> {
+  String? _sortColumn;
+  bool _sortAscending = true;
+
+  @override
+  Widget build(BuildContext context) {
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [Ingresos Company Table StatefulWidget] build');
+    debugPrint('   → _sortColumn: $_sortColumn');
+    debugPrint('   → _sortAscending: $_sortAscending');
+    debugPrint('   → ⚠️ [해결] Company 테이블이 독립적인 정렬 상태를 가짐');
+    debugPrint('═══════════════════════════════════════════════════════');
+    
+    final color = widget.color;
+    
+    // 정렬 적용 (Company 테이블만의 독립적인 정렬)
+    List<dynamic> sortedList = List.from(widget.summaryByCompanyList);
+    if (_sortColumn != null) {
+      sortedList.sort((a, b) {
+        if (a is! Map<String, dynamic> || b is! Map<String, dynamic>) {
+          return 0;
+        }
+
+        dynamic aValue;
+        dynamic bValue;
+
+        if (_sortColumn == 'CompanyCode') {
+          aValue = a['CompanyCode'];
+          bValue = b['CompanyCode'];
+        } else if (_sortColumn == 'CompanyName') {
+          aValue = a['CompanyName']?.toString() ?? '';
+          bValue = b['CompanyName']?.toString() ?? '';
+        } else if (_sortColumn == 'totalCantidad') {
+          aValue = num.tryParse(a['totalCantidad']?.toString().replaceAll(',', '') ?? '0') ?? 0;
+          bValue = num.tryParse(b['totalCantidad']?.toString().replaceAll(',', '') ?? '0') ?? 0;
+        } else {
+          return 0;
+        }
+
+        if (aValue == null && bValue == null) return 0;
+        if (aValue == null) return _sortAscending ? -1 : 1;
+        if (bValue == null) return _sortAscending ? 1 : -1;
+
+        if (aValue is num && bValue is num) {
+          final comparison = aValue.compareTo(bValue);
+          return _sortAscending ? comparison : -comparison;
+        }
+
+        final aStr = aValue.toString().toLowerCase();
+        final bStr = bValue.toString().toLowerCase();
+        final comparison = aStr.compareTo(bStr);
+        return _sortAscending ? comparison : -comparison;
+      });
+    }
+    
+    // 컬럼 정의
+    final columns = [
+      DataColumn(
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Código',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            if (_sortColumn == 'CompanyCode')
+              Icon(
+                _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                size: 16,
+                color: color,
+              ),
+          ],
+        ),
+        onSort: (columnIndex, ascending) {
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [Ingresos Company Table StatefulWidget] CompanyCode 칼럼 클릭');
+          debugPrint('   → ✅ [해결] Company 테이블만 정렬됨 (독립적인 정렬 상태)');
+          setState(() {
+            if (_sortColumn == 'CompanyCode') {
+              _sortAscending = !_sortAscending;
+            } else {
+              _sortColumn = 'CompanyCode';
+              _sortAscending = true;
+            }
+          });
+          debugPrint('═══════════════════════════════════════════════════════');
+        },
+      ),
+      DataColumn(
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Empresa',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            if (_sortColumn == 'CompanyName')
+              Icon(
+                _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                size: 16,
+                color: color,
+              ),
+          ],
+        ),
+        onSort: (columnIndex, ascending) {
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [Ingresos Company Table StatefulWidget] CompanyName 칼럼 클릭');
+          debugPrint('   → ✅ [해결] Company 테이블만 정렬됨 (독립적인 정렬 상태)');
+          setState(() {
+            if (_sortColumn == 'CompanyName') {
+              _sortAscending = !_sortAscending;
+            } else {
+              _sortColumn = 'CompanyName';
+              _sortAscending = true;
+            }
+          });
+          debugPrint('═══════════════════════════════════════════════════════');
+        },
+      ),
+      DataColumn(
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Total Cantidad',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            if (_sortColumn == 'totalCantidad')
+              Icon(
+                _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                size: 16,
+                color: color,
+              ),
+          ],
+        ),
+        numeric: true,
+        onSort: (columnIndex, ascending) {
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [Ingresos Company Table StatefulWidget] totalCantidad 칼럼 클릭');
+          debugPrint('   → ✅ [해결] Company 테이블만 정렬됨 (독립적인 정렬 상태)');
+          setState(() {
+            if (_sortColumn == 'totalCantidad') {
+              _sortAscending = !_sortAscending;
+            } else {
+              _sortColumn = 'totalCantidad';
+              _sortAscending = true;
+            }
+          });
+          debugPrint('═══════════════════════════════════════════════════════');
+        },
+      ),
+    ];
+
+    // 데이터 행 생성
+    final rows = sortedList.map<DataRow>((item) {
+      if (item is! Map<String, dynamic>) {
+        return DataRow(cells: columns.map((_) => const DataCell(Text(''))).toList());
+      }
+      
+      final companyCode = item['CompanyCode']?.toString() ?? '';
+      final companyName = item['CompanyName']?.toString() ?? '';
+      final totalCantidad = item['totalCantidad']?.toString() ?? '0';
+      
+      final cantidadNum = num.tryParse(totalCantidad.toString().replaceAll(',', '')) ?? 0;
+      final formattedCantidad = NumberFormat('#,##0').format(cantidadNum);
+      
+      final isSelected = widget.selectedCompanyCode != null && companyCode == widget.selectedCompanyCode;
+
+      return DataRow(
+        selected: isSelected,
+        onSelectChanged: widget.onCompanySelected != null ? (selected) {
+          if (selected != null && selected) {
+            widget.onCompanySelected!(companyCode);
+          } else {
+            widget.onCompanySelected!(null);
+          }
+        } : null,
+        cells: [
+          DataCell(Text(companyCode)),
+          DataCell(Text(companyName)),
+          DataCell(
+            Text(
+              formattedCantidad,
+              textAlign: TextAlign.right,
+            ),
+          ),
+        ],
+      );
+    }).toList();
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.vertical,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: DataTable(
+          columnSpacing: 8,
+          dataRowMinHeight: 32,
+          dataRowMaxHeight: 37,
+          headingRowColor: MaterialStateProperty.all(color.withOpacity(0.1)),
+          columns: columns,
+          rows: rows,
+        ),
+      ),
+    );
+  }
+}
+
+/// Ingresos Category 테이블을 위한 독립적인 정렬 상태를 가진 StatefulWidget
+class _IngresosCategoryTableWithIndependentSort extends StatefulWidget {
+  final List summaryByCategoryList;
+  final Color color;
+  final String? selectedCategoryCode;
+  final Function(String?)? onCategorySelected;
+
+  const _IngresosCategoryTableWithIndependentSort({
+    required this.summaryByCategoryList,
+    required this.color,
+    this.selectedCategoryCode,
+    this.onCategorySelected,
+  });
+
+  @override
+  State<_IngresosCategoryTableWithIndependentSort> createState() => _IngresosCategoryTableWithIndependentSortState();
+}
+
+class _IngresosCategoryTableWithIndependentSortState extends State<_IngresosCategoryTableWithIndependentSort> {
+  String? _sortColumn;
+  bool _sortAscending = true;
+
+  @override
+  Widget build(BuildContext context) {
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [Ingresos Category Table StatefulWidget] build');
+    debugPrint('   → _sortColumn: $_sortColumn');
+    debugPrint('   → _sortAscending: $_sortAscending');
+    debugPrint('   → ⚠️ [해결] Category 테이블이 독립적인 정렬 상태를 가짐');
+    debugPrint('═══════════════════════════════════════════════════════');
+    
+    final color = widget.color;
+    
+    // 정렬 적용 (Category 테이블만의 독립적인 정렬)
+    List<dynamic> sortedList = List.from(widget.summaryByCategoryList);
+    if (_sortColumn != null) {
+      sortedList.sort((a, b) {
+        if (a is! Map<String, dynamic> || b is! Map<String, dynamic>) {
+          return 0;
+        }
+
+        dynamic aValue;
+        dynamic bValue;
+
+        if (_sortColumn == 'CategoryCode') {
+          aValue = a['CategoryCode'];
+          bValue = b['CategoryCode'];
+        } else if (_sortColumn == 'CategoryName') {
+          aValue = a['CategoryName']?.toString() ?? '';
+          bValue = b['CategoryName']?.toString() ?? '';
+        } else if (_sortColumn == 'totalCantidad') {
+          aValue = num.tryParse(a['totalCantidad']?.toString().replaceAll(',', '') ?? '0') ?? 0;
+          bValue = num.tryParse(b['totalCantidad']?.toString().replaceAll(',', '') ?? '0') ?? 0;
+        } else {
+          return 0;
+        }
+
+        if (aValue == null && bValue == null) return 0;
+        if (aValue == null) return _sortAscending ? -1 : 1;
+        if (bValue == null) return _sortAscending ? 1 : -1;
+
+        if (aValue is num && bValue is num) {
+          final comparison = aValue.compareTo(bValue);
+          return _sortAscending ? comparison : -comparison;
+        }
+
+        final aStr = aValue.toString().toLowerCase();
+        final bStr = bValue.toString().toLowerCase();
+        final comparison = aStr.compareTo(bStr);
+        return _sortAscending ? comparison : -comparison;
+      });
+    }
+    
+    // 컬럼 정의
+    final columns = [
+      DataColumn(
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Código',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            if (_sortColumn == 'CategoryCode')
+              Icon(
+                _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                size: 16,
+                color: color,
+              ),
+          ],
+        ),
+        onSort: (columnIndex, ascending) {
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [Ingresos Category Table StatefulWidget] CategoryCode 칼럼 클릭');
+          debugPrint('   → ✅ [해결] Category 테이블만 정렬됨 (독립적인 정렬 상태)');
+          setState(() {
+            if (_sortColumn == 'CategoryCode') {
+              _sortAscending = !_sortAscending;
+            } else {
+              _sortColumn = 'CategoryCode';
+              _sortAscending = true;
+            }
+          });
+          debugPrint('═══════════════════════════════════════════════════════');
+        },
+      ),
+      DataColumn(
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Categoría',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            if (_sortColumn == 'CategoryName')
+              Icon(
+                _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                size: 16,
+                color: color,
+              ),
+          ],
+        ),
+        onSort: (columnIndex, ascending) {
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [Ingresos Category Table StatefulWidget] CategoryName 칼럼 클릭');
+          debugPrint('   → ✅ [해결] Category 테이블만 정렬됨 (독립적인 정렬 상태)');
+          setState(() {
+            if (_sortColumn == 'CategoryName') {
+              _sortAscending = !_sortAscending;
+            } else {
+              _sortColumn = 'CategoryName';
+              _sortAscending = true;
+            }
+          });
+          debugPrint('═══════════════════════════════════════════════════════');
+        },
+      ),
+      DataColumn(
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Total Cantidad',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            if (_sortColumn == 'totalCantidad')
+              Icon(
+                _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                size: 16,
+                color: color,
+              ),
+          ],
+        ),
+        numeric: true,
+        onSort: (columnIndex, ascending) {
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [Ingresos Category Table StatefulWidget] totalCantidad 칼럼 클릭');
+          debugPrint('   → ✅ [해결] Category 테이블만 정렬됨 (독립적인 정렬 상태)');
+          setState(() {
+            if (_sortColumn == 'totalCantidad') {
+              _sortAscending = !_sortAscending;
+            } else {
+              _sortColumn = 'totalCantidad';
+              _sortAscending = true;
+            }
+          });
+          debugPrint('═══════════════════════════════════════════════════════');
+        },
+      ),
+    ];
+
+    // 데이터 행 생성
+    final rows = sortedList.map<DataRow>((item) {
+      if (item is! Map<String, dynamic>) {
+        return DataRow(cells: columns.map((_) => const DataCell(Text(''))).toList());
+      }
+      
+      final categoryCode = item['CategoryCode']?.toString() ?? '';
+      final categoryName = item['CategoryName']?.toString() ?? '';
+      final totalCantidad = item['totalCantidad']?.toString() ?? '0';
+      
+      final cantidadNum = num.tryParse(totalCantidad.toString().replaceAll(',', '')) ?? 0;
+      final formattedCantidad = NumberFormat('#,##0').format(cantidadNum);
+      
+      final isSelected = widget.selectedCategoryCode != null && categoryCode == widget.selectedCategoryCode;
+
+      return DataRow(
+        selected: isSelected,
+        onSelectChanged: widget.onCategorySelected != null ? (selected) {
+          if (selected != null && selected) {
+            widget.onCategorySelected!(categoryCode);
+          } else {
+            widget.onCategorySelected!(null);
+          }
+        } : null,
+        cells: [
+          DataCell(Text(categoryCode)),
+          DataCell(Text(categoryName)),
+          DataCell(
+            Text(
+              formattedCantidad,
+              textAlign: TextAlign.right,
+            ),
+          ),
+        ],
+      );
+    }).toList();
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.vertical,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: DataTable(
+          columnSpacing: 8,
+          dataRowMinHeight: 32,
+          dataRowMaxHeight: 37,
+          headingRowColor: MaterialStateProperty.all(color.withOpacity(0.1)),
+          columns: columns,
+          rows: rows,
+        ),
+      ),
+    );
+  }
+}
+
+/// Ingresos Color 테이블을 위한 독립적인 정렬 상태를 가진 StatefulWidget
+class _IngresosColorTableWithIndependentSort extends StatefulWidget {
+  final List summaryByColorList;
+  final Color color;
+  final String? selectedColorCode;
+  final Function(String?)? onColorSelected;
+
+  const _IngresosColorTableWithIndependentSort({
+    required this.summaryByColorList,
+    required this.color,
+    this.selectedColorCode,
+    this.onColorSelected,
+  });
+
+  @override
+  State<_IngresosColorTableWithIndependentSort> createState() => _IngresosColorTableWithIndependentSortState();
+}
+
+class _IngresosColorTableWithIndependentSortState extends State<_IngresosColorTableWithIndependentSort> {
+  String? _sortColumn;
+  bool _sortAscending = true;
+
+  @override
+  Widget build(BuildContext context) {
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [Ingresos Color Table StatefulWidget] build');
+    debugPrint('   → _sortColumn: $_sortColumn');
+    debugPrint('   → _sortAscending: $_sortAscending');
+    debugPrint('   → ⚠️ [해결] Color 테이블이 독립적인 정렬 상태를 가짐');
+    debugPrint('═══════════════════════════════════════════════════════');
+    
+    final color = widget.color;
+    
+    // 정렬 적용 (Color 테이블만의 독립적인 정렬)
+    List<dynamic> sortedList = List.from(widget.summaryByColorList);
+    if (_sortColumn != null) {
+      sortedList.sort((a, b) {
+        if (a is! Map<String, dynamic> || b is! Map<String, dynamic>) {
+          return 0;
+        }
+
+        dynamic aValue;
+        dynamic bValue;
+
+        if (_sortColumn == 'ColorCode') {
+          aValue = a['ColorCode'];
+          bValue = b['ColorCode'];
+        } else if (_sortColumn == 'ColorName') {
+          aValue = a['ColorName']?.toString() ?? '';
+          bValue = b['ColorName']?.toString() ?? '';
+        } else if (_sortColumn == 'totalCantidad') {
+          aValue = num.tryParse(a['totalCantidad']?.toString().replaceAll(',', '') ?? '0') ?? 0;
+          bValue = num.tryParse(b['totalCantidad']?.toString().replaceAll(',', '') ?? '0') ?? 0;
+        } else {
+          return 0;
+        }
+
+        if (aValue == null && bValue == null) return 0;
+        if (aValue == null) return _sortAscending ? -1 : 1;
+        if (bValue == null) return _sortAscending ? 1 : -1;
+
+        if (aValue is num && bValue is num) {
+          final comparison = aValue.compareTo(bValue);
+          return _sortAscending ? comparison : -comparison;
+        }
+
+        final aStr = aValue.toString().toLowerCase();
+        final bStr = bValue.toString().toLowerCase();
+        final comparison = aStr.compareTo(bStr);
+        return _sortAscending ? comparison : -comparison;
+      });
+    }
+    
+    // 컬럼 정의
+    final columns = [
+      DataColumn(
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Código',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            if (_sortColumn == 'ColorCode')
+              Icon(
+                _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                size: 16,
+                color: color,
+              ),
+          ],
+        ),
+        onSort: (columnIndex, ascending) {
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [Ingresos Color Table StatefulWidget] ColorCode 칼럼 클릭');
+          debugPrint('   → ✅ [해결] Color 테이블만 정렬됨 (독립적인 정렬 상태)');
+          setState(() {
+            if (_sortColumn == 'ColorCode') {
+              _sortAscending = !_sortAscending;
+            } else {
+              _sortColumn = 'ColorCode';
+              _sortAscending = true;
+            }
+          });
+          debugPrint('═══════════════════════════════════════════════════════');
+        },
+      ),
+      DataColumn(
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Color',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            if (_sortColumn == 'ColorName')
+              Icon(
+                _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                size: 16,
+                color: color,
+              ),
+          ],
+        ),
+        onSort: (columnIndex, ascending) {
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [Ingresos Color Table StatefulWidget] ColorName 칼럼 클릭');
+          debugPrint('   → ✅ [해결] Color 테이블만 정렬됨 (독립적인 정렬 상태)');
+          setState(() {
+            if (_sortColumn == 'ColorName') {
+              _sortAscending = !_sortAscending;
+            } else {
+              _sortColumn = 'ColorName';
+              _sortAscending = true;
+            }
+          });
+          debugPrint('═══════════════════════════════════════════════════════');
+        },
+      ),
+      DataColumn(
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Total Cantidad',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            if (_sortColumn == 'totalCantidad')
+              Icon(
+                _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                size: 16,
+                color: color,
+              ),
+          ],
+        ),
+        numeric: true,
+        onSort: (columnIndex, ascending) {
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [Ingresos Color Table StatefulWidget] totalCantidad 칼럼 클릭');
+          debugPrint('   → ✅ [해결] Color 테이블만 정렬됨 (독립적인 정렬 상태)');
+          setState(() {
+            if (_sortColumn == 'totalCantidad') {
+              _sortAscending = !_sortAscending;
+            } else {
+              _sortColumn = 'totalCantidad';
+              _sortAscending = true;
+            }
+          });
+          debugPrint('═══════════════════════════════════════════════════════');
+        },
+      ),
+    ];
+
+    // 데이터 행 생성
+    final rows = sortedList.map<DataRow>((item) {
+      if (item is! Map<String, dynamic>) {
+        return DataRow(cells: columns.map((_) => const DataCell(Text(''))).toList());
+      }
+      
+      final colorCode = item['ColorCode']?.toString() ?? '';
+      final colorName = item['ColorName']?.toString() ?? '';
+      final totalCantidad = item['totalCantidad']?.toString() ?? '0';
+      
+      final cantidadNum = num.tryParse(totalCantidad.toString().replaceAll(',', '')) ?? 0;
+      final formattedCantidad = NumberFormat('#,##0').format(cantidadNum);
+      
+      final isSelected = widget.selectedColorCode != null && colorCode == widget.selectedColorCode;
+
+      return DataRow(
+        selected: isSelected,
+        onSelectChanged: widget.onColorSelected != null ? (selected) {
+          if (selected != null && selected) {
+            widget.onColorSelected!(colorCode);
+          } else {
+            widget.onColorSelected!(null);
+          }
+        } : null,
+        cells: [
+          DataCell(Text(colorCode)),
+          DataCell(Text(colorName)),
+          DataCell(
+            Text(
+              formattedCantidad,
+              textAlign: TextAlign.right,
+            ),
+          ),
+        ],
+      );
+    }).toList();
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.vertical,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: DataTable(
+          columnSpacing: 8,
+          dataRowMinHeight: 32,
+          dataRowMaxHeight: 37,
+          headingRowColor: MaterialStateProperty.all(color.withOpacity(0.1)),
+          columns: columns,
+          rows: rows,
+        ),
+      ),
     );
   }
 }

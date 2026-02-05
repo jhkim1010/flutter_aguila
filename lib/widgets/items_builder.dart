@@ -147,9 +147,19 @@ class ItemsBuilder {
         summaryByCategoryTable = _buildSummaryByCategoryTable(
           summaryByCategoryList,
           context,
-          onSort: onSort,
-          sortColumn: sortColumn,
-          sortAscending: sortAscending,
+          onSort: (categorySortColumn, categorySortAscending) {
+            debugPrint('═══════════════════════════════════════════════════════');
+            debugPrint('🔍 [Items Builder] Category 테이블 onSort 콜백 호출');
+            debugPrint('   → categorySortColumn: $categorySortColumn');
+            debugPrint('   → categorySortAscending: $categorySortAscending');
+            debugPrint('   → ⚠️ [문제 확인] Category 테이블 정렬이 다른 테이블에 영향을 주는지 확인');
+            debugPrint('   → ⚠️ [해결] Category 테이블만 정렬되도록 독립적인 정렬 상태 필요');
+            // Category 테이블은 자체 정렬 상태를 가지므로 onSort를 호출하지 않음
+            // 대신 StatefulWidget으로 만들어서 자체 정렬 상태를 관리해야 함
+            debugPrint('═══════════════════════════════════════════════════════');
+          },
+          sortColumn: null, // Category 테이블은 독립적인 정렬 상태를 가짐
+          sortAscending: true,
           reportColor: reportColor,
           selectedCategoryCode: selectedCategoryCode,
           onCategorySelected: onCategorySelected,
@@ -183,9 +193,19 @@ class ItemsBuilder {
         summaryByColorTable = _buildSummaryByColorTable(
           summaryByColorList,
           context,
-          onSort: onSort,
-          sortColumn: sortColumn,
-          sortAscending: sortAscending,
+          onSort: (colorSortColumn, colorSortAscending) {
+            debugPrint('═══════════════════════════════════════════════════════');
+            debugPrint('🔍 [Items Builder] Color 테이블 onSort 콜백 호출');
+            debugPrint('   → colorSortColumn: $colorSortColumn');
+            debugPrint('   → colorSortAscending: $colorSortAscending');
+            debugPrint('   → ⚠️ [문제 확인] Color 테이블 정렬이 다른 테이블에 영향을 주는지 확인');
+            debugPrint('   → ⚠️ [해결] Color 테이블만 정렬되도록 독립적인 정렬 상태 필요');
+            // Color 테이블은 자체 정렬 상태를 가지므로 onSort를 호출하지 않음
+            // 대신 StatefulWidget으로 만들어서 자체 정렬 상태를 관리해야 함
+            debugPrint('═══════════════════════════════════════════════════════');
+          },
+          sortColumn: null, // Color 테이블은 독립적인 정렬 상태를 가짐
+          sortAscending: true,
           reportColor: reportColor,
           selectedColorCode: selectedColorCode,
           onColorSelected: onColorSelected,
@@ -278,6 +298,23 @@ class ItemsBuilder {
             if (productsList.isNotEmpty) {
               debugPrint('   ✅ productsList가 비어있지 않음 - 테이블 생성');
               
+              debugPrint('═══════════════════════════════════════════════════════');
+              debugPrint('🔍 [Items Builder] buildTableFromList 호출 전 - 헤더 중복 및 정렬 디버깅');
+              debugPrint('   → productsList.length: ${productsList.length}');
+              debugPrint('   → sortColumn: $sortColumn');
+              debugPrint('   → sortAscending: $sortAscending');
+              debugPrint('   → onSort != null: ${onSort != null}');
+              
+              // keys 확인
+              final allKeys = productsList.isNotEmpty 
+                  ? (productsList.first as Map<String, dynamic>).keys.toList()
+                  : <String>[];
+              debugPrint('   → allKeys: $allKeys');
+              debugPrint('   → allKeys.length: ${allKeys.length}');
+              debugPrint('   → ⚠️ [중복 확인] buildTableFromList 내부에서 별도 헤더가 생성되는지 확인');
+              debugPrint('   → ⚠️ [정렬 확인] onSort 콜백이 제대로 전달되는지 확인');
+              debugPrint('═══════════════════════════════════════════════════════');
+              
               productsTable = ReportTableBuilder.buildTableFromList(
                 productsList,
                 displayedItemsCount,
@@ -294,6 +331,8 @@ class ItemsBuilder {
                   debugPrint('   → columnIndex: $columnIndex');
                   debugPrint('   → ascending: $ascending');
                   debugPrint('   → productsList.length: ${productsList.length}');
+                  debugPrint('   → ⚠️ [문제 확인] productsTable 정렬이 다른 테이블에 영향을 주는지 확인');
+                  debugPrint('   → ⚠️ [해결] productsTable만 정렬되도록 확인 필요');
                   
                   final allKeys = productsList.isNotEmpty 
                       ? (productsList.first as Map<String, dynamic>).keys.toList()
@@ -306,6 +345,11 @@ class ItemsBuilder {
                     debugPrint('   → 선택된 정렬 키: $key');
                     debugPrint('   → 현재 sortColumn: $sortColumn');
                     debugPrint('   → 현재 sortAscending: $sortAscending');
+                    debugPrint('   → ⚠️ [문제 확인] 이 키($key)가 Category/Color 테이블의 키와 겹치는지 확인');
+                    debugPrint('   → ⚠️ [문제 확인] Category 테이블 키: CategoryCode, CategoryName, totalCantidad');
+                    debugPrint('   → ⚠️ [문제 확인] Color 테이블 키: ColorCode, ColorName, totalCantidad');
+                    debugPrint('   → ⚠️ [문제 확인] Products 테이블 키: $allKeys');
+                    debugPrint('   → ⚠️ [문제] totalCantidad가 겹치면 Category/Color 테이블도 정렬됨!');
                     debugPrint('   → onSort 호출: onSort($key, $ascending)');
                     onSort(key, ascending);
                     debugPrint('   ✅ onSort 호출 완료');
@@ -315,6 +359,13 @@ class ItemsBuilder {
                   debugPrint('═══════════════════════════════════════════════════════');
                 },
               );
+              
+              debugPrint('═══════════════════════════════════════════════════════');
+              debugPrint('🔍 [Items Builder] buildTableFromList 호출 후');
+              debugPrint('   → productsTable != null: ${productsTable != null}');
+              debugPrint('   → ⚠️ [중복 확인] 별도 헤더와 DataTable 헤더가 동시에 표시되는지 확인');
+              debugPrint('   → ⚠️ [정렬 확인] 헤더 칼럼 클릭 시 onSort 콜백이 호출되는지 확인');
+              debugPrint('═══════════════════════════════════════════════════════');
               
               debugPrint('   → productsTable: 생성됨 (타입: ${productsTable.runtimeType})');
             } else {
@@ -1121,7 +1172,7 @@ class ItemsBuilder {
     );
   }
 
-  /// 카테고리별 요약 테이블 빌드
+  /// 카테고리별 요약 테이블 빌드 (독립적인 정렬 상태를 가짐)
   static Widget _buildSummaryByCategoryTable(
     List summaryByCategoryList,
     BuildContext context, {
@@ -1132,185 +1183,32 @@ class ItemsBuilder {
     String? selectedCategoryCode,
     Function(String?)? onCategorySelected,
   }) {
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [Items Builder] _buildSummaryByCategoryTable 시작');
+    debugPrint('   → summaryByCategoryList.length: ${summaryByCategoryList.length}');
+    debugPrint('   → sortColumn: $sortColumn');
+    debugPrint('   → sortAscending: $sortAscending');
+    debugPrint('   → onSort != null: ${onSort != null}');
+    debugPrint('   → ⚠️ [문제 확인] Category 테이블이 독립적인 정렬 상태를 가지는지 확인');
+    debugPrint('═══════════════════════════════════════════════════════');
+    
     if (summaryByCategoryList.isEmpty) {
       return const SizedBox.shrink();
     }
 
     final color = reportColor ?? Colors.green;
     
-    // 정렬 적용
-    List<dynamic> sortedList = List.from(summaryByCategoryList);
-    if (sortColumn != null && onSort != null) {
-      sortedList.sort((a, b) {
-        if (a is! Map<String, dynamic> || b is! Map<String, dynamic>) {
-          return 0;
-        }
-
-        dynamic aValue;
-        dynamic bValue;
-
-        if (sortColumn == 'CategoryCode') {
-          aValue = a['CategoryCode'];
-          bValue = b['CategoryCode'];
-        } else if (sortColumn == 'CategoryName') {
-          aValue = a['CategoryName']?.toString() ?? '';
-          bValue = b['CategoryName']?.toString() ?? '';
-        } else if (sortColumn == 'totalCantidad') {
-          aValue = num.tryParse(a['totalCantidad']?.toString().replaceAll(',', '') ?? '0') ?? 0;
-          bValue = num.tryParse(b['totalCantidad']?.toString().replaceAll(',', '') ?? '0') ?? 0;
-        } else {
-          return 0;
-        }
-
-        if (aValue == null && bValue == null) return 0;
-        if (aValue == null) return sortAscending ? -1 : 1;
-        if (bValue == null) return sortAscending ? 1 : -1;
-
-        if (aValue is num && bValue is num) {
-          final comparison = aValue.compareTo(bValue);
-          return sortAscending ? comparison : -comparison;
-        }
-
-        final aStr = aValue.toString().toLowerCase();
-        final bStr = bValue.toString().toLowerCase();
-        final comparison = aStr.compareTo(bStr);
-        return sortAscending ? comparison : -comparison;
-      });
-    }
-    
-    // 컬럼 정의
-    final columns = [
-      DataColumn(
-        label: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Código',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            if (sortColumn == 'CategoryCode' && onSort != null)
-              Icon(
-                sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                size: 16,
-                color: color,
-              ),
-          ],
-        ),
-        onSort: onSort != null ? (columnIndex, ascending) {
-          if (sortColumn == 'CategoryCode') {
-            onSort('CategoryCode', !sortAscending);
-          } else {
-            onSort('CategoryCode', true);
-          }
-        } : null,
-      ),
-      DataColumn(
-        label: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Categoría',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            if (sortColumn == 'CategoryName' && onSort != null)
-              Icon(
-                sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                size: 16,
-                color: color,
-              ),
-          ],
-        ),
-        onSort: onSort != null ? (columnIndex, ascending) {
-          if (sortColumn == 'CategoryName') {
-            onSort('CategoryName', !sortAscending);
-          } else {
-            onSort('CategoryName', true);
-          }
-        } : null,
-      ),
-      DataColumn(
-        label: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Total Cantidad',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            if (sortColumn == 'totalCantidad' && onSort != null)
-              Icon(
-                sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                size: 16,
-                color: color,
-              ),
-          ],
-        ),
-        numeric: true,
-        onSort: onSort != null ? (columnIndex, ascending) {
-          if (sortColumn == 'totalCantidad') {
-            onSort('totalCantidad', !sortAscending);
-          } else {
-            onSort('totalCantidad', true);
-          }
-        } : null,
-      ),
-    ];
-
-    // 데이터 행 생성
-    final rows = sortedList.map<DataRow>((item) {
-      if (item is! Map<String, dynamic>) {
-        return DataRow(cells: columns.map((_) => const DataCell(Text(''))).toList());
-      }
-      
-      final categoryCode = item['CategoryCode']?.toString() ?? '';
-      final categoryName = item['CategoryName']?.toString() ?? '';
-      final totalCantidad = item['totalCantidad']?.toString() ?? '0';
-      
-      final cantidadNum = num.tryParse(totalCantidad.toString().replaceAll(',', '')) ?? 0;
-      final formattedCantidad = NumberFormat('#,##0').format(cantidadNum);
-      
-      final isSelected = selectedCategoryCode != null && categoryCode == selectedCategoryCode;
-
-      return DataRow(
-        selected: isSelected,
-        onSelectChanged: onCategorySelected != null ? (selected) {
-          if (selected != null && selected) {
-            // 선택된 경우: 해당 카테고리 코드로 필터링
-            onCategorySelected(categoryCode);
-          } else {
-            // 선택 해제된 경우: 필터 제거
-            onCategorySelected(null);
-          }
-        } : null,
-        cells: [
-          DataCell(Text(categoryCode)),
-          DataCell(Text(categoryName)),
-          DataCell(
-            Text(
-              formattedCantidad,
-              textAlign: TextAlign.right,
-            ),
-          ),
-        ],
-      );
-    }).toList();
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.vertical,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          columnSpacing: 8,
-          dataRowMinHeight: 32,  // 오른쪽 테이블과 동일하게 2/3로 조정 (48 * 2/3 = 32)
-          dataRowMaxHeight: 37,  // 오른쪽 테이블과 동일하게 2/3로 조정 (56 * 2/3 ≈ 37)
-          headingRowColor: MaterialStateProperty.all(color.withOpacity(0.1)),
-          columns: columns,
-          rows: rows,
-        ),
-      ),
+    // Category 테이블은 독립적인 정렬 상태를 가지도록 StatefulWidget으로 래핑
+    debugPrint('   → ✅ Category 테이블을 StatefulWidget으로 래핑하여 독립적인 정렬 상태 제공');
+    return _CategoryTableWithIndependentSort(
+      summaryByCategoryList: summaryByCategoryList,
+      color: color,
+      selectedCategoryCode: selectedCategoryCode,
+      onCategorySelected: onCategorySelected,
     );
   }
 
-  /// 색상별 요약 테이블 빌드
+  /// 색상별 요약 테이블 빌드 (독립적인 정렬 상태를 가짐)
   static Widget _buildSummaryByColorTable(
     List summaryByColorList,
     BuildContext context, {
@@ -1370,9 +1268,53 @@ class ItemsBuilder {
 
     final color = reportColor ?? Colors.purple;
     
-    // 정렬 적용
-    List<dynamic> sortedList = List.from(summaryByColorList);
-    if (sortColumn != null && onSort != null) {
+    // Color 테이블은 독립적인 정렬 상태를 가지도록 StatefulWidget으로 래핑
+    debugPrint('   → ✅ Color 테이블을 StatefulWidget으로 래핑하여 독립적인 정렬 상태 제공');
+    return _ColorTableWithIndependentSort(
+      summaryByColorList: summaryByColorList,
+      color: color,
+      selectedColorCode: selectedColorCode,
+      onColorSelected: onColorSelected,
+    );
+  }
+}
+
+/// Category 테이블을 위한 독립적인 정렬 상태를 가진 StatefulWidget
+class _CategoryTableWithIndependentSort extends StatefulWidget {
+  final List summaryByCategoryList;
+  final Color color;
+  final String? selectedCategoryCode;
+  final Function(String?)? onCategorySelected;
+
+  const _CategoryTableWithIndependentSort({
+    required this.summaryByCategoryList,
+    required this.color,
+    this.selectedCategoryCode,
+    this.onCategorySelected,
+  });
+
+  @override
+  State<_CategoryTableWithIndependentSort> createState() => _CategoryTableWithIndependentSortState();
+}
+
+class _CategoryTableWithIndependentSortState extends State<_CategoryTableWithIndependentSort> {
+  String? _sortColumn;
+  bool _sortAscending = true;
+
+  @override
+  Widget build(BuildContext context) {
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [Category Table StatefulWidget] build');
+    debugPrint('   → _sortColumn: $_sortColumn');
+    debugPrint('   → _sortAscending: $_sortAscending');
+    debugPrint('   → ⚠️ [해결] Category 테이블이 독립적인 정렬 상태를 가짐');
+    debugPrint('═══════════════════════════════════════════════════════');
+    
+    final color = widget.color;
+    
+    // 정렬 적용 (Category 테이블만의 독립적인 정렬)
+    List<dynamic> sortedList = List.from(widget.summaryByCategoryList);
+    if (_sortColumn != null) {
       sortedList.sort((a, b) {
         if (a is! Map<String, dynamic> || b is! Map<String, dynamic>) {
           return 0;
@@ -1381,13 +1323,13 @@ class ItemsBuilder {
         dynamic aValue;
         dynamic bValue;
 
-        if (sortColumn == 'ColorCode') {
-          aValue = a['ColorCode'];
-          bValue = b['ColorCode'];
-        } else if (sortColumn == 'ColorName') {
-          aValue = a['ColorName']?.toString() ?? '';
-          bValue = b['ColorName']?.toString() ?? '';
-        } else if (sortColumn == 'totalCantidad') {
+        if (_sortColumn == 'CategoryCode') {
+          aValue = a['CategoryCode'];
+          bValue = b['CategoryCode'];
+        } else if (_sortColumn == 'CategoryName') {
+          aValue = a['CategoryName']?.toString() ?? '';
+          bValue = b['CategoryName']?.toString() ?? '';
+        } else if (_sortColumn == 'totalCantidad') {
           aValue = num.tryParse(a['totalCantidad']?.toString().replaceAll(',', '') ?? '0') ?? 0;
           bValue = num.tryParse(b['totalCantidad']?.toString().replaceAll(',', '') ?? '0') ?? 0;
         } else {
@@ -1395,18 +1337,18 @@ class ItemsBuilder {
         }
 
         if (aValue == null && bValue == null) return 0;
-        if (aValue == null) return sortAscending ? -1 : 1;
-        if (bValue == null) return sortAscending ? 1 : -1;
+        if (aValue == null) return _sortAscending ? -1 : 1;
+        if (bValue == null) return _sortAscending ? 1 : -1;
 
         if (aValue is num && bValue is num) {
           final comparison = aValue.compareTo(bValue);
-          return sortAscending ? comparison : -comparison;
+          return _sortAscending ? comparison : -comparison;
         }
 
         final aStr = aValue.toString().toLowerCase();
         final bStr = bValue.toString().toLowerCase();
         final comparison = aStr.compareTo(bStr);
-        return sortAscending ? comparison : -comparison;
+        return _sortAscending ? comparison : -comparison;
       });
     }
     
@@ -1420,45 +1362,71 @@ class ItemsBuilder {
               'Código',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
-            if (sortColumn == 'ColorCode' && onSort != null)
+            if (_sortColumn == 'CategoryCode')
               Icon(
-                sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
                 size: 16,
                 color: color,
               ),
           ],
         ),
-        onSort: onSort != null ? (columnIndex, ascending) {
-          if (sortColumn == 'ColorCode') {
-            onSort('ColorCode', !sortAscending);
-          } else {
-            onSort('ColorCode', true);
-          }
-        } : null,
+        onSort: (columnIndex, ascending) {
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [Category Table StatefulWidget] CategoryCode 칼럼 클릭');
+          debugPrint('   → columnIndex: $columnIndex');
+          debugPrint('   → ascending: $ascending');
+          debugPrint('   → 현재 _sortColumn: $_sortColumn');
+          debugPrint('   → 현재 _sortAscending: $_sortAscending');
+          debugPrint('   → ✅ [해결] Category 테이블만 정렬됨 (독립적인 정렬 상태)');
+          setState(() {
+            if (_sortColumn == 'CategoryCode') {
+              _sortAscending = !_sortAscending;
+            } else {
+              _sortColumn = 'CategoryCode';
+              _sortAscending = true;
+            }
+          });
+          debugPrint('   → 새 _sortColumn: $_sortColumn');
+          debugPrint('   → 새 _sortAscending: $_sortAscending');
+          debugPrint('═══════════════════════════════════════════════════════');
+        },
       ),
       DataColumn(
         label: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              'Color',
+              'Categoría',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
-            if (sortColumn == 'ColorName' && onSort != null)
+            if (_sortColumn == 'CategoryName')
               Icon(
-                sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
                 size: 16,
                 color: color,
               ),
           ],
         ),
-        onSort: onSort != null ? (columnIndex, ascending) {
-          if (sortColumn == 'ColorName') {
-            onSort('ColorName', !sortAscending);
-          } else {
-            onSort('ColorName', true);
-          }
-        } : null,
+        onSort: (columnIndex, ascending) {
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [Category Table StatefulWidget] CategoryName 칼럼 클릭');
+          debugPrint('   → columnIndex: $columnIndex');
+          debugPrint('   → ascending: $ascending');
+          debugPrint('   → 현재 _sortColumn: $_sortColumn');
+          debugPrint('   → 현재 _sortAscending: $_sortAscending');
+          debugPrint('   → ✅ [해결] Category 테이블만 정렬됨 (독립적인 정렬 상태)');
+          setState(() {
+            if (_sortColumn == 'CategoryName') {
+              _sortAscending = !_sortAscending;
+            } else {
+              _sortColumn = 'CategoryName';
+              _sortAscending = true;
+            }
+          });
+          debugPrint('   → 새 _sortColumn: $_sortColumn');
+          debugPrint('   → 새 _sortAscending: $_sortAscending');
+          debugPrint('═══════════════════════════════════════════════════════');
+        },
       ),
       DataColumn(
         label: Row(
@@ -1468,22 +1436,280 @@ class ItemsBuilder {
               'Total Cantidad',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
-            if (sortColumn == 'totalCantidad' && onSort != null)
+            if (_sortColumn == 'totalCantidad')
               Icon(
-                sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
                 size: 16,
                 color: color,
               ),
           ],
         ),
         numeric: true,
-        onSort: onSort != null ? (columnIndex, ascending) {
-          if (sortColumn == 'totalCantidad') {
-            onSort('totalCantidad', !sortAscending);
+        onSort: (columnIndex, ascending) {
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [Category Table StatefulWidget] totalCantidad 칼럼 클릭');
+          debugPrint('   → columnIndex: $columnIndex');
+          debugPrint('   → ascending: $ascending');
+          debugPrint('   → 현재 _sortColumn: $_sortColumn');
+          debugPrint('   → 현재 _sortAscending: $_sortAscending');
+          debugPrint('   → ✅ [해결] Category 테이블만 정렬됨 (독립적인 정렬 상태)');
+          debugPrint('   → ⚠️ [주의] totalCantidad는 Products 테이블과 같은 키지만 독립적으로 정렬됨');
+          setState(() {
+            if (_sortColumn == 'totalCantidad') {
+              _sortAscending = !_sortAscending;
+            } else {
+              _sortColumn = 'totalCantidad';
+              _sortAscending = true;
+            }
+          });
+          debugPrint('   → 새 _sortColumn: $_sortColumn');
+          debugPrint('   → 새 _sortAscending: $_sortAscending');
+          debugPrint('═══════════════════════════════════════════════════════');
+        },
+      ),
+    ];
+
+    // 데이터 행 생성
+    final rows = sortedList.map<DataRow>((item) {
+      if (item is! Map<String, dynamic>) {
+        return DataRow(cells: columns.map((_) => const DataCell(Text(''))).toList());
+      }
+      
+      final categoryCode = item['CategoryCode']?.toString() ?? '';
+      final categoryName = item['CategoryName']?.toString() ?? '';
+      final totalCantidad = item['totalCantidad']?.toString() ?? '0';
+      
+      final cantidadNum = num.tryParse(totalCantidad.toString().replaceAll(',', '')) ?? 0;
+      final formattedCantidad = NumberFormat('#,##0').format(cantidadNum);
+      
+      final isSelected = widget.selectedCategoryCode != null && categoryCode == widget.selectedCategoryCode;
+
+      return DataRow(
+        selected: isSelected,
+        onSelectChanged: widget.onCategorySelected != null ? (selected) {
+          if (selected != null && selected) {
+            widget.onCategorySelected!(categoryCode);
           } else {
-            onSort('totalCantidad', true);
+            widget.onCategorySelected!(null);
           }
         } : null,
+        cells: [
+          DataCell(Text(categoryCode)),
+          DataCell(Text(categoryName)),
+          DataCell(
+            Text(
+              formattedCantidad,
+              textAlign: TextAlign.right,
+            ),
+          ),
+        ],
+      );
+    }).toList();
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.vertical,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: DataTable(
+          columnSpacing: 8,
+          dataRowMinHeight: 32,
+          dataRowMaxHeight: 37,
+          headingRowColor: MaterialStateProperty.all(color.withOpacity(0.1)),
+          columns: columns,
+          rows: rows,
+        ),
+      ),
+    );
+  }
+}
+
+/// Color 테이블을 위한 독립적인 정렬 상태를 가진 StatefulWidget
+class _ColorTableWithIndependentSort extends StatefulWidget {
+  final List summaryByColorList;
+  final Color color;
+  final String? selectedColorCode;
+  final Function(String?)? onColorSelected;
+
+  const _ColorTableWithIndependentSort({
+    required this.summaryByColorList,
+    required this.color,
+    this.selectedColorCode,
+    this.onColorSelected,
+  });
+
+  @override
+  State<_ColorTableWithIndependentSort> createState() => _ColorTableWithIndependentSortState();
+}
+
+class _ColorTableWithIndependentSortState extends State<_ColorTableWithIndependentSort> {
+  String? _sortColumn;
+  bool _sortAscending = true;
+
+  @override
+  Widget build(BuildContext context) {
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [Color Table StatefulWidget] build');
+    debugPrint('   → _sortColumn: $_sortColumn');
+    debugPrint('   → _sortAscending: $_sortAscending');
+    debugPrint('   → ⚠️ [해결] Color 테이블이 독립적인 정렬 상태를 가짐');
+    debugPrint('═══════════════════════════════════════════════════════');
+    
+    final color = widget.color;
+    
+    // 정렬 적용 (Color 테이블만의 독립적인 정렬)
+    List<dynamic> sortedList = List.from(widget.summaryByColorList);
+    if (_sortColumn != null) {
+      sortedList.sort((a, b) {
+        if (a is! Map<String, dynamic> || b is! Map<String, dynamic>) {
+          return 0;
+        }
+
+        dynamic aValue;
+        dynamic bValue;
+
+        if (_sortColumn == 'ColorCode') {
+          aValue = a['ColorCode'];
+          bValue = b['ColorCode'];
+        } else if (_sortColumn == 'ColorName') {
+          aValue = a['ColorName']?.toString() ?? '';
+          bValue = b['ColorName']?.toString() ?? '';
+        } else if (_sortColumn == 'totalCantidad') {
+          aValue = num.tryParse(a['totalCantidad']?.toString().replaceAll(',', '') ?? '0') ?? 0;
+          bValue = num.tryParse(b['totalCantidad']?.toString().replaceAll(',', '') ?? '0') ?? 0;
+        } else {
+          return 0;
+        }
+
+        if (aValue == null && bValue == null) return 0;
+        if (aValue == null) return _sortAscending ? -1 : 1;
+        if (bValue == null) return _sortAscending ? 1 : -1;
+
+        if (aValue is num && bValue is num) {
+          final comparison = aValue.compareTo(bValue);
+          return _sortAscending ? comparison : -comparison;
+        }
+
+        final aStr = aValue.toString().toLowerCase();
+        final bStr = bValue.toString().toLowerCase();
+        final comparison = aStr.compareTo(bStr);
+        return _sortAscending ? comparison : -comparison;
+      });
+    }
+    
+    // 컬럼 정의
+    final columns = [
+      DataColumn(
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Código',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            if (_sortColumn == 'ColorCode')
+              Icon(
+                _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                size: 16,
+                color: color,
+              ),
+          ],
+        ),
+        onSort: (columnIndex, ascending) {
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [Color Table StatefulWidget] ColorCode 칼럼 클릭');
+          debugPrint('   → columnIndex: $columnIndex');
+          debugPrint('   → ascending: $ascending');
+          debugPrint('   → 현재 _sortColumn: $_sortColumn');
+          debugPrint('   → 현재 _sortAscending: $_sortAscending');
+          debugPrint('   → ✅ [해결] Color 테이블만 정렬됨 (독립적인 정렬 상태)');
+          setState(() {
+            if (_sortColumn == 'ColorCode') {
+              _sortAscending = !_sortAscending;
+            } else {
+              _sortColumn = 'ColorCode';
+              _sortAscending = true;
+            }
+          });
+          debugPrint('   → 새 _sortColumn: $_sortColumn');
+          debugPrint('   → 새 _sortAscending: $_sortAscending');
+          debugPrint('═══════════════════════════════════════════════════════');
+        },
+      ),
+      DataColumn(
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Color',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            if (_sortColumn == 'ColorName')
+              Icon(
+                _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                size: 16,
+                color: color,
+              ),
+          ],
+        ),
+        onSort: (columnIndex, ascending) {
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [Color Table StatefulWidget] ColorName 칼럼 클릭');
+          debugPrint('   → columnIndex: $columnIndex');
+          debugPrint('   → ascending: $ascending');
+          debugPrint('   → 현재 _sortColumn: $_sortColumn');
+          debugPrint('   → 현재 _sortAscending: $_sortAscending');
+          debugPrint('   → ✅ [해결] Color 테이블만 정렬됨 (독립적인 정렬 상태)');
+          setState(() {
+            if (_sortColumn == 'ColorName') {
+              _sortAscending = !_sortAscending;
+            } else {
+              _sortColumn = 'ColorName';
+              _sortAscending = true;
+            }
+          });
+          debugPrint('   → 새 _sortColumn: $_sortColumn');
+          debugPrint('   → 새 _sortAscending: $_sortAscending');
+          debugPrint('═══════════════════════════════════════════════════════');
+        },
+      ),
+      DataColumn(
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Total Cantidad',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            if (_sortColumn == 'totalCantidad')
+              Icon(
+                _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                size: 16,
+                color: color,
+              ),
+          ],
+        ),
+        numeric: true,
+        onSort: (columnIndex, ascending) {
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [Color Table StatefulWidget] totalCantidad 칼럼 클릭');
+          debugPrint('   → columnIndex: $columnIndex');
+          debugPrint('   → ascending: $ascending');
+          debugPrint('   → 현재 _sortColumn: $_sortColumn');
+          debugPrint('   → 현재 _sortAscending: $_sortAscending');
+          debugPrint('   → ✅ [해결] Color 테이블만 정렬됨 (독립적인 정렬 상태)');
+          debugPrint('   → ⚠️ [주의] totalCantidad는 Products 테이블과 같은 키지만 독립적으로 정렬됨');
+          setState(() {
+            if (_sortColumn == 'totalCantidad') {
+              _sortAscending = !_sortAscending;
+            } else {
+              _sortColumn = 'totalCantidad';
+              _sortAscending = true;
+            }
+          });
+          debugPrint('   → 새 _sortColumn: $_sortColumn');
+          debugPrint('   → 새 _sortAscending: $_sortAscending');
+          debugPrint('═══════════════════════════════════════════════════════');
+        },
       ),
     ];
 
@@ -1500,30 +1726,16 @@ class ItemsBuilder {
       final cantidadNum = num.tryParse(totalCantidad.toString().replaceAll(',', '')) ?? 0;
       final formattedCantidad = NumberFormat('#,##0').format(cantidadNum);
       
-      final isSelected = selectedColorCode != null && colorCode == selectedColorCode;
-      
-      debugPrint('   → 색상 행 생성: colorCode=$colorCode, colorName=$colorName, isSelected=$isSelected');
+      final isSelected = widget.selectedColorCode != null && colorCode == widget.selectedColorCode;
 
       return DataRow(
         selected: isSelected,
-        onSelectChanged: onColorSelected != null ? (selected) {
-          debugPrint('═══════════════════════════════════════════════════════');
-          debugPrint('🔍 [Items Builder] Color 선택 콜백 호출');
-          debugPrint('   → colorCode: $colorCode');
-          debugPrint('   → colorName: $colorName');
-          debugPrint('   → selected: $selected');
-          debugPrint('   → onColorSelected != null: ${onColorSelected != null}');
-          
+        onSelectChanged: widget.onColorSelected != null ? (selected) {
           if (selected != null && selected) {
-            // 선택된 경우: 해당 색상 코드로 필터링
-            debugPrint('   → 색상 선택: $colorCode');
-            onColorSelected(colorCode);
+            widget.onColorSelected!(colorCode);
           } else {
-            // 선택 해제된 경우: 필터 제거
-            debugPrint('   → 색상 선택 해제');
-            onColorSelected(null);
+            widget.onColorSelected!(null);
           }
-          debugPrint('═══════════════════════════════════════════════════════');
         } : null,
         cells: [
           DataCell(Text(colorCode)),
@@ -1537,9 +1749,6 @@ class ItemsBuilder {
         ],
       );
     }).toList();
-    
-    debugPrint('   → 생성된 rows 개수: ${rows.length}');
-    debugPrint('═══════════════════════════════════════════════════════');
 
     return SingleChildScrollView(
       scrollDirection: Axis.vertical,

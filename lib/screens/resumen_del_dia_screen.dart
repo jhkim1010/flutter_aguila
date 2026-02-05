@@ -1886,6 +1886,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
             ? (_selectedDate ?? widget.initialItemsEndDate ?? _currentItemsEndDate)
             : (widget.initialItemsEndDate ?? _currentItemsEndDate),
         initialVentasDescontado: _currentVentasDescontado,
+        initialAvailableSucursales: _availableSucursales, // resumen del dia에서 확인된 sucursal 목록 전달
         useFullWidth: true, // resumen del dia에서 사용 시 전체 너비 사용
         onMenuPressed: !_isLargeScreen(context) ? () {
           // 좁은 화면일 때 Drawer 열기
@@ -2086,6 +2087,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                 initialDate: _selectedDate,
                 initialItemsStartDate: _selectedDate,
                 initialItemsEndDate: _selectedDate,
+                initialAvailableSucursales: _availableSucursales, // resumen del dia에서 확인된 sucursal 목록 전달
               ),
             ),
           );
@@ -5165,6 +5167,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
             serverUrl: widget.serverUrl,
             reportType: reportTypeEnum,
             initialDate: (reportTypeEnum == ReportType.ventas || reportTypeEnum == ReportType.fventas) ? (_selectedDate ?? DateTime.now()) : null,
+            initialAvailableSucursales: _availableSucursales, // resumen del dia에서 확인된 sucursal 목록 전달
           ),
         ),
       ).then((_) {
