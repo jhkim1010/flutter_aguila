@@ -4407,130 +4407,149 @@ class _ReportScreenState extends State<ReportScreen> {
                                           }
                                         });
                                         
-                                        return Row(
-                                          mainAxisSize: MainAxisSize.min,
+                                        // 핸드폰 세로 모드에서 오버플로우 방지를 위해 Wrap 사용
+                                        return Wrap(
+                                          spacing: 4.0, // 가로 간격
+                                          runSpacing: 4.0, // 세로 간격 (줄바꿈 시)
                                           children: [
-                                    Checkbox(
-                                      value: _ventasDescontado,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          _ventasDescontado = value ?? false;
-                                        });
-                                        _loadData();
-                                      },
-                                      checkColor: Colors.white,
-                                      fillColor: MaterialStateProperty.resolveWith<Color>(
-                                        (Set<MaterialState> states) {
-                                          if (states.contains(MaterialState.selected)) {
-                                            return Colors.white.withOpacity(0.3);
-                                          }
-                                          return Colors.transparent;
-                                        },
-                                      ),
-                                      side: const BorderSide(color: Colors.white, width: 1.5),
-                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Checkbox(
+                                          value: _ventasDescontado,
+                                          onChanged: (value) {
+                                            setState(() {
+                                              _ventasDescontado = value ?? false;
+                                            });
+                                            _loadData();
+                                          },
+                                          checkColor: Colors.white,
+                                          fillColor: MaterialStateProperty.resolveWith<Color>(
+                                            (Set<MaterialState> states) {
+                                              if (states.contains(MaterialState.selected)) {
+                                                return Colors.white.withOpacity(0.3);
+                                              }
+                                              return Colors.transparent;
+                                            },
+                                          ),
+                                          side: const BorderSide(color: Colors.white, width: 1.5),
+                                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        ),
+                                        const SizedBox(width: 2),
+                                        const Text(
+                                          'Descontado',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(width: 2),
-                                    const Text(
-                                      'Descontado',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                      ),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Checkbox(
+                                          value: _ventasReservado,
+                                          onChanged: (value) {
+                                            setState(() {
+                                              _ventasReservado = value ?? false;
+                                            });
+                                            _loadData();
+                                          },
+                                          checkColor: Colors.white,
+                                          fillColor: MaterialStateProperty.resolveWith<Color>(
+                                            (Set<MaterialState> states) {
+                                              if (states.contains(MaterialState.selected)) {
+                                                return Colors.white.withOpacity(0.3);
+                                              }
+                                              return Colors.transparent;
+                                            },
+                                          ),
+                                          side: const BorderSide(color: Colors.white, width: 1.5),
+                                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        ),
+                                        const SizedBox(width: 2),
+                                        const Text(
+                                          'Reservado',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(width: 8),
-                                    Checkbox(
-                                      value: _ventasReservado,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          _ventasReservado = value ?? false;
-                                        });
-                                        _loadData();
-                                      },
-                                      checkColor: Colors.white,
-                                      fillColor: MaterialStateProperty.resolveWith<Color>(
-                                        (Set<MaterialState> states) {
-                                          if (states.contains(MaterialState.selected)) {
-                                            return Colors.white.withOpacity(0.3);
-                                          }
-                                          return Colors.transparent;
-                                        },
-                                      ),
-                                      side: const BorderSide(color: Colors.white, width: 1.5),
-                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Checkbox(
+                                          value: _ventasCredito,
+                                          onChanged: (value) {
+                                            setState(() {
+                                              _ventasCredito = value ?? false;
+                                            });
+                                            _loadData();
+                                          },
+                                          checkColor: Colors.white,
+                                          fillColor: MaterialStateProperty.resolveWith<Color>(
+                                            (Set<MaterialState> states) {
+                                              if (states.contains(MaterialState.selected)) {
+                                                return Colors.white.withOpacity(0.3);
+                                              }
+                                              return Colors.transparent;
+                                            },
+                                          ),
+                                          side: const BorderSide(color: Colors.white, width: 1.5),
+                                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        ),
+                                        const SizedBox(width: 2),
+                                        const Text(
+                                          'Crédito',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(width: 2),
-                                    const Text(
-                                      'Reservado',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                      ),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Checkbox(
+                                          value: _ventasMovidos,
+                                          onChanged: (value) {
+                                            debugPrint('🔍 [Ventas AppBar] Movidos 체크박스 클릭: $value');
+                                            setState(() {
+                                              _ventasMovidos = value ?? false;
+                                            });
+                                            _loadData();
+                                          },
+                                          checkColor: Colors.white,
+                                          fillColor: MaterialStateProperty.resolveWith<Color>(
+                                            (Set<MaterialState> states) {
+                                              if (states.contains(MaterialState.selected)) {
+                                                return Colors.white.withOpacity(0.3);
+                                              }
+                                              return Colors.transparent;
+                                            },
+                                          ),
+                                          side: const BorderSide(color: Colors.white, width: 1.5),
+                                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        ),
+                                        const SizedBox(width: 2),
+                                        const Text(
+                                          'Movidos',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(width: 8),
-                                    Checkbox(
-                                      value: _ventasCredito,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          _ventasCredito = value ?? false;
-                                        });
-                                        _loadData();
-                                      },
-                                      checkColor: Colors.white,
-                                      fillColor: MaterialStateProperty.resolveWith<Color>(
-                                        (Set<MaterialState> states) {
-                                          if (states.contains(MaterialState.selected)) {
-                                            return Colors.white.withOpacity(0.3);
-                                          }
-                                          return Colors.transparent;
-                                        },
-                                      ),
-                                      side: const BorderSide(color: Colors.white, width: 1.5),
-                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                    ),
-                                    const SizedBox(width: 2),
-                                    const Text(
-                                      'Crédito',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Checkbox(
-                                      value: _ventasMovidos,
-                                      onChanged: (value) {
-                                        debugPrint('🔍 [Ventas AppBar] Movidos 체크박스 클릭: $value');
-                                        setState(() {
-                                          _ventasMovidos = value ?? false;
-                                        });
-                                        _loadData();
-                                      },
-                                      checkColor: Colors.white,
-                                      fillColor: MaterialStateProperty.resolveWith<Color>(
-                                        (Set<MaterialState> states) {
-                                          if (states.contains(MaterialState.selected)) {
-                                            return Colors.white.withOpacity(0.3);
-                                          }
-                                          return Colors.transparent;
-                                        },
-                                      ),
-                                      side: const BorderSide(color: Colors.white, width: 1.5),
-                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                    ),
-                                    const SizedBox(width: 2),
-                                    const Text(
-                                      'Movidos',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                          ],
+                                  ],
                                         );
                                       },
                                     ),
