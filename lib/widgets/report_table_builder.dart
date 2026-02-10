@@ -34,9 +34,55 @@ class ReportTableBuilder {
         'd_num_caja', 'd_num_terminal', 'id',
       ];
       
-      final isDayMonthYearUnit = unit != null && unit != 'vcode';
-      final isDayUnit = unit == 'day';
-      final isMonthUnit = unit == 'month';
+      // unit 파라미터 기반 판단
+      final isDayMonthYearUnitFromParam = unit != null && unit != 'vcode';
+      // 데이터 구조 기반 판단 (unit 파라미터가 vcode여도 실제 데이터가 day/month/year 유닛이면 true)
+      // vcode 필드가 없고, fecha/month/year 중 하나가 있으면 day/month/year 유닛
+      final hasVcodeField = firstItem.containsKey('vcode');
+      final hasFechaField = firstItem.containsKey('fecha');
+      final hasMonthField = firstItem.containsKey('month');
+      final hasYearField = firstItem.containsKey('year');
+      final hasDayMonthYearKey = hasFechaField || hasMonthField || hasYearField;
+      // vcode 유닛 전용 필드들 (day/month/year 유닛에는 없음)
+      final hasVcodeOnlyFields = firstItem.containsKey('tpago') || 
+                                 firstItem.containsKey('cntropas') ||
+                                 firstItem.containsKey('d_num_caja') ||
+                                 firstItem.containsKey('d_num_terminal') ||
+                                 firstItem.containsKey('clientenombre') ||
+                                 firstItem.containsKey('vendedor') ||
+                                 firstItem.containsKey('tipo') ||
+                                 firstItem.containsKey('dni') ||
+                                 firstItem.containsKey('hora') ||
+                                 firstItem.containsKey('resiva') ||
+                                 firstItem.containsKey('casoesp') ||
+                                 firstItem.containsKey('cretmp') ||
+                                 firstItem.containsKey('ntiqrepetir') ||
+                                 firstItem.containsKey('b_mercadopago');
+      // vcode 필드가 없고, day/month/year 키가 있으면 day/month/year 유닛
+      // hasVcodeOnlyFields는 참고용으로만 사용 (vcode 필드가 없으면 우선순위가 높음)
+      final isDayMonthYearUnitFromData = !hasVcodeField && hasDayMonthYearKey;
+      // 최종 판단: unit 파라미터 또는 데이터 구조 중 하나라도 day/month/year 유닛이면 true
+      final isDayMonthYearUnit = isDayMonthYearUnitFromParam || isDayMonthYearUnitFromData;
+      
+      final isDayUnit = unit == 'day' || (isDayMonthYearUnitFromData && firstItem.containsKey('fecha'));
+      final isMonthUnit = unit == 'month' || (isDayMonthYearUnitFromData && firstItem.containsKey('month'));
+      final isYearUnit = unit == 'year' || (isDayMonthYearUnitFromData && firstItem.containsKey('year'));
+      
+      debugPrint('🔍 [getDisplayedColumns] unit 판단');
+      debugPrint('   → unit 파라미터: $unit');
+      debugPrint('   → firstItem keys: ${firstItem.keys.toList()}');
+      debugPrint('   → hasVcodeField: $hasVcodeField');
+      debugPrint('   → hasFechaField: $hasFechaField');
+      debugPrint('   → hasMonthField: $hasMonthField');
+      debugPrint('   → hasYearField: $hasYearField');
+      debugPrint('   → hasDayMonthYearKey: $hasDayMonthYearKey');
+      debugPrint('   → hasVcodeOnlyFields: $hasVcodeOnlyFields');
+      debugPrint('   → isDayMonthYearUnitFromParam: $isDayMonthYearUnitFromParam');
+      debugPrint('   → isDayMonthYearUnitFromData: $isDayMonthYearUnitFromData');
+      debugPrint('   → isDayMonthYearUnit (최종): $isDayMonthYearUnit');
+      debugPrint('   → isDayUnit: $isDayUnit');
+      debugPrint('   → isMonthUnit: $isMonthUnit');
+      debugPrint('   → isYearUnit: $isYearUnit');
       
       // 모든 행에서 공통으로 존재하는 컬럼 확인
       final commonKeys = <String>{};
@@ -197,8 +243,21 @@ class ReportTableBuilder {
   }) {
     // 디버깅: buildTableFromList 시작
     debugPrint('═══════════════════════════════════════════════════════');
-    debugPrint('🔍 [${reportType.name}] buildTableFromList 시작');
+    debugPrint('🔍 [report_table_builder.dart:246] [${reportType.name}] buildTableFromList 시작');
+    debugPrint('   → 라인: 246');
+    debugPrint('   → unit 파라미터 (raw): $unit');
+    debugPrint('   → unit 파라미터 타입: ${unit.runtimeType}');
+    debugPrint('   → unit == "day": ${unit == "day"}');
+    debugPrint('   → unit == "month": ${unit == "month"}');
+    debugPrint('   → unit == "year": ${unit == "year"}');
+    debugPrint('   → unit == "vcode": ${unit == "vcode"}');
+    debugPrint('   → unit != null: ${unit != null}');
+    debugPrint('   → reportType: $reportType');
     debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
+    print('🔍 [report_table_builder.dart:246] [${reportType.name}] buildTableFromList 시작');
+    print('   → 라인: 246');
+    print('   → unit 파라미터 (raw): $unit');
+    print('   → unit == "year": ${unit == "year"}');
     if (horizontalScrollController != null) {
       debugPrint('   → horizontalScrollController.hasClients: ${horizontalScrollController.hasClients}');
       if (horizontalScrollController.hasClients) {
@@ -281,30 +340,47 @@ class ReportTableBuilder {
       final isMonthUnit = unit == 'month';
       final isYearUnit = unit == 'year';
       
+      debugPrint('🔍 [buildTableFromList] unit 파라미터 확인');
+      debugPrint('   → unit: $unit');
+      debugPrint('   → isDayMonthYearUnit: $isDayMonthYearUnit');
+      debugPrint('   → isDayUnit: $isDayUnit');
+      debugPrint('   → isMonthUnit: $isMonthUnit');
+      debugPrint('   → isYearUnit: $isYearUnit');
+      
       // 첫 번째 항목으로 데이터 구조 확인
       final firstItem = displayedList.isNotEmpty && displayedList.first is Map<String, dynamic>
           ? displayedList.first as Map<String, dynamic>
           : <String, dynamic>{};
       
+      debugPrint('   → firstItem keys: ${firstItem.keys.toList()}');
+      
       // unit 파라미터가 없을 때만 데이터 구조로 판단
       bool finalIsDayMonthYearUnit = isDayMonthYearUnit;
       if (unit == null) {
-        // day/month/year unit 필드가 있는지 확인 (첫 번째 항목 기준)
-        final hasDayMonthYearFields = firstItem.containsKey('tVents') || 
-                                      firstItem.containsKey('tVentas') || 
-                                      firstItem.containsKey('eventCount') ||
-                                      firstItem.containsKey('tCntRopas');
+        // vcode 필드가 없고, fecha/month/year 중 하나가 있으면 day/month/year 유닛
+        final hasVcodeFieldParam = firstItem.containsKey('vcode');
+        final hasFechaFieldParam = firstItem.containsKey('fecha');
+        final hasMonthFieldParam = firstItem.containsKey('month');
+        final hasYearFieldParam = firstItem.containsKey('year');
+        final hasDayMonthYearKeyParam = hasFechaFieldParam || hasMonthFieldParam || hasYearFieldParam;
+        // vcode 유닛 전용 필드들 (day/month/year 유닛에는 없음)
+        final hasVcodeOnlyFieldsParam = firstItem.containsKey('tpago') || 
+                                       firstItem.containsKey('cntropas') ||
+                                       firstItem.containsKey('d_num_caja') ||
+                                       firstItem.containsKey('d_num_terminal') ||
+                                       firstItem.containsKey('clientenombre') ||
+                                       firstItem.containsKey('vendedor') ||
+                                       firstItem.containsKey('tipo') ||
+                                       firstItem.containsKey('dni') ||
+                                       firstItem.containsKey('hora') ||
+                                       firstItem.containsKey('resiva') ||
+                                       firstItem.containsKey('casoesp') ||
+                                       firstItem.containsKey('cretmp') ||
+                                       firstItem.containsKey('ntiqrepetir') ||
+                                       firstItem.containsKey('b_mercadopago');
         
-        // vcode unit 필드가 있는지 확인 (첫 번째 항목 기준)
-        final hasVcodeFields = firstItem.containsKey('vcode') || 
-                               firstItem.containsKey('tpago') || 
-                               firstItem.containsKey('cntropas') ||
-                               firstItem.containsKey('d_num_caja') ||
-                               firstItem.containsKey('d_num_terminal') ||
-                               firstItem.containsKey('clientenombre');
-        
-        // day/month/year unit이 명확히 감지되고 vcode 필드가 없을 때만 day/month/year 컬럼 사용
-        finalIsDayMonthYearUnit = hasDayMonthYearFields && !hasVcodeFields;
+        // vcode 필드가 없고, day/month/year 키가 있고, vcode 전용 필드가 없으면 day/month/year 유닛
+        finalIsDayMonthYearUnit = !hasVcodeFieldParam && hasDayMonthYearKeyParam && !hasVcodeOnlyFieldsParam;
       }
       
       // 모든 행에서 공통으로 존재하는 컬럼 확인
@@ -576,10 +652,64 @@ class ReportTableBuilder {
       'progname': 75, // 150 -> 75 (절반)
       'alerta': 40,   // 80 -> 40 (절반)
       'sucursal': 50, // 100 -> 50 (절반)
+      // Ventas 보고서 - vcode 유닛용 칼럼 너비 (30% 감소: 1.7배 -> 1.19배, 약 19% 증가)
+      'vcode': 119,      // 170 * 0.7 (30% 감소)
+      'tpago': 143,      // 204 * 0.7 (30% 감소)
+      'cntropas': 119,   // 170 * 0.7 (30% 감소)
+      'clientenombre': 238,  // 340 * 0.7 (30% 감소)
+      'tefectivo': 143,   // 204 * 0.7 (30% 감소)
+      'tcredito': 143,    // 204 * 0.7 (30% 감소)
+      'tbanco': 143,      // 204 * 0.7 (30% 감소)
+      'treservado': 143,  // 204 * 0.7 (30% 감소)
+      'tfavor': 143,      // 204 * 0.7 (30% 감소)
+      'vendedor': 179,    // 255 * 0.7 (30% 감소)
+      'tipo': 179,        // 255 * 0.7 (30% 감소)
+      'dni': 179,         // 255 * 0.7 (30% 감소)
+      'hora': 119,        // 170 * 0.7 (30% 감소)
+      'fecha': 143,       // 204 * 0.7 (30% 감소)
+      'resiva': 179,      // 255 * 0.7 (30% 감소)
+      'casoesp': 179,     // 255 * 0.7 (30% 감소)
+      'nencargado': 143,  // 204 * 0.7 (30% 감소)
+      'cretmp': 179,      // 255 * 0.7 (30% 감소)
+      'ntiqrepetir': 179, // 255 * 0.7 (30% 감소)
+      'b_mercadopago': 179,  // 255 * 0.7 (30% 감소)
+      'd_num_caja': 179,     // 255 * 0.7 (30% 감소)
+      'd_num_terminal': 179, // 255 * 0.7 (30% 감소)
+      'id': 179,          // 255 * 0.7 (30% 감소)
+      // Ventas 보고서 - day/month/year 유닛용 칼럼 너비 (70% 증가: 1.7배)
+      'eventcount': 340,  // 200 * 1.7
+      'eventCount': 340,  // 200 * 1.7
+      'tvents': 425,      // 250 * 1.7
+      'tVents': 425,      // 250 * 1.7
+      'tventas': 425,     // 250 * 1.7
+      'tVentas': 425,     // 250 * 1.7
+      'tcntropas': 340,   // 200 * 1.7
+      'tCntRopas': 340,   // 200 * 1.7
+      'month': 204,       // 120 * 1.7
+      'year': 204,        // 120 * 1.7
       // 기타
       'start_date': 120,
       'end_date': 120,
     };
+    
+    // month 유닛인 경우 tefectivo, tcredito, tbanco 칼럼 너비를 30% 증가
+    final isMonthUnit = unit == 'month' || (unit != null && unit != 'vcode' && keys.contains('month'));
+    if (isMonthUnit) {
+      // day/month/year 유닛용 기본값이 없으면 vcode 유닛용 값을 사용 (143)
+      final baseTefectivo = columnWidths['tefectivo'] ?? 143;
+      final baseTcredito = columnWidths['tcredito'] ?? 143;
+      final baseTbanco = columnWidths['tbanco'] ?? 143;
+      
+      // 30% 증가: 1.3배
+      columnWidths['tefectivo'] = (baseTefectivo * 1.3).roundToDouble();
+      columnWidths['tcredito'] = (baseTcredito * 1.3).roundToDouble();
+      columnWidths['tbanco'] = (baseTbanco * 1.3).roundToDouble();
+      
+      debugPrint('📊 [month 유닛] tefectivo, tcredito, tbanco 칼럼 너비 30% 증가');
+      debugPrint('   → tefectivo: $baseTefectivo -> ${columnWidths['tefectivo']}');
+      debugPrint('   → tcredito: $baseTcredito -> ${columnWidths['tcredito']}');
+      debugPrint('   → tbanco: $baseTbanco -> ${columnWidths['tbanco']}');
+    }
     
     final columns = keys.asMap().entries.map((entry) {
       final index = entry.key;
@@ -617,7 +747,7 @@ class ReportTableBuilder {
               key.toString(),
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: reportType == ReportType.ventas ? 12 : 14,
+                fontSize: 14, // ventas 보고서도 14px로 통일
               ),
             ),
             if (isSorted && isSortable)
@@ -947,21 +1077,82 @@ class ReportTableBuilder {
       );
     }
     
+    // ventas 보고서의 day/month/year 유닛인지 확인
+    // unit 파라미터가 day/month/year이면 우선 적용
+    // unit 파라미터가 vcode이거나 null이어도 실제 데이터 구조를 확인하여 판단
+    bool isVentasDayMonthYearFromUnit = reportType == ReportType.ventas && 
+                                        unit != null && 
+                                        (unit == 'day' || unit == 'month' || unit == 'year');
+    
+    // 데이터 구조 기반 판단 (unit 파라미터가 vcode여도 실제 데이터가 day/month/year 유닛이면 true)
+    bool isVentasDayMonthYearFromData = false;
+    if (reportType == ReportType.ventas && displayedList.isNotEmpty) {
+      final firstItem = displayedList.first;
+      if (firstItem is Map<String, dynamic>) {
+        final hasVcodeField = firstItem.containsKey('vcode');
+        final hasFechaField = firstItem.containsKey('fecha');
+        final hasMonthField = firstItem.containsKey('month');
+        final hasYearField = firstItem.containsKey('year');
+        final hasDayMonthYearKey = hasFechaField || hasMonthField || hasYearField;
+        // vcode 필드가 없고, day/month/year 키가 있으면 day/month/year 유닛
+        isVentasDayMonthYearFromData = !hasVcodeField && hasDayMonthYearKey;
+      }
+    }
+    
+    final isVentasDayMonthYear = isVentasDayMonthYearFromUnit || isVentasDayMonthYearFromData;
+    
+    debugPrint('🔍 [report_table_builder.dart:1080] [buildTableFromList] ventas day/month/year 유닛 판단 (조기 처리)');
+    debugPrint('   → 라인: 1080');
+    debugPrint('   → [report_table_builder.dart:1081] unit 파라미터: $unit');
+    debugPrint('   → [report_table_builder.dart:1082] isVentasDayMonthYearFromUnit: $isVentasDayMonthYearFromUnit');
+    debugPrint('   → [report_table_builder.dart:1083] isVentasDayMonthYearFromData: $isVentasDayMonthYearFromData');
+    debugPrint('   → [report_table_builder.dart:1078] isVentasDayMonthYear (최종): $isVentasDayMonthYear');
+    print('🔍 [report_table_builder.dart:1080] [buildTableFromList] ventas day/month/year 유닛 판단 (조기 처리)');
+    print('   → 라인: 1080');
+    print('   → unit 파라미터: $unit');
+    print('   → isVentasDayMonthYearFromUnit: $isVentasDayMonthYearFromUnit');
+    print('   → isVentasDayMonthYearFromData: $isVentasDayMonthYearFromData');
+    print('   → isVentasDayMonthYear (최종): $isVentasDayMonthYear');
+    
     // items 및 ingresos 보고서는 LayoutBuilder로 전체 폭 강제 (먼저 처리)
-    if (isItemsOrIngresos) {
+    // ventas day/month/year 유닛도 실제 칼럼 너비를 측정하여 헤더에 적용
+    if (isItemsOrIngresos || isVentasDayMonthYear) {
       debugPrint('═══════════════════════════════════════════════════════');
-      debugPrint('📊 [ReportTableBuilder:600] buildTableFromList - Items/Ingresos 모드 진입 (조기 처리)');
+      debugPrint('📊 [report_table_builder.dart:1088] buildTableFromList - ${isItemsOrIngresos ? "Items/Ingresos" : "Ventas Day/Month/Year"} 모드 진입 (조기 처리)');
+      debugPrint('   → 라인: 1088');
       debugPrint('   → 파일: report_table_builder.dart');
-      debugPrint('   → 라인: 600');
-      debugPrint('   → reportType: $reportType');
-      debugPrint('   → isItemsOrIngresos: $isItemsOrIngresos');
+      debugPrint('   → [report_table_builder.dart:1093] reportType: $reportType');
+      debugPrint('   → [report_table_builder.dart:1094] isItemsOrIngresos: $isItemsOrIngresos');
+      debugPrint('   → [report_table_builder.dart:1095] isVentasDayMonthYear: $isVentasDayMonthYear');
+      debugPrint('   → [report_table_builder.dart:1096] unit: $unit');
+      print('📊 [report_table_builder.dart:1088] buildTableFromList - ${isItemsOrIngresos ? "Items/Ingresos" : "Ventas Day/Month/Year"} 모드 진입 (조기 처리)');
+      print('   → 라인: 1088');
+      print('   → unit: $unit');
+      print('   → isVentasDayMonthYear: $isVentasDayMonthYear');
       
-      debugPrint('✅ [Items/Ingresos 체크] 조건 통과 - items/ingresos 전용 경로 실행');
+      debugPrint('✅ [${isItemsOrIngresos ? "Items/Ingresos" : "Ventas Day/Month/Year"} 체크] 조건 통과 - 전용 경로 실행');
       debugPrint('   → reportType: $reportType');
-      debugPrint('   → isItemsOrIngresos: $isItemsOrIngresos');
+      print('✅ [${isItemsOrIngresos ? "Items/Ingresos" : "Ventas Day/Month/Year"} 체크] 조건 통과 - 전용 경로 실행');
+      print('   → reportType: $reportType');
+      print('   → unit: $unit');
       
       // DataTable의 실제 칼럼 너비를 측정하여 헤더와 푸터에 적용하기 위한 StatefulWidget
+      // unit이나 keys가 변경되면 위젯을 재생성하도록 key를 추가
+      final widgetKey = ValueKey('${reportType}_${unit}_${keys.join('_')}');
+      debugPrint('🔍 [report_table_builder.dart:1122] _ItemsTableWithMeasuredColumns 생성');
+      debugPrint('   → 라인: 1122');
+      debugPrint('   → widgetKey: $widgetKey');
+      debugPrint('   → unit: $unit');
+      debugPrint('   → keys: $keys');
+      debugPrint('   → isVentasDayMonthYear: $isVentasDayMonthYear');
+      print('🔍 [report_table_builder.dart:1122] _ItemsTableWithMeasuredColumns 생성');
+      print('   → 라인: 1122');
+      print('   → widgetKey: $widgetKey');
+      print('   → unit: $unit');
+      print('   → keys: $keys');
+      print('   → isVentasDayMonthYear: $isVentasDayMonthYear');
       return _ItemsTableWithMeasuredColumns(
+        key: widgetKey,
         keys: keys,
         columns: columns,
         color: color,
@@ -1063,9 +1254,185 @@ class ReportTableBuilder {
                       debugPrint('   → columns.length: ${columns.length}');
                       debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
                       
+                      // Builder 내부에서 displayedList를 기반으로 실제 keys를 다시 계산 (데이터가 업데이트되었을 수 있음)
+                      debugPrint('🔍 [buildTableFromList Builder] displayedList 상태 확인');
+                      debugPrint('   → displayedList.length: ${displayedList.length}');
+                      if (displayedList.isNotEmpty && displayedList.first is Map<String, dynamic>) {
+                        final firstItemInBuilder = displayedList.first as Map<String, dynamic>;
+                        debugPrint('   → displayedList 첫 번째 항목 keys: ${firstItemInBuilder.keys.toList()}');
+                        debugPrint('   → displayedList 첫 번째 항목: $firstItemInBuilder');
+                      }
+                      final actualKeysFromData = ReportTableBuilder.getDisplayedColumns(
+                        displayedList,
+                        reportType,
+                        unit: unit,
+                      );
+                      debugPrint('🔍 [buildTableFromList Builder] 실제 데이터 기반 keys 재계산');
+                      debugPrint('   → 함수 시작 시 keys: $keys');
+                      debugPrint('   → 실제 데이터 기반 keys: $actualKeysFromData');
+                      debugPrint('   → keys가 일치하는가: ${keys.toString() == actualKeysFromData.toString()}');
+                      debugPrint('   → unit 파라미터: $unit');
+                      
+                      // ventas day/month/year 유닛 + 대형 화면인 경우 칼럼 너비를 2배로 증가
+                      // unit 파라미터가 day/month/year이면 무조건 적용 (가장 확실한 방법)
+                      debugPrint('🔍 [buildTableFromList Builder] unit 파라미터 상세 확인');
+                      debugPrint('   → unit 파라미터 (raw): $unit');
+                      debugPrint('   → unit 파라미터 타입: ${unit.runtimeType}');
+                      debugPrint('   → unit == "day": ${unit == "day"}');
+                      debugPrint('   → unit == "month": ${unit == "month"}');
+                      debugPrint('   → unit == "year": ${unit == "year"}');
+                      debugPrint('   → unit == "vcode": ${unit == "vcode"}');
+                      debugPrint('   → unit != null: ${unit != null}');
+                      final isVentasDayMonthYearFromUnit = reportType == ReportType.ventas && 
+                                                           unit != null && 
+                                                           (unit == 'day' || unit == 'month' || unit == 'year');
+                      debugPrint('   → isVentasDayMonthYearFromUnit 계산 결과: $isVentasDayMonthYearFromUnit');
+                      debugPrint('   → 계산 과정: reportType == ReportType.ventas: ${reportType == ReportType.ventas}, unit != null: ${unit != null}, (unit == "day" || unit == "month" || unit == "year"): ${unit != null && (unit == "day" || unit == "month" || unit == "year")}');
+                      // 실제 데이터 기반 keys를 사용하여 day/month/year 유닛인지 확인 (백업)
+                      final hasDayMonthYearKeys = actualKeysFromData.contains('fecha') || 
+                                                  actualKeysFromData.contains('month') || 
+                                                  actualKeysFromData.contains('year') ||
+                                                  actualKeysFromData.contains('eventcount') ||
+                                                  actualKeysFromData.contains('eventCount') ||
+                                                  actualKeysFromData.contains('tvents') ||
+                                                  actualKeysFromData.contains('tVents') ||
+                                                  actualKeysFromData.contains('tventas') ||
+                                                  actualKeysFromData.contains('tVentas') ||
+                                                  actualKeysFromData.contains('tcntropas') ||
+                                                  actualKeysFromData.contains('tCntRopas');
+                      final hasVcodeKeys = actualKeysFromData.contains('vcode') || 
+                                         actualKeysFromData.contains('tpago') || 
+                                         actualKeysFromData.contains('cntropas') ||
+                                         actualKeysFromData.contains('d_num_caja') ||
+                                         actualKeysFromData.contains('d_num_terminal') ||
+                                         actualKeysFromData.contains('clientenombre');
+                      // hasVcodeKeys가 true여도 실제 데이터에 vcode 필드가 없으면 day/month/year 유닛일 수 있음
+                      // 따라서 vcode 필드 존재 여부를 직접 확인하는 것이 더 정확함
+                      final actualHasVcodeField = actualKeysFromData.contains('vcode');
+                      final isVentasDayMonthYearFromKeys = reportType == ReportType.ventas && 
+                                                            hasDayMonthYearKeys && 
+                                                            !actualHasVcodeField;
+                      // 데이터 구조를 기반으로 day/month/year 유닛인지 확인 (백업)
+                      final firstItemForCheck = displayedList.isNotEmpty && displayedList.first is Map<String, dynamic>
+                          ? displayedList.first as Map<String, dynamic>
+                          : <String, dynamic>{};
+                      // vcode 필드가 없고, fecha/month/year 중 하나가 있으면 day/month/year 유닛
+                      final hasVcodeFieldCheck = firstItemForCheck.containsKey('vcode');
+                      final hasFechaFieldCheck = firstItemForCheck.containsKey('fecha');
+                      final hasMonthFieldCheck = firstItemForCheck.containsKey('month');
+                      final hasYearFieldCheck = firstItemForCheck.containsKey('year');
+                      final hasDayMonthYearKeyCheck = hasFechaFieldCheck || hasMonthFieldCheck || hasYearFieldCheck;
+                      // vcode 유닛 전용 필드들 (day/month/year 유닛에는 없음)
+                      // 주의: tcntropas, tcredito, tbanco 등은 day/month/year 유닛에도 존재할 수 있으므로
+                      // vcode 필드가 있는지 확인하는 것이 가장 확실한 방법입니다.
+                      final hasVcodeOnlyFieldsCheck = firstItemForCheck.containsKey('tpago') || 
+                                                     firstItemForCheck.containsKey('cntropas') ||
+                                                     firstItemForCheck.containsKey('d_num_caja') ||
+                                                     firstItemForCheck.containsKey('d_num_terminal') ||
+                                                     firstItemForCheck.containsKey('clientenombre') ||
+                                                     firstItemForCheck.containsKey('vendedor') ||
+                                                     firstItemForCheck.containsKey('tipo') ||
+                                                     firstItemForCheck.containsKey('dni') ||
+                                                     firstItemForCheck.containsKey('hora') ||
+                                                     firstItemForCheck.containsKey('resiva') ||
+                                                     firstItemForCheck.containsKey('casoesp') ||
+                                                     firstItemForCheck.containsKey('cretmp') ||
+                                                     firstItemForCheck.containsKey('ntiqrepetir') ||
+                                                     firstItemForCheck.containsKey('b_mercadopago');
+                      // vcode 필드가 없고, day/month/year 키가 있으면 day/month/year 유닛
+                      // hasVcodeOnlyFieldsCheck는 참고용으로만 사용 (vcode 필드가 없으면 우선순위가 높음)
+                      final isVentasDayMonthYearFromData = reportType == ReportType.ventas && 
+                                                            !hasVcodeFieldCheck && 
+                                                            hasDayMonthYearKeyCheck;
+                      // unit 파라미터가 day/month/year이면 우선 적용 (가장 확실)
+                      // 하지만 unit 파라미터가 vcode여도 실제 데이터가 day/month/year 유닛이면 적용
+                      // displayedList의 첫 번째 항목을 확인하여 실제 데이터 구조 기반으로 최종 판단
+                      final finalIsVentasDayMonthYear = isVentasDayMonthYearFromUnit || 
+                                                       isVentasDayMonthYearFromKeys || 
+                                                       isVentasDayMonthYearFromData;
+                      
+                      debugPrint('🔍 [buildTableFromList Builder] 최종 판단 (line ~1270)');
+                      debugPrint('   → isVentasDayMonthYearFromUnit: $isVentasDayMonthYearFromUnit');
+                      debugPrint('   → isVentasDayMonthYearFromKeys: $isVentasDayMonthYearFromKeys');
+                      debugPrint('   → isVentasDayMonthYearFromData: $isVentasDayMonthYearFromData');
+                      debugPrint('   → finalIsVentasDayMonthYear: $finalIsVentasDayMonthYear');
+                      
+                      final hasValidWidth = constraints.maxWidth.isFinite && constraints.maxWidth > 0;
+                      final isLargeScreen = constraints.maxWidth.isFinite && constraints.maxWidth >= 800;
+                      final shouldDoubleColumnWidths = finalIsVentasDayMonthYear && isLargeScreen && hasValidWidth;
+                      
+                      debugPrint('   → shouldDoubleColumnWidths 계산 (line ~1278): $shouldDoubleColumnWidths');
+                      debugPrint('      → finalIsVentasDayMonthYear: $finalIsVentasDayMonthYear');
+                      debugPrint('      → isLargeScreen: $isLargeScreen');
+                      debugPrint('      → hasValidWidth: $hasValidWidth');
+                      
+                      debugPrint('🔍 [buildTableFromList] 칼럼 너비 2배 증가 조건 확인');
+                      debugPrint('   → reportType: $reportType');
+                      debugPrint('   → unit: $unit');
+                      debugPrint('   → 함수 시작 시 keys: $keys');
+                      debugPrint('   → 실제 데이터 기반 keys: $actualKeysFromData');
+                      debugPrint('   → isVentasDayMonthYearFromUnit: $isVentasDayMonthYearFromUnit');
+                      debugPrint('   → isVentasDayMonthYearFromKeys: $isVentasDayMonthYearFromKeys');
+                      debugPrint('   → hasDayMonthYearKeys (actualKeysFromData 기반): $hasDayMonthYearKeys');
+                      debugPrint('   → hasVcodeKeys (actualKeysFromData 기반): $hasVcodeKeys');
+                      debugPrint('   → isVentasDayMonthYearFromData: $isVentasDayMonthYearFromData');
+                      debugPrint('   → hasVcodeFieldCheck: $hasVcodeFieldCheck');
+                      debugPrint('   → hasFechaFieldCheck: $hasFechaFieldCheck');
+                      debugPrint('   → hasMonthFieldCheck: $hasMonthFieldCheck');
+                      debugPrint('   → hasYearFieldCheck: $hasYearFieldCheck');
+                      debugPrint('   → hasDayMonthYearKeyCheck: $hasDayMonthYearKeyCheck');
+                      debugPrint('   → hasVcodeOnlyFieldsCheck: $hasVcodeOnlyFieldsCheck');
+                      debugPrint('   → firstItemForCheck keys: ${firstItemForCheck.keys.toList()}');
+                      debugPrint('   → displayedList.length: ${displayedList.length}');
+                      debugPrint('   → finalIsVentasDayMonthYear: $finalIsVentasDayMonthYear');
+                      debugPrint('   → hasValidWidth: $hasValidWidth');
+                      debugPrint('   → isLargeScreen: $isLargeScreen (constraints.maxWidth: ${constraints.maxWidth})');
+                      debugPrint('   → shouldDoubleColumnWidths: $shouldDoubleColumnWidths');
+                      debugPrint('   → columnWidths != null: ${columnWidths != null}');
+                      
+                      // columnWidths를 복사하여 수정 (원본은 유지)
+                      var finalColumnWidths = columnWidths;
+                      if (shouldDoubleColumnWidths && columnWidths != null) {
+                        final doubledWidths = <String, double>{};
+                        // actualKeysFromData를 사용하여 실제 데이터에 맞는 키들만 2배 증가
+                        for (final key in actualKeysFromData) {
+                          if (key == 'ProductName') {
+                            doubledWidths[key] = columnWidths[key] ?? 450.0;
+                          } else {
+                            final currentWidth = columnWidths[key] ?? 150.0;
+                            doubledWidths[key] = currentWidth * 2.0;
+                          }
+                        }
+                        // 기존 columnWidths의 다른 키들도 유지 (actualKeysFromData에 없는 키들)
+                        columnWidths.forEach((key, value) {
+                          if (!doubledWidths.containsKey(key)) {
+                            doubledWidths[key] = value;
+                          }
+                        });
+                        finalColumnWidths = doubledWidths;
+                        
+                        debugPrint('✅✅✅ [buildTableFromList] 대형 화면 칼럼 너비 2배 증가 적용됨! (line ~1330)');
+                        debugPrint('   → isVentasDayMonthYear: $finalIsVentasDayMonthYear');
+                        debugPrint('   → isLargeScreen: $isLargeScreen');
+                        debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
+                        debugPrint('   → 함수 시작 시 keys 개수: ${keys.length}');
+                        debugPrint('   → 실제 데이터 기반 actualKeysFromData 개수: ${actualKeysFromData.length}');
+                        debugPrint('   → actualKeysFromData: $actualKeysFromData');
+                        debugPrint('   → 2배 증가된 키들: ${doubledWidths.keys.toList()}');
+                        debugPrint('   → 원본 칼럼 너비 샘플: ${columnWidths.entries.take(5).map((e) => '${e.key}=${e.value}').join(', ')}');
+                        debugPrint('   → 2배 증가된 칼럼 너비 샘플: ${doubledWidths.entries.take(5).map((e) => '${e.key}=${e.value}').join(', ')}');
+                      } else {
+                        debugPrint('❌❌❌ [buildTableFromList] 칼럼 너비 2배 증가 적용 안 됨 (line ~1340)');
+                        debugPrint('   → shouldDoubleColumnWidths: $shouldDoubleColumnWidths');
+                        debugPrint('   → finalIsVentasDayMonthYear: $finalIsVentasDayMonthYear');
+                        debugPrint('   → isLargeScreen: $isLargeScreen');
+                        debugPrint('   → hasValidWidth: $hasValidWidth');
+                        debugPrint('   → columnWidths != null: ${columnWidths != null}');
+                      }
+                      
                       final headerRow = shouldHideHeaderRow
                           ? null 
-                          : buildHeaderRow(keys, columns, color, sortColumn, sortAscending, onSort, columnWidths: columnWidths, reportType: reportType);
+                          : buildHeaderRow(keys, columns, color, sortColumn, sortAscending, onSort, columnWidths: finalColumnWidths, reportType: reportType, unit: unit);
                       
                       // ventas 보고서 디버깅 (핸드폰에서 헤더가 안 보이는 문제 분석)
                       if (reportType == ReportType.ventas) {
@@ -1225,15 +1592,51 @@ class ReportTableBuilder {
                                     }
                                   }
                                 });
-                                if (horizontalScrollController != null)
-                                  return SingleChildScrollView(
-                                    controller: horizontalScrollController,
-                                    scrollDirection: Axis.horizontal,
-                                    physics: const NeverScrollableScrollPhysics(),
-                                    child: headerRow,
+                                debugPrint('═══════════════════════════════════════════════════════');
+                                debugPrint('🔍 [Ventas 헤더] SingleChildScrollView 생성');
+                                debugPrint('   → reportType: $reportType');
+                                debugPrint('   → unit: $unit');
+                                debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
+                                if (horizontalScrollController != null) {
+                                  debugPrint('   → horizontalScrollController.hasClients: ${horizontalScrollController.hasClients}');
+                                  if (horizontalScrollController.hasClients) {
+                                    try {
+                                      debugPrint('   → horizontalScrollController.positions.length: ${horizontalScrollController.positions.length}');
+                                      if (horizontalScrollController.positions.length == 1) {
+                                        debugPrint('   → horizontalScrollController.position.pixels: ${horizontalScrollController.position.pixels}');
+                                        debugPrint('   → horizontalScrollController.position.maxScrollExtent: ${horizontalScrollController.position.maxScrollExtent}');
+                                      } else {
+                                        debugPrint('   ⚠️ ScrollController가 ${horizontalScrollController.positions.length}개의 스크롤 뷰에 연결됨');
+                                      }
+                                    } catch (e) {
+                                      debugPrint('   ⚠️ horizontalScrollController.position 접근 오류: $e');
+                                    }
+                                  }
+                                }
+                                debugPrint('═══════════════════════════════════════════════════════');
+                                
+                                if (horizontalScrollController != null) {
+                                  // 헤더와 테이블이 같은 스크롤 컨트롤러를 공유하도록 설정
+                                  // NeverScrollableScrollPhysics()는 사용자 제스처를 막지만, 프로그래밍 방식 스크롤은 허용
+                                  // ScrollController가 여러 스크롤 뷰에 연결되는 것을 방지하기 위해
+                                  // 헤더는 별도의 ScrollController를 사용하지 않고 테이블의 스크롤을 따라가도록 함
+                                  return NotificationListener<ScrollNotification>(
+                                    onNotification: (notification) {
+                                      // 테이블의 스크롤 이벤트를 감지하여 헤더를 동기화
+                                      // 하지만 헤더는 NeverScrollableScrollPhysics()로 사용자 제스처를 막으므로
+                                      // 여기서는 테이블의 스크롤을 따라가기만 함
+                                      return false;
+                                    },
+                                    child: SingleChildScrollView(
+                                      controller: horizontalScrollController,
+                                      scrollDirection: Axis.horizontal,
+                                      physics: const NeverScrollableScrollPhysics(), // 사용자 제스처는 막지만, 프로그래밍 방식 스크롤은 허용
+                                      child: headerRow,
+                                    ),
                                   );
-                                else
+                                } else {
                                   return headerRow;
+                                }
                               },
                             ),
                           Expanded(
@@ -1264,7 +1667,7 @@ class ReportTableBuilder {
                                   onRowDoubleTap: onRowDoubleTap,
                                   onRowTap: onRowTap,
                                   unit: unit,
-                                  columnWidths: columnWidths,
+                                  columnWidths: finalColumnWidths, // 2배 증가된 칼럼 너비 사용
                                   sortColumn: sortColumn,
                                   sortAscending: sortAscending,
                                 );
@@ -1426,7 +1829,27 @@ class ReportTableBuilder {
                                   'nombre': 150, 'vendedor': 150, 'direccion': 150, 'localidad': 150,
                                   'provincia': 150, 'telefono': 150, 'cntoperation': 150, 'totalimporte_compra': 150,
                                   'totaldeuda': 150, 'last_buy_date': 150, 'memo': 150,
+                                  // Ventas 보고서 - day/month/year 유닛용 칼럼 너비
+                                  // 큰 숫자를 표시하기 위해 기본값을 크게 설정
+                                  'eventcount': 200, 'eventCount': 200,  // 큰 숫자 표시를 위해 100 -> 200으로 증가
+                                  'tvents': 250, 'tVents': 250,  // 큰 숫자 표시를 위해 120 -> 250으로 증가
+                                  'tventas': 250, 'tVentas': 250,  // 큰 숫자 표시를 위해 120 -> 250으로 증가
+                                  'tcntropas': 200, 'tCntRopas': 200,  // 큰 숫자 표시를 위해 120 -> 200으로 증가
+                                  'tefectivo': 306, 'tcredito': 306, 'tbanco': 306,  // 180 * 1.7 (70% 증가)
+                                  'treservado': 306, 'tfavor': 255,  // 180 * 1.7, 150 * 1.7 (70% 증가)
+                                  'month': 204, 'year': 204,  // 120 * 1.7 (70% 증가)
+                                  'nencargado': 120,
                                 };
+                                
+                                // month 유닛인 경우 tefectivo, tcredito, tbanco 칼럼 너비를 30% 증가
+                                final isMonthUnitForFooter = unit == 'month';
+                                if (isMonthUnitForFooter) {
+                                  defaultColumnWidths['tefectivo'] = (306 * 1.3).roundToDouble(); // 306 * 1.3 = 398
+                                  defaultColumnWidths['tcredito'] = (306 * 1.3).roundToDouble(); // 306 * 1.3 = 398
+                                  defaultColumnWidths['tbanco'] = (306 * 1.3).roundToDouble(); // 306 * 1.3 = 398
+                                  debugPrint('📊 [푸터] month 유닛: tefectivo, tcredito, tbanco 칼럼 너비 30% 증가 (306 -> 398)');
+                                }
+                                
                                 final finalColumnWidths = columnWidths ?? defaultColumnWidths;
                                 double calculatedWidth = 0.0;
                                 for (int i = 0; i < keys.length; i++) {
@@ -1447,7 +1870,7 @@ class ReportTableBuilder {
                                 keys, 
                                 displayedList, 
                                 color, 
-                                columnWidths: columnWidths,
+                                columnWidths: finalColumnWidths, // 2배 증가된 칼럼 너비 사용
                                 dataList: dataList,
                                 reportType: reportType,
                                 explicitWidth: footerWidth, // fventas/ventas/clientes/alertas의 경우 명시적 너비 전달
@@ -1757,7 +2180,27 @@ class ReportTableBuilder {
         'progname': 150,
         'alerta': 80,
         'sucursal': 100,
+        // Ventas 보고서 - day/month/year 유닛용 칼럼 너비
+        // 큰 숫자를 표시하기 위해 기본값을 크게 설정
+        'eventcount': 200, 'eventCount': 200,  // 큰 숫자 표시를 위해 100 -> 200으로 증가
+        'tvents': 250, 'tVents': 250,  // 큰 숫자 표시를 위해 120 -> 250으로 증가
+        'tventas': 250, 'tVentas': 250,  // 큰 숫자 표시를 위해 120 -> 250으로 증가
+        'tcntropas': 200, 'tCntRopas': 200,  // 큰 숫자 표시를 위해 120 -> 200으로 증가
+        'tefectivo': 306, 'tcredito': 306, 'tbanco': 306,  // 180 * 1.7 (70% 증가)
+        'treservado': 306, 'tfavor': 255,  // 180 * 1.7, 150 * 1.7 (70% 증가)
+        'month': 204, 'year': 204,  // 120 * 1.7 (70% 증가)
+        'nencargado': 120,
       };
+      
+      // month 유닛인 경우 tefectivo, tcredito, tbanco 칼럼 너비를 30% 증가
+      final isMonthUnitForScroll = unit == 'month';
+      if (isMonthUnitForScroll) {
+        defaultColumnWidths['tefectivo'] = (306 * 1.3).roundToDouble(); // 306 * 1.3 = 398
+        defaultColumnWidths['tcredito'] = (306 * 1.3).roundToDouble(); // 306 * 1.3 = 398
+        defaultColumnWidths['tbanco'] = (306 * 1.3).roundToDouble(); // 306 * 1.3 = 398
+        debugPrint('📊 [수평 스크롤] month 유닛: tefectivo, tcredito, tbanco 칼럼 너비 30% 증가 (306 -> 398)');
+      }
+      
       final finalColumnWidths = columnWidths ?? defaultColumnWidths;
       
       double totalWidth = 0.0;
@@ -1782,24 +2225,104 @@ class ReportTableBuilder {
     debugPrint('   → 라인: ${1601}');
     debugPrint('   → calculateTableWidth() 호출 완료: $tableWidth');
     
-    return SingleChildScrollView(
-      controller: horizontalScrollController,
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        width: tableWidth,
-        child: buildDataTable(
-          reportType: reportType,
-          displayedList: displayedList,
-          keys: keys,
-          columns: columns,
-          dataList: dataList,
-          color: color,
-          onRowDoubleTap: onRowDoubleTap,
-          onRowTap: onRowTap,
-          unit: unit,
-          columnWidths: columnWidths,
-          sortColumn: sortColumn,
-          sortAscending: sortAscending,
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [_buildTableWithHorizontalScroll] 테이블 생성');
+    debugPrint('   → reportType: $reportType');
+    debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
+    debugPrint('   → tableWidth: $tableWidth');
+    debugPrint('   → keys.length: ${keys.length}');
+    debugPrint('   → columnWidths: ${columnWidths != null}');
+    if (horizontalScrollController != null) {
+      debugPrint('   → horizontalScrollController.hasClients: ${horizontalScrollController.hasClients}');
+      if (horizontalScrollController.hasClients) {
+        try {
+          debugPrint('   → horizontalScrollController.position.pixels: ${horizontalScrollController.position.pixels}');
+          debugPrint('   → horizontalScrollController.position.maxScrollExtent: ${horizontalScrollController.position.maxScrollExtent}');
+        } catch (e) {
+          debugPrint('   ⚠️ horizontalScrollController.position 접근 오류: $e');
+        }
+      }
+    }
+    debugPrint('═══════════════════════════════════════════════════════');
+    
+    // 테이블의 수평 스크롤을 감지하여 헤더와 동기화
+    // ScrollController가 여러 스크롤 뷰에 연결되는 것을 방지하기 위해
+    // 테이블의 스크롤 이벤트를 NotificationListener로 감지하고 헤더를 동기화
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        // 테이블의 수평 스크롤 이벤트를 헤더에 전달
+        if (notification is ScrollUpdateNotification && notification.metrics.axis == Axis.horizontal) {
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [Ventas 테이블] 수평 스크롤 이벤트 감지');
+          debugPrint('   → reportType: $reportType');
+          debugPrint('   → unit: $unit');
+          debugPrint('   → 테이블 스크롤 위치: ${notification.metrics.pixels}');
+          debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
+          
+          if (horizontalScrollController != null) {
+            // ScrollController가 여러 스크롤 뷰에 연결되어 있는지 확인
+            if (horizontalScrollController.hasClients) {
+              try {
+                final tableScrollPosition = notification.metrics.pixels;
+                // 여러 position이 있는 경우 첫 번째 것만 사용
+                if (horizontalScrollController.positions.length == 1) {
+                  final headerScrollPosition = horizontalScrollController.position.pixels;
+                  final difference = (tableScrollPosition - headerScrollPosition).abs();
+                  
+                  debugPrint('   → 헤더 스크롤 위치: $headerScrollPosition');
+                  debugPrint('   → 위치 차이: $difference');
+                  
+                  if (difference > 0.1) {
+                    debugPrint('   ✅ 위치 차이 > 0.1, 헤더 동기화: jumpTo($tableScrollPosition)');
+                    horizontalScrollController.jumpTo(tableScrollPosition);
+                  } else {
+                    debugPrint('   ⚠️ 위치 차이 <= 0.1, 동기화 스킵');
+                  }
+                } else {
+                  debugPrint('   ⚠️ ScrollController가 ${horizontalScrollController.positions.length}개의 스크롤 뷰에 연결됨');
+                  // 여러 position이 있는 경우, 첫 번째 position에 동기화
+                  final firstPosition = horizontalScrollController.positions.first;
+                  final headerScrollPosition = firstPosition.pixels;
+                  final difference = (tableScrollPosition - headerScrollPosition).abs();
+                  
+                  debugPrint('   → 첫 번째 position 스크롤 위치: $headerScrollPosition');
+                  debugPrint('   → 위치 차이: $difference');
+                  
+                  if (difference > 0.1) {
+                    debugPrint('   ✅ 위치 차이 > 0.1, 첫 번째 position 동기화: jumpTo($tableScrollPosition)');
+                    firstPosition.jumpTo(tableScrollPosition);
+                  }
+                }
+              } catch (e) {
+                debugPrint('   ⚠️ 스크롤 동기화 오류: $e');
+              }
+            } else {
+              debugPrint('   ⚠️ horizontalScrollController가 아직 클라이언트에 연결되지 않음');
+            }
+          }
+          debugPrint('═══════════════════════════════════════════════════════');
+        }
+        return false;
+      },
+      child: SingleChildScrollView(
+        controller: horizontalScrollController,
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          width: tableWidth,
+          child: buildDataTable(
+            reportType: reportType,
+            displayedList: displayedList,
+            keys: keys,
+            columns: columns,
+            dataList: dataList,
+            color: color,
+            onRowDoubleTap: onRowDoubleTap,
+            onRowTap: onRowTap,
+            unit: unit,
+            columnWidths: columnWidths,
+            sortColumn: sortColumn,
+            sortAscending: sortAscending,
+          ),
         ),
       ),
     );
@@ -1930,14 +2453,31 @@ class ReportTableBuilder {
     Map<String, double>? columnWidths,
     String? sortColumn,
     bool sortAscending = true,
+    bool isLargeScreen = false, // 대형 화면 여부 (칼럼 간격 조정용)
+    bool useMeasuredWidths = false, // _ItemsTableWithMeasuredColumns에서 측정된 너비인지 여부
   }) {
     // 디버깅: buildDataTable 파라미터 확인
     debugPrint('═══════════════════════════════════════════════════════');
-    debugPrint('🔍 [buildDataTable] 파라미터 확인');
+    debugPrint('🔍 [report_table_builder.dart:2421] buildDataTable 함수 시작');
+    debugPrint('   → 라인: 2421');
     debugPrint('   → reportType: $reportType');
+    debugPrint('   → unit: $unit');
+    debugPrint('   → isLargeScreen: $isLargeScreen');
+    debugPrint('   → useMeasuredWidths: $useMeasuredWidths');
+    debugPrint('   → columnWidths 전달됨: ${columnWidths != null}');
+    if (columnWidths != null) {
+      debugPrint('   → columnWidths 내용: $columnWidths');
+      debugPrint('   → columnWidths 개수: ${columnWidths.length}');
+      debugPrint('   → 각 키별 columnWidths 값:');
+      columnWidths.forEach((key, value) {
+        debugPrint('     → columnWidths["$key"] = $value');
+      });
+      debugPrint('   → ⚠️ [중요] 이 columnWidths가 _buildDataRowFromMap에 전달되어야 함');
+    } else {
+      debugPrint('   → ⚠️ [경고] columnWidths가 null! _buildDataRowFromMap에서 기본값 사용됨');
+    }
     debugPrint('   → onRowDoubleTap: ${onRowDoubleTap != null}');
     debugPrint('   → onRowTap: ${onRowTap != null}');
-    debugPrint('   → unit: $unit');
     debugPrint('═══════════════════════════════════════════════════════');
     // 디버깅: 괄호/구문 오류 확인을 위한 로깅
     debugPrint('═══════════════════════════════════════════════════════');
@@ -2086,24 +2626,50 @@ class ReportTableBuilder {
     
     debugPrint('═══════════════════════════════════════════════════════');
     
-    return DataTable(
-      columnSpacing: reportType == ReportType.alertas ? 1 : 8,
-      dataRowMinHeight: reportType == ReportType.alertas ? 72 : 48,
-      dataRowMaxHeight: reportType == ReportType.alertas ? 84 : 56,
-      headingRowHeight: headingRowHeight,
-      headingRowColor: MaterialStateProperty.all(Colors.transparent),
-      sortColumnIndex: sortColumn != null && keys.contains(sortColumn) 
-          ? keys.indexOf(sortColumn) 
-          : null,
-      sortAscending: sortAscending,
-      columns: columns,
-      rows: sortedDisplayedList.map((item) {
+    // ventas day/month/year 유닛의 경우 대형 화면에서 칼럼 간격을 줄여서 더 많은 공간 확보
+    final isVentasDayMonthYear = reportType == ReportType.ventas && 
+                                 unit != null && 
+                                 unit != 'vcode';
+    // 헤더의 headerColumnSpacing과 일치시켜야 함
+    // alertas: 1px, ventas day/month/year + 대형 화면: 2px, ventas day/month/year + 일반 화면: 4px, 그 외: 8px
+    final columnSpacing = reportType == ReportType.alertas 
+        ? 1.0 
+        : (isVentasDayMonthYear ? (isLargeScreen ? 2.0 : 4.0) : 8.0);
+    
+    // 수직 라인 숨기기: Theme으로 dividerColor를 transparent로 설정
+    return Builder(
+      builder: (context) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            dividerColor: Colors.transparent, // 수직 및 수평 라인 숨기기
+          ),
+          child: DataTable(
+            horizontalMargin: 0, // 헤더 Row와 정확히 일치시키기 위해 0으로 설정 (기본값 24px)
+            columnSpacing: columnSpacing,
+            dataRowMinHeight: reportType == ReportType.alertas ? 72 : 48,
+            dataRowMaxHeight: reportType == ReportType.alertas ? 84 : 56,
+            headingRowHeight: headingRowHeight,
+            headingRowColor: MaterialStateProperty.all(Colors.transparent),
+            dividerThickness: 0.0, // 수평 라인 두께 0으로 설정
+            sortColumnIndex: sortColumn != null && keys.contains(sortColumn) 
+                ? keys.indexOf(sortColumn) 
+                : null,
+            sortAscending: sortAscending,
+            columns: columns,
+            rows: sortedDisplayedList.asMap().entries.map((entry) {
+        final index = entry.key;
+        final item = entry.value;
         // 디버깅: DataRow 생성 시작
         debugPrint('   → [buildDataTable] DataRow 생성 - item 타입: ${item.runtimeType}');
         
         // onRowDoubleTap 또는 onRowTap이 있으면 _buildDataRowFromMap 사용 (제스처 지원)
         if ((onRowDoubleTap != null || onRowTap != null) && item is Map<String, dynamic>) {
-          debugPrint('   → [buildDataTable] 제스처 지원 - _buildDataRowFromMap 호출');
+          debugPrint('   → [buildDataTable:2613] 제스처 지원 - _buildDataRowFromMap 호출');
+          debugPrint('      → 라인: 2613');
+          debugPrint('      → columnWidths 전달: ${columnWidths != null}');
+          if (columnWidths != null) {
+            debugPrint('      → columnWidths 내용: $columnWidths');
+          }
           return _buildDataRowFromMap(
             item: item,
             keys: keys,
@@ -2111,11 +2677,18 @@ class ReportTableBuilder {
             onRowDoubleTap: onRowDoubleTap,
             onRowTap: onRowTap,
             unit: unit,
-            columnWidths: null,
+            columnWidths: columnWidths, // null 대신 전달받은 columnWidths 사용 (헤더와 일치시키기 위함)
+            useMeasuredWidths: useMeasuredWidths, // 측정된 너비 사용 여부 전달
+            rowIndex: index, // 행 인덱스 전달 (5행마다 색상 변경용)
           );
         }
         
         if (item is Map<String, dynamic>) {
+          // ventas 보고서의 day/month/year 유닛은 칼럼 너비를 명시적으로 제어해야 함
+          final isVentasDayMonthYear = reportType == ReportType.ventas && 
+                                       unit != null && 
+                                       unit != 'vcode';
+          
           var cells = keys.map((key) {
             final value = item[key];
             String formattedValue;
@@ -2167,41 +2740,412 @@ class ReportTableBuilder {
                 ? (ReportUtils.isNumeric(value) || isAmountColumn)
                 : false;
             
-            // alertas 보고서는 내용이 잘리지 않도록 설정
-            if (reportType == ReportType.alertas) {
-              final cellWidth = columnWidths?[key] ?? 150.0;
+            // alertas 보고서 또는 ventas day/month/year 유닛은 내용이 잘리지 않도록 설정
+            final isAlertas = reportType == ReportType.alertas;
+            if (isAlertas || isVentasDayMonthYear) {
+              // columnWidths에서 칼럼 너비 가져오기 (대소문자 구분 없이)
+              double? cellWidth;
+              if (columnWidths != null) {
+                // 디버깅: columnWidths에서 키 찾기 시도 (숨김)
+                // debugPrint('   → [데이터 행] columnWidths에서 키 찾기: key=$key, keyLower=$keyLower');
+                // debugPrint('   → columnWidths[$key]: ${columnWidths[key]}');
+                // debugPrint('   → columnWidths[$keyLower]: ${columnWidths[keyLower]}');
+                
+                cellWidth = columnWidths[key] ?? 
+                           columnWidths[keyLower] ??
+                           (keyLower == 'eventcount' ? columnWidths['eventCount'] : null) ??
+                           (keyLower == 'tvents' ? columnWidths['tVents'] : null) ??
+                           (keyLower == 'tventas' ? columnWidths['tVentas'] : null) ??
+                           (keyLower == 'tcntropas' ? columnWidths['tCntRopas'] : null);
+                
+                // debugPrint('   → 찾은 cellWidth: $cellWidth');
+                // if (cellWidth == null) {
+                //   debugPrint('   → ⚠️ [경고] columnWidths에서 키를 찾지 못함! 기본값 150.0 사용');
+                // }
+              } else {
+                // debugPrint('   → ⚠️ [경고] columnWidths가 null! 기본값 150.0 사용');
+              }
+              // 측정된 칼럼 너비는 전체 칼럼 너비(SizedBox 너비 + padding)이므로,
+              // useMeasuredWidths가 true인 경우: 측정값을 그대로 사용 (이미 전체 너비 포함)
+              // 중요: 헤더의 headerSizedBoxWidth와 동일한 값이어야 함
+              // 헤더: headerSizedBoxWidth = useMeasuredWidths ? baseColumnWidth : (isAlertas ? baseColumnWidth + 2.0 : (isVentas ? baseColumnWidth + 32.0 : baseColumnWidth))
+              // 데이터 행: finalCellWidth를 헤더의 headerSizedBoxWidth와 동일하게 설정
+              // ventas 보고서의 모든 유닛(vcode 포함)은 DataCell padding을 고려해야 함
+              final baseCellWidth = cellWidth ?? 150.0;
+              final isAlertasForCell = reportType == ReportType.alertas;
+              final isVentasForCell = reportType == ReportType.ventas;
+              final finalCellWidth = (useMeasuredWidths)
+                  ? baseCellWidth  // 측정된 너비는 이미 전체 너비를 포함하므로 그대로 사용 - 헤더와 동일
+                  : (isAlertasForCell
+                      ? baseCellWidth + 2.0  // alertas는 padding 1px * 2
+                      : (isVentasForCell)
+                          ? baseCellWidth + 32.0  // ventas 보고서(vcode, day, month, year 모두)는 헤더와 동일하게 padding 추가
+                          : baseCellWidth);
+              
+              debugPrint('   → [데이터 행] finalCellWidth 계산: useMeasuredWidths=$useMeasuredWidths, baseCellWidth=$baseCellWidth, finalCellWidth=$finalCellWidth (헤더와 일치해야 함)');
+              
+              debugPrint('═══════════════════════════════════════════════════════');
+              debugPrint('🔍 [buildDataTable:2728] DataCell 칼럼 너비 설정');
+              debugPrint('   → 라인: 2728');
+              debugPrint('   → reportType: $reportType');
+              debugPrint('   → unit: $unit');
+              debugPrint('   → isVentasDayMonthYear: $isVentasDayMonthYear');
+              debugPrint('   → useMeasuredWidths: $useMeasuredWidths');
+              debugPrint('   → key: $key');
+              debugPrint('   → keyLower: $keyLower');
+              debugPrint('   → [데이터 행] 칼럼 #${keys.indexOf(key)} ($key):');
+              debugPrint('     → cellWidth (columnWidths에서 찾은 값): $cellWidth');
+              debugPrint('     → baseCellWidth: $baseCellWidth (cellWidth 또는 기본값 150.0)');
+              debugPrint('     → finalCellWidth: $finalCellWidth (SizedBox 너비)');
+              final actualDataColumnWidth = useMeasuredWidths ? finalCellWidth : finalCellWidth + 32.0;
+              debugPrint('     → 실제 칼럼 너비 (useMeasuredWidths면 finalCellWidth, 아니면 finalCellWidth + 32px): $actualDataColumnWidth');
+              debugPrint('   → columnWidths: ${columnWidths != null}');
+              if (columnWidths != null) {
+                debugPrint('   → columnWidths[$key]: ${columnWidths[key]}');
+                debugPrint('   → columnWidths[$keyLower]: ${columnWidths[keyLower]}');
+                debugPrint('   → ⚠️ [중요] columnWidths[$key]가 2배로 증가된 값인지 확인 필요');
+                debugPrint('   → ⚠️ [중요] useMeasuredWidths=$useMeasuredWidths이므로 ${useMeasuredWidths ? "전체 너비 그대로 사용" : "padding 제외"}');
+                debugPrint('   → ⚠️ [매칭 확인] 헤더의 headerSizedBoxWidth와 일치해야 함');
+                debugPrint('   → ⚠️ [매칭 확인] 헤더의 headerSizedBoxWidth = 데이터 행의 실제 칼럼 너비 ($actualDataColumnWidth)');
+              }
+              debugPrint('═══════════════════════════════════════════════════════');
+              print('🔍 [buildDataTable:2728] 데이터 행 칼럼 너비 설정');
+              print('   → 라인: 2728');
+              print('   → key: $key');
+              print('   → baseCellWidth: $baseCellWidth');
+              print('   → finalCellWidth: $finalCellWidth');
+              print('   → 실제 칼럼 너비: $actualDataColumnWidth');
+              print('   → useMeasuredWidths: $useMeasuredWidths');
+              
+              // ventas 보고서에서 cntropas 칼럼은 가운데 정렬
+              final isCntropasColumn = reportType == ReportType.ventas && 
+                                       (keyLower == 'cntropas' || keyLower == 'tcntropas' || keyLower == 'tcntropas');
+              
+              // 정렬 결정: cntropas는 가운데, 숫자는 오른쪽, 그 외는 왼쪽
+              final alignment = isCntropasColumn 
+                  ? Alignment.center 
+                  : (isNumeric ? Alignment.centerRight : Alignment.centerLeft);
               
               final cellWidget = Align(
-                alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+                alignment: alignment,
                 child: Text(
                   formattedValue,
-                  style: const TextStyle(fontSize: 14),
+                  style: TextStyle(
+                    fontSize: 14, // ventas 보고서도 14px로 통일
+                  ),
                   maxLines: null,
                   overflow: TextOverflow.visible,
                 ),
               );
               
-              return DataCell(
-                ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minWidth: cellWidth,
-                    maxWidth: cellWidth,
-                  ),
-                  child: cellWidget,
+              // DataCell은 기본적으로 horizontal padding이 16px씩 양쪽에 있습니다.
+              // 하지만 ConstrainedBox로 명시적으로 너비를 설정하면,
+              // DataTable이 각 칼럼의 실제 너비를 계산할 때 ConstrainedBox 너비 + padding을 사용합니다.
+              // 따라서 헤더의 SizedBox 너비는 ConstrainedBox 너비 + padding (32px)과 일치해야 합니다.
+              // 데이터 행 칼럼 위치 계산 (디버깅용)
+              int cellIndex = keys.indexOf(key);
+              double dataCellColumnX = 0.0;
+              // buildDataTable의 columnSpacing과 일치시켜야 함
+              final dataColumnSpacing = reportType == ReportType.alertas 
+                  ? 1.0 
+                  : (isVentasDayMonthYear ? (isLargeScreen ? 2.0 : 4.0) : 8.0);
+              
+              for (int j = 0; j < cellIndex; j++) {
+                final prevKey = keys[j];
+                final prevKeyLower = prevKey.toLowerCase();
+                double? prevCellWidth;
+                if (columnWidths != null) {
+                  prevCellWidth = columnWidths[prevKey] ?? 
+                                 columnWidths[prevKeyLower] ??
+                                 (prevKeyLower == 'eventcount' ? columnWidths['eventCount'] : null) ??
+                                 (prevKeyLower == 'tvents' ? columnWidths['tVents'] : null) ??
+                                 (prevKeyLower == 'tventas' ? columnWidths['tVentas'] : null) ??
+                                 (prevKeyLower == 'tcntropas' ? columnWidths['tCntRopas'] : null);
+                }
+                final prevBaseCellWidth = prevCellWidth ?? 150.0;
+                final prevFinalCellWidth = (useMeasuredWidths)
+                    ? prevBaseCellWidth  // 측정된 너비는 이미 전체 너비를 포함하므로 그대로 사용
+                    : (isVentasDayMonthYear && columnWidths != null && prevCellWidth != null)
+                        ? (prevBaseCellWidth - 32.0).clamp(50.0, double.infinity)
+                        : prevBaseCellWidth;
+                // DataCell의 실제 칼럼 너비 = useMeasuredWidths가 true면 finalCellWidth (전체 너비), false면 finalCellWidth + padding (32px)
+                // 헤더의 headerSizedBoxWidth와 일치해야 함
+                final prevActualCellWidth = useMeasuredWidths ? prevFinalCellWidth : prevFinalCellWidth + 32.0;
+                dataCellColumnX += prevActualCellWidth;
+                if (j < cellIndex - 1) {
+                  dataCellColumnX += dataColumnSpacing;
+                }
+              }
+              
+              // DataCell의 실제 칼럼 너비 = SizedBox 너비 + padding (32px)
+              final actualCellWidth = finalCellWidth + 32.0;
+              
+              // 디버깅: 데이터 행 칼럼 위치 계산 (숨김)
+              // if (cellIndex == 0 && isVentasDayMonthYear) {
+              //   debugPrint('═══════════════════════════════════════════════════════');
+              //   debugPrint('🔍 [데이터 행 칼럼 위치] 계산된 위치');
+              //   debugPrint('   → 칼럼 #$cellIndex ($key)');
+              //   debugPrint('   → 계산된 x 위치: $dataCellColumnX');
+              //   debugPrint('   → SizedBox 너비: $finalCellWidth');
+              //   debugPrint('   → 실제 칼럼 너비 (SizedBox + padding): $actualCellWidth');
+              //   debugPrint('   → columnSpacing: $dataColumnSpacing');
+              //   debugPrint('═══════════════════════════════════════════════════════');
+              // }
+              
+              // 디버깅: 데이터 행 칼럼에 수직선 추가 및 위치 측정 (숨김)
+              // debugPrint('🔍 [report_table_builder.dart:2830] 데이터 행 칼럼 수직선 추가 (alertas/ventas day/month/year)');
+              // debugPrint('   → 라인: 2830');
+              // debugPrint('   → key: $key');
+              // debugPrint('   → finalCellWidth (픽셀값): $finalCellWidth');
+              // debugPrint('   → useMeasuredWidths: $useMeasuredWidths');
+              // debugPrint('   → isVentasDayMonthYear: $isVentasDayMonthYear');
+              // print('🔍 [report_table_builder.dart:2830] 데이터 행 칼럼 수직선 추가 (alertas/ventas day/month/year)');
+              // print('   → 라인: 2830');
+              // print('   → key: $key');
+              // print('   → finalCellWidth (픽셀값): $finalCellWidth');
+              
+              final dataCell = DataCell(
+                Builder(
+                  builder: (context) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      // 디버깅: 데이터 행 칼럼 위치 및 너비 측정 (숨김)
+                      // final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+                      // if (renderBox != null) {
+                      //   debugPrint('═══════════════════════════════════════════════════════');
+                      //   debugPrint('🔍 [report_table_builder.dart:2838] 데이터 행 칼럼 위치 및 너비 측정 (alertas/ventas day/month/year)');
+                      //   debugPrint('   → 라인: 2838');
+                      //   debugPrint('   → key: $key');
+                      //   debugPrint('   → finalCellWidth (설정된 픽셀값): $finalCellWidth');
+                      //   debugPrint('   → 실제 렌더링 위치: ${renderBox.localToGlobal(Offset.zero).dx}');
+                      //   debugPrint('   → 실제 렌더링 너비: ${renderBox.size.width}');
+                      //   debugPrint('   → 실제 칼럼 너비 (width + padding): ${renderBox.size.width}');
+                      //   print('🔍 [report_table_builder.dart:2838] 데이터 행 칼럼 위치 및 너비 측정 (alertas/ventas day/month/year)');
+                      //   print('   → 라인: 2838');
+                      //   print('   → key: $key');
+                      //   print('   → finalCellWidth (설정된 픽셀값): $finalCellWidth');
+                      //   print('   → 실제 렌더링 위치: ${renderBox.localToGlobal(Offset.zero).dx}');
+                      //   print('   → 실제 렌더링 너비: ${renderBox.size.width}');
+                      //   debugPrint('═══════════════════════════════════════════════════════');
+                      // }
+                    });
+                    
+                    return Container(
+                      // decoration: BoxDecoration(
+                      //   border: Border(
+                      //     right: BorderSide(
+                      //       color: Colors.blue.withOpacity(0.5),  // 디버깅용 파란색 수직선 (숨김)
+                      //       width: 1.0,
+                      //     ),
+                      //   ),
+                      // ),
+                      child: SizedBox(
+                        width: finalCellWidth,  // 정확한 픽셀값으로 설정
+                        child: cellWidget,
+                      ),
+                    );
+                  },
                 ),
               );
+              
+              // 디버깅: 실제 렌더링 위치 측정 (첫 번째 칼럼만) (숨김)
+              // if (cellIndex == 0 && isVentasDayMonthYear) {
+              //   WidgetsBinding.instance.addPostFrameCallback((_) {
+              //     debugPrint('═══════════════════════════════════════════════════════');
+              //     debugPrint('🔍 [데이터 행 칼럼 위치] 첫 번째 칼럼 렌더링 완료');
+              //     debugPrint('   → 칼럼 #$cellIndex ($key)');
+              //     debugPrint('   → 계산된 x 위치: $dataCellColumnX');
+              //     debugPrint('   → SizedBox 너비: $finalCellWidth');
+              //     debugPrint('   → 실제 칼럼 너비 (계산): $actualCellWidth');
+              //     debugPrint('   → columnSpacing: $dataColumnSpacing');
+              //     debugPrint('═══════════════════════════════════════════════════════');
+              //   });
+              // }
+              
+              return dataCell;
             } else {
               // 다른 보고서는 기본 DataCell 사용
-              return DataCell(
-                Align(
-                  alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Text(
-                    formattedValue,
-                    style: const TextStyle(fontSize: 14),
-                    overflow: TextOverflow.ellipsis,
+              // 단, ventas 보고서의 day/month/year 유닛은 칼럼 너비를 명시적으로 제어
+              if (isVentasDayMonthYear) {
+                // columnWidths에서 칼럼 너비 가져오기 (대소문자 구분 없이)
+                double? cellWidth;
+                if (columnWidths != null) {
+                  cellWidth = columnWidths[key] ?? 
+                             columnWidths[keyLower] ??
+                             (keyLower == 'eventcount' ? columnWidths['eventCount'] : null) ??
+                             (keyLower == 'tvents' ? columnWidths['tVents'] : null) ??
+                             (keyLower == 'tventas' ? columnWidths['tVentas'] : null) ??
+                             (keyLower == 'tcntropas' ? columnWidths['tCntRopas'] : null);
+                }
+                // 헤더와 데이터 행의 칼럼 너비를 일치시키기 위해:
+                // useMeasuredWidths가 false인 경우 (ventas day/month/year):
+                // - 헤더: headerSizedBoxWidth = baseColumnWidth + 32.0 (고정 픽셀 값 + padding)
+                // - 데이터 행: SizedBox 너비 = baseCellWidth (고정 픽셀 값), DataCell이 자동으로 padding 32px 추가
+                // - 따라서 실제 칼럼 너비는 동일: baseCellWidth + 32 = baseColumnWidth + 32
+                // useMeasuredWidths가 true인 경우:
+                // - 헤더: headerSizedBoxWidth = baseColumnWidth (측정값 전체)
+                // - 데이터 행: SizedBox 너비 = baseCellWidth (측정값 전체), padding 없음
+                final baseCellWidth = cellWidth ?? 75.0;  // 기본값도 절반으로 줄임 (150 -> 75)
+                final finalCellWidth = useMeasuredWidths
+                    ? baseCellWidth  // 측정된 너비는 이미 전체 너비를 포함하므로 그대로 사용
+                    : baseCellWidth;  // 고정 픽셀 값을 그대로 사용 (DataCell이 padding 추가)
+                
+                debugPrint('═══════════════════════════════════════════════════════');
+                debugPrint('🔍 [buildDataTable:2858] DataCell 칼럼 너비 설정 (else 블록)');
+                debugPrint('   → 라인: 2858');
+                debugPrint('   → reportType: $reportType');
+                debugPrint('   → unit: $unit');
+                debugPrint('   → isVentasDayMonthYear: $isVentasDayMonthYear');
+                debugPrint('   → key: $key');
+                debugPrint('   → keyLower: $keyLower');
+                debugPrint('   → baseCellWidth: $baseCellWidth');
+                debugPrint('   → finalCellWidth: $finalCellWidth (SizedBox 너비)');
+                final actualDataColumnWidthElse = useMeasuredWidths 
+                    ? finalCellWidth  // 측정값은 전체 너비
+                    : finalCellWidth + 32.0;  // 고정 픽셀 값 + DataCell padding
+                debugPrint('   → 실제 칼럼 너비: $actualDataColumnWidthElse (SizedBox + padding)');
+                debugPrint('   → ⚠️ [매칭 확인] 헤더의 headerSizedBoxWidth ($baseCellWidth + 32 = ${baseCellWidth + 32.0})와 일치해야 함');
+                debugPrint('═══════════════════════════════════════════════════════');
+                print('🔍 [buildDataTable:2858] 데이터 행 칼럼 너비 설정 (else 블록)');
+                print('   → 라인: 2858');
+                print('   → key: $key');
+                print('   → baseCellWidth: $baseCellWidth');
+                print('   → finalCellWidth: $finalCellWidth');
+                print('   → 실제 칼럼 너비: $actualDataColumnWidthElse');
+                print('   → useMeasuredWidths: $useMeasuredWidths');
+                
+                // DataCell은 기본적으로 horizontal padding이 16px씩 양쪽에 있습니다.
+                // 하지만 SizedBox로 명시적으로 너비를 설정하면,
+                // DataTable이 각 칼럼의 실제 너비를 계산할 때 SizedBox 너비 + padding을 사용합니다.
+                // 따라서 헤더의 SizedBox 너비는 SizedBox 너비 + padding (32px)과 일치해야 합니다.
+                
+                // 디버깅: 데이터 행 칼럼에 수직선 추가 및 위치 측정 (숨김)
+                // debugPrint('🔍 [report_table_builder.dart:2907] 데이터 행 칼럼 수직선 추가 (buildDataTable else 블록)');
+                // debugPrint('   → 라인: 2907');
+                // debugPrint('   → key: $key');
+                // debugPrint('   → finalCellWidth (픽셀값): $finalCellWidth');
+                // debugPrint('   → useMeasuredWidths: $useMeasuredWidths');
+                // debugPrint('   → isVentasDayMonthYear: $isVentasDayMonthYear');
+                // print('🔍 [report_table_builder.dart:2907] 데이터 행 칼럼 수직선 추가 (buildDataTable else 블록)');
+                // print('   → 라인: 2907');
+                // print('   → key: $key');
+                // print('   → finalCellWidth (픽셀값): $finalCellWidth');
+                
+                return DataCell(
+                  Builder(
+                    builder: (context) {
+                      // 디버깅: 데이터 행 칼럼 위치 및 너비 측정 (숨김)
+                      // WidgetsBinding.instance.addPostFrameCallback((_) {
+                      //   final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+                      //   if (renderBox != null) {
+                      //     debugPrint('═══════════════════════════════════════════════════════');
+                      //     debugPrint('🔍 [report_table_builder.dart:2915] 데이터 행 칼럼 위치 및 너비 측정 (buildDataTable else 블록)');
+                      //     debugPrint('   → 라인: 2915');
+                      //     debugPrint('   → key: $key');
+                      //     debugPrint('   → finalCellWidth (설정된 픽셀값): $finalCellWidth');
+                      //     debugPrint('   → 실제 렌더링 위치: ${renderBox.localToGlobal(Offset.zero).dx}');
+                      //     debugPrint('   → 실제 렌더링 너비: ${renderBox.size.width}');
+                      //     debugPrint('   → 실제 칼럼 너비 (width + padding): ${renderBox.size.width}');
+                      //     print('🔍 [report_table_builder.dart:2915] 데이터 행 칼럼 위치 및 너비 측정 (buildDataTable else 블록)');
+                      //     print('   → 라인: 2915');
+                      //     print('   → key: $key');
+                      //     print('   → finalCellWidth (설정된 픽셀값): $finalCellWidth');
+                      //     print('   → 실제 렌더링 위치: ${renderBox.localToGlobal(Offset.zero).dx}');
+                      //     print('   → 실제 렌더링 너비: ${renderBox.size.width}');
+                      //     debugPrint('═══════════════════════════════════════════════════════');
+                      //   }
+                      // });
+                      
+                      // 수직선을 별도로 추가하여 칼럼 너비에 영향 없도록 함
+                      return Stack(
+                        children: [
+                          SizedBox(
+                            width: finalCellWidth,  // 정확한 픽셀값으로 설정 (헤더의 baseColumnWidth와 일치)
+                            child: Align(
+                              alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+                              child: Text(
+                                formattedValue,
+                                style: TextStyle(
+                                  fontSize: 14, // ventas 보고서도 14px로 통일
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                          // ventas 보고서가 아닐 때만 수직선 표시 (ventas는 수직선 숨김)
+                          if (reportType != ReportType.ventas)
+                            Positioned(
+                              right: 0,
+                              top: 0,
+                              bottom: 0,
+                              child: Container(
+                                width: 1.0,
+                                color: Colors.blue.withOpacity(0.5),  // 디버깅용 파란색 수직선
+                              ),
+                            ),
+                        ],
+                      );
+                    },
                   ),
-                ),
-              );
+                );
+              } else {
+                // ventas day/month/year 유닛이 아닌 경우에도 수직선 추가 (디버깅용, ventas 제외)
+                debugPrint('🔍 [report_table_builder.dart:3015] 데이터 행 칼럼 수직선 추가 (else 블록 - ventas day/month/year 아님)');
+                debugPrint('   → 라인: 3015');
+                debugPrint('   → key: $key');
+                debugPrint('   → isVentasDayMonthYear: $isVentasDayMonthYear');
+                print('🔍 [report_table_builder.dart:3015] 데이터 행 칼럼 수직선 추가 (else 블록 - ventas day/month/year 아님)');
+                print('   → 라인: 3015');
+                print('   → key: $key');
+                
+                return DataCell(
+                  Builder(
+                    builder: (context) {
+                      // 디버깅: 데이터 행 칼럼 위치 및 너비 측정 (else 블록 - ventas day/month/year 아님) (숨김)
+                      // WidgetsBinding.instance.addPostFrameCallback((_) {
+                      //   final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+                      //   if (renderBox != null) {
+                      //     debugPrint('═══════════════════════════════════════════════════════');
+                      //     debugPrint('🔍 [report_table_builder.dart:3023] 데이터 행 칼럼 위치 및 너비 측정 (else 블록 - ventas day/month/year 아님)');
+                      //     debugPrint('   → 라인: 3023');
+                      //     debugPrint('   → key: $key');
+                      //     debugPrint('   → 실제 렌더링 위치: ${renderBox.localToGlobal(Offset.zero).dx}');
+                      //     debugPrint('   → 실제 렌더링 너비: ${renderBox.size.width}');
+                      //     print('🔍 [report_table_builder.dart:3023] 데이터 행 칼럼 위치 및 너비 측정 (else 블록 - ventas day/month/year 아님)');
+                      //     print('   → 라인: 3023');
+                      //     print('   → key: $key');
+                      //     print('   → 실제 렌더링 위치: ${renderBox.localToGlobal(Offset.zero).dx}');
+                      //     print('   → 실제 렌더링 너비: ${renderBox.size.width}');
+                      //     debugPrint('═══════════════════════════════════════════════════════');
+                      //   }
+                      // });
+                      
+                      // ventas 보고서가 아닐 때만 수직선 표시 (ventas는 수직선 숨김)
+                      return Container(
+                        decoration: reportType == ReportType.ventas
+                            ? null
+                            : BoxDecoration(
+                                border: Border(
+                                  right: BorderSide(
+                                    color: Colors.green.withOpacity(0.5),  // 디버깅용 초록색 수직선 (ventas day/month/year 아님)
+                                    width: 1.0,
+                                  ),
+                                ),
+                              ),
+                        child: Align(
+                          alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+                          child: Text(
+                            formattedValue,
+                            style: TextStyle(
+                              fontSize: 14, // ventas 보고서도 14px로 통일
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              }
             }
           }).toList();
           
@@ -2209,7 +3153,24 @@ class ReportTableBuilder {
           assert(cells.length == keys.length, 
             'Row cells count (${cells.length}) must match keys count (${keys.length})');
           
-          return DataRow(cells: cells);
+          // 매 5번째 행마다 색상 변경 (ventas, items, ingresos, fventas, gastos, clientes 보고서)
+          final shouldApplyRowColor = reportType == ReportType.ventas ||
+                                      reportType == ReportType.items ||
+                                      reportType == ReportType.ingresos ||
+                                      reportType == ReportType.fventas ||
+                                      reportType == ReportType.gastos ||
+                                      reportType == ReportType.clientes;
+          
+          MaterialStateProperty<Color?>? rowColor;
+          if (shouldApplyRowColor && index % 5 == 4) {
+            // 매 5번째 행 (0-based index이므로 4, 9, 14, ...)에 약간 다른 색상 적용
+            rowColor = MaterialStateProperty.all(Colors.grey.withOpacity(0.05));
+          }
+          
+          return DataRow(
+            cells: cells,
+            color: rowColor,
+          );
         } else {
           // Map이 아닌 경우
           final formattedValue = ReportUtils.formatValue(item);
@@ -2220,15 +3181,37 @@ class ReportTableBuilder {
                 alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
                 child: Text(
                   index == 0 ? formattedValue : '',
-                  style: const TextStyle(fontSize: 14),
+                  style: TextStyle(
+                    fontSize: 14, // ventas 보고서도 14px로 통일
+                  ),
                 ),
               ),
             );
           });
           
-          return DataRow(cells: cells);
+          // 매 5번째 행마다 색상 변경 (ventas, items, ingresos, fventas, gastos, clientes 보고서)
+          final shouldApplyRowColor = reportType == ReportType.ventas ||
+                                      reportType == ReportType.items ||
+                                      reportType == ReportType.ingresos ||
+                                      reportType == ReportType.fventas ||
+                                      reportType == ReportType.gastos ||
+                                      reportType == ReportType.clientes;
+          
+          MaterialStateProperty<Color?>? rowColor;
+          if (shouldApplyRowColor && index % 5 == 4) {
+            // 매 5번째 행 (0-based index이므로 4, 9, 14, ...)에 약간 다른 색상 적용
+            rowColor = MaterialStateProperty.all(Colors.grey.withOpacity(0.05));
+          }
+          
+          return DataRow(
+            cells: cells,
+            color: rowColor,
+          );
         }
       }).toList(),
+          ),
+        );
+      },
     );
     
     // 디버깅: 괄호/구문 오류 확인을 위한 로깅
@@ -2252,6 +3235,7 @@ class ReportTableBuilder {
     required Color color,
     bool includeTotalRow = true, // footer 포함 여부
     Map<String, double>? columnWidths,
+    bool useMeasuredWidths = false, // 측정된 너비 사용 여부
   }) {
     // 디버깅: 함수 진입 확인
     debugPrint('═══════════════════════════════════════════════════════');
@@ -2286,10 +3270,14 @@ class ReportTableBuilder {
     
     // 데이터 행 생성
     debugPrint('   → [데이터 행 생성] displayedList.map 시작');
-    rows.addAll(displayedList.map((item) {
+    rows.addAll(displayedList.asMap().entries.map((entry) {
+      final index = entry.key;
+      final item = entry.value;
       debugPrint('   → [데이터 행 생성] item 타입: ${item.runtimeType}');
       if (item is Map<String, dynamic>) {
         debugPrint('   → [데이터 행 생성] Map 타입 - _buildDataRowFromMap 호출');
+        debugPrint('   → [report_table_builder.dart:3016] useMeasuredWidths 전달: $useMeasuredWidths');
+        debugPrint('   → 라인: 3016');
         return _buildDataRowFromMap(
           item: item,
           keys: keys,
@@ -2298,6 +3286,8 @@ class ReportTableBuilder {
           onRowTap: onRowTap,
           unit: unit,
           columnWidths: columnWidths,
+          useMeasuredWidths: useMeasuredWidths, // 측정된 너비 사용 여부 전달
+          rowIndex: index, // 행 인덱스 전달 (5행마다 색상 변경용)
         );
       } else {
         debugPrint('   → [데이터 행 생성] Map이 아닌 타입 - _buildDataRowFromNonMap 호출');
@@ -2306,6 +3296,7 @@ class ReportTableBuilder {
           keys: keys,
           reportType: reportType,
           columnWidths: columnWidths,
+          rowIndex: index, // 행 인덱스 전달 (5행마다 색상 변경용)
         );
       }
     }));
@@ -2341,20 +3332,41 @@ class ReportTableBuilder {
     Function(Map<String, dynamic>)? onRowTap,
     String? unit,
     Map<String, double>? columnWidths,
+    bool useMeasuredWidths = false, // 측정된 너비 사용 여부
+    int rowIndex = 0, // 행 인덱스 (5행마다 색상 변경용)
   }) {
-    // 디버깅: 함수 진입 확인
-    debugPrint('   → [구문 검사] _buildDataRowFromMap 함수 시작');
-    debugPrint('      → 파일: report_table_builder.dart');
-    debugPrint('      → 라인: ${2037}');
-    debugPrint('      → 함수명: _buildDataRowFromMap');
-    debugPrint('      → 파라미터 개수: 7');
-    debugPrint('      → reportType: $reportType');
-    debugPrint('      → keys.length: ${keys.length}');
-    debugPrint('      → item.keys.length: ${item.keys.length}');
-    debugPrint('      → columnWidths 전달됨: ${columnWidths != null}');
-    debugPrint('      → onRowDoubleTap: ${onRowDoubleTap != null}');
-    debugPrint('      → onRowTap: ${onRowTap != null}');
-    debugPrint('      → unit: $unit');
+    // ventas 보고서인지 확인 (vcode, day, month, year 모두 포함)
+    // isVentas는 클로저 내부에서 직접 계산하므로 여기서는 선언하지 않음
+    final isVentasDayMonthYear = reportType == ReportType.ventas && 
+                                 unit != null && 
+                                 (unit == 'day' || unit == 'month' || unit == 'year');
+    // 디버깅: 함수 진입 확인 및 columnWidths 상세 확인
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🔍 [report_table_builder.dart:3032] _buildDataRowFromMap 함수 시작');
+    debugPrint('   → 라인: 3032');
+    debugPrint('   → reportType: $reportType');
+    debugPrint('   → unit: $unit');
+    debugPrint('   → keys.length: ${keys.length}');
+    debugPrint('   → keys: $keys');
+    debugPrint('   → columnWidths 전달됨: ${columnWidths != null}');
+    if (columnWidths != null) {
+      debugPrint('   → columnWidths 내용: $columnWidths');
+      debugPrint('   → columnWidths 개수: ${columnWidths.length}');
+      debugPrint('   → 각 키별 columnWidths 값:');
+      for (final key in keys) {
+        final width = columnWidths[key] ?? 
+                     columnWidths[key.toLowerCase()] ??
+                     (key.toLowerCase() == 'eventcount' ? columnWidths['eventCount'] : null) ??
+                     (key.toLowerCase() == 'tvents' ? columnWidths['tVents'] : null) ??
+                     (key.toLowerCase() == 'tventas' ? columnWidths['tVentas'] : null) ??
+                     (key.toLowerCase() == 'tcntropas' ? columnWidths['tCntRopas'] : null);
+        debugPrint('     → $key: $width');
+      }
+      debugPrint('   → ⚠️ [중요] 이 columnWidths가 헤더의 columnWidths와 동일한지 확인 필요');
+    } else {
+      debugPrint('   → ⚠️ [경고] columnWidths가 null! 기본값 사용됨');
+    }
+    debugPrint('═══════════════════════════════════════════════════════');
     
     // items/ingresos/alertas 보고서는 칼럼 너비를 설정하여 헤더와 일치시킴
     final isItemsOrIngresos = reportType == ReportType.items || reportType == ReportType.ingresos;
@@ -2429,57 +3441,289 @@ class ReportTableBuilder {
         reportType: reportType,
       );
       
-      // items/ingresos/alertas 보고서는 각 셀의 너비를 설정하여 헤더와 일치시킴
-      if (isItemsOrIngresos || isAlertas) {
-        final columnWidth = finalColumnWidths[key] ?? 150.0;
-        // alertas 보고서는 padding을 최소화하여 내용이 더 넓게 보이도록 설정
+      // items/ingresos/alertas 보고서 또는 useMeasuredWidths가 true이거나 ventas 보고서(vcode, day, month, year 모두)인 경우 각 셀의 너비를 설정하여 헤더와 일치시킴
+      // 클로저 내부에서 직접 계산하여 변수 스코프 문제 방지
+      final isVentasInClosure = reportType == ReportType.ventas;
+      if (isItemsOrIngresos || isAlertas || useMeasuredWidths || isVentasInClosure) {
+        debugPrint('🔍 [report_table_builder.dart:3170] 데이터 행 칼럼 너비 설정');
+        debugPrint('   → 라인: 3170');
+        debugPrint('   → key: $key');
+        debugPrint('   → isItemsOrIngresos: $isItemsOrIngresos');
+        debugPrint('   → isAlertas: $isAlertas');
+        debugPrint('   → useMeasuredWidths: $useMeasuredWidths');
+        debugPrint('   → isVentasInClosure: $isVentasInClosure');
+        debugPrint('   → isVentasDayMonthYear: $isVentasDayMonthYear');
+        debugPrint('   → reportType: $reportType');
+        // 헤더와 정확히 일치시키기 위해 baseColumnWidth를 그대로 사용 (padding은 DataCell이 자동 추가)
+        final columnWidth = finalColumnWidths[key] ?? 
+                           finalColumnWidths[key.toLowerCase()] ??
+                           (key.toLowerCase() == 'eventcount' ? finalColumnWidths['eventCount'] : null) ??
+                           (key.toLowerCase() == 'tvents' ? finalColumnWidths['tVents'] : null) ??
+                           (key.toLowerCase() == 'tventas' ? finalColumnWidths['tVentas'] : null) ??
+                           (key.toLowerCase() == 'tcntropas' ? finalColumnWidths['tCntRopas'] : null) ??
+                           75.0;  // 기본값도 절반으로 줄임 (150 -> 75)
+        
+        // 헤더와 정확히 일치시키기 위해 계산
+        // 헤더: headerSizedBoxWidth = useMeasuredWidths ? baseColumnWidth : (isAlertas ? baseColumnWidth + 2.0 : (isVentas ? baseColumnWidth + 32.0 : baseColumnWidth))
+        // 데이터 행: SizedBox 너비를 헤더의 headerSizedBoxWidth와 동일하게 설정
+        // ventas 보고서의 모든 유닛(vcode 포함)은 DataCell padding을 고려해야 함
+        final dataRowColumnWidth = useMeasuredWidths
+            ? columnWidth  // 측정된 너비는 이미 전체 너비를 포함하므로 그대로 사용
+            : (isAlertas
+                ? columnWidth + 2.0  // alertas는 padding 1px * 2
+                : (isVentasInClosure
+                    ? columnWidth + 32.0  // ventas 보고서(vcode, day, month, year 모두)는 헤더와 동일하게 padding 추가
+                    : columnWidth));
+        
+        // 디버깅: 데이터 행 칼럼 너비 계산 (숨김)
+        // debugPrint('🔍 [report_table_builder.dart:3350] 데이터 행 칼럼 너비 계산');
+        // debugPrint('   → 라인: 3350');
+        // debugPrint('   → key: $key');
+        // debugPrint('   → columnWidth (base 픽셀값): $columnWidth');
+        // debugPrint('   → useMeasuredWidths: $useMeasuredWidths');
+        // debugPrint('   → isVentasDayMonthYear: $isVentasDayMonthYear');
+        // debugPrint('   → dataRowColumnWidth (최종 SizedBox 너비): $dataRowColumnWidth');
+        // debugPrint('   → finalColumnWidths[$key]: ${finalColumnWidths[key]}');
+        // if (isVentasInClosure) {
+        //   debugPrint('   → ⚠️ [매칭 확인] 헤더의 headerSizedBoxWidth ($dataRowColumnWidth)와 일치해야 함');
+        //   debugPrint('   → ⚠️ [매칭 확인] 헤더의 headerSizedBoxWidth는 ${useMeasuredWidths ? columnWidth : columnWidth + 32.0}이어야 함');
+        //   debugPrint('   → ⚠️ [매칭 확인] 데이터 행의 SizedBox 너비는 $columnWidth (DataCell padding 32px 자동 추가)');
+        // }
+        // print('🔍 [report_table_builder.dart:3184] 데이터 행 칼럼 너비 가져오기');
+        // print('   → 라인: 3184');
+        // print('   → key: $key');
+        // print('   → columnWidth (픽셀값): $columnWidth');
+        // print('   → useMeasuredWidths: $useMeasuredWidths');
+        // print('   → isVentasDayMonthYear: $isVentasDayMonthYear');
+        // alertas 보고서는 padding이 1px이므로 다르게 처리
         if (isAlertas) {
-          debugPrint('🔍 [Alertas _buildDataRowFromMap] DataCell 생성 - key: $key, columnWidth: $columnWidth, padding: 최소화');
-          // cell.child가 Align인 경우 Align의 child를 SizedBox로 감싸기 (Padding 제거)
+          // alertas는 padding이 1px이므로 baseColumnWidth + 2.0 (1px * 2)
+          final alertasColumnWidth = useMeasuredWidths
+              ? columnWidth
+              : columnWidth + 2.0;  // 헤더와 동일하게 padding 추가 (1px * 2)
+          
+          debugPrint('🔍 [Alertas _buildDataRowFromMap] DataCell 생성 - key: $key, columnWidth: $columnWidth, alertasColumnWidth: $alertasColumnWidth, padding: 1px');
+          debugPrint('   → 라인: 3367');
+          // cell.child가 Align인 경우 Align의 child를 SizedBox로 감싸기
           if (cell.child is Align) {
             final align = cell.child as Align;
             debugPrint('   → cell.child는 Align 타입');
             return DataCell(
-              SizedBox(
-                    width: columnWidth,
-                child: Align(
-                  alignment: align.alignment,
-                  child: align.child,
-                ),
+              Stack(
+                children: [
+                  SizedBox(
+                    width: alertasColumnWidth,  // 헤더와 동일하게 padding 추가
+                    child: Align(
+                      alignment: align.alignment,
+                      child: align.child,
+                    ),
+                  ),
+                  // ventas 보고서가 아닐 때만 수직선 표시 (ventas는 수직선 숨김)
+                  if (reportType != ReportType.ventas)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      child: Container(
+                        width: 1.0,
+                        color: Colors.blue.withOpacity(0.5),  // 디버깅용 파란색 수직선
+                      ),
+                    ),
+                ],
               ),
             );
           }
-          // cell.child가 다른 타입인 경우 SizedBox로 감싸기 (Padding 제거)
+          // cell.child가 다른 타입인 경우 SizedBox로 감싸기
           debugPrint('   → cell.child는 ${cell.child.runtimeType} 타입');
           return DataCell(
-            SizedBox(
-              width: columnWidth,
-              child: cell.child,
+            Stack(
+              children: [
+                SizedBox(
+                  width: alertasColumnWidth,  // 헤더와 동일하게 padding 추가
+                  child: cell.child,
+                ),
+                // ventas 보고서가 아닐 때만 수직선 표시 (ventas는 수직선 숨김)
+                if (reportType != ReportType.ventas)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 1.0,
+                      color: Colors.blue.withOpacity(0.5),  // 디버깅용 파란색 수직선
+                    ),
+                  ),
+              ],
             ),
           );
         }
-        // items/ingresos 보고서는 기존대로
+        // items/ingresos 보고서 또는 useMeasuredWidths가 true인 경우 기존대로
         // cell.child가 Align인 경우 Align의 child를 SizedBox로 감싸기
         if (cell.child is Align) {
           final align = cell.child as Align;
+          debugPrint('   → [report_table_builder.dart:3205] cell.child는 Align 타입, SizedBox로 감싸기');
+          debugPrint('   → 라인: 3205');
+          debugPrint('   → columnWidth: $columnWidth');
+          print('   → [report_table_builder.dart:3205] cell.child는 Align 타입, SizedBox로 감싸기');
+          print('   → 라인: 3205');
+          print('   → columnWidth: $columnWidth');
+          // 디버깅: 데이터 행 칼럼에 수직선 추가 및 위치 측정 (라인 번호 포함)
+          debugPrint('🔍 [report_table_builder.dart:3247] 데이터 행 칼럼 수직선 추가');
+          debugPrint('   → 라인: 3247');
+          debugPrint('   → key: $key');
+          debugPrint('   → columnWidth (픽셀값): $columnWidth');
+          debugPrint('   → isVentasDayMonthYear: $isVentasDayMonthYear');
+          debugPrint('   → useMeasuredWidths: $useMeasuredWidths');
+          print('🔍 [report_table_builder.dart:3247] 데이터 행 칼럼 수직선 추가');
+          print('   → 라인: 3247');
+          print('   → key: $key');
+          print('   → columnWidth (픽셀값): $columnWidth');
+          
           return DataCell(
-            SizedBox(
-              width: columnWidth,
-              child: Align(
-                alignment: align.alignment,
-                child: align.child,
-              ),
+            Builder(
+              builder: (context) {
+                // 디버깅: 데이터 행 칼럼 위치 및 너비 측정 (숨김)
+                // WidgetsBinding.instance.addPostFrameCallback((_) {
+                //   final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+                //   if (renderBox != null) {
+                //     debugPrint('═══════════════════════════════════════════════════════');
+                //     debugPrint('🔍 [report_table_builder.dart:3255] 데이터 행 칼럼 위치 및 너비 측정');
+                //     debugPrint('   → 라인: 3255');
+                //     debugPrint('   → key: $key');
+                //     debugPrint('   → columnWidth (설정된 픽셀값): $columnWidth');
+                //     debugPrint('   → 실제 렌더링 위치: ${renderBox.localToGlobal(Offset.zero).dx}');
+                //     debugPrint('   → 실제 렌더링 너비: ${renderBox.size.width}');
+                //     debugPrint('   → 실제 칼럼 너비 (width + padding): ${renderBox.size.width}');
+                //     print('🔍 [report_table_builder.dart:3255] 데이터 행 칼럼 위치 및 너비 측정');
+                //     print('   → 라인: 3255');
+                //     print('   → key: $key');
+                //     print('   → columnWidth (설정된 픽셀값): $columnWidth');
+                //     print('   → 실제 렌더링 위치: ${renderBox.localToGlobal(Offset.zero).dx}');
+                //     print('   → 실제 렌더링 너비: ${renderBox.size.width}');
+                //     debugPrint('═══════════════════════════════════════════════════════');
+                //   }
+                // });
+                
+                // 수직선을 별도로 추가하여 칼럼 너비에 영향 없도록 함
+                return Stack(
+                  children: [
+                    SizedBox(
+                      width: dataRowColumnWidth,  // 헤더의 headerSizedBoxWidth와 일치 (baseColumnWidth + 32.0)
+                      child: Align(
+                        alignment: align.alignment,
+                        child: align.child,
+                      ),
+                    ),
+                    // ventas 보고서가 아닐 때만 수직선 표시 (ventas는 수직선 숨김)
+                    if (reportType != ReportType.ventas)
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        bottom: 0,
+                        child: Container(
+                          width: 1.0,
+                          color: Colors.blue.withOpacity(0.5),  // 디버깅용 파란색 수직선
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
           );
         }
         // cell.child가 다른 타입인 경우 그대로 SizedBox로 감싸기
+        debugPrint('   → [report_table_builder.dart:3290] cell.child는 ${cell.child.runtimeType} 타입, SizedBox로 감싸기');
+        debugPrint('   → 라인: 3290');
+        debugPrint('   → columnWidth: $columnWidth');
+        print('   → [report_table_builder.dart:3290] cell.child는 ${cell.child.runtimeType} 타입, SizedBox로 감싸기');
+        print('   → 라인: 3290');
+        print('   → columnWidth: $columnWidth');
+        
+        // 디버깅: 데이터 행 칼럼에 수직선 추가 및 위치 측정 (라인 번호 포함)
+        debugPrint('🔍 [report_table_builder.dart:3295] 데이터 행 칼럼 수직선 추가 (다른 타입)');
+        debugPrint('   → 라인: 3295');
+        debugPrint('   → key: $key');
+        debugPrint('   → columnWidth (픽셀값): $columnWidth');
+        print('🔍 [report_table_builder.dart:3295] 데이터 행 칼럼 수직선 추가 (다른 타입)');
+        print('   → 라인: 3295');
+        print('   → key: $key');
+        print('   → columnWidth (픽셀값): $columnWidth');
+        
         return DataCell(
-          SizedBox(
-            width: columnWidth,
-            child: cell.child,
+          Builder(
+            builder: (context) {
+              // 디버깅: 데이터 행 칼럼 위치 및 너비 측정 (다른 타입) (숨김)
+              // WidgetsBinding.instance.addPostFrameCallback((_) {
+              //   final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+              //   if (renderBox != null) {
+              //     debugPrint('═══════════════════════════════════════════════════════');
+              //     debugPrint('🔍 [report_table_builder.dart:3303] 데이터 행 칼럼 위치 및 너비 측정 (다른 타입)');
+              //     debugPrint('   → 라인: 3303');
+              //     debugPrint('   → key: $key');
+              //     debugPrint('   → columnWidth (설정된 픽셀값): $columnWidth');
+              //     debugPrint('   → 실제 렌더링 위치: ${renderBox.localToGlobal(Offset.zero).dx}');
+              //     debugPrint('   → 실제 렌더링 너비: ${renderBox.size.width}');
+              //     print('🔍 [report_table_builder.dart:3303] 데이터 행 칼럼 위치 및 너비 측정 (다른 타입)');
+              //     print('   → 라인: 3303');
+              //     print('   → key: $key');
+              //     print('   → columnWidth (설정된 픽셀값): $columnWidth');
+              //     print('   → 실제 렌더링 위치: ${renderBox.localToGlobal(Offset.zero).dx}');
+              //     print('   → 실제 렌더링 너비: ${renderBox.size.width}');
+              //     debugPrint('═══════════════════════════════════════════════════════');
+              //   }
+              // });
+              
+              // 수직선을 별도로 추가하여 칼럼 너비에 영향 없도록 함
+              // 헤더와 정확히 일치시키기 위해 계산
+              // ventas 보고서의 모든 유닛(vcode 포함)은 DataCell padding을 고려해야 함
+              // 클로저 내부에서 직접 계산하여 변수 스코프 문제 방지
+              final isVentasForCellInClosure = reportType == ReportType.ventas;
+              final dataRowColumnWidthForCell = useMeasuredWidths
+                  ? columnWidth  // 측정된 너비는 이미 전체 너비를 포함하므로 그대로 사용
+                  : (isAlertas
+                      ? columnWidth + 2.0  // alertas는 padding 1px * 2
+                      : (isVentasForCellInClosure
+                          ? columnWidth + 32.0  // ventas 보고서(vcode, day, month, year 모두)는 헤더와 동일하게 padding 추가
+                          : columnWidth));
+              
+              return Stack(
+                children: [
+                  SizedBox(
+                    width: dataRowColumnWidthForCell,  // 헤더의 headerSizedBoxWidth와 일치 (baseColumnWidth + 32.0)
+                    child: cell.child,
+                  ),
+                  // ventas 보고서가 아닐 때만 수직선 표시 (ventas는 수직선 숨김)
+                  if (reportType != ReportType.ventas)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      child: Container(
+                        width: 1.0,
+                        color: Colors.blue.withOpacity(0.5),  // 디버깅용 파란색 수직선
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         );
       }
+      
+      // useMeasuredWidths가 false이고 items/ingresos/alertas/ventas day/month/year도 아닌 경우
+      debugPrint('🔍 [report_table_builder.dart:3250] 칼럼 너비 설정하지 않음');
+      debugPrint('   → 라인: 3250');
+      debugPrint('   → key: $key');
+      debugPrint('   → isItemsOrIngresos: $isItemsOrIngresos');
+      debugPrint('   → isAlertas: $isAlertas');
+      debugPrint('   → useMeasuredWidths: $useMeasuredWidths');
+      debugPrint('   → isVentasDayMonthYear: $isVentasDayMonthYear');
+      debugPrint('   → ⚠️ [경고] 칼럼 너비가 설정되지 않아 헤더와 일치하지 않을 수 있음');
+      print('🔍 [report_table_builder.dart:3250] 칼럼 너비 설정하지 않음');
+      print('   → 라인: 3250');
+      print('   → key: $key');
+      print('   → useMeasuredWidths: $useMeasuredWidths');
+      print('   → isVentasDayMonthYear: $isVentasDayMonthYear');
       
       return cell;
     }).toList();
@@ -2510,6 +3754,7 @@ class ReportTableBuilder {
     required List<String> keys,
     required ReportType reportType,
     Map<String, double>? columnWidths,
+    int rowIndex = 0, // 행 인덱스 (5행마다 색상 변경용)
   }) {
     // 디버깅: 함수 진입 확인
     debugPrint('   → [구문 검사] _buildDataRowFromNonMap 함수 시작');
@@ -2536,7 +3781,7 @@ class ReportTableBuilder {
           child: Text(
             index == 0 ? formattedValue : '',
             style: TextStyle(
-              fontSize: reportType == ReportType.ventas ? 12 : 14,
+              fontSize: 14, // ventas 보고서도 14px로 통일
               height: reportType == ReportType.ventas ? 1.0 : 1.2,
             ),
           ),
@@ -2547,7 +3792,24 @@ class ReportTableBuilder {
     debugPrint('   → [구문 검사] _buildDataRowFromNonMap 함수 종료');
     debugPrint('      → 반환 cells.length: ${cells.length}');
     
-    return DataRow(cells: cells);
+    // 매 5번째 행마다 색상 변경 (ventas, items, ingresos, fventas, gastos, clientes 보고서)
+    final shouldApplyRowColor = reportType == ReportType.ventas ||
+                                reportType == ReportType.items ||
+                                reportType == ReportType.ingresos ||
+                                reportType == ReportType.fventas ||
+                                reportType == ReportType.gastos ||
+                                reportType == ReportType.clientes;
+    
+    MaterialStateProperty<Color?>? rowColor;
+    if (shouldApplyRowColor && rowIndex % 5 == 4) {
+      // 매 5번째 행 (0-based index이므로 4, 9, 14, ...)에 약간 다른 색상 적용
+      rowColor = MaterialStateProperty.all(Colors.grey.withOpacity(0.05));
+    }
+    
+    return DataRow(
+      cells: cells,
+      color: rowColor,
+    );
   }
 
   /// DataCell 생성
@@ -2619,9 +3881,18 @@ class ReportTableBuilder {
     final isAlertas = reportType == ReportType.alertas;
     final isEventoColumn = keyLower == 'evento';
     
+    // ventas 보고서에서 cntropas 칼럼은 가운데 정렬
+    final isCntropasColumn = reportType == ReportType.ventas && 
+                             (keyLower == 'cntropas' || keyLower == 'tcntropas' || keyLower == 'tcntropas');
+    
+    // 정렬 결정: cntropas는 가운데, 숫자는 오른쪽, 그 외는 왼쪽
+    final alignment = isCntropasColumn 
+        ? Alignment.center 
+        : (isNumeric ? Alignment.centerRight : Alignment.centerLeft);
+    
     return DataCell(
       Align(
-        alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
+        alignment: alignment,
         child: isAlertas
             ? Wrap(
                 children: [
@@ -2639,7 +3910,7 @@ class ReportTableBuilder {
             : Text(
                 formattedValue,
                 style: TextStyle(
-                  fontSize: reportType == ReportType.ventas ? 12 : 14,
+                  fontSize: 14, // ventas 보고서도 14px로 통일
                   height: reportType == ReportType.ventas ? 1.0 : 1.2,
                 ),
               ),
@@ -2761,7 +4032,7 @@ class ReportTableBuilder {
   }
 
   // 고정된 합계 행 빌드 (화면 하단에 고정, 현재 보이는 항목들의 합계)
-  static Widget buildFixedTotalRow(List<String> keys, List<dynamic> displayedList, Color reportColor, {Map<String, double>? columnWidths, List<dynamic>? dataList, ReportType? reportType, double? explicitWidth}) {
+  static Widget buildFixedTotalRow(List<String> keys, List<dynamic> displayedList, Color reportColor, {Map<String, double>? columnWidths, List<dynamic>? dataList, ReportType? reportType, double? explicitWidth, String? unit}) {
     // 디버깅: 함수 진입 확인 (가장 먼저 실행)
     debugPrint('═══════════════════════════════════════════════════════');
     debugPrint('🔍 [_buildFixedTotalRow] 함수 진입');
@@ -2868,7 +4139,26 @@ class ReportTableBuilder {
       'cntevent': 100,
     };
     
-    final finalColumnWidths = columnWidths ?? defaultColumnWidths;
+    var finalColumnWidths = columnWidths ?? defaultColumnWidths;
+    
+    // month 유닛인 경우 tefectivo, tcredito, tbanco 칼럼 너비를 30% 증가
+    final isMonthUnitForFooter = unit == 'month';
+    if (isMonthUnitForFooter && finalColumnWidths.containsKey('tefectivo')) {
+      final baseTefectivo = finalColumnWidths['tefectivo'] ?? 306;
+      final baseTcredito = finalColumnWidths['tcredito'] ?? 306;
+      final baseTbanco = finalColumnWidths['tbanco'] ?? 306;
+      
+      // 30% 증가: 1.3배
+      finalColumnWidths = Map<String, double>.from(finalColumnWidths);
+      finalColumnWidths['tefectivo'] = (baseTefectivo * 1.3).roundToDouble();
+      finalColumnWidths['tcredito'] = (baseTcredito * 1.3).roundToDouble();
+      finalColumnWidths['tbanco'] = (baseTbanco * 1.3).roundToDouble();
+      
+      debugPrint('📊 [푸터] month 유닛: tefectivo, tcredito, tbanco 칼럼 너비 30% 증가');
+      debugPrint('   → tefectivo: $baseTefectivo -> ${finalColumnWidths['tefectivo']}');
+      debugPrint('   → tcredito: $baseTcredito -> ${finalColumnWidths['tcredito']}');
+      debugPrint('   → tbanco: $baseTbanco -> ${finalColumnWidths['tbanco']}');
+    }
     
     // 디버깅: 푸터 칼럼 너비 정보 출력 (항상 출력)
     debugPrint('═══════════════════════════════════════════════════════');
@@ -2881,12 +4171,23 @@ class ReportTableBuilder {
     final footerPadding = isAlertas ? 1 : 16; // alertas는 1, 다른 보고서는 16
     final footerColumnSpacing = isAlertas ? 1 : 8; // alertas는 1, 다른 보고서는 8
     
+    // ventas day/month/year 유닛인지 확인 (푸터도 헤더/데이터 행과 동일한 칼럼 폭 계산)
+    final isVentasDayMonthYear = reportType == ReportType.ventas && 
+                                 unit != null && 
+                                 unit != 'vcode';
+    
     double footerCumulativeX = 0.0;
     for (int i = 0; i < keys.length; i++) {
       final key = keys[i];
-      final columnWidth = finalColumnWidths[key] ?? 150.0;
-      debugPrint('   → [푸터] 칼럼 #$i: key="$key", width=$columnWidth, x=$footerCumulativeX, padding=$footerPadding (alertas: $isAlertas)');
-      footerCumulativeX += columnWidth;
+      final baseColumnWidth = finalColumnWidths[key] ?? 150.0;
+      
+      // 헤더와 동일한 칼럼 폭 계산 로직 적용
+      final footerColumnWidth = isVentasDayMonthYear
+          ? baseColumnWidth + 32.0  // DataCell padding (16px * 2) 추가
+          : baseColumnWidth;
+      
+      debugPrint('   → [푸터] 칼럼 #$i: key="$key", baseWidth=$baseColumnWidth, footerWidth=$footerColumnWidth, x=$footerCumulativeX, padding=$footerPadding (alertas: $isAlertas, ventasDayMonthYear: $isVentasDayMonthYear)');
+      footerCumulativeX += footerColumnWidth;
       if (i < keys.length - 1) {
         footerCumulativeX += footerColumnSpacing;
         debugPrint('      → columnSpacing($footerColumnSpacing) 추가 후 x=$footerCumulativeX');
@@ -3162,7 +4463,18 @@ class ReportTableBuilder {
                                 key == 'cretmp' || key == 'sucursal' || key == 'ntiqrepetir' || key == 'b_mercadopago' ||
                                 key == 'd_num_caja' || key == 'd_num_terminal' || key == 'ProductName' || key == 'desc1' || 
                                 key == 'descripcion' || key == 'CategoryCode' || key == 'CompanyCode'; // CategoryCode, CompanyCode 추가
-            final columnWidth = finalColumnWidths[key] ?? 150.0;
+            final baseColumnWidth = finalColumnWidths[key] ?? 150.0;
+            
+            // ventas day/month/year 유닛인지 확인 (푸터도 헤더/데이터 행과 동일한 칼럼 폭 계산)
+            final isVentasDayMonthYear = reportType == ReportType.ventas && 
+                                        unit != null && 
+                                        unit != 'vcode';
+            
+            // 헤더와 동일한 칼럼 폭 계산 로직 적용
+            // ventas day/month/year 유닛은 padding(32px)을 고려하여 푸터 너비 계산
+            final footerColumnWidth = isVentasDayMonthYear
+                ? baseColumnWidth + 32.0  // DataCell padding (16px * 2) 추가
+                : baseColumnWidth;
             
             // 합계를 계산하지 않는 컬럼은 빈 칸으로 표시
             final isExcludedColumn = isCodigoColumn || isDateColumn || isTextColumn;
@@ -3183,10 +4495,11 @@ class ReportTableBuilder {
                                     key == 'sucursal' || key == 'totalCantidad');
             
             final footerHeight = (reportType == ReportType.items || reportType == ReportType.ingresos) ? 37.0 : 56.0;
+            final isVentas = reportType == ReportType.ventas;
             
             return [
               SizedBox(
-                width: columnWidth,
+                width: footerColumnWidth,  // 헤더와 동일한 칼럼 폭 사용
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), // 테이블 행 높이에 맞춰 vertical: 8로 조정 (32-37 높이)
                   height: footerHeight, // items/ingresos는 37, 다른 보고서는 56
@@ -3195,8 +4508,8 @@ class ReportTableBuilder {
                           alignment: Alignment.centerLeft,
                           child: Text(
                             'Total: $totalCount',
-                            style: const TextStyle(
-                              fontSize: 14,
+                            style: TextStyle(
+                              fontSize: 14, // ventas 보고서도 14px로 통일
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -3206,8 +4519,8 @@ class ReportTableBuilder {
                               alignment: isNumericColumn ? Alignment.centerRight : Alignment.centerLeft, // 숫자 칼럼은 오른쪽 정렬
                               child: Text(
                                 ReportUtils.formatValue(total),
-                                style: const TextStyle(
-                                  fontSize: 14,
+                                style: TextStyle(
+                                  fontSize: 14, // ventas 보고서도 14px로 통일
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -3215,8 +4528,19 @@ class ReportTableBuilder {
                           : const SizedBox.shrink(),
                 ),
               ),
-              // 마지막 칼럼이 아니면 columnSpacing(8px) 추가
-              if (index < keys.length - 1) const SizedBox(width: 8),
+              // 마지막 칼럼이 아니면 columnSpacing 추가
+              // ventas day/month/year 유닛의 경우 간격을 줄여서 더 많은 공간 확보
+              if (index < keys.length - 1) ...[
+                Builder(
+                  builder: (context) {
+                    final isVentasDayMonthYearForSpacing = reportType == ReportType.ventas && 
+                                                           unit != null && 
+                                                           unit != 'vcode';
+                    final spacing = isVentasDayMonthYearForSpacing ? 4.0 : 8.0;
+                    return SizedBox(width: spacing);
+                  },
+                ),
+              ],
             ];
           }).toList(),
           );
@@ -3236,18 +4560,42 @@ class ReportTableBuilder {
     Map<String, double>? columnWidths,
     ReportType? reportType,
     double? explicitWidth,
+    String? unit,
+    bool useMeasuredWidths = false, // _ItemsTableWithMeasuredColumns에서 측정된 너비인지 여부
+    bool isLargeScreen = false, // 대형 화면 여부 (헤더 칼럼 간격 조정용)
   }) {
     // 디버깅: 함수 진입 확인 (가장 먼저 실행)
     debugPrint('═══════════════════════════════════════════════════════');
-    debugPrint('🔍 [buildHeaderRow] 함수 진입 - 헤더 중복 및 정렬 디버깅');
+    debugPrint('🔍 [report_table_builder.dart:3941] buildHeaderRow 함수 진입');
+    debugPrint('   → 라인: 3941');
     debugPrint('   → keys: $keys');
     debugPrint('   → keys.length: ${keys.length}');
     debugPrint('   → columns.length: ${columns.length}');
     debugPrint('   → columnWidths 전달됨: ${columnWidths != null}');
+    if (columnWidths != null) {
+      debugPrint('   → columnWidths 내용: $columnWidths');
+      debugPrint('   → columnWidths 개수: ${columnWidths.length}');
+      debugPrint('   → 각 키별 columnWidths 값:');
+      for (final key in keys) {
+        final width = columnWidths[key] ?? 
+                     columnWidths[key.toLowerCase()] ??
+                     (key.toLowerCase() == 'eventcount' ? columnWidths['eventCount'] : null) ??
+                     (key.toLowerCase() == 'tvents' ? columnWidths['tVents'] : null) ??
+                     (key.toLowerCase() == 'tventas' ? columnWidths['tVentas'] : null) ??
+                     (key.toLowerCase() == 'tcntropas' ? columnWidths['tCntRopas'] : null);
+        debugPrint('     → $key: $width');
+      }
+      debugPrint('   → ⚠️ [중요] 이 columnWidths가 데이터 행의 columnWidths와 동일한지 확인 필요');
+    } else {
+      debugPrint('   → ⚠️ [경고] columnWidths가 null! 기본값 사용됨');
+    }
     debugPrint('   → reportType: $reportType');
+    debugPrint('   → unit: $unit');
     debugPrint('   → sortColumn: $sortColumn');
     debugPrint('   → sortAscending: $sortAscending');
     debugPrint('   → onSort != null: ${onSort != null}');
+    debugPrint('   → useMeasuredWidths: $useMeasuredWidths');
+    debugPrint('   → isLargeScreen: $isLargeScreen');
     
     // Items/Ingresos 보고서인지 확인
     final isItems = reportType == ReportType.items;
@@ -3302,8 +4650,34 @@ class ReportTableBuilder {
       'evento': 1000, // 500 -> 1000 (2배)
       'progname': 75, // 150 -> 75 (절반)
       'alerta': 40,   // 80 -> 40 (절반)
-      'sucursal': 50, // 100 -> 50 (절반)
+      'sucursal': 80, // 큰 숫자 표시를 위해 50 -> 80으로 증가
+      // Ventas 보고서 - day/month/year 유닛용 칼럼 너비 (70% 증가: 1.7배)
+      'eventcount': 340,  // 200 * 1.7
+      'eventCount': 340,  // 200 * 1.7
+      'tvents': 425,      // 250 * 1.7
+      'tVents': 425,      // 250 * 1.7
+      'tventas': 425,     // 250 * 1.7
+      'tVentas': 425,     // 250 * 1.7
+      'tcntropas': 340,   // 200 * 1.7
+      'tCntRopas': 340,   // 200 * 1.7
+      'tefectivo': 306,   // 180 * 1.7 (70% 증가)
+      'tcredito': 306,    // 180 * 1.7 (70% 증가)
+      'tbanco': 306,      // 180 * 1.7 (70% 증가)
+      'treservado': 306,  // 180 * 1.7 (70% 증가)
+      'tfavor': 255,      // 150 * 1.7 (70% 증가)
+      'month': 204,       // 120 * 1.7 (70% 증가)
+      'year': 204,        // 120 * 1.7 (70% 증가)
+      'nencargado': 120,  // nencargado 칼럼 너비
     };
+    
+    // month 유닛인 경우 tefectivo, tcredito, tbanco 칼럼 너비를 30% 증가
+    final isMonthUnitForHeader = unit == 'month';
+    if (isMonthUnitForHeader) {
+      defaultColumnWidths['tefectivo'] = (306 * 1.3).roundToDouble(); // 306 * 1.3 = 398
+      defaultColumnWidths['tcredito'] = (306 * 1.3).roundToDouble(); // 306 * 1.3 = 398
+      defaultColumnWidths['tbanco'] = (306 * 1.3).roundToDouble(); // 306 * 1.3 = 398
+      debugPrint('📊 [헤더] month 유닛: tefectivo, tcredito, tbanco 칼럼 너비 30% 증가 (306 -> 398)');
+    }
     
     final finalColumnWidths = columnWidths ?? defaultColumnWidths;
     
@@ -3316,15 +4690,51 @@ class ReportTableBuilder {
     debugPrint('   → columnWidths 전달됨: ${columnWidths != null}');
     debugPrint('   → finalColumnWidths: $finalColumnWidths');
     final isAlertas = reportType == ReportType.alertas;
-    final headerColumnSpacing = isAlertas ? 1 : 8; // alertas는 1, 다른 보고서는 8
+    // ventas day/month/year 유닛의 경우 대형 화면에서 칼럼 간격을 줄여서 더 많은 공간 확보
+    final isVentasDayMonthYearForSpacing = reportType == ReportType.ventas && 
+                                          unit != null && 
+                                          unit != 'vcode';
+    // 대형 화면에서 헤더 칼럼 간격을 줄여서 더 많은 공간 활용
+    final headerColumnSpacing = isAlertas 
+        ? 1 
+        : (isVentasDayMonthYearForSpacing ? (isLargeScreen ? 2 : 4) : 8); // alertas는 1, ventas day/month/year는 대형 화면에서 2px, 그 외는 4px 또는 8px
     final headerPadding = isAlertas ? 1 : 16; // alertas는 1, 다른 보고서는 16
+    
+    // ventas 보고서의 day/month/year 유닛인지 확인
+    final isVentasDayMonthYear = reportType == ReportType.ventas && 
+                                 unit != null && 
+                                 unit != 'vcode';
     
     double headerCumulativeX = 0.0;
     for (int i = 0; i < keys.length; i++) {
       final key = keys[i];
-      final columnWidth = finalColumnWidths[key] ?? 150.0;
-      debugPrint('   → [헤더] 칼럼 #$i: key="$key", width=$columnWidth, x=$headerCumulativeX, padding=$headerPadding (alertas: $isAlertas)');
-      headerCumulativeX += columnWidth;
+      final keyLower = key.toLowerCase();
+      double? columnWidth;
+      columnWidth = finalColumnWidths[key] ?? 
+                   finalColumnWidths[keyLower] ??
+                   (keyLower == 'eventcount' ? finalColumnWidths['eventCount'] : null) ??
+                   (keyLower == 'tvents' ? finalColumnWidths['tVents'] : null) ??
+                   (keyLower == 'tventas' ? finalColumnWidths['tVentas'] : null) ??
+                   (keyLower == 'tcntropas' ? finalColumnWidths['tCntRopas'] : null);
+      final baseColumnWidth = columnWidth ?? 150.0;
+      
+          // 헤더 너비 계산: DataCell의 padding을 고려
+          // useMeasuredWidths가 true인 경우 (_ItemsTableWithMeasuredColumns에서 측정된 값):
+          // - 측정된 칼럼 너비는 이미 DataTable의 실제 칼럼 너비(전체 너비)를 포함하고 있음
+          // - 따라서 padding을 추가하지 않고 그대로 사용해야 함
+          // alertas는 padding이 1px이므로 baseColumnWidth + 2.0 (1px * 2)
+          // ventas 보고서의 모든 유닛(vcode 포함)은 DataCell padding을 고려해야 함
+          final isVentas = reportType == ReportType.ventas;
+          final finalColumnWidth = useMeasuredWidths
+              ? baseColumnWidth  // 측정된 너비는 이미 전체 너비를 포함하므로 그대로 사용
+              : (isAlertas
+                  ? baseColumnWidth + 2.0  // alertas는 padding 1px * 2
+                  : (isVentas
+                      ? baseColumnWidth + 32.0  // ventas 보고서(vcode, day, month, year 모두)는 DataCell padding (16px * 2) 추가
+                      : baseColumnWidth));
+      
+      debugPrint('   → [헤더] 칼럼 #$i: key="$key", baseWidth=$baseColumnWidth, finalWidth=$finalColumnWidth, x=$headerCumulativeX, padding=$headerPadding (alertas: $isAlertas, ventasDayMonthYear: $isVentasDayMonthYear)');
+      headerCumulativeX += finalColumnWidth;
       if (i < keys.length - 1) {
         headerCumulativeX += headerColumnSpacing;
         debugPrint('      → columnSpacing($headerColumnSpacing) 추가 후 x=$headerCumulativeX');
@@ -3380,7 +4790,108 @@ class ReportTableBuilder {
           final key = keys[index];
           final isSorted = sortColumn == key;
           
-          final columnWidth = finalColumnWidths[key] ?? 150.0;
+          // columnWidths에서 칼럼 너비 가져오기 (대소문자 구분 없이)
+          final keyLower = key.toLowerCase();
+          double? columnWidth;
+          columnWidth = finalColumnWidths[key] ?? 
+                       finalColumnWidths[keyLower] ??
+                       (keyLower == 'eventcount' ? finalColumnWidths['eventCount'] : null) ??
+                       (keyLower == 'tvents' ? finalColumnWidths['tVents'] : null) ??
+                       (keyLower == 'tventas' ? finalColumnWidths['tVentas'] : null) ??
+                       (keyLower == 'tcntropas' ? finalColumnWidths['tCntRopas'] : null);
+          final baseColumnWidth = columnWidth ?? 150.0;
+          
+          // ventas 보고서의 모든 유닛(vcode, day, month, year)은 DataCell의 padding(16px * 2 = 32px)을 고려해야 함
+          final isVentas = reportType == ReportType.ventas;
+          final isVentasDayMonthYear = reportType == ReportType.ventas && 
+                                       unit != null && 
+                                       unit != 'vcode';
+          
+          // DataCell은 기본적으로 horizontal padding이 16px씩 양쪽에 있습니다.
+          // DataTable이 각 칼럼의 실제 너비를 계산할 때:
+          // - DataCell의 child (SizedBox) 너비 + DataCell의 horizontal padding (16px * 2 = 32px)
+          // 따라서 헤더의 SizedBox 너비는 DataCell의 SizedBox 너비 + padding (32px)과 일치해야 합니다.
+          // 하지만 실제로는 DataTable이 각 칼럼의 전체 너비를 자동으로 계산하므로,
+          // 헤더의 SizedBox 너비를 DataCell의 실제 너비 (SizedBox 너비 + padding)와 일치시켜야 합니다.
+          // 
+          // useMeasuredWidths가 true인 경우 (_ItemsTableWithMeasuredColumns에서 측정된 값):
+          // - 측정된 칼럼 너비는 이미 DataTable의 실제 칼럼 너비(전체 너비)를 포함하고 있음
+          // - 따라서 padding을 추가하지 않고 그대로 사용해야 함
+          // 
+          // ventas 보고서의 모든 유닛(vcode 포함)은 DataCell padding을 고려해야 함
+          final finalColumnWidth = useMeasuredWidths
+              ? baseColumnWidth  // 측정된 너비는 이미 전체 너비를 포함하므로 그대로 사용
+              : (isVentas
+                  ? baseColumnWidth + 32.0  // ventas 보고서(vcode, day, month, year 모두)는 DataCell padding (16px * 2) 추가
+                  : baseColumnWidth);
+          
+          // useMeasuredWidths가 true인 경우, 측정된 칼럼 너비는 DataTable의 실제 칼럼 너비(전체 너비)입니다.
+          // 헤더의 SizedBox 너비는 측정값 전체를 사용해야 합니다.
+          // 대형 화면에서 2배로 증가된 칼럼 너비의 경우에도 동일하게 전체 너비를 사용해야 합니다.
+          // 중요: 헤더와 데이터 테이블이 동일한 너비를 사용하도록 보장
+          // 헤더와 데이터 행의 칼럼 너비를 정확히 일치시키기 위해:
+          // useMeasuredWidths가 false인 경우 (ventas day/month/year):
+          // - 헤더: headerSizedBoxWidth = baseColumnWidth + 32.0 (고정 픽셀 값 + padding)
+          // - 데이터 행: SizedBox 너비 = baseColumnWidth (고정 픽셀 값), DataCell이 자동으로 padding 32px 추가
+          // - 따라서 실제 칼럼 너비는 동일: baseColumnWidth + 32
+          // useMeasuredWidths가 true인 경우:
+          // - 헤더: headerSizedBoxWidth = baseColumnWidth (측정값 전체)
+          // - 데이터 행: SizedBox 너비 = baseColumnWidth (측정값 전체), padding 없음
+          final headerSizedBoxWidth = useMeasuredWidths
+              ? baseColumnWidth  // 측정값 전체 사용 (2배 증가된 경우도 포함) - 데이터 테이블과 동일
+              : finalColumnWidth;  // 기본값 + padding (useMeasuredWidths가 false일 때)
+          
+          // 디버깅: 헤더 칼럼 너비 최종 계산 (숨김)
+          // debugPrint('🔍 [report_table_builder.dart:4569] 헤더 칼럼 너비 최종 계산');
+          // debugPrint('   → 라인: 4569');
+          // debugPrint('   → key: $key');
+          // debugPrint('   → baseColumnWidth: $baseColumnWidth');
+          // debugPrint('   → finalColumnWidth: $finalColumnWidth');
+          // debugPrint('   → headerSizedBoxWidth: $headerSizedBoxWidth');
+          // debugPrint('   → useMeasuredWidths: $useMeasuredWidths');
+          // debugPrint('   → isVentas: $isVentas');
+          // debugPrint('   → isVentasDayMonthYear: $isVentasDayMonthYear');
+          // if (isVentas) {
+          //   debugPrint('   → ⚠️ [매칭 확인] 데이터 행의 SizedBox 너비는 $baseColumnWidth이어야 함 (DataCell padding 32px 자동 추가)');
+          //   debugPrint('   → ⚠️ [매칭 확인] 헤더의 headerSizedBoxWidth ($headerSizedBoxWidth) = 데이터 행의 실제 칼럼 너비 ($baseColumnWidth + 32 = ${baseColumnWidth + 32.0})');
+          // }
+          // print('🔍 [report_table_builder.dart:4569] 헤더 칼럼 너비 최종 계산');
+          // print('   → 라인: 4569');
+          // print('   → key: $key');
+          // print('   → baseColumnWidth: $baseColumnWidth');
+          // print('   → headerSizedBoxWidth: $headerSizedBoxWidth');
+          // print('   → useMeasuredWidths: $useMeasuredWidths');
+          // print('   → ⚠️ 데이터 행의 SizedBox 너비는 $baseColumnWidth이어야 함');
+          
+          // debugPrint('   → [헤더] headerSizedBoxWidth 계산: useMeasuredWidths=$useMeasuredWidths, baseColumnWidth=$baseColumnWidth, headerSizedBoxWidth=$headerSizedBoxWidth');
+          
+          // debugPrint('   → [헤더] 칼럼 #$index ($key): baseColumnWidth=$baseColumnWidth, finalColumnWidth=$finalColumnWidth, headerSizedBoxWidth=$headerSizedBoxWidth');
+          
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [buildHeaderRow:4214] 헤더 칼럼 너비 설정');
+          debugPrint('   → 라인: 4214');
+          debugPrint('   → reportType: $reportType');
+          debugPrint('   → unit: $unit');
+          debugPrint('   → isVentasDayMonthYear: $isVentasDayMonthYear');
+          debugPrint('   → useMeasuredWidths: $useMeasuredWidths');
+          debugPrint('   → key: $key');
+          debugPrint('   → keyLower: $keyLower');
+          debugPrint('   → baseColumnWidth: $baseColumnWidth (columnWidths에서 가져온 값)');
+          debugPrint('   → finalColumnWidth: $finalColumnWidth (useMeasuredWidths에 따라 계산된 값)');
+          debugPrint('   → headerSizedBoxWidth: $headerSizedBoxWidth (헤더 SizedBox 너비)');
+          debugPrint('   → headerColumnSpacing: $headerColumnSpacing');
+          debugPrint('   → finalColumnWidths[$key]: ${finalColumnWidths[key]}');
+          debugPrint('   → finalColumnWidths[$keyLower]: ${finalColumnWidths[keyLower]}');
+          debugPrint('   → ⚠️ [중요] useMeasuredWidths=$useMeasuredWidths이므로 ${useMeasuredWidths ? "전체 너비 그대로 사용 (baseColumnWidth=$baseColumnWidth)" : "padding 추가 (baseColumnWidth + 32.0 = ${baseColumnWidth + 32.0})"}');
+          debugPrint('   → ⚠️ [매칭 확인] 데이터 행의 finalCellWidth와 일치해야 함');
+          debugPrint('   → ⚠️ [매칭 확인] 데이터 행의 실제 칼럼 너비 (finalCellWidth + 32.0) = headerSizedBoxWidth와 일치해야 함');
+          debugPrint('═══════════════════════════════════════════════════════');
+          print('🔍 [buildHeaderRow:4214] 헤더 칼럼 너비 설정');
+          print('   → 라인: 4214');
+          print('   → key: $key');
+          print('   → baseColumnWidth: $baseColumnWidth');
+          print('   → headerSizedBoxWidth: $headerSizedBoxWidth');
+          print('   → useMeasuredWidths: $useMeasuredWidths');
           
           // label에서 텍스트 추출
           String labelText = '';
@@ -3402,17 +4913,112 @@ class ReportTableBuilder {
           // DataTable의 columnSpacing(8)을 각 칼럼 사이에 추가
           final isNumericHeader = (key == 'tevent' || key == 'tcant' || key == 'tprendas' || key == 'timporte' || 
                                    key == 'tIngreso' || key == 'tingreso' || key == 'cntEvent' || key == 'cntevent' ||
-                                   key == 'sucursal');
+                                   key == 'sucursal' ||
+                                   keyLower == 'eventcount' || keyLower == 'tvents' || keyLower == 'tventas' ||
+                                   keyLower == 'tcntropas' || keyLower == 'tefectivo' || keyLower == 'tcredito' ||
+                                   keyLower == 'tbanco' || keyLower == 'treservado' || keyLower == 'tfavor' ||
+                                   keyLower == 'nencargado');
           
           // column.onSort가 있으면 사용하고, 없으면 onSort 파라미터를 사용 (fallback)
           final effectiveOnSort = column.onSort ?? onSort;
           final canSort = effectiveOnSort != null;
           
+          // 헤더 칼럼 위치 계산 (디버깅용)
+          double headerColumnX = 0.0;
+          for (int j = 0; j < index; j++) {
+            final prevKey = keys[j];
+            final prevKeyLower = prevKey.toLowerCase();
+            double? prevColumnWidth;
+            prevColumnWidth = finalColumnWidths[prevKey] ?? 
+                             finalColumnWidths[prevKeyLower] ??
+                             (prevKeyLower == 'eventcount' ? finalColumnWidths['eventCount'] : null) ??
+                             (prevKeyLower == 'tvents' ? finalColumnWidths['tVents'] : null) ??
+                             (prevKeyLower == 'tventas' ? finalColumnWidths['tVentas'] : null) ??
+                             (prevKeyLower == 'tcntropas' ? finalColumnWidths['tCntRopas'] : null);
+            final prevBaseColumnWidth = prevColumnWidth ?? 150.0;
+            // ventas 보고서의 모든 유닛(vcode 포함)은 DataCell padding을 고려해야 함
+            final isVentasForPrev = reportType == ReportType.ventas;
+            final prevFinalColumnWidth = useMeasuredWidths
+                ? prevBaseColumnWidth
+                : (isAlertas
+                    ? prevBaseColumnWidth + 2.0  // alertas는 padding 1px * 2
+                    : (isVentasForPrev
+                        ? prevBaseColumnWidth + 32.0  // ventas 보고서(vcode, day, month, year 모두)는 padding 추가
+                        : prevBaseColumnWidth));
+            headerColumnX += prevFinalColumnWidth;
+            if (j < index - 1) {
+              headerColumnX += headerColumnSpacing;
+            }
+          }
+          
+          // 디버깅: 헤더 칼럼 위치와 너비 측정 (라인 번호 포함)
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [report_table_builder.dart:4545] 헤더 칼럼 위치 및 너비 측정');
+          debugPrint('   → 라인: 4545');
+          debugPrint('   → 칼럼 #$index ($key)');
+          debugPrint('   → headerColumnX (계산된 x 위치): $headerColumnX');
+          debugPrint('   → headerSizedBoxWidth: $headerSizedBoxWidth');
+          debugPrint('   → baseColumnWidth: $baseColumnWidth');
+          debugPrint('   → finalColumnWidth: $finalColumnWidth');
+          debugPrint('   → useMeasuredWidths: $useMeasuredWidths');
+          debugPrint('   → isVentasDayMonthYear: $isVentasDayMonthYear');
+          print('🔍 [report_table_builder.dart:4545] 헤더 칼럼 위치 및 너비 측정');
+          print('   → 라인: 4545');
+          print('   → 칼럼 #$index ($key)');
+          print('   → headerColumnX: $headerColumnX');
+          print('   → headerSizedBoxWidth: $headerSizedBoxWidth');
+          
+          // useMeasuredWidths가 true인 경우, 측정된 칼럼 너비는 DataTable의 실제 칼럼 너비(전체 너비)입니다.
+          // 헤더의 SizedBox 너비는 측정값 전체를 사용해야 합니다.
           return [
-            SizedBox(
-              width: columnWidth,
-              child: InkWell(
-                onTap: canSort
+            Builder(
+              builder: (context) {
+                // 디버깅: 헤더 칼럼 위치 및 너비 측정 (숨김)
+                // WidgetsBinding.instance.addPostFrameCallback((_) {
+                //   final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+                //   if (renderBox != null) {
+                //     debugPrint('═══════════════════════════════════════════════════════');
+                //     debugPrint('🔍 [report_table_builder.dart:4399] 헤더 칼럼 위치 및 너비 측정');
+                //     debugPrint('   → 라인: 4399');
+                //     debugPrint('   → 칼럼 #$index ($key)');
+                //     debugPrint('   → 계산된 x 위치: $headerColumnX');
+                //     debugPrint('   → baseColumnWidth: $baseColumnWidth');
+                //     debugPrint('   → finalColumnWidth: $finalColumnWidth');
+                //     debugPrint('   → headerSizedBoxWidth: $headerSizedBoxWidth');
+                //     debugPrint('   → headerColumnSpacing: $headerColumnSpacing');
+                //     debugPrint('   → 실제 렌더링 위치: ${renderBox.localToGlobal(Offset.zero).dx}');
+                //     debugPrint('   → 실제 렌더링 너비: ${renderBox.size.width}');
+                //     debugPrint('   → useMeasuredWidths: $useMeasuredWidths');
+                //     debugPrint('   → isVentasDayMonthYear: $isVentasDayMonthYear');
+                //     print('🔍 [report_table_builder.dart:4399] 헤더 칼럼 위치 및 너비 측정');
+                //     print('   → 라인: 4399');
+                //     print('   → 칼럼 #$index ($key)');
+                //     print('   → 계산된 x 위치: $headerColumnX');
+                //     print('   → headerSizedBoxWidth: $headerSizedBoxWidth');
+                //     print('   → 실제 렌더링 위치: ${renderBox.localToGlobal(Offset.zero).dx}');
+                //     print('   → 실제 렌더링 너비: ${renderBox.size.width}');
+                //     debugPrint('═══════════════════════════════════════════════════════');
+                //   }
+                // });
+                
+                // 디버깅: 헤더 칼럼에 수직선 추가 (라인 번호 포함)
+                // 수직선은 칼럼 너비에 포함되지 않도록 별도로 추가
+                debugPrint('🔍 [report_table_builder.dart:4710] 헤더 칼럼 수직선 추가');
+                debugPrint('   → 라인: 4710');
+                debugPrint('   → 칼럼 #$index ($key)');
+                debugPrint('   → headerSizedBoxWidth: $headerSizedBoxWidth');
+                debugPrint('   → headerColumnSpacing: $headerColumnSpacing');
+                print('🔍 [report_table_builder.dart:4710] 헤더 칼럼 수직선 추가');
+                print('   → 라인: 4710');
+                print('   → 칼럼 #$index ($key)');
+                print('   → headerSizedBoxWidth: $headerSizedBoxWidth');
+                
+                return Stack(
+                  children: [
+                    SizedBox(
+                      width: headerSizedBoxWidth,
+                      child: InkWell(
+                    onTap: canSort
                     ? () {
                         debugPrint('═══════════════════════════════════════════════════════');
                         debugPrint('🔍 [buildHeaderRow] 헤더 칼럼 클릭 이벤트');
@@ -3443,48 +5049,62 @@ class ReportTableBuilder {
                         debugPrint('   → effectiveOnSort == null: 정렬 기능 없음');
                         debugPrint('═══════════════════════════════════════════════════════');
                       },
-                child: Container(
-                  // DataTable의 DataCell은 기본적으로 horizontal padding이 16이므로, 헤더도 동일하게 맞춤
-                  // Container의 padding을 0으로 설정하고, 내부에 Padding 위젯을 사용하여 DataTable과 동일한 구조로 만듦
-                  // alertas 보고서는 padding을 1로 설정
-                  padding: EdgeInsets.zero,
-                  height: (reportType == ReportType.items || reportType == ReportType.ingresos) ? 37 : 56, // items/ingresos는 37, 다른 보고서는 56
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: isAlertas ? 1 : 16, vertical: 8), // alertas는 1, 다른 보고서는 16
-                    child: Align(
-                      alignment: isNumericHeader ? Alignment.centerRight : Alignment.centerLeft,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: isNumericHeader ? MainAxisAlignment.end : MainAxisAlignment.start,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              labelText,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
+                    child: Container(
+                      // DataCell과 동일한 구조: Container는 padding 없음, 내부 Padding이 16px 양쪽
+                      padding: EdgeInsets.zero,
+                      height: (reportType == ReportType.items || reportType == ReportType.ingresos) ? 37 : 56, // items/ingresos는 37, 다른 보고서는 56
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: isAlertas ? 1 : 16, vertical: 8), // alertas는 1, 다른 보고서는 16 (DataCell과 동일)
+                        child: Align(
+                          alignment: isNumericHeader ? Alignment.centerRight : Alignment.centerLeft,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: isNumericHeader ? MainAxisAlignment.end : MainAxisAlignment.start,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  labelText,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14, // ventas 보고서도 14px로 통일
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: isNumericHeader ? TextAlign.right : TextAlign.left,
+                                ),
                               ),
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: isNumericHeader ? TextAlign.right : TextAlign.left,
-                            ),
+                              if (isSorted && canSort)
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 4),
+                                  child: Icon(
+                                    sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                                    size: 16,
+                                    color: reportColor,
+                                  ),
+                                ),
+                            ],
                           ),
-                          if (isSorted && canSort)
-                            Padding(
-                              padding: const EdgeInsets.only(left: 4),
-                              child: Icon(
-                                sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                                size: 16,
-                                color: reportColor,
-                              ),
-                            ),
-                        ],
+                        ),
+                      ),
                       ),
                     ),
-                  ),
-                ),
-              ),
+                    ),
+                    // ventas 보고서가 아닐 때만 수직선 표시 (ventas는 수직선 숨김)
+                    if (reportType != ReportType.ventas && index < columns.length - 1)
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        bottom: 0,
+                        child: Container(
+                          width: 1.0,
+                          color: Colors.red.withOpacity(0.5),  // 디버깅용 빨간색 수직선
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
             // 마지막 칼럼이 아니면 columnSpacing 추가 (alertas는 1, 다른 보고서는 8)
+            // 헤더와 데이터 행의 칼럼 간격이 정확히 일치해야 함
             if (index < columns.length - 1) SizedBox(width: headerColumnSpacing.toDouble()),
           ];
         }).toList(),
@@ -3552,7 +5172,7 @@ class ReportTableBuilder {
               child: Text(
                 ReportUtils.formatValue(total),
                 style: TextStyle(
-                  fontSize: isVentas ? 12 : 14,
+                  fontSize: 14, // ventas 보고서도 14px로 통일
                   fontWeight: FontWeight.bold,
                   height: isVentas ? 1.0 : 1.2,
                 ),
@@ -3648,6 +5268,7 @@ class ReportTableBuilder {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: DataTable(
+        horizontalMargin: 0, // 헤더 Row와 정확히 일치시키기 위해 0으로 설정 (기본값 24px)
         columnSpacing: 8,
         dataRowMinHeight: 48,
         dataRowMaxHeight: 56,
@@ -3680,6 +5301,7 @@ class _ItemsTableWithMeasuredColumns extends StatefulWidget {
   final ScrollController? horizontalScrollController;
 
   const _ItemsTableWithMeasuredColumns({
+    Key? key,
     required this.keys,
     required this.columns,
     required this.color,
@@ -3695,7 +5317,7 @@ class _ItemsTableWithMeasuredColumns extends StatefulWidget {
     this.unit,
     required this.scrollController,
     this.horizontalScrollController,
-  });
+  }) : super(key: key);
 
   @override
   State<_ItemsTableWithMeasuredColumns> createState() => _ItemsTableWithMeasuredColumnsState();
@@ -3713,10 +5335,47 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
     _measuredColumnWidths = widget.columnWidths;
   }
 
+  @override
+  void didUpdateWidget(_ItemsTableWithMeasuredColumns oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // unit이나 keys가 변경되면 측정값을 초기화하여 다시 측정하도록 함
+    if (oldWidget.unit != widget.unit || 
+        !_listEquals(oldWidget.keys, widget.keys) ||
+        oldWidget.displayedList.length != widget.displayedList.length) {
+      debugPrint('🔍 [report_table_builder.dart:4542] [didUpdateWidget] unit 또는 keys 변경 감지 - 측정값 초기화');
+      debugPrint('   → 라인: 4542');
+      debugPrint('   → oldWidget.unit: ${oldWidget.unit}');
+      debugPrint('   → widget.unit: ${widget.unit}');
+      debugPrint('   → oldWidget.keys: ${oldWidget.keys}');
+      debugPrint('   → widget.keys: ${widget.keys}');
+      debugPrint('   → oldWidget.displayedList.length: ${oldWidget.displayedList.length}');
+      debugPrint('   → widget.displayedList.length: ${widget.displayedList.length}');
+      print('🔍 [report_table_builder.dart:4542] [didUpdateWidget] unit 또는 keys 변경 감지 - 측정값 초기화');
+      print('   → 라인: 4542');
+      print('   → oldWidget.unit: ${oldWidget.unit}');
+      print('   → widget.unit: ${widget.unit}');
+      print('   → oldWidget.keys: ${oldWidget.keys}');
+      print('   → widget.keys: ${widget.keys}');
+      print('   → oldWidget.displayedList.length: ${oldWidget.displayedList.length}');
+      print('   → widget.displayedList.length: ${widget.displayedList.length}');
+      _measuredColumnWidths = null;
+      _hasMeasured = false;
+    }
+  }
+
+  bool _listEquals<T>(List<T> a, List<T> b) {
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
   void _measureColumnWidths() {
     // 이미 측정이 완료되었으면 다시 측정하지 않음
     if (_hasMeasured) {
-      debugPrint('   → [측정] 이미 측정 완료됨. 재측정 건너뜀');
+      debugPrint('   → [report_table_builder.dart:4574] [측정] 이미 측정 완료됨. 재측정 건너뜀');
+      debugPrint('      → 라인: 4574');
       return;
     }
     
@@ -3763,11 +5422,20 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
     }
 
     if (dataRowStartIndex == -1 || dataRowStartIndex + widget.keys.length > tableChildren.length) {
-      debugPrint('   ⚠️ [측정] 첫 번째 데이터 행을 찾을 수 없습니다');
+      debugPrint('   ⚠️ [report_table_builder.dart:4621] [측정] 첫 번째 데이터 행을 찾을 수 없습니다');
+      debugPrint('      → 라인: 4621');
+      debugPrint('      → dataRowStartIndex: $dataRowStartIndex');
+      debugPrint('      → widget.keys.length: ${widget.keys.length}');
+      debugPrint('      → tableChildren.length: ${tableChildren.length}');
       return;
     }
 
     // 기본 칼럼 너비 (최대값 제한용)
+    // ventas day/month/year 유닛의 경우 기본 칼럼 너비를 포함
+    final isVentasDayMonthYear = widget.reportType == ReportType.ventas && 
+                                 widget.unit != null && 
+                                 widget.unit != 'vcode';
+    
     final defaultColumnWidths = widget.columnWidths ?? <String, double>{
       'codigo1': 200,  // codigo1 칼럼 너비 증가 (150 -> 200)
       'desc1': 300,
@@ -3777,18 +5445,48 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
       'CompanyCode': 120,
       'tprendas': 120,
       'timporte': 150,
+      // Ventas 보고서 - day/month/year 유닛용 칼럼 너비
+      // 큰 숫자를 표시하기 위해 기본값을 크게 설정
+      'eventcount': 200, 'eventCount': 200,  // 큰 숫자 표시를 위해 100 -> 200으로 증가
+      'tvents': 250, 'tVents': 250,  // 큰 숫자 표시를 위해 120 -> 250으로 증가
+      'tventas': 250, 'tVentas': 250,  // 큰 숫자 표시를 위해 120 -> 250으로 증가
+      'tcntropas': 200, 'tCntRopas': 200,  // 큰 숫자 표시를 위해 120 -> 200으로 증가
+      'tefectivo': 306, 'tcredito': 306, 'tbanco': 306,  // 180 * 1.7 (70% 증가)
+      'treservado': 306, 'tfavor': 255,  // 180 * 1.7, 150 * 1.7 (70% 증가)
+      'month': 204, 'year': 204,  // 120 * 1.7 (70% 증가)
+      'nencargado': 204,  // 120 * 1.7 (70% 증가)
+      'fecha': 255,  // 150 * 1.7 (70% 증가)
+      'sucursal': 136,  // 80 * 1.7 (70% 증가)
     };
+    
+    // month 유닛인 경우 tefectivo, tcredito, tbanco 칼럼 너비를 30% 증가
+    final isMonthUnitForMeasured = widget.unit == 'month';
+    if (isMonthUnitForMeasured) {
+      defaultColumnWidths['tefectivo'] = (306 * 1.3).roundToDouble(); // 306 * 1.3 = 398
+      defaultColumnWidths['tcredito'] = (306 * 1.3).roundToDouble(); // 306 * 1.3 = 398
+      defaultColumnWidths['tbanco'] = (306 * 1.3).roundToDouble(); // 306 * 1.3 = 398
+      debugPrint('📊 [측정 칼럼] month 유닛: tefectivo, tcredito, tbanco 칼럼 너비 30% 증가 (306 -> 398)');
+    }
     
     // 칼럼별 최대 너비 제한
     final maxColumnWidths = <String, double>{};
     for (final key in widget.keys) {
-      final defaultWidth = defaultColumnWidths[key] ?? 150.0;
+      final keyLower = key.toLowerCase();
+      // ventas day/month/year 유닛의 경우 대소문자 변형도 고려
+      final defaultWidth = defaultColumnWidths[key] ?? 
+                          defaultColumnWidths[keyLower] ??
+                          (keyLower == 'eventcount' ? defaultColumnWidths['eventCount'] : null) ??
+                          (keyLower == 'tvents' ? defaultColumnWidths['tVents'] : null) ??
+                          (keyLower == 'tventas' ? defaultColumnWidths['tVentas'] : null) ??
+                          (keyLower == 'tcntropas' ? defaultColumnWidths['tCntRopas'] : null) ??
+                          150.0;
       // ProductName은 기본값을 유지하거나 최대 500px로 제한
       if (key == 'ProductName') {
         maxColumnWidths[key] = 500.0;
       } else {
         // 다른 칼럼은 기본값의 1.3배를 최대값으로 설정
-        maxColumnWidths[key] = defaultWidth * 1.3;
+        // ventas day/month/year 유닛의 경우 측정값을 그대로 사용하므로 최대값을 크게 설정
+        maxColumnWidths[key] = isVentasDayMonthYear ? (defaultWidth * 2.0) : (defaultWidth * 1.3);
       }
     }
     
@@ -3796,11 +5494,21 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
     for (int i = 0; i < widget.keys.length; i++) {
       final cellBox = tableChildren[dataRowStartIndex + i];
       final key = widget.keys[i];
+      final keyLower = key.toLowerCase();
       final measuredWidth = cellBox.size.width;
       
       // ProductName은 측정값을 사용하지 않고 항상 기본값 사용
-      final defaultWidth = defaultColumnWidths[key] ?? 150.0;
-      final maxWidth = maxColumnWidths[key] ?? (defaultWidth * 1.3);
+      // ventas day/month/year 유닛의 경우 대소문자 변형도 고려
+      final defaultWidth = defaultColumnWidths[key] ?? 
+                          defaultColumnWidths[keyLower] ??
+                          (keyLower == 'eventcount' ? defaultColumnWidths['eventCount'] : null) ??
+                          (keyLower == 'tvents' ? defaultColumnWidths['tVents'] : null) ??
+                          (keyLower == 'tventas' ? defaultColumnWidths['tVentas'] : null) ??
+                          (keyLower == 'tcntropas' ? defaultColumnWidths['tCntRopas'] : null) ??
+                          150.0;
+      final maxWidth = maxColumnWidths[key] ?? 
+                      maxColumnWidths[keyLower] ??
+                      (defaultWidth * 1.3);
       
       double finalWidth;
       if (key == 'ProductName') {
@@ -3808,11 +5516,13 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
         finalWidth = defaultWidth;
       } else {
         // 다른 칼럼은 측정값이 최대값을 초과하면 기본값 사용
+        // ventas day/month/year 유닛의 경우 측정값을 그대로 사용 (DataTable이 자동으로 계산한 실제 너비)
         finalWidth = measuredWidth > maxWidth ? defaultWidth : measuredWidth;
       }
       
       measuredWidths[key] = finalWidth;
-      debugPrint('   → [측정] 칼럼 #$i: key="$key", 측정 width=$measuredWidth, 최종 width=$finalWidth (기본: $defaultWidth, 최대: $maxWidth)');
+      debugPrint('   → [report_table_builder.dart:4706] [측정] 칼럼 #$i: key="$key", 측정 width=$measuredWidth, 최종 width=$finalWidth (기본: $defaultWidth, 최대: $maxWidth, ventasDayMonthYear: $isVentasDayMonthYear)');
+      debugPrint('      → 라인: 4706');
     }
 
     // 측정된 칼럼 너비가 있고, 이전 값과 다를 때만 상태 업데이트 (무한 루프 방지)
@@ -3847,11 +5557,15 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
           _measuredColumnWidths = finalMeasuredWidths;
           _hasMeasured = true; // 측정 완료 표시
         });
-        debugPrint('   → [측정 완료] 칼럼 너비: $finalMeasuredWidths (ProductName은 기본값 사용)');
+        debugPrint('   → [report_table_builder.dart:4741] [측정 완료] 칼럼 너비: $finalMeasuredWidths (ProductName은 기본값 사용)');
+        debugPrint('      → 라인: 4741');
+        print('   → [report_table_builder.dart:4741] [측정 완료] 칼럼 너비: $finalMeasuredWidths (ProductName은 기본값 사용)');
+        print('      → 라인: 4741');
       } else {
         // 변경이 없어도 측정은 완료된 것으로 간주
         _hasMeasured = true;
-        debugPrint('   → [측정] 칼럼 너비 변경 없음 (무시, 측정 완료)');
+        debugPrint('   → [report_table_builder.dart:4745] [측정] 칼럼 너비 변경 없음 (무시, 측정 완료)');
+        debugPrint('      → 라인: 4745');
       }
     }
   }
@@ -3889,21 +5603,117 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
         debugPrint('   → constraints.minWidth: ${constraints.minWidth}');
         debugPrint('   → constraints.minHeight: ${constraints.minHeight}');
         
-        // ProductName은 항상 기본값 사용하도록 보장
-        final defaultColumnWidths = widget.columnWidths ?? <String, double>{
-          'ProductName': 450,
+        // 기본 칼럼 너비 정의 (ventas day/month/year 유닛용)
+        // 헤더와 행 모두 동일한 고정 픽셀 값 사용 (70% 증가: 1.7배)
+        final baseDefaultColumnWidths = <String, double>{
+          'ProductName': 382.5,  // 225 * 1.7
+          'eventcount': 127.5, 'eventCount': 127.5,  // 75 * 1.7
+          'tvents': 153, 'tVents': 153,  // 90 * 1.7
+          'tventas': 153, 'tVentas': 153,  // 90 * 1.7
+          'tcntropas': 127.5, 'tCntRopas': 127.5,  // 75 * 1.7
+          'tefectivo': 102, 'tcredito': 102, 'tbanco': 102,  // 60 * 1.7
+          'treservado': 102, 'tfavor': 85,  // 60 * 1.7, 50 * 1.7
+          'month': 85, 'year': 85,  // 50 * 1.7
+          'fecha': 102,  // 60 * 1.7
+          'sucursal': 51,  // 30 * 1.7
         };
-        final columnWidthsForHeader = _measuredColumnWidths != null
-            ? Map<String, double>.from(_measuredColumnWidths!)
-            : Map<String, double>.from(widget.columnWidths ?? {});
-        // ProductName이 있으면 항상 기본값으로 교체
-        if (columnWidthsForHeader.containsKey('ProductName')) {
-          columnWidthsForHeader['ProductName'] = defaultColumnWidths['ProductName'] ?? 450.0;
-        } else {
-          columnWidthsForHeader['ProductName'] = defaultColumnWidths['ProductName'] ?? 450.0;
+        
+        // month 유닛인 경우 tefectivo, tcredito, tbanco 칼럼 너비를 30% 증가
+        final isMonthUnitForLargeScreen = widget.unit == 'month';
+        if (isMonthUnitForLargeScreen) {
+          baseDefaultColumnWidths['tefectivo'] = (102 * 1.3).roundToDouble(); // 102 * 1.3 = 133
+          baseDefaultColumnWidths['tcredito'] = (102 * 1.3).roundToDouble(); // 102 * 1.3 = 133
+          baseDefaultColumnWidths['tbanco'] = (102 * 1.3).roundToDouble(); // 102 * 1.3 = 133
+          debugPrint('📊 [큰 화면] month 유닛: tefectivo, tcredito, tbanco 칼럼 너비 30% 증가 (102 -> 133)');
         }
         
-        debugPrint('   → columnWidthsForHeader: $columnWidthsForHeader');
+        // ProductName은 항상 기본값 사용하도록 보장
+        final defaultColumnWidths = widget.columnWidths ?? <String, double>{
+          'ProductName': 225,
+        };
+        
+        // ventas day/month/year 유닛인 경우 고정 픽셀 값 사용 (x 2 없이)
+        final isVentasDayMonthYearForAdjustment = widget.reportType == ReportType.ventas && 
+                                                   widget.unit != null && 
+                                                   (widget.unit == 'day' || widget.unit == 'month' || widget.unit == 'year');
+        
+        debugPrint('🔍 [report_table_builder.dart:4979] 칼럼 너비 계산 (고정 픽셀 값 사용)');
+        debugPrint('   → 라인: 4979');
+        debugPrint('   → widget.reportType: ${widget.reportType}');
+        debugPrint('   → widget.unit: ${widget.unit}');
+        debugPrint('   → isVentasDayMonthYearForAdjustment: $isVentasDayMonthYearForAdjustment');
+        debugPrint('   → _measuredColumnWidths != null: ${_measuredColumnWidths != null}');
+        print('🔍 [report_table_builder.dart:4979] 칼럼 너비 계산 (고정 픽셀 값 사용)');
+        print('   → 라인: 4979');
+        print('   → widget.reportType: ${widget.reportType}');
+        print('   → widget.unit: ${widget.unit}');
+        print('   → isVentasDayMonthYearForAdjustment: $isVentasDayMonthYearForAdjustment');
+        print('   → _measuredColumnWidths != null: ${_measuredColumnWidths != null}');
+        
+        // 최종 칼럼 너비 계산 (헤더와 데이터 테이블 모두 동일한 고정 픽셀 값 사용)
+        Map<String, double> columnWidthsForHeader;
+        
+        if (isVentasDayMonthYearForAdjustment) {
+          // ventas day/month/year 유닛인 경우 고정 픽셀 값 사용 (x 2 없이)
+          final fixedWidths = <String, double>{};
+          for (final key in widget.keys) {
+            final keyLower = key.toLowerCase();
+            final fixedWidth = baseDefaultColumnWidths[key] ?? 
+                            baseDefaultColumnWidths[keyLower] ??
+                            (keyLower == 'eventcount' ? baseDefaultColumnWidths['eventCount'] : null) ??
+                            (keyLower == 'tvents' ? baseDefaultColumnWidths['tVents'] : null) ??
+                            (keyLower == 'tventas' ? baseDefaultColumnWidths['tVentas'] : null) ??
+                            (keyLower == 'tcntropas' ? baseDefaultColumnWidths['tCntRopas'] : null) ??
+                            75.0;  // 기본값도 절반으로 줄임 (150 -> 75)
+            
+            fixedWidths[key] = fixedWidth;
+            
+            debugPrint('🔍 [report_table_builder.dart:5005] 고정 칼럼 너비 설정: key=$key, width=$fixedWidth');
+            debugPrint('   → 라인: 5005');
+            print('🔍 [report_table_builder.dart:5005] 고정 칼럼 너비 설정: key=$key, width=$fixedWidth');
+            print('   → 라인: 5005');
+          }
+          columnWidthsForHeader = fixedWidths;
+        } else {
+          // 다른 보고서는 측정값 또는 기본값 사용
+          debugPrint('🔍 [report_table_builder.dart:5011] 측정값 또는 기본값 사용');
+          debugPrint('   → 라인: 5011');
+          debugPrint('   → _measuredColumnWidths != null: ${_measuredColumnWidths != null}');
+          debugPrint('   → widget.columnWidths != null: ${widget.columnWidths != null}');
+          print('🔍 [report_table_builder.dart:5011] 측정값 또는 기본값 사용');
+          print('   → 라인: 5011');
+          print('   → _measuredColumnWidths != null: ${_measuredColumnWidths != null}');
+          print('   → widget.columnWidths != null: ${widget.columnWidths != null}');
+          columnWidthsForHeader = _measuredColumnWidths != null
+              ? Map<String, double>.from(_measuredColumnWidths!)
+              : Map<String, double>.from(widget.columnWidths ?? {});
+        }
+        
+        // ProductName이 있으면 항상 기본값으로 교체
+        columnWidthsForHeader['ProductName'] = baseDefaultColumnWidths['ProductName'] ?? 225.0;
+        
+        // 디버깅 정보 출력
+        if (isVentasDayMonthYearForAdjustment) {
+          debugPrint('🔍 [ventas day/month/year 고정 칼럼 너비]');
+          debugPrint('   → isVentasDayMonthYear: $isVentasDayMonthYearForAdjustment');
+          debugPrint('   → 고정 칼럼 너비: $columnWidthsForHeader');
+          debugPrint('   → 각 키별 상세:');
+          for (final key in widget.keys) {
+            final fixedWidth = columnWidthsForHeader[key];
+            debugPrint('     → $key: fixedWidth=$fixedWidth');
+          }
+          print('🔍 [ventas day/month/year 고정 칼럼 너비]');
+          print('   → 고정 칼럼 너비: $columnWidthsForHeader');
+        }
+        
+        debugPrint('   → 최종 columnWidthsForHeader: $columnWidthsForHeader');
+        
+        // constraints.maxWidth가 Infinity인 경우 ConstrainedBox를 사용하지 않음
+        final hasValidWidth = constraints.maxWidth.isFinite && constraints.maxWidth > 0;
+        // constraints.maxHeight가 bounded인지 확인 (Expanded 사용 가능 여부)
+        final hasBoundedHeight = constraints.maxHeight.isFinite && constraints.maxHeight > 0;
+        // 큰 화면인지 확인 (너비가 800 이상이면 큰 화면으로 간주)
+        final isLargeScreen = constraints.maxWidth.isFinite && constraints.maxWidth >= 800;
         
         // 헤더와 푸터는 측정된 칼럼 너비 사용 (ProductName은 항상 기본값)
         debugPrint('═══════════════════════════════════════════════════════');
@@ -3914,6 +5724,58 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
         debugPrint('   → widget.sortAscending: ${widget.sortAscending}');
         debugPrint('   → widget.onSort != null: ${widget.onSort != null}');
         debugPrint('   → columnWidthsForHeader: $columnWidthsForHeader');
+        debugPrint('   → isLargeScreen: $isLargeScreen');
+        
+        debugPrint('═══════════════════════════════════════════════════════');
+        debugPrint('🔍 [헤더 호출 전] 칼럼 너비 확인');
+        debugPrint('   → columnWidthsForHeader: $columnWidthsForHeader');
+        debugPrint('   → _measuredColumnWidths: $_measuredColumnWidths');
+        debugPrint('   → isVentasDayMonthYearForAdjustment: $isVentasDayMonthYearForAdjustment');
+        debugPrint('   → useMeasuredWidths: ${_measuredColumnWidths != null}');
+        debugPrint('   → widget.keys: ${widget.keys}');
+        debugPrint('   → 각 키별 칼럼 너비:');
+        for (final key in widget.keys) {
+          final headerWidth = columnWidthsForHeader[key];
+          final measuredWidth = _measuredColumnWidths?[key];
+          debugPrint('     → $key: headerWidth=$headerWidth, measuredWidth=$measuredWidth');
+        }
+        debugPrint('═══════════════════════════════════════════════════════');
+        
+        debugPrint('═══════════════════════════════════════════════════════');
+        debugPrint('🔍 [report_table_builder.dart:5072] 헤더와 데이터 행 칼럼 너비 일치 확인');
+        debugPrint('   → 라인: 5072');
+        debugPrint('   → columnWidthsForHeader (헤더에 전달될 값): $columnWidthsForHeader');
+        debugPrint('   → isVentasDayMonthYearForAdjustment: $isVentasDayMonthYearForAdjustment');
+        debugPrint('   → useMeasuredWidths: ${_measuredColumnWidths != null}');
+        debugPrint('   → 각 키별 헤더 칼럼 너비:');
+        for (final key in widget.keys) {
+          final headerWidth = columnWidthsForHeader[key];
+          debugPrint('     → $key: $headerWidth');
+        }
+        debugPrint('   → ⚠️ [중요] 이 columnWidthsForHeader가 buildHeaderRow와 buildDataTable 모두에 전달됨');
+        debugPrint('   → ⚠️ [중요] buildHeaderRow와 buildDataTable에서 동일한 columnWidths를 사용하는지 확인 필요');
+        debugPrint('═══════════════════════════════════════════════════════');
+        print('🔍 [report_table_builder.dart:5072] 헤더와 데이터 행 칼럼 너비 일치 확인');
+        print('   → 라인: 5072');
+        print('   → columnWidthsForHeader: $columnWidthsForHeader');
+        print('   → isVentasDayMonthYearForAdjustment: $isVentasDayMonthYearForAdjustment');
+        print('   → useMeasuredWidths: ${_measuredColumnWidths != null}');
+        
+        // ventas day/month/year 유닛인 경우 고정 픽셀 값을 사용하므로 useMeasuredWidths를 false로 설정
+        // (고정 픽셀 값에 padding이 추가되어야 하므로)
+        final useMeasuredWidthsForHeader = isVentasDayMonthYearForAdjustment 
+            ? false  // 고정 픽셀 값 사용 시 padding 추가 필요
+            : (_measuredColumnWidths != null);  // 다른 보고서는 측정값 사용
+        
+        debugPrint('🔍 [report_table_builder.dart:5106] useMeasuredWidthsForHeader 설정');
+        debugPrint('   → 라인: 5106');
+        debugPrint('   → isVentasDayMonthYearForAdjustment: $isVentasDayMonthYearForAdjustment');
+        debugPrint('   → _measuredColumnWidths != null: ${_measuredColumnWidths != null}');
+        debugPrint('   → useMeasuredWidthsForHeader: $useMeasuredWidthsForHeader');
+        print('🔍 [report_table_builder.dart:5106] useMeasuredWidthsForHeader 설정');
+        print('   → 라인: 5106');
+        print('   → isVentasDayMonthYearForAdjustment: $isVentasDayMonthYearForAdjustment');
+        print('   → useMeasuredWidthsForHeader: $useMeasuredWidthsForHeader');
         
         final headerRow = ReportTableBuilder.buildHeaderRow(
           widget.keys,
@@ -3924,6 +5786,9 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
           widget.onSort,
           columnWidths: columnWidthsForHeader,
           reportType: widget.reportType,
+          unit: widget.unit,
+          useMeasuredWidths: useMeasuredWidthsForHeader, // ventas day/month/year는 false, 다른 보고서는 측정값 사용
+          isLargeScreen: isLargeScreen, // 대형 화면 여부 전달
         );
         
         debugPrint('🔍 [_ItemsTableWithMeasuredColumns] buildHeaderRow 호출 후');
@@ -3931,13 +5796,6 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
         debugPrint('   → ⚠️ [중복 확인] DataTable의 headingRowHeight가 0이어야 함');
         debugPrint('   → ⚠️ [정렬 확인] headerRow의 각 칼럼이 column.onSort를 사용해야 함');
         debugPrint('═══════════════════════════════════════════════════════');
-
-        // constraints.maxWidth가 Infinity인 경우 ConstrainedBox를 사용하지 않음
-        final hasValidWidth = constraints.maxWidth.isFinite && constraints.maxWidth > 0;
-        // constraints.maxHeight가 bounded인지 확인 (Expanded 사용 가능 여부)
-        final hasBoundedHeight = constraints.maxHeight.isFinite && constraints.maxHeight > 0;
-        // 큰 화면인지 확인 (너비가 800 이상이면 큰 화면으로 간주)
-        final isLargeScreen = constraints.maxWidth.isFinite && constraints.maxWidth >= 800;
         
         // MediaQuery를 사용하여 화면 높이 확인 (footer 고정을 위해)
         // 단, constraints.maxHeight가 bounded이면 그것을 우선 사용 (resumen이 있을 때 패널 높이 사용)
@@ -3993,6 +5851,10 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
               _measureColumnWidths();
             });
             
+            // tableContent 내부에서도 isLargeScreen을 계산 (Builder 내부이므로 constraints에 직접 접근 불가)
+            final screenWidth = MediaQuery.of(context).size.width;
+            final isLargeScreenForTable = screenWidth >= 800;
+            
             final dataTable = Builder(
               key: _dataTableKey,
               builder: (context) {
@@ -4006,6 +5868,50 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
                 debugPrint('   → widget.sortColumn: ${widget.sortColumn}');
                 debugPrint('   → widget.sortAscending: ${widget.sortAscending}');
                 debugPrint('   → ⚠️ [해결] sortColumn과 sortAscending을 buildDataTable에 전달');
+                debugPrint('   → isLargeScreenForTable: $isLargeScreenForTable (칼럼 간격 조정용)');
+                
+                debugPrint('═══════════════════════════════════════════════════════');
+                debugPrint('🔍 [report_table_builder.dart:5200] buildDataTable 호출 전 - 칼럼 너비 확인');
+                debugPrint('   → 라인: 5200');
+                debugPrint('   → columnWidthsForHeader (데이터 행에 전달될 값): $columnWidthsForHeader');
+                debugPrint('   → _measuredColumnWidths: $_measuredColumnWidths');
+                debugPrint('   → isLargeScreenForTable: $isLargeScreenForTable');
+                debugPrint('   → widget.reportType: ${widget.reportType}');
+                debugPrint('   → widget.unit: ${widget.unit}');
+                debugPrint('   → isVentasDayMonthYearForAdjustment: $isVentasDayMonthYearForAdjustment');
+                debugPrint('   → useMeasuredWidths: ${_measuredColumnWidths != null}');
+                debugPrint('   → 각 키별 칼럼 너비 (헤더와 데이터 행이 동일해야 함):');
+                for (final key in widget.keys) {
+                  final headerWidth = columnWidthsForHeader[key];
+                  final measuredWidth = _measuredColumnWidths?[key];
+                  debugPrint('     → $key: headerWidth=$headerWidth, measuredWidth=$measuredWidth');
+                }
+                debugPrint('   → ⚠️ [중요] columnWidthsForHeader가 buildDataTable의 columnWidths 파라미터로 전달됨');
+                debugPrint('   → ⚠️ [중요] buildDataTable 내부에서 _buildDataRowFromMap에 columnWidths 전달 확인 필요');
+                debugPrint('   → ⚠️ [매칭 확인] 헤더와 데이터 행이 동일한 columnWidths를 사용하는지 확인');
+                debugPrint('   → ⚠️ [매칭 확인] 헤더의 headerSizedBoxWidth = 데이터 행의 실제 칼럼 너비 (finalCellWidth + padding)');
+                debugPrint('═══════════════════════════════════════════════════════');
+                print('🔍 [report_table_builder.dart:5200] buildDataTable 호출 전 - 칼럼 너비 확인');
+                print('   → 라인: 5200');
+                print('   → columnWidthsForHeader: $columnWidthsForHeader');
+                print('   → isVentasDayMonthYearForAdjustment: $isVentasDayMonthYearForAdjustment');
+                print('   → useMeasuredWidths: ${_measuredColumnWidths != null}');
+                
+                // ventas day/month/year 유닛인 경우 고정 픽셀 값을 사용하므로 useMeasuredWidths를 false로 설정
+                // (헤더와 동일하게 설정)
+                final useMeasuredWidthsForData = isVentasDayMonthYearForAdjustment 
+                    ? false  // 고정 픽셀 값 사용 시 padding 추가 필요
+                    : (_measuredColumnWidths != null);  // 다른 보고서는 측정값 사용
+                
+                debugPrint('🔍 [report_table_builder.dart:5226] useMeasuredWidthsForData 설정');
+                debugPrint('   → 라인: 5226');
+                debugPrint('   → isVentasDayMonthYearForAdjustment: $isVentasDayMonthYearForAdjustment');
+                debugPrint('   → _measuredColumnWidths != null: ${_measuredColumnWidths != null}');
+                debugPrint('   → useMeasuredWidthsForData: $useMeasuredWidthsForData');
+                print('🔍 [report_table_builder.dart:5226] useMeasuredWidthsForData 설정');
+                print('   → 라인: 5226');
+                print('   → isVentasDayMonthYearForAdjustment: $isVentasDayMonthYearForAdjustment');
+                print('   → useMeasuredWidthsForData: $useMeasuredWidthsForData');
                 
                 final table = ReportTableBuilder.buildDataTable(
                   reportType: widget.reportType,
@@ -4017,10 +5923,19 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
                   onRowDoubleTap: widget.onRowDoubleTap,
                   onRowTap: widget.onRowTap,
                   unit: widget.unit,
-                  columnWidths: columnWidthsForHeader,
+                  columnWidths: columnWidthsForHeader, // 헤더와 동일한 칼럼 너비 사용
                   sortColumn: widget.sortColumn,
                   sortAscending: widget.sortAscending,
+                  isLargeScreen: isLargeScreenForTable, // 대형 화면 여부 전달 (칼럼 간격 조정용)
+                  useMeasuredWidths: useMeasuredWidthsForData, // 헤더와 동일하게 설정
                 );
+                
+                debugPrint('═══════════════════════════════════════════════════════');
+                debugPrint('🔍 [report_table_builder.dart:5136] buildDataTable 호출 후');
+                debugPrint('   → 라인: 5136');
+                debugPrint('   → table != null: ${table != null}');
+                debugPrint('   → ⚠️ [확인 필요] buildDataTable 내부에서 columnWidths가 _buildDataRowFromMap에 제대로 전달되었는지 확인');
+                debugPrint('═══════════════════════════════════════════════════════');
                 
                 debugPrint('🔍 [_ItemsTableWithMeasuredColumns] buildDataTable 호출 후');
                 debugPrint('   → dataTable != null: ${table != null}');
@@ -4059,6 +5974,7 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
           columnWidths: columnWidthsForHeader,
           dataList: widget.dataList,
           reportType: widget.reportType,
+          unit: widget.unit,
         );
         
         // 항상 footer를 화면/패널 하단에 고정하기 위해 높이 제약 사용
@@ -4074,14 +5990,32 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
         debugPrint('   → availableHeight: $availableHeight');
         debugPrint('   → effectiveMaxHeight: $effectiveMaxHeight');
         
+        // ventas day/month/year 유닛인지 확인
+        final isVentasDayMonthYear = widget.reportType == ReportType.ventas && 
+                                     widget.unit != null && 
+                                     widget.unit != 'vcode';
+        
         // 전체를 하나의 수평 스크롤 컨테이너로 감싸서 헤더, 테이블, footer가 함께 스크롤되도록 함
         // SingleChildScrollView 안의 Column은 무한 너비를 받으므로 crossAxisAlignment를 start로 설정하고 명시적 너비 설정
-        // 모든 경우에 SizedBox로 감싸서 명시적 너비 설정 (무한 너비 문제 해결)
+        // ventas day/month/year 유닛의 경우 대형 화면에서 전체 너비 사용
+        // items/ingresos는 테이블 너비만 사용 (기존 동작 유지)
+        final effectiveWidth = isVentasDayMonthYear && isLargeScreen && hasValidWidth
+            ? constraints.maxWidth  // ventas day/month/year + 대형 화면: 전체 너비 사용
+            : (totalTableWidth > 0 ? totalTableWidth : null);  // items/ingresos 또는 모바일: 테이블 너비 사용
+        
+        debugPrint('🔍 [너비 설정] _ItemsTableWithMeasuredColumns');
+        debugPrint('   → isVentasDayMonthYear: $isVentasDayMonthYear');
+        debugPrint('   → isLargeScreen: $isLargeScreen');
+        debugPrint('   → hasValidWidth: $hasValidWidth');
+        debugPrint('   → totalTableWidth: $totalTableWidth');
+        debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
+        debugPrint('   → effectiveWidth: $effectiveWidth');
+        
         final columnContent = SizedBox(
           height: (effectiveMaxHeight.isFinite && effectiveMaxHeight > 0 && hasBoundedHeight) 
               ? effectiveMaxHeight 
               : null,
-          width: totalTableWidth > 0 ? totalTableWidth : null, // 명시적 너비 설정 (무한 너비 방지)
+          width: effectiveWidth, // ventas day/month/year + 대형 화면: 전체 너비, 그 외: 테이블 너비
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start, // 무한 너비 문제 해결
             mainAxisSize: hasBoundedHeight ? MainAxisSize.max : MainAxisSize.min,
@@ -4099,7 +6033,7 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
                   scrollDirection: Axis.horizontal,
                   physics: const NeverScrollableScrollPhysics(),
                   child: SizedBox(
-                    width: totalTableWidth,
+                    width: effectiveWidth ?? totalTableWidth, // ventas day/month/year + 대형 화면: 전체 너비
                     child: footer,
                   ),
                 )
@@ -4110,15 +6044,26 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
         );
         
         // 전체를 하나의 수평 스크롤 컨테이너로 감싸기 (헤더, 테이블, footer 동기화)
-        // horizontalScrollController가 있으면 SingleChildScrollView로 감싸기
-        // SingleChildScrollView 안의 child는 너비 제약을 받지 않아야 하므로 columnContent를 직접 사용
-        final horizontallyScrollableContent = widget.horizontalScrollController != null
-            ? SingleChildScrollView( // if: horizontalScrollController가 있음
+        // horizontalScrollController가 있으면 항상 SingleChildScrollView로 감싸서 헤더와 테이블이 함께 스크롤되도록 함
+        // ventas day/month/year 유닛 + 대형 화면의 경우 테이블이 화면보다 작으면 스크롤이 필요 없지만,
+        // 헤더와 테이블이 함께 움직이도록 하기 위해 항상 SingleChildScrollView로 감싸기
+        final needsHorizontalScroll = widget.horizontalScrollController != null;
+        
+        debugPrint('🔍 [수평 스크롤] _ItemsTableWithMeasuredColumns');
+        debugPrint('   → needsHorizontalScroll: $needsHorizontalScroll (항상 true로 설정하여 헤더와 테이블이 함께 스크롤되도록 함)');
+        debugPrint('   → horizontalScrollController != null: ${widget.horizontalScrollController != null}');
+        debugPrint('   → isVentasDayMonthYear: $isVentasDayMonthYear');
+        debugPrint('   → isLargeScreen: $isLargeScreen');
+        debugPrint('   → totalTableWidth > constraints.maxWidth: ${totalTableWidth > constraints.maxWidth}');
+        
+        // horizontalScrollController가 있으면 항상 SingleChildScrollView로 감싸서 헤더와 테이블이 함께 스크롤되도록 함
+        final horizontallyScrollableContent = needsHorizontalScroll
+            ? SingleChildScrollView( // if: horizontalScrollController가 있으면 항상 SingleChildScrollView로 감싸기
                 scrollDirection: Axis.horizontal,
                 controller: widget.horizontalScrollController,
-                child: columnContent, // columnContent는 이미 적절한 너비를 가지고 있음
-              ) // SingleChildScrollView 끝 - if: horizontalScrollController
-            : columnContent; // else: horizontalScrollController 없음
+                child: columnContent, // columnContent는 이미 적절한 너비를 가지고 있음 (헤더, 테이블, 푸터가 모두 포함됨)
+              ) // SingleChildScrollView 끝 - if: horizontalScrollController가 있음
+            : columnContent; // else: horizontalScrollController가 없으면 그대로 반환
         
         debugPrint('🔍 [큰 화면 디버깅] 최종 위젯 구조');
         debugPrint('   → hasValidWidth: $hasValidWidth');
@@ -4132,15 +6077,18 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
         
         // constraints.maxWidth가 유효한 경우에만 외부 너비 제약 설정
         // SingleChildScrollView가 있으면 내부는 스크롤 가능하므로 외부만 제약
-        final finalWidget = hasValidWidth && widget.horizontalScrollController == null
-            ? ConstrainedBox( // if: hasValidWidth이고 horizontalScrollController가 없음 (스크롤 없을 때만 제약)
+        // ventas day/month/year 유닛 + 대형 화면의 경우 전체 너비를 사용하므로 ConstrainedBox로 제약
+        // 하지만 헤더와 테이블이 함께 스크롤되도록 하기 위해 항상 SingleChildScrollView를 사용하므로,
+        // ventas day/month/year + 대형 화면인 경우에도 ConstrainedBox로 제약하여 전체 너비 사용
+        final finalWidget = hasValidWidth && (isVentasDayMonthYear && isLargeScreen)
+            ? ConstrainedBox( // if: hasValidWidth이고 ventas day/month/year + 대형 화면
                 constraints: BoxConstraints(
                   minWidth: constraints.maxWidth,
                   maxWidth: constraints.maxWidth,
                 ),
                 child: horizontallyScrollableContent,
               ) // ConstrainedBox 끝 - if: hasValidWidth
-            : horizontallyScrollableContent; // else: horizontalScrollController가 있으면 제약 없이 (스크롤 가능)
+            : horizontallyScrollableContent; // else: 그 외의 경우는 제약 없이 (스크롤 가능)
         
         debugPrint('   → finalWidget 타입: ${finalWidget.runtimeType}');
         debugPrint('═══════════════════════════════════════════════════════');

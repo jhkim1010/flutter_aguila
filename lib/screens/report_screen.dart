@@ -178,11 +178,25 @@ class _ReportScreenState extends State<ReportScreen> {
   @override
   void initState() {
     super.initState();
+    print('🟦🟦🟦 [report_screen.dart:179] initState 호출 시작');
+    print('   → 라인: 179');
+    if (widget.reportType == ReportType.ventas) {
+      print('   → _ventasUnit 초기값: $_ventasUnit');
+      print('   → _ventasUnit 타입: ${_ventasUnit.runtimeType}');
+      print('   → 호출 스택 (처음 5줄):');
+      print('      ${StackTrace.current.toString().split("\n").take(5).join("\n      ")}');
+    }
     debugPrint('═══════════════════════════════════════════════════════');
     debugPrint('🔍 [initState] ReportScreen 초기화');
     debugPrint('   → 파일: report_screen.dart');
     debugPrint('   → 라인: ${163}');
     debugPrint('   → reportType: ${widget.reportType}');
+    if (widget.reportType == ReportType.ventas) {
+      debugPrint('   → [Ventas] _ventasUnit 초기값: $_ventasUnit');
+      debugPrint('   → [Ventas] _ventasUnit 타입: ${_ventasUnit.runtimeType}');
+      debugPrint('   → 호출 스택 (처음 5줄):');
+      debugPrint('      ${StackTrace.current.toString().split("\n").take(5).join("\n      ")}');
+    }
     debugPrint('   → initialFilteringWord: ${widget.initialFilteringWord}');
     debugPrint('   → initialFilteringWord가 null인지: ${widget.initialFilteringWord == null}');
     debugPrint('   → initialFilteringWord가 비어있는지: ${widget.initialFilteringWord?.isEmpty ?? true}');
@@ -278,12 +292,42 @@ class _ReportScreenState extends State<ReportScreen> {
     }
     // 초기 상태 저장
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      print('🟦🟦🟦 [report_screen.dart:280] addPostFrameCallback 실행');
+      print('   → 라인: 280');
+      if (widget.reportType == ReportType.ventas) {
+        print('   → _ventasUnit: $_ventasUnit');
+      }
+      debugPrint('🟦🟦🟦 [report_screen.dart:280] addPostFrameCallback 실행');
+      debugPrint('   → 라인: 280');
+      if (widget.reportType == ReportType.ventas) {
+        debugPrint('   → _ventasUnit: $_ventasUnit');
+      }
       _notifyStateChanged();
       // Clientes 보고서 초기화 시 OverlayEntry 닫기 (이전에 열린 overlay가 남아있을 수 있음)
       // PostFrameCallback 내에서 실행하여 context가 준비된 후에 실행되도록 함
       _closeClienteDetailOverlay();
     });
+    print('🟦🟦🟦 [report_screen.dart:286] initState 완료 직전 - _loadData() 호출');
+    print('   → 라인: 286');
+    if (widget.reportType == ReportType.ventas) {
+      print('   → _ventasUnit: $_ventasUnit');
+    }
+    debugPrint('🟦🟦🟦 [report_screen.dart:286] initState 완료 직전 - _loadData() 호출');
+    debugPrint('   → 라인: 286');
+    if (widget.reportType == ReportType.ventas) {
+      debugPrint('   → _ventasUnit: $_ventasUnit');
+    }
     _loadData();
+    print('🟦🟦🟦 [report_screen.dart:287] initState 완료');
+    print('   → 라인: 287');
+    if (widget.reportType == ReportType.ventas) {
+      print('   → _ventasUnit: $_ventasUnit');
+    }
+    debugPrint('🟦🟦🟦 [report_screen.dart:287] initState 완료');
+    debugPrint('   → 라인: 287');
+    if (widget.reportType == ReportType.ventas) {
+      debugPrint('   → _ventasUnit: $_ventasUnit');
+    }
   }
 
   /// alertas에서 다른 보고서로 이동할 때 filteringWord를 초기화하는 헬퍼 함수
@@ -1955,8 +1999,35 @@ class _ReportScreenState extends State<ReportScreen> {
           }
           break;
         case ReportType.ventas:
-          debugPrint('   → ReportType.ventas 케이스 실행');
-          debugPrint('      - 현재 _ventasUnit: $_ventasUnit');
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔍 [report_screen.dart:1957] [_loadData] ReportType.ventas 케이스 실행 시작');
+          debugPrint('   → 라인: 1957');
+          debugPrint('   → 호출 스택:');
+          debugPrint('      ${StackTrace.current.toString().split("\n").take(5).join("\n      ")}');
+          debugPrint('   → [report_screen.dart:1962] 현재 _ventasUnit: $_ventasUnit');
+          debugPrint('   → [report_screen.dart:1963] _ventasUnit 타입: ${_ventasUnit.runtimeType}');
+          debugPrint('   → [report_screen.dart:1964] _ventasUnit == "day": ${_ventasUnit == "day"}');
+          debugPrint('   → [report_screen.dart:1965] _ventasUnit == "month": ${_ventasUnit == "month"}');
+          debugPrint('   → [report_screen.dart:1966] _ventasUnit == "year": ${_ventasUnit == "year"}');
+          debugPrint('   → [report_screen.dart:1967] _ventasUnit == "vcode": ${_ventasUnit == "vcode"}');
+          debugPrint('   → [report_screen.dart:1968] _isLoading: $_isLoading');
+          debugPrint('   → [report_screen.dart:1969] _data != null: ${_data != null}');
+          if (_data != null && _data!.containsKey('data') && _data!['data'] is List) {
+            final dataList = _data!['data'] as List;
+            if (dataList.isNotEmpty && dataList.first is Map<String, dynamic>) {
+              final firstItem = dataList.first as Map<String, dynamic>;
+              final hasVcodeField = firstItem.containsKey('vcode');
+              final hasFechaField = firstItem.containsKey('fecha');
+              final hasMonthField = firstItem.containsKey('month');
+              final hasYearField = firstItem.containsKey('year');
+              debugPrint('   → [report_screen.dart:1970] 현재 _data 구조:');
+              debugPrint('      → hasVcodeField: $hasVcodeField');
+              debugPrint('      → hasFechaField: $hasFechaField');
+              debugPrint('      → hasMonthField: $hasMonthField');
+              debugPrint('      → hasYearField: $hasYearField');
+            }
+          }
+          debugPrint('═══════════════════════════════════════════════════════');
           
           // current_date 사용 (기본값: 오늘)
           final now = DateTime.now();
@@ -2036,14 +2107,22 @@ class _ReportScreenState extends State<ReportScreen> {
           debugPrint('         * movidos: $_ventasMovidos');
           debugPrint('         * sucursal: $_selectedSucursal');
           
-          debugPrint('      → getVentasReport API 호출 시작');
+          debugPrint('      → [report_screen.dart:2044] getVentasReport API 호출 시작');
+          debugPrint('      → [report_screen.dart:2048] API 호출 시 전달할 unit: $_ventasUnit');
+          print('🔵🔵🔵 [report_screen.dart:2068] API 호출 직전 _ventasUnit: $_ventasUnit');
+          debugPrint('🔵🔵🔵 [report_screen.dart:2068] API 호출 직전 _ventasUnit: $_ventasUnit');
           data = await _databaseService.getVentasReport(
             filteringWord: currentFilteringWord.isNotEmpty ? currentFilteringWord : null,
             currentDate: currentDate,
             unit: _ventasUnit,
             filters: filters,
           );
-          debugPrint('      → getVentasReport API 호출 완료');
+          print('🔵🔵🔵 [report_screen.dart:2074] API 호출 완료 직후 _ventasUnit: $_ventasUnit');
+          debugPrint('🔵🔵🔵 [report_screen.dart:2074] API 호출 완료 직후 _ventasUnit: $_ventasUnit');
+          print('🔵🔵🔵 [report_screen.dart:2076] setState 호출 직전 _ventasUnit: $_ventasUnit');
+          debugPrint('🔵🔵🔵 [report_screen.dart:2076] setState 호출 직전 _ventasUnit: $_ventasUnit');
+          debugPrint('      → [report_screen.dart:2051] getVentasReport API 호출 완료');
+          debugPrint('      → [report_screen.dart:2051] API 응답 후 _ventasUnit: $_ventasUnit');
           debugPrint('      - 응답 데이터 타입: ${data.runtimeType}');
           debugPrint('      - 응답 데이터 키: ${data.keys.toList()}');
           if (data.containsKey('data') && data['data'] is List) {
@@ -2585,10 +2664,39 @@ class _ReportScreenState extends State<ReportScreen> {
         } else {
           _displayedItemsCount = 100;
         }
-        debugPrint('   → setState: _data 업데이트, _isLoading=false, _displayedItemsCount=$_displayedItemsCount');
+        print('🔵🔵🔵 [report_screen.dart:2593] _loadData setState 호출 직전');
+        print('   → 라인: 2593');
+        if (widget.reportType == ReportType.ventas) {
+          print('   → _ventasUnit: $_ventasUnit');
+          print('   → 호출 스택 (처음 5줄):');
+          print('      ${StackTrace.current.toString().split("\n").take(5).join("\n      ")}');
+        }
+        debugPrint('   → [report_screen.dart:2593] setState: _data 업데이트, _isLoading=false, _displayedItemsCount=$_displayedItemsCount');
+        print('🔵🔵🔵 [report_screen.dart:2593] setState 내부 진입 - _ventasUnit: $_ventasUnit');
+        debugPrint('🔵🔵🔵 [report_screen.dart:2593] setState 내부 진입 - _ventasUnit: $_ventasUnit');
+        if (widget.reportType == ReportType.ventas) {
+          debugPrint('   → [report_screen.dart:2594] [Ventas] setState 내부 _ventasUnit 확인');
+          debugPrint('      → [report_screen.dart:2596] _ventasUnit: $_ventasUnit');
+          debugPrint('      → [report_screen.dart:2597] _ventasUnit 타입: ${_ventasUnit.runtimeType}');
+          debugPrint('      → [report_screen.dart:2598] _ventasUnit == "day": ${_ventasUnit == "day"}');
+          debugPrint('      → [report_screen.dart:2599] _ventasUnit == "month": ${_ventasUnit == "month"}');
+          debugPrint('      → [report_screen.dart:2600] _ventasUnit == "year": ${_ventasUnit == "year"}');
+          debugPrint('      → [report_screen.dart:2601] _ventasUnit == "vcode": ${_ventasUnit == "vcode"}');
+          print('🔵🔵🔵 [report_screen.dart:2601] setState 내부 _ventasUnit 최종 확인: $_ventasUnit');
+          debugPrint('🔵🔵🔵 [report_screen.dart:2601] setState 내부 _ventasUnit 최종 확인: $_ventasUnit');
+        }
       });
       
-      debugPrint('📊 _loadData() 완료');
+      debugPrint('📊 [report_screen.dart:2626] _loadData() 완료');
+      if (widget.reportType == ReportType.ventas) {
+        debugPrint('   → [report_screen.dart:2627] [Ventas] _loadData 완료 후 _ventasUnit 확인');
+        debugPrint('      → [report_screen.dart:2629] _ventasUnit: $_ventasUnit');
+        debugPrint('      → [report_screen.dart:2630] _ventasUnit 타입: ${_ventasUnit.runtimeType}');
+        debugPrint('      → [report_screen.dart:2631] _ventasUnit == "day": ${_ventasUnit == "day"}');
+        debugPrint('      → [report_screen.dart:2632] _ventasUnit == "month": ${_ventasUnit == "month"}');
+        debugPrint('      → [report_screen.dart:2633] _ventasUnit == "year": ${_ventasUnit == "year"}');
+        debugPrint('      → [report_screen.dart:2634] _ventasUnit == "vcode": ${_ventasUnit == "vcode"}');
+      }
       debugPrint('═══════════════════════════════════════════════════════');
     } catch (e) {
       debugPrint('═══════════════════════════════════════════════════════');
@@ -3072,6 +3180,18 @@ class _ReportScreenState extends State<ReportScreen> {
 
   @override
   Widget build(BuildContext context) {
+    print('🟢🟢🟢 [report_screen.dart:3131] build 메서드 호출 시작');
+    print('   → 라인: 3131');
+    if (widget.reportType == ReportType.ventas) {
+      print('   → _ventasUnit: $_ventasUnit');
+      print('   → _ventasUnit 타입: ${_ventasUnit.runtimeType}');
+      print('   → _ventasUnit == "day": ${_ventasUnit == "day"}');
+      print('   → _ventasUnit == "month": ${_ventasUnit == "month"}');
+      print('   → _ventasUnit == "year": ${_ventasUnit == "year"}');
+      print('   → _ventasUnit == "vcode": ${_ventasUnit == "vcode"}');
+      print('   → 호출 스택 (처음 5줄):');
+      print('      ${StackTrace.current.toString().split("\n").take(5).join("\n      ")}');
+    }
     debugPrint('═══════════════════════════════════════════════════════');
     debugPrint('🔍 [ReportScreen.build] 호출됨');
     debugPrint('   → reportType: ${widget.reportType}');
@@ -3083,6 +3203,16 @@ class _ReportScreenState extends State<ReportScreen> {
     debugPrint('   → _isLoading: $_isLoading');
     debugPrint('   → _data: ${_data != null ? "있음 (키: ${_data!.keys.toList()})" : "null"}');
     debugPrint('   → _errorMessage: $_errorMessage');
+    if (widget.reportType == ReportType.ventas) {
+      debugPrint('   → [Ventas] _ventasUnit: $_ventasUnit');
+      debugPrint('   → [Ventas] _ventasUnit 타입: ${_ventasUnit.runtimeType}');
+      debugPrint('   → [Ventas] _ventasUnit == "day": ${_ventasUnit == "day"}');
+      debugPrint('   → [Ventas] _ventasUnit == "month": ${_ventasUnit == "month"}');
+      debugPrint('   → [Ventas] _ventasUnit == "year": ${_ventasUnit == "year"}');
+      debugPrint('   → [Ventas] _ventasUnit == "vcode": ${_ventasUnit == "vcode"}');
+      debugPrint('   → 호출 스택 (처음 5줄):');
+      debugPrint('      ${StackTrace.current.toString().split("\n").take(5).join("\n      ")}');
+    }
     debugPrint('═══════════════════════════════════════════════════════');
     
     final l10n = AppLocalizations.of(context)!;
@@ -7837,11 +7967,11 @@ class _ReportScreenState extends State<ReportScreen> {
         debugPrint('   → useFullWidth: ${widget.useFullWidth}');
         
         // 대형 화면에서 title 내부에 메뉴 버튼과 공유 버튼이 있는 보고서들
+        // ventas는 title에 공유 버튼이 없으므로 actions에 표시되도록 제외
         final hasButtonsInTitle = isLargeScreen && (
           widget.reportType == ReportType.items ||
           widget.reportType == ReportType.ingresos ||
           widget.reportType == ReportType.gastos ||
-          widget.reportType == ReportType.ventas ||
           widget.reportType == ReportType.fventas ||
           widget.reportType == ReportType.alertas ||
           widget.reportType == ReportType.clientes ||
@@ -8021,11 +8151,33 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   Widget _buildReportContent() {
+    print('🟡🟡🟡 [report_screen.dart:8080] _buildReportContent 메서드 호출 시작');
+    print('   → 라인: 8080');
+    if (widget.reportType == ReportType.ventas) {
+      print('   → _ventasUnit: $_ventasUnit');
+      print('   → _ventasUnit 타입: ${_ventasUnit.runtimeType}');
+      print('   → _ventasUnit == "day": ${_ventasUnit == "day"}');
+      print('   → _ventasUnit == "month": ${_ventasUnit == "month"}');
+      print('   → _ventasUnit == "year": ${_ventasUnit == "year"}');
+      print('   → _ventasUnit == "vcode": ${_ventasUnit == "vcode"}');
+      print('   → 호출 스택 (처음 5줄):');
+      print('      ${StackTrace.current.toString().split("\n").take(5).join("\n      ")}');
+    }
     debugPrint('═══════════════════════════════════════════════════════');
     debugPrint('🔍 [_buildReportContent] 호출됨');
     debugPrint('   → reportType: ${widget.reportType}');
     debugPrint('   → Platform.isWindows: ${Platform.isWindows}');
     debugPrint('   → _data: ${_data != null ? "있음" : "null"}');
+    if (widget.reportType == ReportType.ventas) {
+      debugPrint('   → [Ventas] _ventasUnit: $_ventasUnit');
+      debugPrint('   → [Ventas] _ventasUnit 타입: ${_ventasUnit.runtimeType}');
+      debugPrint('   → [Ventas] _ventasUnit == "day": ${_ventasUnit == "day"}');
+      debugPrint('   → [Ventas] _ventasUnit == "month": ${_ventasUnit == "month"}');
+      debugPrint('   → [Ventas] _ventasUnit == "year": ${_ventasUnit == "year"}');
+      debugPrint('   → [Ventas] _ventasUnit == "vcode": ${_ventasUnit == "vcode"}');
+      debugPrint('   → 호출 스택 (처음 5줄):');
+      debugPrint('      ${StackTrace.current.toString().split("\n").take(5).join("\n      ")}');
+    }
     
     if (_data == null) {
       debugPrint('   ⚠️ _data가 null임 - "No hay datos" 반환');
@@ -8852,20 +9004,243 @@ class _ReportScreenState extends State<ReportScreen> {
         // 성능 최적화: RepaintBoundary로 감싸서 불필요한 리페인트 방지
         if (widget.reportType == ReportType.ventas) {
           debugPrint('═══════════════════════════════════════════════════════');
-          debugPrint('🔍 [Ventas] ReportTableBuilder.buildTableFromList 호출 전');
-          debugPrint('   → Platform.isWindows: ${Platform.isWindows}');
-          debugPrint('   → sortedDataList.length: ${sortedDataList.length}');
-          debugPrint('   → _displayedItemsCount: $_displayedItemsCount');
-          debugPrint('   → _ventasUnit: $_ventasUnit');
+          debugPrint('🔍 [report_screen.dart:8876] [Ventas] ReportTableBuilder.buildTableFromList 호출 전');
+          debugPrint('   → 라인: 8876');
+          debugPrint('   → [report_screen.dart:8879] Platform.isWindows: ${Platform.isWindows}');
+          debugPrint('   → [report_screen.dart:8880] sortedDataList.length: ${sortedDataList.length}');
+          debugPrint('   → [report_screen.dart:8881] _displayedItemsCount: $_displayedItemsCount');
+          debugPrint('   → [report_screen.dart:8882] _ventasUnit: $_ventasUnit');
+          debugPrint('   → [report_screen.dart:8883] _ventasUnit 타입: ${_ventasUnit.runtimeType}');
+          debugPrint('   → [report_screen.dart:8884] _ventasUnit == "day": ${_ventasUnit == "day"}');
+          debugPrint('   → [report_screen.dart:8885] _ventasUnit == "month": ${_ventasUnit == "month"}');
+          debugPrint('   → [report_screen.dart:8886] _ventasUnit == "year": ${_ventasUnit == "year"}');
+          debugPrint('   → [report_screen.dart:8887] _ventasUnit == "vcode": ${_ventasUnit == "vcode"}');
+          debugPrint('   → [report_screen.dart:8888] widget.reportType == ReportType.ventas: ${widget.reportType == ReportType.ventas}');
+          debugPrint('   → [report_screen.dart:8889] 전달할 unit 파라미터: ${widget.reportType == ReportType.ventas ? _ventasUnit : null}');
+          debugPrint('   → _data != null: ${_data != null}');
+          if (_data != null && _data!.containsKey('data') && _data!['data'] is List) {
+            final dataList = _data!['data'] as List;
+            debugPrint('   → _data["data"] 길이: ${dataList.length}');
+            if (dataList.isNotEmpty && dataList.first is Map<String, dynamic>) {
+              final firstItem = dataList.first as Map<String, dynamic>;
+              debugPrint('   → _data["data"] 첫 번째 항목 keys: ${firstItem.keys.toList()}');
+              debugPrint('   → _data["data"] 첫 번째 항목에 fecha 있음: ${firstItem.containsKey("fecha")}');
+              debugPrint('   → _data["data"] 첫 번째 항목에 vcode 있음: ${firstItem.containsKey("vcode")}');
+              debugPrint('   → _data["data"] 첫 번째 항목에 month 있음: ${firstItem.containsKey("month")}');
+              debugPrint('   → _data["data"] 첫 번째 항목에 year 있음: ${firstItem.containsKey("year")}');
+              
+              // 데이터 구조와 _ventasUnit 일치 여부 확인
+              final hasVcodeField = firstItem.containsKey('vcode');
+              final hasFechaField = firstItem.containsKey('fecha');
+              final hasMonthField = firstItem.containsKey('month');
+              final hasYearField = firstItem.containsKey('year');
+              final hasDayMonthYearKey = hasFechaField || hasMonthField || hasYearField;
+              
+              final isDataForDayMonthYear = !hasVcodeField && hasDayMonthYearKey;
+              final isDataForVcode = hasVcodeField;
+              
+              final isUnitDayMonthYear = _ventasUnit == 'day' || _ventasUnit == 'month' || _ventasUnit == 'year';
+              final isUnitVcode = _ventasUnit == 'vcode';
+              
+              final dataMatchesUnit = (isUnitDayMonthYear && isDataForDayMonthYear) || 
+                                      (isUnitVcode && isDataForVcode);
+              
+              print('🟠🟠🟠 [report_screen.dart:9065] 데이터 구조 분석 결과');
+              print('   → 라인: 9065');
+              print('   → hasVcodeField: $hasVcodeField');
+              print('   → hasFechaField: $hasFechaField');
+              print('   → hasMonthField: $hasMonthField');
+              print('   → hasYearField: $hasYearField');
+              print('   → isDataForDayMonthYear: $isDataForDayMonthYear');
+              print('   → isDataForVcode: $isDataForVcode');
+              print('   → isUnitDayMonthYear: $isUnitDayMonthYear');
+              print('   → isUnitVcode: $isUnitVcode');
+              print('   → dataMatchesUnit: $dataMatchesUnit');
+              print('   → _ventasUnit: $_ventasUnit');
+              print('   → _isLoading: $_isLoading');
+              debugPrint('   → 데이터 구조 분석:');
+              debugPrint('      → hasVcodeField: $hasVcodeField');
+              debugPrint('      → hasDayMonthYearKey: $hasDayMonthYearKey');
+              debugPrint('      → isDataForDayMonthYear: $isDataForDayMonthYear');
+              debugPrint('      → isDataForVcode: $isDataForVcode');
+              debugPrint('   → _ventasUnit 분석:');
+              debugPrint('      → isUnitDayMonthYear: $isUnitDayMonthYear');
+              debugPrint('      → isUnitVcode: $isUnitVcode');
+              debugPrint('   → 데이터와 _ventasUnit 일치 여부: $dataMatchesUnit');
+              debugPrint('   → _isLoading: $_isLoading');
+              
+              if (!dataMatchesUnit && _isLoading) {
+                debugPrint('   ⚠️ [report_screen.dart:9070] 경고: 데이터와 _ventasUnit이 일치하지 않지만 로딩 중입니다.');
+                debugPrint('      → 라인: 9070');
+                debugPrint('      → _ventasUnit: $_ventasUnit');
+                debugPrint('      → 데이터 구조: ${isDataForDayMonthYear ? "day/month/year" : (isDataForVcode ? "vcode" : "unknown")}');
+              }
+            }
+          }
           debugPrint('   → _sortColumn: $_sortColumn');
           debugPrint('   → _sortAscending: $_sortAscending');
           debugPrint('   → _horizontalScrollController: ${_horizontalScrollController != null}');
           debugPrint('   → _scrollController: ${_scrollController != null}');
           if (sortedDataList.isNotEmpty) {
             debugPrint('   → sortedDataList 첫 번째 항목: ${sortedDataList.first}');
+            if (sortedDataList.first is Map<String, dynamic>) {
+              final firstItem = sortedDataList.first as Map<String, dynamic>;
+              debugPrint('   → sortedDataList 첫 번째 항목 keys: ${firstItem.keys.toList()}');
+            }
           }
           debugPrint('═══════════════════════════════════════════════════════');
         }
+        
+        // Ventas 보고서의 경우 데이터와 _ventasUnit 일치 여부 확인
+        print('🟠🟠🟠 [report_screen.dart:9044] unitToPass 결정 로직 시작');
+        print('   → 라인: 9044');
+        print('   → _ventasUnit: $_ventasUnit');
+        print('   → _ventasUnit 타입: ${_ventasUnit.runtimeType}');
+        print('   → _isLoading: $_isLoading');
+        print('   → _data != null: ${_data != null}');
+        debugPrint('🟠🟠🟠 [report_screen.dart:9044] unitToPass 결정 로직 시작');
+        debugPrint('   → 라인: 9044');
+        debugPrint('   → _ventasUnit: $_ventasUnit');
+        debugPrint('   → _ventasUnit 타입: ${_ventasUnit.runtimeType}');
+        debugPrint('   → _isLoading: $_isLoading');
+        debugPrint('   → _data != null: ${_data != null}');
+        String? unitToPass = widget.reportType == ReportType.ventas ? _ventasUnit : null;
+        print('🟠🟠🟠 [report_screen.dart:9045] unitToPass 초기값 설정: $unitToPass');
+        debugPrint('🔍 [report_screen.dart:8981] unitToPass 초기값 설정: $unitToPass');
+        if (widget.reportType == ReportType.ventas && _data != null && _data!.containsKey('data') && _data!['data'] is List) {
+          final dataList = _data!['data'] as List;
+          print('🟠🟠🟠 [report_screen.dart:9047] dataList 확인');
+          print('   → 라인: 9047');
+          print('   → dataList.length: ${dataList.length}');
+          print('   → dataList.isNotEmpty: ${dataList.isNotEmpty}');
+          debugPrint('🟠🟠🟠 [report_screen.dart:9047] dataList 확인');
+          debugPrint('   → 라인: 9047');
+          debugPrint('   → dataList.length: ${dataList.length}');
+          debugPrint('   → dataList.isNotEmpty: ${dataList.isNotEmpty}');
+          if (dataList.isNotEmpty && dataList.first is Map<String, dynamic>) {
+            final firstItem = dataList.first as Map<String, dynamic>;
+            print('🟠🟠🟠 [report_screen.dart:9049] firstItem 분석 시작');
+            print('   → 라인: 9049');
+            print('   → firstItem.keys: ${firstItem.keys.toList()}');
+            debugPrint('🟠🟠🟠 [report_screen.dart:9049] firstItem 분석 시작');
+            debugPrint('   → 라인: 9049');
+            debugPrint('   → firstItem.keys: ${firstItem.keys.toList()}');
+            final hasVcodeField = firstItem.containsKey('vcode');
+            final hasFechaField = firstItem.containsKey('fecha');
+            final hasMonthField = firstItem.containsKey('month');
+            final hasYearField = firstItem.containsKey('year');
+            final hasDayMonthYearKey = hasFechaField || hasMonthField || hasYearField;
+            
+            final isDataForDayMonthYear = !hasVcodeField && hasDayMonthYearKey;
+            final isDataForVcode = hasVcodeField;
+            
+            final isUnitDayMonthYear = _ventasUnit == 'day' || _ventasUnit == 'month' || _ventasUnit == 'year';
+            final isUnitVcode = _ventasUnit == 'vcode';
+            
+            final dataMatchesUnit = (isUnitDayMonthYear && isDataForDayMonthYear) || 
+                                    (isUnitVcode && isDataForVcode);
+            
+            print('🟠🟠🟠 [report_screen.dart:9065] 데이터 구조 분석 결과');
+            print('   → 라인: 9065');
+            print('   → hasVcodeField: $hasVcodeField');
+            print('   → hasFechaField: $hasFechaField');
+            print('   → hasMonthField: $hasMonthField');
+            print('   → hasYearField: $hasYearField');
+            print('   → isDataForDayMonthYear: $isDataForDayMonthYear');
+            print('   → isDataForVcode: $isDataForVcode');
+            print('   → isUnitDayMonthYear: $isUnitDayMonthYear');
+            print('   → isUnitVcode: $isUnitVcode');
+            print('   → dataMatchesUnit: $dataMatchesUnit');
+            print('   → _ventasUnit: $_ventasUnit');
+            print('   → _isLoading: $_isLoading');
+            debugPrint('   → [report_screen.dart:8984] 데이터 구조 분석 시작');
+            debugPrint('      → hasVcodeField: $hasVcodeField');
+            debugPrint('      → hasFechaField: $hasFechaField');
+            debugPrint('      → hasMonthField: $hasMonthField');
+            debugPrint('      → hasYearField: $hasYearField');
+            debugPrint('      → isDataForDayMonthYear: $isDataForDayMonthYear');
+            debugPrint('      → isDataForVcode: $isDataForVcode');
+            debugPrint('      → isUnitDayMonthYear: $isUnitDayMonthYear');
+            debugPrint('      → isUnitVcode: $isUnitVcode');
+            debugPrint('      → dataMatchesUnit: $dataMatchesUnit');
+            
+            if (!dataMatchesUnit && !_isLoading) {
+              // 중요: _ventasUnit과 데이터 구조가 일치하지 않을 때, _ventasUnit을 우선적으로 사용
+              // 이는 사용자가 버튼을 클릭했지만 아직 API 응답이 도착하지 않은 경우를 처리하기 위함
+              print('🟠🟠🟠 [report_screen.dart:9183] 데이터와 _ventasUnit 불일치 감지 - _ventasUnit 우선 사용');
+              print('   → 라인: 9183');
+              print('   → _ventasUnit: $_ventasUnit');
+              print('   → 데이터 구조: ${isDataForDayMonthYear ? "day/month/year" : (isDataForVcode ? "vcode" : "unknown")}');
+              print('   → _isLoading: $_isLoading');
+              print('   → unitToPass를 _ventasUnit으로 강제 설정: $_ventasUnit');
+              debugPrint('   ⚠️ [report_screen.dart:9183] 데이터와 _ventasUnit 불일치 감지 - _ventasUnit 우선 사용');
+              debugPrint('      → 라인: 9183');
+              debugPrint('      → _ventasUnit: $_ventasUnit');
+              debugPrint('      → 데이터 구조: ${isDataForDayMonthYear ? "day/month/year" : (isDataForVcode ? "vcode" : "unknown")}');
+              debugPrint('      → _isLoading: $_isLoading');
+              debugPrint('      → unitToPass를 _ventasUnit으로 강제 설정: $_ventasUnit');
+              // _ventasUnit을 우선적으로 사용 (사용자가 선택한 값)
+              unitToPass = _ventasUnit;
+            } else if (!dataMatchesUnit && _isLoading) {
+              // 로딩 중일 때도 _ventasUnit 사용
+              print('🟠🟠🟠 [report_screen.dart:9198] 로딩 중 - _ventasUnit 사용');
+              print('   → 라인: 9198');
+              print('   → _ventasUnit: $_ventasUnit');
+              print('   → unitToPass를 _ventasUnit으로 설정: $_ventasUnit');
+              debugPrint('   ⚠️ [report_screen.dart:9198] 로딩 중 - _ventasUnit 사용');
+              debugPrint('      → 라인: 9198');
+              debugPrint('      → _ventasUnit: $_ventasUnit');
+              debugPrint('      → unitToPass를 _ventasUnit으로 설정: $_ventasUnit');
+              unitToPass = _ventasUnit;
+            } else {
+              print('🟠🟠🟠 [report_screen.dart:9217] 데이터와 _ventasUnit 일치 - unitToPass 유지');
+              print('   → 라인: 9217');
+              print('   → unitToPass: $unitToPass');
+              print('   → dataMatchesUnit: $dataMatchesUnit');
+              print('   → _isLoading: $_isLoading');
+              debugPrint('🟠🟠🟠 [report_screen.dart:9217] 데이터와 _ventasUnit 일치 - unitToPass 유지');
+              debugPrint('   → 라인: 9217');
+              debugPrint('   → unitToPass: $unitToPass');
+              debugPrint('   → dataMatchesUnit: $dataMatchesUnit');
+              debugPrint('   → _isLoading: $_isLoading');
+            }
+          }
+        }
+        print('🟠🟠🟠 [report_screen.dart:9105] unitToPass 결정 로직 완료');
+        print('   → 라인: 9105');
+        print('   → 최종 unitToPass: $unitToPass');
+        print('   → _ventasUnit: $_ventasUnit');
+        debugPrint('🟠🟠🟠 [report_screen.dart:9105] unitToPass 결정 로직 완료');
+        debugPrint('   → 라인: 9105');
+        debugPrint('   → 최종 unitToPass: $unitToPass');
+        debugPrint('   → _ventasUnit: $_ventasUnit');
+        
+        print('🟣🟣🟣 [report_screen.dart:9028] buildTableFromList 호출 직전');
+        print('   → 라인: 9028');
+        print('   → unitToPass: $unitToPass');
+        print('   → unitToPass 타입: ${unitToPass.runtimeType}');
+        print('   → unitToPass == "day": ${unitToPass == "day"}');
+        print('   → unitToPass == "month": ${unitToPass == "month"}');
+        print('   → unitToPass == "year": ${unitToPass == "year"}');
+        print('   → 현재 _ventasUnit: $_ventasUnit');
+        print('   → _isLoading: $_isLoading');
+        print('   → _data != null: ${_data != null}');
+        print('   → 호출 스택 (처음 5줄):');
+        print('      ${StackTrace.current.toString().split("\n").take(5).join("\n      ")}');
+        debugPrint('🔍 [report_screen.dart:9028] buildTableFromList 호출 직전');
+        debugPrint('   → 라인: 9028');
+        debugPrint('   → unitToPass: $unitToPass');
+        debugPrint('   → unitToPass 타입: ${unitToPass.runtimeType}');
+        debugPrint('   → unitToPass == "day": ${unitToPass == "day"}');
+        debugPrint('   → unitToPass == "month": ${unitToPass == "month"}');
+        debugPrint('   → unitToPass == "year": ${unitToPass == "year"}');
+        debugPrint('   → 현재 _ventasUnit: $_ventasUnit');
+        debugPrint('   → _isLoading: $_isLoading');
+        debugPrint('   → _data != null: ${_data != null}');
+        debugPrint('   → 호출 스택 (처음 3줄):');
+        debugPrint('      ${StackTrace.current.toString().split("\n").take(3).join("\n      ")}');
+        debugPrint('   → [report_screen.dart:9035] ReportTableBuilder.buildTableFromList 호출 시작');
+        debugPrint('   → [report_screen.dart:8982] ReportTableBuilder.buildTableFromList 호출 시작');
         
         return RepaintBoundary(
           child: ReportTableBuilder.buildTableFromList(
@@ -8878,7 +9253,7 @@ class _ReportScreenState extends State<ReportScreen> {
             sortAscending: widget.reportType == ReportType.ventas ? _sortAscending : true,
             horizontalScrollController: _horizontalScrollController,
             reportColor: widget.reportType == ReportType.ventas ? Colors.purple : null,
-            unit: widget.reportType == ReportType.ventas ? _ventasUnit : null,
+            unit: unitToPass,
             onRowDoubleTap: widget.reportType == ReportType.ventas ? _handleRowDoubleTap : null,
             onRowTap: widget.reportType == ReportType.ventas && 
                       _ventasUnit != 'vcode' ? _handleRowTap : null, // day/month/year 단위에서는 단일 클릭으로 sucursal 필터링
@@ -9929,31 +10304,89 @@ class _ReportScreenState extends State<ReportScreen> {
   /// 컴팩트한 Unit 버튼 (AppBar용)
   Widget _buildCompactUnitButton(String label, String value, Color reportColor) {
     final isSelected = _ventasUnit == value;
-    debugPrint('🔵 _buildCompactUnitButton 호출: label=$label, value=$value, isSelected=$isSelected, 현재 _ventasUnit=$_ventasUnit');
+    debugPrint('🔵 [report_screen.dart:10089] _buildCompactUnitButton 호출: label=$label, value=$value, isSelected=$isSelected, 현재 _ventasUnit=$_ventasUnit');
     return SizedBox(
       height: 28,
       child: TextButton(
         onPressed: () {
-          debugPrint('═══════════════════════════════════════════════════════');
-          debugPrint('🔵 Unit 버튼 클릭 이벤트 발생');
-          debugPrint('   - 버튼 라벨: $label');
-          debugPrint('   - 버튼 값: $value');
-          debugPrint('   - 현재 선택된 unit: $_ventasUnit');
-          debugPrint('   - 이전 상태: isSelected=$isSelected');
-          debugPrint('   - 보고서 타입: ${widget.reportType}');
-          debugPrint('   - 현재 날짜 범위: startDate=$_ventasStartDate, endDate=$_ventasEndDate');
-          debugPrint('   - 필터링 단어: ${_filteringWordController.text}');
-          debugPrint('   - 데이터 로딩 상태: isLoading=$_isLoading');
-          debugPrint('   - 데이터 존재 여부: ${_data != null}');
+          // 즉시 출력 (비동기 이전)
+          print('🔵🔵🔵 [report_screen.dart:10125] Unit 버튼 클릭 이벤트 발생 - 즉시 출력');
+          print('   → 버튼 라벨: $label');
+          print('   → 버튼 값: $value');
+          print('   → 현재 선택된 unit: $_ventasUnit');
           
+          debugPrint('═══════════════════════════════════════════════════════');
+          debugPrint('🔵 [report_screen.dart:10125] Unit 버튼 클릭 이벤트 발생');
+          debugPrint('   → 라인: 10125');
+          debugPrint('   → 버튼 라벨: $label');
+          debugPrint('   → 버튼 값: $value');
+          debugPrint('   → 현재 선택된 unit: $_ventasUnit');
+          debugPrint('   → 이전 상태: isSelected=$isSelected');
+          debugPrint('   → 보고서 타입: ${widget.reportType}');
+          debugPrint('   → 현재 날짜 범위: startDate=$_ventasStartDate, endDate=$_ventasEndDate');
+          debugPrint('   → 필터링 단어: ${_filteringWordController.text}');
+          debugPrint('   → 데이터 로딩 상태: isLoading=$_isLoading');
+          debugPrint('   → 데이터 존재 여부: ${_data != null}');
+          debugPrint('   → 호출 스택 (처음 5줄):');
+          debugPrint('      ${StackTrace.current.toString().split("\n").take(5).join("\n      ")}');
+          
+        print('🔴🔴🔴 [report_screen.dart:10157] setState 호출 직전 - _ventasUnit 할당 전');
+        print('   → 라인: 10157');
+        print('   → 현재 _ventasUnit: $_ventasUnit');
+        print('   → 할당할 값: $value');
+        print('   → 호출 스택:');
+        print('      ${StackTrace.current.toString().split("\n").take(5).join("\n      ")}');
+        debugPrint('🔴🔴🔴 [report_screen.dart:10157] setState 호출 직전 - _ventasUnit 할당 전');
+        debugPrint('   → 라인: 10157');
+        debugPrint('   → 현재 _ventasUnit: $_ventasUnit');
+        debugPrint('   → 할당할 값: $value');
+        debugPrint('   → 호출 스택:');
+        debugPrint('      ${StackTrace.current.toString().split("\n").take(5).join("\n      ")}');
         setState(() {
             final previousUnit = _ventasUnit;
+            print('🔴🔴🔴 [report_screen.dart:10159] setState 내부 - _ventasUnit 할당 직전');
+            print('   → 라인: 10159');
+            print('   → previousUnit: $previousUnit');
+            print('   → 할당할 값: $value');
+            debugPrint('🔴🔴🔴 [report_screen.dart:10159] setState 내부 - _ventasUnit 할당 직전');
+            debugPrint('   → 라인: 10159');
+            debugPrint('   → previousUnit: $previousUnit');
+            debugPrint('   → 할당할 값: $value');
           _ventasUnit = value;
-            debugPrint('   → setState 실행: $_ventasUnit (이전: $previousUnit)');
+            print('🔴🔴🔴 [report_screen.dart:10160] setState 내부 - _ventasUnit 할당 직후');
+            print('   → 라인: 10160');
+            print('   → _ventasUnit: $_ventasUnit');
+            print('   → _ventasUnit == value: ${_ventasUnit == value}');
+            debugPrint('🔴🔴🔴 [report_screen.dart:10160] setState 내부 - _ventasUnit 할당 직후');
+            debugPrint('   → 라인: 10160');
+            debugPrint('   → _ventasUnit: $_ventasUnit');
+            debugPrint('   → _ventasUnit == value: ${_ventasUnit == value}');
+            print('   → [report_screen.dart:10141] setState 실행: $_ventasUnit (이전: $previousUnit)');
+            debugPrint('   → [report_screen.dart:10141] setState 실행: $_ventasUnit (이전: $previousUnit)');
+            debugPrint('   → [report_screen.dart:10143] _ventasUnit 업데이트 후 값: $_ventasUnit');
+            debugPrint('   → [report_screen.dart:10146] _ventasUnit == "day": ${_ventasUnit == "day"}');
+            debugPrint('   → [report_screen.dart:10147] _ventasUnit == "month": ${_ventasUnit == "month"}');
+            debugPrint('   → [report_screen.dart:10148] _ventasUnit == "year": ${_ventasUnit == "year"}');
+            debugPrint('   → [report_screen.dart:10149] setState 내부에서 _ventasUnit 확인: $_ventasUnit');
         });
+        print('🔴🔴🔴 [report_screen.dart:10167] setState 완료 직후');
+        print('   → 라인: 10167');
+        print('   → _ventasUnit: $_ventasUnit');
+        debugPrint('🔴🔴🔴 [report_screen.dart:10167] setState 완료 직후');
+        debugPrint('   → 라인: 10167');
+        debugPrint('   → _ventasUnit: $_ventasUnit');
           
-          debugPrint('   → _loadData() 호출 시작');
+          print('   → [report_screen.dart:10152] setState 완료 후 _ventasUnit: $_ventasUnit');
+          debugPrint('   → [report_screen.dart:10152] setState 완료 후 _ventasUnit: $_ventasUnit');
+          print('   → [report_screen.dart:10154] _loadData() 호출 시작 (비동기)');
+          debugPrint('   → [report_screen.dart:10154] _loadData() 호출 시작 (비동기)');
+          print('   → [report_screen.dart:10155] _loadData() 호출 직전 _ventasUnit: $_ventasUnit');
+          debugPrint('   → [report_screen.dart:10155] _loadData() 호출 직전 _ventasUnit: $_ventasUnit');
         _loadData();
+          print('   → [report_screen.dart:10156] _loadData() 호출 완료 (비동기 함수이므로 즉시 반환됨)');
+          debugPrint('   → [report_screen.dart:10156] _loadData() 호출 완료 (비동기 함수이므로 즉시 반환됨)');
+          print('   → [report_screen.dart:10157] _loadData() 호출 직후 _ventasUnit: $_ventasUnit');
+          debugPrint('   → [report_screen.dart:10157] _loadData() 호출 직후 _ventasUnit: $_ventasUnit');
           debugPrint('═══════════════════════════════════════════════════════');
       },
         style: TextButton.styleFrom(
@@ -10570,9 +11003,42 @@ class _ReportScreenState extends State<ReportScreen> {
         _ventasStartDate = newStartDate;
         _ventasEndDate = newEndDate;
       });
+      print('🔴🔴🔵 [report_screen.dart:10781] 더블 클릭 핸들러 - setState 호출 직전');
+      print('   → 라인: 10781');
+      print('   → 이전 _ventasUnit: $_ventasUnit');
+      print('   → 할당할 newUnit: $newUnit');
+      debugPrint('🔴🔴🔵 [report_screen.dart:10781] 더블 클릭 핸들러 - setState 호출 직전');
+      debugPrint('   → 라인: 10781');
+      debugPrint('   → 이전 _ventasUnit: $_ventasUnit');
+      debugPrint('   → 할당할 newUnit: $newUnit');
+      setState(() {
+        print('🔴🔴🔵 [report_screen.dart:10782] 더블 클릭 핸들러 - setState 내부 _ventasUnit 할당 직전');
+        print('   → 라인: 10782');
+        print('   → 현재 _ventasUnit: $_ventasUnit');
+        print('   → 할당할 newUnit: $newUnit');
+        debugPrint('🔴🔴🔵 [report_screen.dart:10782] 더블 클릭 핸들러 - setState 내부 _ventasUnit 할당 직전');
+        debugPrint('   → 라인: 10782');
+        debugPrint('   → 현재 _ventasUnit: $_ventasUnit');
+        debugPrint('   → 할당할 newUnit: $newUnit');
+        _ventasUnit = newUnit!;
+        print('🔴🔴🔵 [report_screen.dart:10783] 더블 클릭 핸들러 - setState 내부 _ventasUnit 할당 직후');
+        print('   → 라인: 10783');
+        print('   → _ventasUnit: $_ventasUnit');
+        debugPrint('🔴🔴🔵 [report_screen.dart:10783] 더블 클릭 핸들러 - setState 내부 _ventasUnit 할당 직후');
+        debugPrint('   → 라인: 10783');
+        debugPrint('   → _ventasUnit: $_ventasUnit');
+        _ventasStartDate = newStartDate;
+        _ventasEndDate = newEndDate;
+      });
       debugPrint('   → 변경 후 unit: $_ventasUnit');
       debugPrint('   → 변경 후 startDate: $_ventasStartDate');
       debugPrint('   → 변경 후 endDate: $_ventasEndDate');
+      print('🔴🔴🔵 [report_screen.dart:10790] 더블 클릭 핸들러 - setState 완료 직후');
+      print('   → 라인: 10790');
+      print('   → _ventasUnit: $_ventasUnit');
+      debugPrint('🔴🔴🔵 [report_screen.dart:10790] 더블 클릭 핸들러 - setState 완료 직후');
+      debugPrint('   → 라인: 10790');
+      debugPrint('   → _ventasUnit: $_ventasUnit');
       debugPrint('   → _loadData() 호출 시작');
       _loadData();
       debugPrint('   → _loadData() 호출 완료');
@@ -11401,9 +11867,14 @@ class _ReportScreenState extends State<ReportScreen> {
             const SizedBox(height: 12),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columnSpacing: 20,
-                headingRowColor: MaterialStateProperty.all(reportColor.withOpacity(0.1)),
+              child: Theme(
+                data: Theme.of(context).copyWith(
+                  dividerColor: Colors.transparent, // 수직 및 수평 라인 숨기기
+                ),
+                child: DataTable(
+                  columnSpacing: 20,
+                  dividerThickness: 0.0, // 수평 라인 두께 0으로 설정
+                  headingRowColor: MaterialStateProperty.all(reportColor.withOpacity(0.1)),
                 columns: columns.map((key) {
                   final labels = {
                     'vcode': 'Código',
@@ -11449,6 +11920,7 @@ class _ReportScreenState extends State<ReportScreen> {
                     }).toList(),
                   );
                 }).toList(),
+                ),
               ),
             ),
           ],
