@@ -4391,165 +4391,22 @@ class _ReportScreenState extends State<ReportScreen> {
                                             debugPrint('      → constraints: ${renderObject.constraints}');
                                             if (renderObject is RenderFlex) {
                                               debugPrint('      → children 개수: ${renderObject.childCount}');
-                                              RenderBox? child = renderObject.firstChild;
-                                              int index = 0;
-                                              while (child != null) {
-                                                debugPrint('         → child #$index: width=${child.size.width}, height=${child.size.height}');
-                                                final parentData = child.parentData;
-                                                if (parentData is FlexParentData) {
-                                                  child = parentData.nextSibling;
-                                                } else {
-                                                  break;
-                                                }
-                                                index++;
-                                              }
                                             }
                                           }
                                         });
                                         
-                                        // 핸드폰 세로 모드에서 오버플로우 방지를 위해 Wrap 사용
-                                        return Wrap(
-                                          spacing: 4.0, // 가로 간격
-                                          runSpacing: 4.0, // 세로 간격 (줄바꿈 시)
+                                        // ============================================================
+                                        // 📱 핸드폰 세로 모드 전용: 하나의 콤보박스로 4개 필터 통합
+                                        // ============================================================
+                                        // ⚠️ 중요: 이 코드는 isMobilePortrait 조건문 안에만 있으므로
+                                        // 대형 화면(데스크톱/태블릿)에는 절대 영향을 주지 않습니다.
+                                        // 대형 화면은 아래의 isDesktopOrTablet 조건문에서 처리됩니다.
+                                        return Row(
                                           children: [
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Checkbox(
-                                          value: _ventasDescontado,
-                                          onChanged: (value) {
-                                            setState(() {
-                                              _ventasDescontado = value ?? false;
-                                            });
-                                            _loadData();
-                                          },
-                                          checkColor: Colors.white,
-                                          fillColor: MaterialStateProperty.resolveWith<Color>(
-                                            (Set<MaterialState> states) {
-                                              if (states.contains(MaterialState.selected)) {
-                                                return Colors.white.withOpacity(0.3);
-                                              }
-                                              return Colors.transparent;
-                                            },
-                                          ),
-                                          side: const BorderSide(color: Colors.white, width: 1.5),
-                                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                        ),
-                                        const SizedBox(width: 2),
-                                        const Text(
-                                          'Descontado',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Checkbox(
-                                          value: _ventasReservado,
-                                          onChanged: (value) {
-                                            setState(() {
-                                              _ventasReservado = value ?? false;
-                                            });
-                                            _loadData();
-                                          },
-                                          checkColor: Colors.white,
-                                          fillColor: MaterialStateProperty.resolveWith<Color>(
-                                            (Set<MaterialState> states) {
-                                              if (states.contains(MaterialState.selected)) {
-                                                return Colors.white.withOpacity(0.3);
-                                              }
-                                              return Colors.transparent;
-                                            },
-                                          ),
-                                          side: const BorderSide(color: Colors.white, width: 1.5),
-                                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                        ),
-                                        const SizedBox(width: 2),
-                                        const Text(
-                                          'Reservado',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Checkbox(
-                                          value: _ventasCredito,
-                                          onChanged: (value) {
-                                            setState(() {
-                                              _ventasCredito = value ?? false;
-                                            });
-                                            _loadData();
-                                          },
-                                          checkColor: Colors.white,
-                                          fillColor: MaterialStateProperty.resolveWith<Color>(
-                                            (Set<MaterialState> states) {
-                                              if (states.contains(MaterialState.selected)) {
-                                                return Colors.white.withOpacity(0.3);
-                                              }
-                                              return Colors.transparent;
-                                            },
-                                          ),
-                                          side: const BorderSide(color: Colors.white, width: 1.5),
-                                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                        ),
-                                        const SizedBox(width: 2),
-                                        const Text(
-                                          'Crédito',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Checkbox(
-                                          value: _ventasMovidos,
-                                          onChanged: (value) {
-                                            debugPrint('🔍 [Ventas AppBar] Movidos 체크박스 클릭: $value');
-                                            setState(() {
-                                              _ventasMovidos = value ?? false;
-                                            });
-                                            _loadData();
-                                          },
-                                          checkColor: Colors.white,
-                                          fillColor: MaterialStateProperty.resolveWith<Color>(
-                                            (Set<MaterialState> states) {
-                                              if (states.contains(MaterialState.selected)) {
-                                                return Colors.white.withOpacity(0.3);
-                                              }
-                                              return Colors.transparent;
-                                            },
-                                          ),
-                                          side: const BorderSide(color: Colors.white, width: 1.5),
-                                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                        ),
-                                        const SizedBox(width: 2),
-                                        const Text(
-                                          'Movidos',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                            Expanded(
+                                              child: _buildVentasFiltersSingleComboBox(),
+                                            ),
+                                          ],
                                         );
                                       },
                                     ),
@@ -10248,6 +10105,69 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   /// Ventas 보고서의 필터 콤보박스 (넓은 화면용)
+  /// 핸드폰 좁은 화면용: 4개 필터를 하나의 콤보박스로 통합
+  Widget _buildVentasFiltersSingleComboBox() {
+  /// 핸드폰 좁은 화면용: 4개 필터를 하나의 콤보박스로 통합
+  Widget _buildVentasFiltersSingleComboBox() {
+    final reportColor = _getReportColor();
+    
+    // 현재 선택된 필터 확인
+    String? selectedFilter;
+    if (_ventasDescontado) {
+      selectedFilter = 'Descontado';
+    } else if (_ventasReservado) {
+      selectedFilter = 'Reservado';
+    } else if (_ventasCredito) {
+      selectedFilter = 'Crédito';
+    } else if (_ventasMovidos) {
+      selectedFilter = 'Movidos';
+    } else {
+      selectedFilter = 'Todos';
+    }
+    
+    final options = ['Todos', 'Descontado', 'Reservado', 'Crédito', 'Movidos'];
+    
+    return Container(
+      height: 36,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+      ),
+      child: DropdownButton<String>(
+        value: selectedFilter,
+        isExpanded: true, // 좁은 화면에서 전체 너비 사용
+        underline: Container(),
+        icon: const Icon(Icons.arrow_drop_down, color: Colors.white, size: 20),
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
+        dropdownColor: reportColor,
+        items: options.map((String option) {
+          return DropdownMenuItem<String>(
+            value: option,
+            child: Text(option),
+          );
+        }).toList(),
+        onChanged: (String? newValue) {
+          if (newValue != null) {
+            setState(() {
+              // 선택된 항목만 true로 설정하고 나머지는 false
+              _ventasDescontado = newValue == 'Descontado';
+              _ventasReservado = newValue == 'Reservado';
+              _ventasCredito = newValue == 'Crédito';
+              _ventasMovidos = newValue == 'Movidos';
+            });
+            _loadData();
+          }
+        },
+      ),
+    );
+  }
+
   Widget _buildVentasFilterComboBox(String label, bool value, Function(bool) onChanged) {
     final reportColor = _getReportColor();
     final options = ['Todos', 'Sí', 'No'];
