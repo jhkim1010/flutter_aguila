@@ -1,0 +1,68 @@
+; Inno Setup Script - Flutter Aguila Installer
+; Inno Setup: https://jrsoftware.org/isinfo.php
+; Usage: Open this file in Inno Setup and run "Build > Compile"
+
+#define MyAppName "Flutter Aguila"
+#define MyAppVersion "1.0.0"
+#define MyAppPublisher "Cool Sistema"
+#define MyAppExeName "Be_Cool.exe"
+#define MyAppBuildDir "build\windows\x64\runner\Release"
+
+[Setup]
+; Installer file information
+AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}
+AppName={#MyAppName}
+AppVersion={#MyAppVersion}
+AppPublisher={#MyAppPublisher}
+AppPublisherURL=https://coolsistema.com
+AppSupportURL=https://coolsistema.com
+AppUpdatesURL=https://coolsistema.com
+DefaultDirName={autopf}\{#MyAppName}
+DefaultGroupName={#MyAppName}
+DisableProgramGroupPage=yes
+LicenseFile=
+OutputDir=installer
+OutputBaseFilename=FlutterAguila_Setup_v{#MyAppVersion}
+SetupIconFile=
+Compression=lzma
+SolidCompression=yes
+WizardStyle=modern
+PrivilegesRequired=admin
+; Support for both AMD and Intel processors (x64 architecture)
+ArchitecturesAllowed=x64compatible arm64
+ArchitecturesInstallIn64BitMode=x64compatible arm64
+MinVersion=6.1sp1
+UninstallDisplayIcon={app}\{#MyAppExeName}
+UninstallDisplayName={#MyAppName}
+
+[Languages]
+Name: "english"; MessagesFile: "compiler:Default.isl"
+
+[Tasks]
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+
+[Files]
+Source: "{#MyAppBuildDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; Copy all files and folders
+
+[Icons]
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+
+[Run]
+Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+
+[Code]
+procedure InitializeWizard;
+begin
+  WizardForm.LicenseAcceptedRadio.Checked := True;
+end;
+
+function InitializeUninstall(): Boolean;
+begin
+  Result := True;
+  // Uninstall confirmation message
+  if MsgBox('Are you sure you want to remove Flutter Aguila?', mbConfirmation, MB_YESNO) = IDNO then
+    Result := False;
+end;

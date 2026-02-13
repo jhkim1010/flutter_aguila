@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, debugPrint;
 import 'package:intl/intl.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -1889,8 +1890,16 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         initialAvailableSucursales: _availableSucursales, // resumen del dia에서 확인된 sucursal 목록 전달
         useFullWidth: true, // resumen del dia에서 사용 시 전체 너비 사용
         onMenuPressed: !_isLargeScreen(context) ? () {
-          // 좁은 화면일 때 Drawer 열기
-          Scaffold.of(context).openDrawer();
+          // 좁은 화면일 때 Drawer 열기.
+          // Windows에서 ventas 로딩 중 메인 스레드가 바쁠 때 openDrawer()가
+          // "Failed to post message to main thread" 오류를 유발하므로,
+          // 다음 프레임으로 미뤄서 플랫폼 메시지 경쟁을 줄임.
+          SchedulerBinding.instance.addPostFrameCallback((_) {
+            if (!context.mounted) return;
+            try {
+              Scaffold.of(context).openDrawer();
+            } catch (_) {}
+          });
         } : null,
         onStateChanged: (filteringWord, sortColumn, sortAscending) {
           // 보고서 상태 변경 시 저장 (연결 변경 시 유지용)
