@@ -3071,8 +3071,8 @@ class ReportTableBuilder {
                               ),
                             ),
                           ),
-                          // ventas 보고서가 아닐 때만 수직선 표시 (ventas는 수직선 숨김)
-                          if (reportType != ReportType.ventas)
+                          // ventas/fventas 보고서가 아닐 때만 수직선 표시 (ventas·fventas는 수직선 숨김)
+                          if (reportType != ReportType.ventas && reportType != ReportType.fventas)
                             Positioned(
                               right: 0,
                               top: 0,
@@ -3119,9 +3119,9 @@ class ReportTableBuilder {
                       //   }
                       // });
                       
-                      // ventas 보고서가 아닐 때만 수직선 표시 (ventas는 수직선 숨김)
+                      // ventas/fventas 보고서가 아닐 때만 수직선 표시 (ventas·fventas는 수직선 숨김)
                       return Container(
-                        decoration: reportType == ReportType.ventas
+                        decoration: (reportType == ReportType.ventas || reportType == ReportType.fventas)
                             ? null
                             : BoxDecoration(
                                 border: Border(
@@ -3518,8 +3518,8 @@ class ReportTableBuilder {
                       child: align.child,
                     ),
                   ),
-                  // ventas 보고서가 아닐 때만 수직선 표시 (ventas는 수직선 숨김)
-                  if (reportType != ReportType.ventas)
+                  // ventas/fventas 보고서가 아닐 때만 수직선 표시 (ventas·fventas는 수직선 숨김)
+                  if (reportType != ReportType.ventas && reportType != ReportType.fventas)
                     Positioned(
                       right: 0,
                       top: 0,
@@ -3542,8 +3542,8 @@ class ReportTableBuilder {
                   width: alertasColumnWidth,  // 헤더와 동일하게 padding 추가
                   child: cell.child,
                 ),
-                // ventas 보고서가 아닐 때만 수직선 표시 (ventas는 수직선 숨김)
-                if (reportType != ReportType.ventas)
+                // ventas/fventas 보고서가 아닐 때만 수직선 표시 (ventas·fventas는 수직선 숨김)
+                if (reportType != ReportType.ventas && reportType != ReportType.fventas)
                   Positioned(
                     right: 0,
                     top: 0,
@@ -3614,8 +3614,8 @@ class ReportTableBuilder {
                         child: align.child,
                       ),
                     ),
-                    // ventas 보고서가 아닐 때만 수직선 표시 (ventas는 수직선 숨김)
-                    if (reportType != ReportType.ventas)
+                    // ventas/fventas 보고서가 아닐 때만 수직선 표시 (ventas·fventas는 수직선 숨김)
+                    if (reportType != ReportType.ventas && reportType != ReportType.fventas)
                       Positioned(
                         right: 0,
                         top: 0,
@@ -3692,21 +3692,21 @@ class ReportTableBuilder {
                     width: dataRowColumnWidthForCell,  // 헤더의 headerSizedBoxWidth와 일치 (baseColumnWidth + 32.0)
                     child: cell.child,
                   ),
-                  // ventas 보고서가 아닐 때만 수직선 표시 (ventas는 수직선 숨김)
-                  if (reportType != ReportType.ventas)
-                    Positioned(
-                      right: 0,
-                      top: 0,
-                      bottom: 0,
-                      child: Container(
-                        width: 1.0,
-                        color: Colors.blue.withOpacity(0.5),  // 디버깅용 파란색 수직선
+// ventas/fventas 보고서가 아닐 때만 수직선 표시 (ventas·fventas는 수직선 숨김)
+                    if (reportType != ReportType.ventas && reportType != ReportType.fventas)
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        bottom: 0,
+                        child: Container(
+                          width: 1.0,
+                          color: Colors.blue.withOpacity(0.5),  // 디버깅용 파란색 수직선
+                        ),
                       ),
-                    ),
-                ],
-              );
-            },
-          ),
+                  ],
+                );
+              },
+            ),
         );
       }
       
@@ -5088,8 +5088,8 @@ class ReportTableBuilder {
                       ),
                     ),
                     ),
-                    // ventas 보고서가 아닐 때만 수직선 표시 (ventas는 수직선 숨김)
-                    if (reportType != ReportType.ventas && index < columns.length - 1)
+                    // ventas/fventas 보고서가 아닐 때만 수직선 표시 (ventas·fventas는 수직선 숨김)
+                    if (reportType != ReportType.ventas && reportType != ReportType.fventas && index < columns.length - 1)
                       Positioned(
                         right: 0,
                         top: 0,
