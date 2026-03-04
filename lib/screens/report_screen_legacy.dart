@@ -87,7 +87,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
   // 정렬 및 필터 상태
   String? _sortColumn;
   bool _sortAscending = true;
-  Map<String, String> _columnFilters = {}; // 컬럼별 필터 값
+  final Map<String, String> _columnFilters = {}; // 컬럼별 필터 값
   String? _selectedSucursal; // 선택된 sucursal 필터 (null이면 "모두")
   List<String>? _availableSucursales; // 사용 가능한 sucursal 목록
   
@@ -170,6 +170,11 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
   bool _isLoadingMoreStocks = false; // 추가 stocks 로딩 중 여부
   String? _stocksSortColumn = 'codigo'; // Stocks 정렬 칼럼 (기본값: codigo)
   bool _stocksSortAscending = true; // Stocks 정렬 방향 (true: 오름차순, false: 내림차순)
+  
+  // Movidos 보고서용 상태
+  DateTime? _movidosStartDate;
+  DateTime? _movidosEndDate;
+  bool _movidosItemView = false;
   
   // Tipos와 Temporadas 관련 상태
   List<Map<String, dynamic>> _tiposList = [];
@@ -272,6 +277,12 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
           print('📅 Clientes 보고서 날짜 범위 설정 (오늘): ${DateFormat('yyyy-MM-dd').format(_itemsStartDate!)} ~ ${DateFormat('yyyy-MM-dd').format(_itemsEndDate!)}');
         }
       }
+    }
+    // Movidos 보고서의 경우 기간·체크박스 초기값
+    if (widget.reportType == ReportType.movidos) {
+      final now = DateTime.now();
+      _movidosStartDate = widget.initialItemsStartDate ?? now;
+      _movidosEndDate = widget.initialItemsEndDate ?? now;
     }
     // Ventas 및 FVentas 보고서의 경우 초기 날짜 범위 설정
     if (widget.reportType == ReportType.ventas || widget.reportType == ReportType.fventas) {
@@ -1062,14 +1073,14 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Row(
+        title: const Row(
           children: [
-            const Icon(Icons.picture_as_pdf, color: Colors.red, size: 28),
-            const SizedBox(width: 12),
+            Icon(Icons.picture_as_pdf, color: Colors.red, size: 28),
+            SizedBox(width: 12),
             Expanded(
               child: Text(
                 'PDF 생성 완료',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -1395,14 +1406,14 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Row(
+        title: const Row(
           children: [
-            const Icon(Icons.table_chart, color: Colors.green, size: 28),
-            const SizedBox(width: 12),
+            Icon(Icons.table_chart, color: Colors.green, size: 28),
+            SizedBox(width: 12),
             Expanded(
               child: Text(
                 'Excel 생성 완료',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -2386,6 +2397,25 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
             _codigosHasMore = false;
           }
           break;
+        case ReportType.movidos:
+          // Movidos: 다른 메뉴와 동일하게 선택 즉시 서버 요청
+          final movidosStart = _movidosStartDate ?? DateTime.now();
+          final movidosEnd = _movidosEndDate ?? DateTime.now();
+          final currentFilteringWord = filteringWord ?? _filteringWordController.text.trim();
+          final filters = <String, dynamic>{
+            'fecha_inicio': DateFormat('yyyy-MM-dd').format(movidosStart),
+            'fecha_fin': DateFormat('yyyy-MM-dd').format(movidosEnd),
+            if (_movidosItemView) 'item_view': '1',
+          };
+          if (_selectedSucursal != null) {
+            filters['sucursal'] = _selectedSucursal;
+          }
+          debugPrint('   → [Movidos] 전달할 filters: $filters');
+          data = await _databaseService.getMovidosReport(
+            filteringWord: currentFilteringWord.isNotEmpty ? currentFilteringWord : null,
+            filters: filters,
+          );
+          break;
       }
 
       // 데이터에서 sucursal 목록 추출
@@ -2603,6 +2633,12 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
             debugPrint('   → sucursal 필터 있음 또는 목록 이미 설정됨 - 기존 목록 유지');
             debugPrint('   → _availableSucursales 유지: $_availableSucursales');
             extractedSucursales = _availableSucursales; // 기존 목록 유지
+          }
+        } else if (widget.reportType == ReportType.movidos) {
+          // Movidos: data['data'] 리스트에서 이미 추출된 sucursales 사용 (공통 추출 루프)
+          extractedSucursales = sucursales;
+          if (sucursales != null) {
+            debugPrint('🔍 [Movidos] 데이터에서 sucursal 목록 사용: $sucursales');
           }
         }
         
@@ -3379,7 +3415,9 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
       appBar: AppBar(
         automaticallyImplyLeading: false,
             toolbarHeight: needsThreeLineAppBar ? kToolbarHeight * 3 : (needsTwoLineAppBar ? kToolbarHeight * 2 : null),
-        title: widget.reportType == ReportType.stocks
+        title: widget.reportType == ReportType.movidos
+            ? _buildMovidosAppBarTitle(context, reportTitle, reportIcon, reportColor)
+            : widget.reportType == ReportType.stocks
             ? LayoutBuilder(
                 builder: (context, constraints) {
                   // ============================================================
@@ -4502,9 +4540,9 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                     _loadData();
                                   },
                                   checkColor: Colors.white,
-                                  fillColor: MaterialStateProperty.resolveWith<Color>(
-                                    (Set<MaterialState> states) {
-                                      if (states.contains(MaterialState.selected)) {
+                                  fillColor: WidgetStateProperty.resolveWith<Color>(
+                                    (Set<WidgetState> states) {
+                                      if (states.contains(WidgetState.selected)) {
                                         return Colors.white.withOpacity(0.3);
                                       }
                                       return Colors.transparent;
@@ -4532,9 +4570,9 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                     _loadData();
                                   },
                                   checkColor: Colors.white,
-                                  fillColor: MaterialStateProperty.resolveWith<Color>(
-                                    (Set<MaterialState> states) {
-                                      if (states.contains(MaterialState.selected)) {
+                                  fillColor: WidgetStateProperty.resolveWith<Color>(
+                                    (Set<WidgetState> states) {
+                                      if (states.contains(WidgetState.selected)) {
                                         return Colors.white.withOpacity(0.3);
                                       }
                                       return Colors.transparent;
@@ -4562,9 +4600,9 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                     _loadData();
                                   },
                                   checkColor: Colors.white,
-                                  fillColor: MaterialStateProperty.resolveWith<Color>(
-                                    (Set<MaterialState> states) {
-                                      if (states.contains(MaterialState.selected)) {
+                                  fillColor: WidgetStateProperty.resolveWith<Color>(
+                                    (Set<WidgetState> states) {
+                                      if (states.contains(WidgetState.selected)) {
                                         return Colors.white.withOpacity(0.3);
                                       }
                                       return Colors.transparent;
@@ -4954,9 +4992,9 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                         _loadData();
                                       },
                                       checkColor: Colors.white,
-                                      fillColor: MaterialStateProperty.resolveWith<Color>(
-                                        (Set<MaterialState> states) {
-                                          if (states.contains(MaterialState.selected)) {
+                                      fillColor: WidgetStateProperty.resolveWith<Color>(
+                                        (Set<WidgetState> states) {
+                                          if (states.contains(WidgetState.selected)) {
                                             return Colors.white.withOpacity(0.3);
                                           }
                                           return Colors.transparent;
@@ -4984,9 +5022,9 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                         _loadData();
                                       },
                                       checkColor: Colors.white,
-                                      fillColor: MaterialStateProperty.resolveWith<Color>(
-                                        (Set<MaterialState> states) {
-                                          if (states.contains(MaterialState.selected)) {
+                                      fillColor: WidgetStateProperty.resolveWith<Color>(
+                                        (Set<WidgetState> states) {
+                                          if (states.contains(WidgetState.selected)) {
                                             return Colors.white.withOpacity(0.3);
                                           }
                                           return Colors.transparent;
@@ -5014,9 +5052,9 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                         _loadData();
                                       },
                                       checkColor: Colors.white,
-                                      fillColor: MaterialStateProperty.resolveWith<Color>(
-                                        (Set<MaterialState> states) {
-                                          if (states.contains(MaterialState.selected)) {
+                                      fillColor: WidgetStateProperty.resolveWith<Color>(
+                                        (Set<WidgetState> states) {
+                                          if (states.contains(WidgetState.selected)) {
                                             return Colors.white.withOpacity(0.3);
                                           }
                                           return Colors.transparent;
@@ -5123,9 +5161,9 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                         _loadData();
                                       },
                                       checkColor: Colors.white,
-                                      fillColor: MaterialStateProperty.resolveWith<Color>(
-                                        (Set<MaterialState> states) {
-                                          if (states.contains(MaterialState.selected)) {
+                                      fillColor: WidgetStateProperty.resolveWith<Color>(
+                                        (Set<WidgetState> states) {
+                                          if (states.contains(WidgetState.selected)) {
                                             return Colors.white.withOpacity(0.3);
                                           }
                                           return Colors.transparent;
@@ -5153,9 +5191,9 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                         _loadData();
                                       },
                                       checkColor: Colors.white,
-                                      fillColor: MaterialStateProperty.resolveWith<Color>(
-                                        (Set<MaterialState> states) {
-                                          if (states.contains(MaterialState.selected)) {
+                                      fillColor: WidgetStateProperty.resolveWith<Color>(
+                                        (Set<WidgetState> states) {
+                                          if (states.contains(WidgetState.selected)) {
                                             return Colors.white.withOpacity(0.3);
                                           }
                                           return Colors.transparent;
@@ -5183,9 +5221,9 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                         _loadData();
                                       },
                                       checkColor: Colors.white,
-                                      fillColor: MaterialStateProperty.resolveWith<Color>(
-                                        (Set<MaterialState> states) {
-                                          if (states.contains(MaterialState.selected)) {
+                                      fillColor: WidgetStateProperty.resolveWith<Color>(
+                                        (Set<WidgetState> states) {
+                                          if (states.contains(WidgetState.selected)) {
                                             return Colors.white.withOpacity(0.3);
                                           }
                                           return Colors.transparent;
@@ -5727,11 +5765,11 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                     return items;
                   },
                 ),
-                // PDF 공유 버튼
+                // PDF 공유 / Exportación 버튼
                 if (_data != null)
                   IconButton(
                     icon: const Icon(Icons.share, color: Colors.white),
-                    tooltip: 'Compartir como PDF',
+                    tooltip: widget.reportType == ReportType.movidos ? 'Exportación' : 'Compartir como PDF',
                     onPressed: () => _shareReport(),
                   ),
                 ];
@@ -5978,6 +6016,86 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
     );
   }
 
+  /// Movidos 보고서 전용 AppBar 타이틀: 달력 2개(Ventas와 동일), Item view 체크박스, filteringWord
+  Widget _buildMovidosAppBarTitle(
+    BuildContext context,
+    String reportTitle,
+    IconData reportIcon,
+    Color reportColor,
+  ) {
+    final isLargeScreen = MobileLayoutHelper.getLayoutInfo(context).isLargeScreen;
+    final dateButtonWidth = isLargeScreen ? 150.0 : 90.0; // 대형 화면에서 날짜가 충분히 보이도록 폭 확대
+    return Row(
+      children: [
+        IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+          tooltip: 'Volver',
+        ),
+        const SizedBox(width: 4),
+        // 달력 1 (Desde) - Ventas와 동일한 _buildSingleDateButton 사용
+        Flexible(
+          child: SizedBox(
+            width: dateButtonWidth,
+            child: _buildSingleDateButton(
+              label: 'Desde',
+              date: _movidosStartDate,
+              reportColor: reportColor,
+              onDateSelected: (date) {
+                setState(() => _movidosStartDate = date);
+                _loadData();
+              },
+            ),
+          ),
+        ),
+        const SizedBox(width: 4),
+        // 달력 2 (Hasta) - Ventas와 동일한 _buildSingleDateButton 사용
+        Flexible(
+          child: SizedBox(
+            width: dateButtonWidth,
+            child: _buildSingleDateButton(
+              label: 'Hasta',
+              date: _movidosEndDate,
+              reportColor: reportColor,
+              onDateSelected: (date) {
+                setState(() => _movidosEndDate = date);
+                _loadData();
+              },
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Item view 체크박스
+        SizedBox(
+          width: 110,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                height: 24,
+                width: 24,
+                child: Checkbox(
+                  value: _movidosItemView,
+                  onChanged: (v) => setState(() => _movidosItemView = v ?? false),
+                  activeColor: reportColor,
+                  fillColor: WidgetStateProperty.resolveWith((_) => Colors.white),
+                  checkColor: reportColor,
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Text('Item view', style: TextStyle(color: Colors.white, fontSize: 11)),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Sucursal 선택 (Todos, Sucursal 1, Sucursal 2 … — 데이터/initial에서 자동 결정)
+        _buildSucursalSelector(),
+        const SizedBox(width: 8),
+        Expanded(child: _buildFilteringWordFieldInAppBar()),
+      ],
+    );
+  }
+
   // AppBar 빌드 메서드 (useFullWidth가 true일 때 사용)
   PreferredSizeWidget _buildAppBar(
     BuildContext context,
@@ -5999,7 +6117,9 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
               tooltip: 'Menú',
             )
           : null,
-      title: widget.reportType == ReportType.stocks
+      title: widget.reportType == ReportType.movidos
+          ? _buildMovidosAppBarTitle(context, reportTitle, reportIcon, reportColor)
+          : widget.reportType == ReportType.stocks
           ? LayoutBuilder(
               builder: (context, constraints) {
                 // ============================================================
@@ -6894,9 +7014,9 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                           _loadData();
                                         },
                                         checkColor: Colors.white,
-                                        fillColor: MaterialStateProperty.resolveWith<Color>(
-                                          (Set<MaterialState> states) {
-                                            if (states.contains(MaterialState.selected)) {
+                                        fillColor: WidgetStateProperty.resolveWith<Color>(
+                                          (Set<WidgetState> states) {
+                                            if (states.contains(WidgetState.selected)) {
                                               return Colors.white.withOpacity(0.3);
                                             }
                                             return Colors.transparent;
@@ -6924,9 +7044,9 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                           _loadData();
                                         },
                                         checkColor: Colors.white,
-                                        fillColor: MaterialStateProperty.resolveWith<Color>(
-                                          (Set<MaterialState> states) {
-                                            if (states.contains(MaterialState.selected)) {
+                                        fillColor: WidgetStateProperty.resolveWith<Color>(
+                                          (Set<WidgetState> states) {
+                                            if (states.contains(WidgetState.selected)) {
                                               return Colors.white.withOpacity(0.3);
                                             }
                                             return Colors.transparent;
@@ -6954,9 +7074,9 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                           _loadData();
                                         },
                                         checkColor: Colors.white,
-                                        fillColor: MaterialStateProperty.resolveWith<Color>(
-                                          (Set<MaterialState> states) {
-                                            if (states.contains(MaterialState.selected)) {
+                                        fillColor: WidgetStateProperty.resolveWith<Color>(
+                                          (Set<WidgetState> states) {
+                                            if (states.contains(WidgetState.selected)) {
                                               return Colors.white.withOpacity(0.3);
                                             }
                                             return Colors.transparent;
@@ -7131,9 +7251,9 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                     _loadData();
                                   },
                                   checkColor: Colors.white,
-                                  fillColor: MaterialStateProperty.resolveWith<Color>(
-                                    (Set<MaterialState> states) {
-                                      if (states.contains(MaterialState.selected)) {
+                                  fillColor: WidgetStateProperty.resolveWith<Color>(
+                                    (Set<WidgetState> states) {
+                                      if (states.contains(WidgetState.selected)) {
                                         return Colors.white.withOpacity(0.3);
                                       }
                                       return Colors.transparent;
@@ -7161,9 +7281,9 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                     _loadData();
                                   },
                                   checkColor: Colors.white,
-                                  fillColor: MaterialStateProperty.resolveWith<Color>(
-                                    (Set<MaterialState> states) {
-                                      if (states.contains(MaterialState.selected)) {
+                                  fillColor: WidgetStateProperty.resolveWith<Color>(
+                                    (Set<WidgetState> states) {
+                                      if (states.contains(WidgetState.selected)) {
                                         return Colors.white.withOpacity(0.3);
                                       }
                                       return Colors.transparent;
@@ -7191,9 +7311,9 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                     _loadData();
                                   },
                                   checkColor: Colors.white,
-                                  fillColor: MaterialStateProperty.resolveWith<Color>(
-                                    (Set<MaterialState> states) {
-                                      if (states.contains(MaterialState.selected)) {
+                                  fillColor: WidgetStateProperty.resolveWith<Color>(
+                                    (Set<WidgetState> states) {
+                                      if (states.contains(WidgetState.selected)) {
                                         return Colors.white.withOpacity(0.3);
                                       }
                                       return Colors.transparent;
@@ -7222,9 +7342,9 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                     _loadData();
                                   },
                                   checkColor: Colors.white,
-                                  fillColor: MaterialStateProperty.resolveWith<Color>(
-                                    (Set<MaterialState> states) {
-                                      if (states.contains(MaterialState.selected)) {
+                                  fillColor: WidgetStateProperty.resolveWith<Color>(
+                                    (Set<WidgetState> states) {
+                                      if (states.contains(WidgetState.selected)) {
                                         return Colors.white.withOpacity(0.3);
                                       }
                                       return Colors.transparent;
@@ -7273,9 +7393,9 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                       _loadData();
                                     },
                                     checkColor: Colors.white,
-                                    fillColor: MaterialStateProperty.resolveWith<Color>(
-                                      (Set<MaterialState> states) {
-                                        if (states.contains(MaterialState.selected)) {
+                                    fillColor: WidgetStateProperty.resolveWith<Color>(
+                                      (Set<WidgetState> states) {
+                                        if (states.contains(WidgetState.selected)) {
                                           return Colors.white.withOpacity(0.3);
                                         }
                                         return Colors.transparent;
@@ -7303,9 +7423,9 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                       _loadData();
                                     },
                                     checkColor: Colors.white,
-                                    fillColor: MaterialStateProperty.resolveWith<Color>(
-                                      (Set<MaterialState> states) {
-                                        if (states.contains(MaterialState.selected)) {
+                                    fillColor: WidgetStateProperty.resolveWith<Color>(
+                                      (Set<WidgetState> states) {
+                                        if (states.contains(WidgetState.selected)) {
                                           return Colors.white.withOpacity(0.3);
                                         }
                                         return Colors.transparent;
@@ -7333,9 +7453,9 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                       _loadData();
                                     },
                                     checkColor: Colors.white,
-                                    fillColor: MaterialStateProperty.resolveWith<Color>(
-                                      (Set<MaterialState> states) {
-                                        if (states.contains(MaterialState.selected)) {
+                                    fillColor: WidgetStateProperty.resolveWith<Color>(
+                                      (Set<WidgetState> states) {
+                                        if (states.contains(WidgetState.selected)) {
                                           return Colors.white.withOpacity(0.3);
                                         }
                                         return Colors.transparent;
@@ -7364,9 +7484,9 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                       _loadData();
                                     },
                                     checkColor: Colors.white,
-                                    fillColor: MaterialStateProperty.resolveWith<Color>(
-                                      (Set<MaterialState> states) {
-                                        if (states.contains(MaterialState.selected)) {
+                                    fillColor: WidgetStateProperty.resolveWith<Color>(
+                                      (Set<WidgetState> states) {
+                                        if (states.contains(WidgetState.selected)) {
                                           return Colors.white.withOpacity(0.3);
                                         }
                                         return Colors.transparent;
@@ -7851,6 +7971,23 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
 
     // 데이터 구조 분석 및 적절한 위젯 반환
     final data = _data!;
+    
+    // Movidos 보고서: placeholder (API 연동 전)
+    if (widget.reportType == ReportType.movidos) {
+      final reportColor = _getReportColor();
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.swap_horiz, size: 64, color: reportColor),
+            const SizedBox(height: 16),
+            Text('Movidos', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: reportColor)),
+            const SizedBox(height: 8),
+            Text('No hay datos disponibles', style: TextStyle(color: Colors.grey[600])),
+          ],
+        ),
+      );
+    }
     
     // Stocks 보고서의 경우 특별 처리
     if (widget.reportType == ReportType.stocks) {
@@ -8926,7 +9063,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
               controller: _scrollController,
               padding: EdgeInsets.zero,
               children: [
-                ...displayedList.map((item) => _buildDataCard(item)).toList(),
+                ...displayedList.map((item) => _buildDataCard(item)),
                 if (hasMore)
                   Padding(
                     padding: const EdgeInsets.all(2.0),
@@ -8958,25 +9095,23 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
     }
     
     // 'data' 키가 없고 직접 맵인 경우
-    if (data is Map<String, dynamic>) {
-      // 테이블 형태로 표시 가능한지 확인
-      if (ReportTableBuilder.isTableData(data)) {
-        return ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            ReportTableBuilder.buildTable(data, widget.reportType),
-          ],
-        );
-      }
-      
+    // 테이블 형태로 표시 가능한지 확인
+    if (ReportTableBuilder.isTableData(data)) {
       return ListView(
         padding: EdgeInsets.zero,
         children: [
-          _buildDataMap(data),
+          ReportTableBuilder.buildTable(data, widget.reportType),
         ],
       );
     }
     
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        _buildDataMap(data),
+      ],
+    );
+      
     return const Center(child: Text('Formato de datos desconocido'));
   }
 
@@ -9056,7 +9191,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
     
     // bcolorview 값에 따라 색상 결정
     Color reportColor = Colors.orange; // 기본값
-    if (filters != null && filters.containsKey('bcolorview')) {
+    if (filters.containsKey('bcolorview')) {
       final bcolorviewValue = filters['bcolorview'];
       reportColor = ReportUtils.isBcolorviewEnabled(bcolorviewValue) ? Colors.orange : Colors.lightBlue;
     }
@@ -9108,7 +9243,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                       value: sucursal,
                       child: Text(sucursal, style: const TextStyle(fontSize: 12, color: Colors.white)),
                     );
-                  }).toList(),
+                  }),
                 ],
                 onChanged: (value) {
                   setState(() {
@@ -9236,7 +9371,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
           child: Builder(
             builder: (context) {
               // 실제 컨텐츠 너비 계산 (stocks_builder.dart와 동일)
-              final totalWidth = 1940.0 + 144.0 + 32.0; // 실제 컨텐츠 너비 = 2116
+              const totalWidth = 1940.0 + 144.0 + 32.0; // 실제 컨텐츠 너비 = 2116
               final screenWidth = MediaQuery.of(context).size.width;
               final needsHorizontalScroll = totalWidth > screenWidth;
               
@@ -9492,7 +9627,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
               columnSpacing: 8,
               dataRowMinHeight: 5,
               dataRowMaxHeight: 5,
-              headingRowColor: MaterialStateProperty.all(
+              headingRowColor: WidgetStateProperty.all(
                 _getReportColor().withOpacity(0.1),
               ),
               sortColumnIndex: _sortColumn != null ? orderedKeys.indexOf(_sortColumn!) : null,
@@ -10534,7 +10669,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
           newUnit = 'month';
           newStartDate = DateTime(year, 1, 1);
           newEndDate = DateTime(year, 12, 31);
-          print('✅ year -> month: $year년 (${newStartDate} ~ ${newEndDate})');
+          print('✅ year -> month: $year년 ($newStartDate ~ $newEndDate)');
         } else {
           print('❌ year 값이 유효하지 않습니다: $year (범위: 2000 ~ ${DateTime.now().year})');
         }
@@ -10595,7 +10730,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
             newUnit = 'day';
             newStartDate = DateTime(year, month, 1);
             newEndDate = DateTime(year, month + 1, 0); // 해당 월의 마지막 날
-            debugPrint('   ✅ month -> day: ${year}년 ${month}월 (${newStartDate} ~ ${newEndDate})');
+            debugPrint('   ✅ month -> day: $year년 $month월 ($newStartDate ~ $newEndDate)');
           } else {
             debugPrint('   ❌ year 또는 month 값이 유효하지 않습니다: year=$year, month=$month');
           }
@@ -10663,7 +10798,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
             selectedDate = DateTime(year, month, day);
             newStartDate = selectedDate;
             newEndDate = selectedDate;
-            debugPrint('   ✅ day -> vcode: ${year}년 ${month}월 ${day}일');
+            debugPrint('   ✅ day -> vcode: $year년 $month월 $day일');
           } else {
             debugPrint('   ❌ year, month, day 값 중 하나가 유효하지 않습니다: year=$year, month=$month, day=$day');
           }
@@ -10968,7 +11103,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
       );
       
       debugPrint('✅ [Cliente 행 더블클릭] Cliente 상세 정보 응답 받음');
-      debugPrint('→ clienteDetailData keys: ${clienteDetailData is Map ? (clienteDetailData as Map).keys.toList() : "N/A"}');
+      debugPrint('→ clienteDetailData keys: ${(clienteDetailData as Map).keys.toList()}');
       
       // 모달리스 대화상자 표시 또는 업데이트
       if (mounted) {
@@ -11015,10 +11150,6 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
     }
     
     final overlayState = Overlay.of(context);
-    if (overlayState == null) {
-      debugPrint('❌ [_showClienteDetailOverlay] overlayState=null, 종료');
-      return;
-    }
     
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
@@ -11312,7 +11443,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
         
         return Dialog(
           insetPadding: isWideScreen ? const EdgeInsets.all(16) : EdgeInsets.zero,
-          child: Container(
+          child: SizedBox(
             width: dialogWidth,
             height: dialogHeight,
             child: Column(
@@ -11377,15 +11508,6 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
 
   /// Cliente 상세 정보 내용 빌드
   Widget _buildClienteDetailContent(Map<String, dynamic> clienteDetailData, Map<String, dynamic> rowData) {
-    if (clienteDetailData is! Map<String, dynamic>) {
-      return Center(
-        child: Text(
-          'Datos: ${clienteDetailData.toString()}',
-          style: const TextStyle(fontSize: 14),
-        ),
-      );
-    }
-
     final reportColor = _getReportColor();
     final cards = <Widget>[];
 
@@ -11543,7 +11665,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                 child: DataTable(
                   columnSpacing: 20,
                   dividerThickness: 0.0, // 수평 라인 두께 0으로 설정
-                  headingRowColor: MaterialStateProperty.all(reportColor.withOpacity(0.1)),
+                  headingRowColor: WidgetStateProperty.all(reportColor.withOpacity(0.1)),
                 columns: columns.map((key) {
                   final labels = {
                     'vcode': 'Código',
@@ -11765,7 +11887,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
         
         return Dialog(
           insetPadding: isWideScreen ? const EdgeInsets.all(16) : EdgeInsets.zero,
-          child: Container(
+          child: SizedBox(
             width: dialogWidth,
             height: dialogHeight,
             child: Column(
@@ -11959,7 +12081,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
               scrollDirection: Axis.horizontal,
               child: DataTable(
                 columnSpacing: 20,
-                headingRowColor: MaterialStateProperty.all(Colors.purple.withOpacity(0.1)),
+                headingRowColor: WidgetStateProperty.all(Colors.purple.withOpacity(0.1)),
                 columns: const [
                   DataColumn(label: Text('Código', style: TextStyle(fontWeight: FontWeight.bold))),
                   DataColumn(label: Text('Descripción', style: TextStyle(fontWeight: FontWeight.bold))),
@@ -12018,7 +12140,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
               scrollDirection: Axis.horizontal,
               child: DataTable(
                 columnSpacing: 20,
-                headingRowColor: MaterialStateProperty.all(Colors.purple.withOpacity(0.1)),
+                headingRowColor: WidgetStateProperty.all(Colors.purple.withOpacity(0.1)),
                 columns: const [
                   DataColumn(label: Text('Cuenta', style: TextStyle(fontWeight: FontWeight.bold))),
                   DataColumn(label: Text('Núm. Autorización', style: TextStyle(fontWeight: FontWeight.bold))),
@@ -12086,7 +12208,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
               scrollDirection: Axis.horizontal,
               child: DataTable(
                 columnSpacing: 20,
-                headingRowColor: MaterialStateProperty.all(Colors.purple.withOpacity(0.1)),
+                headingRowColor: WidgetStateProperty.all(Colors.purple.withOpacity(0.1)),
                 columns: keys.map((key) {
                   return DataColumn(
                     label: Text(
@@ -12190,7 +12312,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
               scrollDirection: Axis.horizontal,
               child: DataTable(
                 columnSpacing: 20,
-                headingRowColor: MaterialStateProperty.all(Colors.purple.withOpacity(0.1)),
+                headingRowColor: WidgetStateProperty.all(Colors.purple.withOpacity(0.1)),
                 columns: const [
                   DataColumn(label: Text('Núm. Pedido', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 42))),
                   DataColumn(label: Text('Fecha Registrado', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 42))),
@@ -12230,11 +12352,11 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                       ],
                     );
                   }
-                  return DataRow(
+                  return const DataRow(
                     cells: [
-                      const DataCell(Text('N/A', style: TextStyle(fontSize: 42))),
-                      const DataCell(Text('N/A', style: TextStyle(fontSize: 42))),
-                      const DataCell(Text('N/A', style: TextStyle(fontSize: 42))),
+                      DataCell(Text('N/A', style: TextStyle(fontSize: 42))),
+                      DataCell(Text('N/A', style: TextStyle(fontSize: 42))),
+                      DataCell(Text('N/A', style: TextStyle(fontSize: 42))),
                     ],
                   );
                 }).toList(),
@@ -12502,11 +12624,9 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
         final widget = _buildSucursalSelector();
         debugPrint('   ✅ 실제 반환된 위젯 타입: ${widget.runtimeType}');
         debugPrint('   ✅ 위젯이 null인지 확인: ${widget == null}');
-        if (widget != null) {
-          debugPrint('   ✅ 위젯의 key: ${widget.key}');
-          debugPrint('   ✅ 위젯의 child 타입: ${widget is SizedBox ? (widget as SizedBox).child?.runtimeType : "N/A"}');
-        }
-        debugPrint('═══════════════════════════════════════════════════════');
+        debugPrint('   ✅ 위젯의 key: ${widget.key}');
+        debugPrint('   ✅ 위젯의 child 타입: ${widget is SizedBox ? (widget as SizedBox).child?.runtimeType : "N/A"}');
+              debugPrint('═══════════════════════════════════════════════════════');
         return widget;
       } else {
         debugPrint('   ❌ 콤보박스 반환 안 함: null 반환');
@@ -12557,7 +12677,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                 columnSpacing: 8,
                 dataRowMinHeight: 5,
                 dataRowMaxHeight: 5,
-                headingRowColor: MaterialStateProperty.all(
+                headingRowColor: WidgetStateProperty.all(
                   _getReportColor().withOpacity(0.1),
                 ),
                 columns: columns,
@@ -12962,10 +13082,10 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                 final idTodocodigo = codigo['id_todocodigo']?.toString();
                 if (idTodocodigo == null || idTodocodigo.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('id_todocodigo가 없어서 편집할 수 없습니다.'),
+                    const SnackBar(
+                      content: Text('id_todocodigo가 없어서 편집할 수 없습니다.'),
                       backgroundColor: Colors.red,
-                      duration: const Duration(seconds: 3),
+                      duration: Duration(seconds: 3),
                     ),
                   );
                   return;
@@ -12984,10 +13104,10 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                 final idTodocodigo = codigo['id_todocodigo']?.toString();
                 if (idTodocodigo == null || idTodocodigo.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('id_todocodigo가 없어서 편집할 수 없습니다.'),
+                    const SnackBar(
+                      content: Text('id_todocodigo가 없어서 편집할 수 없습니다.'),
                       backgroundColor: Colors.red,
-                      duration: const Duration(seconds: 3),
+                      duration: Duration(seconds: 3),
                     ),
                   );
                   return;
@@ -13386,12 +13506,12 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('✓ Actualizado'),
+          const SnackBar(
+            content: Text('✓ Actualizado'),
             backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
+            duration: Duration(seconds: 2),
             behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.all(16),
+            margin: EdgeInsets.all(16),
           ),
         );
       }

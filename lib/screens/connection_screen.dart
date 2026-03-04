@@ -309,6 +309,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
               const SizedBox(height: 24),
               TextFormField(
                 controller: _connectionNameController,
+                autofocus: true,
                 decoration: InputDecoration(
                   labelText: l10n.connectionName,
                   hintText: l10n.connectionNameHint,

@@ -5,47 +5,55 @@ import 'report_utils.dart';
 
 /// 보고서 필터 관련 기능
 class ReportFilters {
-  /// Filtering word 입력 필드 빌드 (AppBar용)
+  /// Filtering word 입력 필드 빌드
+  /// [forLightBackground] true면 본문(밝은 배경)용 스타일(진한 글자/테두리), false면 AppBar(어두운 배경)용 스타일.
   static Widget buildFilteringWordField({
     required TextEditingController controller,
     required Function(String) onSubmitted,
     required Function() onClear,
+    bool forLightBackground = false,
   }) {
     debugPrint('═══════════════════════════════════════════════════════════');
-    debugPrint('🔍 [ReportFilters.buildFilteringWordField] 호출됨');
+    debugPrint('🔍 [ReportFilters.buildFilteringWordField] 호출됨 forLightBackground=$forLightBackground');
     debugPrint('═══════════════════════════════════════════════════════════');
     
-    // Expanded 안에 있으므로 LayoutBuilder 불필요 - Expanded가 이미 제약을 제공함
+    final bool light = forLightBackground;
+    final Color textColor = light ? Colors.black87 : Colors.white;
+    final Color hintColor = light ? Colors.grey : Colors.white.withOpacity(0.7);
+    final Color iconColor = light ? Colors.grey[700]! : Colors.white;
+    final Color containerColor = light ? Colors.grey[100]! : Colors.white.withOpacity(0.2);
+    final InputBorder? border = light ? OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: Colors.grey[400]!)) : null;
+
     return Container(
       height: 40,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
+        color: containerColor,
         borderRadius: BorderRadius.circular(20),
       ),
       child: ValueListenableBuilder<TextEditingValue>(
         valueListenable: controller,
         builder: (context, value, child) {
-          // TextField를 child로 분리하여 재생성 방지
           return child!;
         },
         child: TextField(
-          key: ValueKey('filtering_word_field'), // 키 추가로 재생성 방지
+          key: ValueKey('filtering_word_field_$light'),
           controller: controller,
-          style: const TextStyle(color: Colors.white, fontSize: 14),
+          style: TextStyle(color: textColor, fontSize: 14),
           decoration: InputDecoration(
             hintText: 'Filtrar...',
-            hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
-            prefixIcon: const Icon(Icons.search, color: Colors.white, size: 20),
+            hintStyle: TextStyle(color: hintColor),
+            border: border ?? InputBorder.none,
+            enabledBorder: border ?? InputBorder.none,
+            focusedBorder: light ? OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: Colors.orange, width: 1.5)) : null,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            prefixIcon: Icon(Icons.search, color: iconColor, size: 20),
             suffixIcon: ValueListenableBuilder<TextEditingValue>(
               valueListenable: controller,
               builder: (context, value, child) {
                 return value.text.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.clear, color: Colors.white, size: 18),
+                        icon: Icon(Icons.clear, color: iconColor, size: 18),
                         onPressed: () {
-                          // clear 호출을 다음 프레임으로 지연하여 키보드 이벤트 충돌 방지
                           WidgetsBinding.instance.addPostFrameCallback((_) {
                             onClear();
                           });
@@ -58,7 +66,6 @@ class ReportFilters {
             ),
           ),
           onSubmitted: onSubmitted,
-          // 키보드 이벤트 처리를 최적화
           enableInteractiveSelection: true,
           keyboardType: TextInputType.text,
           textInputAction: TextInputAction.search,

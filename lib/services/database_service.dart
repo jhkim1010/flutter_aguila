@@ -274,6 +274,15 @@ class DatabaseService {
     filters: filters,
   );
 
+  /// Movidos 보고서 가져오기
+  Future<Map<String, dynamic>> getMovidosReport({
+    String? filteringWord,
+    Map<String, dynamic>? filters,
+  }) => _reportsApi.getMovidosReport(
+    filteringWord: filteringWord,
+    filters: filters,
+  );
+
   /// vdetalle 데이터 가져오기 (vcode 상세 정보)
   Future<Map<String, dynamic>> getVdetalle({
     required int vcodeId,

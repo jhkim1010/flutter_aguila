@@ -190,6 +190,7 @@ class _ReportScreenState extends State<ReportScreen> {
       ReportType.todocodigos,
       ReportType.items,
       ReportType.ingresos,
+      ReportType.movidos,
       ReportType.gastos,
       ReportType.clientes,
       ReportType.alertas,

@@ -570,11 +570,11 @@ class StocksBuilder {
           ),
         ),
         const SizedBox(width: 8),
-        // Porcentaje
+        // Porcentaje (소수점 1자리)
         SizedBox(
           width: 100,
           child: Text(
-            stock['porcentaje']?.toString() ?? 'N/A',
+            _formatPorcentaje(stock['porcentaje']),
             style: TextStyle(
               fontSize: 10,
               color: Colors.grey[700],
@@ -917,6 +917,13 @@ class StocksBuilder {
         );
       },
     );
+  }
+
+  /// porcentaje 칼럼 값 소수점 1자리 포맷
+  static String _formatPorcentaje(dynamic value) {
+    if (value == null) return 'N/A';
+    final d = value is num ? value.toDouble() : double.tryParse(value.toString());
+    return d != null ? d.toStringAsFixed(1) : value.toString();
   }
 
   static Widget _buildSortableHeader(

@@ -453,19 +453,21 @@ class IngresosBuilder {
         debugPrint('   → constraints.maxWidth: ${constraints.maxWidth}');
         debugPrint('   → constraints.maxHeight: ${constraints.maxHeight}');
         
-        final content = Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Productos',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+        final content = Padding(
+          padding: const EdgeInsets.only(left: 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Productos',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            LayoutBuilder(
+              const SizedBox(height: 8),
+              LayoutBuilder(
               builder: (context, expandedConstraints) {
                 debugPrint('📊 [IngresosBuilder] _buildRightPanel LayoutBuilder');
                 debugPrint('   → expandedConstraints.maxWidth: ${expandedConstraints.maxWidth}');
@@ -506,7 +508,8 @@ class IngresosBuilder {
                 );
               },
             ),
-          ],
+            ],
+          ),
         );
         
         if (useExpanded) {

@@ -1604,16 +1604,8 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
       );
     }
     
-    // 큰 화면인 경우 분할 레이아웃
+    // 큰 화면인 경우: 항상 왼쪽 패널(메뉴) + 오른쪽 콘텐츠 분할 레이아웃
     if (isLargeScreen) {
-      // 연결 후에는 ResumenDelDiaScreen이 자체 왼쪽 패널을 가지고 있으므로
-      // MainConnectionScreen의 왼쪽 패널을 표시하지 않음
-      if (_isConnected && _currentServerUrl != null) {
-        // 연결 후: ResumenDelDiaScreen이 자체 레이아웃을 가지고 있음
-        return _buildRightPanel(context);
-      }
-      
-      // 연결 전: 왼쪽 패널과 오른쪽 패널 분할
       return Scaffold(
         appBar: AppBar(
           title: Text(l10n.databaseConnection),
@@ -1621,7 +1613,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
         ),
         body: Row(
           children: [
-            // 왼쪽: 연결 리스트 + 연결 폼/보고서 메뉴 (화면의 1/4)
+            // 왼쪽: 연결 리스트 + 연결 폼 / 보고서 메뉴 (선택 가능하도록 항상 표시)
             _buildLeftPanel(context),
             // 오른쪽: 보고서 결과 또는 안내
             Expanded(

@@ -350,6 +350,7 @@ class _StocksReportViewState extends State<StocksReportView> {
           if (mounted) _filteringWordController.clear();
         });
       },
+      forLightBackground: true, // 본문은 밝은 배경이라 진한 글자/테두리로 보이게
     );
   }
 

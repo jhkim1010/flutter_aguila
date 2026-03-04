@@ -36,6 +36,36 @@ esac
 
 echo "📝 로그 파일: $LOG_FILE"
 echo "📱 플랫폼 정보: $PLATFORM_INFO"
+
+# macOS/iOS 빌드 시 xcodebuild 필요 여부 사전 확인
+if [[ "$DEVICE" == "macos" || "$DEVICE" == "ios" || "$DEVICE" == iphone* || "$DEVICE" == ipad* ]]; then
+  if ! command -v xcodebuild &>/dev/null; then
+    echo ""
+    echo "❌ xcodebuild를 찾을 수 없습니다. macOS/iOS 빌드에는 Xcode 또는 Xcode Command Line Tools가 필요합니다."
+    echo ""
+    echo "해결 방법:"
+    echo "  1) Xcode Command Line Tools만 설치:  xcode-select --install"
+    echo "  2) 또는 App Store에서 Xcode 설치 후 터미널에서:"
+    echo "     sudo xcode-select -s /Applications/Xcode.app/Contents/Developer"
+    echo "     sudo xcodebuild -license accept"
+    echo ""
+    exit 1
+  fi
+  # CocoaPods 필요 여부 사전 확인 (플러그인 사용 시 필수)
+  if ! command -v pod &>/dev/null; then
+    echo ""
+    echo "❌ CocoaPods가 설치되어 있지 않습니다. macOS/iOS 플러그인 빌드에 필요합니다."
+    echo ""
+    echo "해결 방법 (둘 중 하나):"
+    echo "  • Homebrew:  brew install cocoapods"
+    echo "  • Ruby gem:  sudo gem install cocoapods"
+    echo ""
+    echo "설치 후 다시 실행하세요:  ./run_with_log.sh $DEVICE"
+    echo ""
+    exit 1
+  fi
+fi
+
 echo "🚀 Flutter 앱 실행 중..."
 echo ""
 

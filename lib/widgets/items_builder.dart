@@ -274,15 +274,23 @@ class ItemsBuilder {
               debugPrint('   → productsList.length (selectedCategoryCode 필터링 후): ${productsList.length}');
             }
             
-            // selectedColorCode 필터 적용은 서버에서 color_id로 처리하므로 클라이언트 측 필터링 제거
-            // 서버에서 이미 필터링된 데이터를 받으므로 추가 필터링 불필요
-            if (selectedColorCode != null && selectedColorCode.isNotEmpty) {
-              debugPrint('═══════════════════════════════════════════════════════');
-              debugPrint('🔍 [Items Builder] selectedColorCode 확인 (서버에서 필터링됨)');
-              debugPrint('   → selectedColorCode: $selectedColorCode');
-              debugPrint('   → productsList.length: ${productsList.length}');
-              debugPrint('   → 참고: 서버에서 color_id=$selectedColorCode로 이미 필터링된 데이터를 받음');
-              debugPrint('═══════════════════════════════════════════════════════');
+            // selectedColorCode 필터: 서버가 색상별 products/수량을 안 주는 경우, 클라이언트에서 색상별 행만 필터
+            if (selectedColorCode != null && selectedColorCode.isNotEmpty && productsList.isNotEmpty) {
+              final first = productsList.first;
+              final hasColorField = first is Map<String, dynamic> &&
+                  (first.containsKey('ColorCode') || first.containsKey('ColorName') || first.containsKey('color_id'));
+              if (hasColorField) {
+                final beforeCount = productsList.length;
+                productsList = productsList.where((item) {
+                  if (item is! Map<String, dynamic>) return false;
+                  final colorCode = (item['ColorCode']?.toString().trim() ?? '').toLowerCase();
+                  final colorName = (item['ColorName']?.toString().trim() ?? '').toLowerCase();
+                  final colorId = (item['color_id']?.toString().trim() ?? '').toLowerCase();
+                  final selected = selectedColorCode.trim().toLowerCase();
+                  return colorCode == selected || colorName == selected || colorId == selected;
+                }).toList();
+                debugPrint('🔍 [Items Builder] selectedColorCode 클라이언트 필터: $selectedColorCode → ${productsList.length}행 (전 $beforeCount)');
+              }
             }
             
             // productsTable 생성 (빈 리스트여도 대형화면에서는 테이블 표시)
@@ -291,8 +299,8 @@ class ItemsBuilder {
             debugPrint('   → productsList.length: ${productsList.length}');
             debugPrint('   → displayedItemsCount: $displayedItemsCount');
             debugPrint('   → itemsPerPage: $itemsPerPage');
-            debugPrint('   → scrollController: ${scrollController != null}');
-            debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
+            debugPrint('   → scrollController: present');
+            debugPrint('   → horizontalScrollController: $horizontalScrollController');
             debugPrint('   → PlatformUtils.isDesktop(): ${PlatformUtils.isDesktop()}');
             
             if (productsList.isNotEmpty) {
@@ -303,7 +311,7 @@ class ItemsBuilder {
               debugPrint('   → productsList.length: ${productsList.length}');
               debugPrint('   → sortColumn: $sortColumn');
               debugPrint('   → sortAscending: $sortAscending');
-              debugPrint('   → onSort != null: ${onSort != null}');
+              debugPrint('   → onSort: $onSort');
               
               // keys 확인
               final allKeys = productsList.isNotEmpty 
@@ -362,7 +370,7 @@ class ItemsBuilder {
               
               debugPrint('═══════════════════════════════════════════════════════');
               debugPrint('🔍 [Items Builder] buildTableFromList 호출 후');
-              debugPrint('   → productsTable != null: ${productsTable != null}');
+              debugPrint('   → productsTable: 생성됨');
               debugPrint('   → ⚠️ [중복 확인] 별도 헤더와 DataTable 헤더가 동시에 표시되는지 확인');
               debugPrint('   → ⚠️ [정렬 확인] 헤더 칼럼 클릭 시 onSort 콜백이 호출되는지 확인');
               debugPrint('═══════════════════════════════════════════════════════');
@@ -753,18 +761,20 @@ class ItemsBuilder {
           debugPrint('   ⚠️ 경고: useExpanded=true인데 maxHeight가 무한대입니다!');
         }
         
-        final content = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: useExpanded ? MainAxisSize.max : MainAxisSize.min,
-          children: [
-            const Text(
-              'Productos',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+        final content = Padding(
+          padding: const EdgeInsets.only(left: 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: useExpanded ? MainAxisSize.max : MainAxisSize.min,
+            children: [
+              const Text(
+                'Productos',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
+              const SizedBox(height: 8),
             if (useExpanded)
               Expanded(
                 child: LayoutBuilder(
@@ -781,14 +791,28 @@ class ItemsBuilder {
                     if (expandedConstraints.maxHeight.isInfinite) {
                       debugPrint('   ❌ 오류: Expanded 내부 maxHeight가 무한대입니다!');
                     }
-                    
-                    return productsTable;
+                    // 오버플로우 방지: 패널 너비로 제한 + 가로 스크롤로 넓은 테이블 대응
+                    final maxW = expandedConstraints.hasBoundedWidth && expandedConstraints.maxWidth.isFinite
+                        ? expandedConstraints.maxWidth
+                        : null;
+                    if (maxW == null) return productsTable;
+                    return SizedBox(
+                      width: maxW,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: ClipRect(
+                          clipBehavior: Clip.hardEdge,
+                          child: productsTable,
+                        ),
+                      ),
+                    );
                   },
                 ),
               )
             else
               productsTable,
-          ],
+            ],
+          ),
         );
         
         debugPrint('🔍 [큰 화면 디버깅] _buildRightPanel 최종 위젯');
@@ -815,7 +839,7 @@ class ItemsBuilder {
     debugPrint('   → summaryByCategoryTable != null: ${data.summaryByCategoryTable != null}');
     debugPrint('   → summaryByColorTable != null: ${data.summaryByColorTable != null}');
     debugPrint('   → productsTable != null: ${data.productsTable != null}');
-    debugPrint('   → scrollController != null: ${data.scrollController != null}');
+    debugPrint('   → scrollController: 있음');
     
     // summary 테이블이 모두 없고 products 테이블만 있는 경우: 100% 폭으로 표시
     if (data.summaryByCompanyTable == null && 
@@ -1907,13 +1931,20 @@ class _ResizableSplitViewState extends State<_ResizableSplitView> {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 왼쪽 패널
+            // 왼쪽 패널 (너비 제한 + 가로/세로 오버플로우 방지)
             SizedBox(
               width: _leftWidth,
-              child: Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: SingleChildScrollView(
-                  child: widget.leftChild,
+              child: ClipRect(
+                clipBehavior: Clip.hardEdge,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.vertical,
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: widget.leftChild,
+                    ),
+                  ),
                 ),
               ),
             ),

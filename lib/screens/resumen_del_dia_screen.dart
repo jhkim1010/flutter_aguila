@@ -121,6 +121,9 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         case ReportType.ingresos:
           _currentReport = 'ingresos';
           break;
+        case ReportType.movidos:
+          _currentReport = 'movidos';
+          break;
         case ReportType.clientes:
           _currentReport = 'clientes';
           break;
@@ -1180,7 +1183,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
             ],
           ),
         ),
-        // 연결 관리 내용
+        // 연결 관리 내용 (새 연결 폼은 스크롤 가능 영역 안에 고정)
         Expanded(
           child: _isAddingNewConnection
               ? _buildNewConnectionForm(context)
@@ -1383,13 +1386,16 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       }
     }
     
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 헤더 (취소 버튼 포함)
-          Row(
+    return FocusScope(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(8.0),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 헤더 (취소 버튼 포함)
+            Row(
             children: [
               IconButton(
                 icon: const Icon(Icons.close, size: 18),
@@ -1419,9 +1425,10 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          // 프로필 이름
+          // 프로필 이름 (첫 필드 포커스로 입력 가능하도록)
           TextField(
             controller: _newProfileNameController,
+            autofocus: true,
             decoration: InputDecoration(
               labelText: l10n.profileName,
               hintText: l10n.profileNameHint,
@@ -1676,6 +1683,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
           ),
         ],
       ),
+    ),
     );
   }
 
@@ -1756,6 +1764,15 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       'Ingresos',
       Icons.trending_up,
       Colors.indigo,
+    ));
+    
+    // Movidos
+    items.add(_buildReportMenuItem(
+      context,
+      'movidos',
+      'Movidos',
+      Icons.swap_horiz,
+      Colors.brown,
     ));
     
     // Gastos
@@ -2109,9 +2126,6 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
   @override
   Widget build(BuildContext context) {
     final isLargeScreen = _isLargeScreen(context);
-    final platformType = PlatformUtils.getPlatformType(context);
-    // 핸드폰만 체크 (iPad는 제외)
-    final isMobilePhone = platformType == PlatformType.mobile && !PlatformUtils.isIPad(context);
     
     // 넓은 화면: 좌우 분할 레이아웃 (왼쪽 메뉴 항상 표시)
     if (isLargeScreen) {
@@ -2130,13 +2144,13 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     }
     
     // 좁은 화면: Drawer를 사용하여 메뉴 접근
-    // 핸드폰의 경우 AppBar를 맨 위에 고정하여 메뉴 접근 용이하게 함 (iPad 제외)
+    // Drawer가 있으면 항상 AppBar 표시 (Scaffold가 자동으로 메뉴 아이콘 추가). 태블릿/좁은 데스크톱에서도 메뉴 선택 가능.
     return Scaffold(
-      appBar: isMobilePhone ? AppBar(
+      appBar: AppBar(
         title: const Text('Resumen del Día'),
         backgroundColor: Colors.blue[700],
         foregroundColor: Colors.white,
-      ) : null,
+      ),
       drawer: Drawer(
         width: 280, // Drawer 너비
         child: _buildLeftPanel(context, forDrawer: true),
@@ -4953,6 +4967,29 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         ),
       ),
       PopupMenuItem<String>(
+        value: 'movidos',
+        child: Row(
+          children: [
+            Icon(
+              Icons.swap_horiz,
+              color: _currentReport == 'movidos' ? Colors.brown : Colors.grey,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Movidos',
+              style: TextStyle(
+                fontWeight: _currentReport == 'movidos' ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+            if (_currentReport == 'movidos') ...[
+              const Spacer(),
+              const Icon(Icons.check, color: Colors.brown, size: 18),
+            ],
+          ],
+        ),
+      ),
+      PopupMenuItem<String>(
         value: 'clientes',
         enabled: false,
         child: Row(
@@ -5144,6 +5181,9 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         break;
       case 'ingresos':
         reportTypeEnum = ReportType.ingresos;
+        break;
+      case 'movidos':
+        reportTypeEnum = ReportType.movidos;
         break;
       default:
         debugPrint('   → 알 수 없는 reportType, return');
