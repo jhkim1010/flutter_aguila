@@ -121,9 +121,6 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         case ReportType.ingresos:
           _currentReport = 'ingresos';
           break;
-        case ReportType.movidos:
-          _currentReport = 'movidos';
-          break;
         case ReportType.clientes:
           _currentReport = 'clientes';
           break;
@@ -1764,15 +1761,6 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       'Ingresos',
       Icons.trending_up,
       Colors.indigo,
-    ));
-    
-    // Movidos
-    items.add(_buildReportMenuItem(
-      context,
-      'movidos',
-      'Movidos',
-      Icons.swap_horiz,
-      Colors.brown,
     ));
     
     // Gastos
@@ -4967,29 +4955,6 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         ),
       ),
       PopupMenuItem<String>(
-        value: 'movidos',
-        child: Row(
-          children: [
-            Icon(
-              Icons.swap_horiz,
-              color: _currentReport == 'movidos' ? Colors.brown : Colors.grey,
-              size: 20,
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'Movidos',
-              style: TextStyle(
-                fontWeight: _currentReport == 'movidos' ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-            if (_currentReport == 'movidos') ...[
-              const Spacer(),
-              const Icon(Icons.check, color: Colors.brown, size: 18),
-            ],
-          ],
-        ),
-      ),
-      PopupMenuItem<String>(
         value: 'clientes',
         enabled: false,
         child: Row(
@@ -5181,9 +5146,6 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         break;
       case 'ingresos':
         reportTypeEnum = ReportType.ingresos;
-        break;
-      case 'movidos':
-        reportTypeEnum = ReportType.movidos;
         break;
       default:
         debugPrint('   → 알 수 없는 reportType, return');

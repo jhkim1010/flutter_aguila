@@ -13,7 +13,6 @@ enum ReportType {
   codigos,
   todocodigos,
   ingresos,
-  movidos,
 }
 
 class ReportUtils {
@@ -39,8 +38,6 @@ class ReportUtils {
         return 'Todo Codigos';
       case ReportType.ingresos:
         return 'Ingresos';
-      case ReportType.movidos:
-        return 'Movidos';
     }
   }
 
@@ -66,8 +63,6 @@ class ReportUtils {
         return Icons.qr_code_scanner;
       case ReportType.ingresos:
         return Icons.trending_up;
-      case ReportType.movidos:
-        return Icons.swap_horiz;
     }
   }
 
@@ -93,8 +88,6 @@ class ReportUtils {
         return Colors.cyan;
       case ReportType.ingresos:
         return Colors.indigo;
-      case ReportType.movidos:
-        return Colors.brown;
     }
   }
 

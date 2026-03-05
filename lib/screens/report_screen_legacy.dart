@@ -26,6 +26,7 @@ import '../widgets/report_filters.dart';
 import '../widgets/report_header_builders.dart';
 import '../widgets/report_total_row_builder.dart';
 import '../widgets/report_filter_widgets.dart';
+import '../services/secure_storage_helper.dart';
 import '../generated/build_info.dart';
 
 // ReportType is used by ReportScreenLegacy; export from report_screen.dart
@@ -103,6 +104,8 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
   bool _ventasReservado = false; // Ventas 보고서용 reservado 필터
   bool _ventasCredito = false; // Ventas 보고서용 credito 필터
   bool _ventasMovidos = false; // Ventas 보고서용 movidos 필터
+  bool _ingresosMovidos = false; // Ingresos 보고서용 movidos 필터 (sucursal 옆 체크박스)
+  String? _connectedDatabaseName; // 접속된 DB 이름 (제목 옆 { } 표시용)
   bool _alertasVCancelado = false; // Alertas 보고서용 v_cancelado 필터
   bool _alertasJefe = false; // Alertas 보고서용 jefe 필터
   bool _alertasWeb = false; // Alertas 보고서용 web 필터
@@ -172,10 +175,6 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
   bool _stocksSortAscending = true; // Stocks 정렬 방향 (true: 오름차순, false: 내림차순)
   
   // Movidos 보고서용 상태
-  DateTime? _movidosStartDate;
-  DateTime? _movidosEndDate;
-  bool _movidosItemView = false;
-  
   // Tipos와 Temporadas 관련 상태
   List<Map<String, dynamic>> _tiposList = [];
   List<Map<String, dynamic>> _temporadasList = [];
@@ -279,11 +278,6 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
       }
     }
     // Movidos 보고서의 경우 기간·체크박스 초기값
-    if (widget.reportType == ReportType.movidos) {
-      final now = DateTime.now();
-      _movidosStartDate = widget.initialItemsStartDate ?? now;
-      _movidosEndDate = widget.initialItemsEndDate ?? now;
-    }
     // Ventas 및 FVentas 보고서의 경우 초기 날짜 범위 설정
     if (widget.reportType == ReportType.ventas || widget.reportType == ReportType.fventas) {
       final now = DateTime.now();
@@ -332,6 +326,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
     if (widget.reportType == ReportType.ventas) {
       debugPrint('   → _ventasUnit: $_ventasUnit');
     }
+    _loadConnectedDatabaseName();
     _loadData();
     print('🟦🟦🟦 [report_screen.dart:287] initState 완료');
     print('   → 라인: 287');
@@ -2289,9 +2284,13 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
           if (_selectedSucursal != null) {
             filters['sucursal'] = _selectedSucursal;
           }
+          if (_ingresosMovidos) {
+            filters['movidos'] = '1';
+          }
           debugPrint('   → [Ingresos] 전달할 filters: $filters');
           debugPrint('   → [Ingresos] color_id: $_selectedIngresosColorCode');
           debugPrint('   → [Ingresos] sucursal: $_selectedSucursal');
+          debugPrint('   → [Ingresos] movidos: $_ingresosMovidos');
           data = await _databaseService.getIngresosReport(
             filteringWord: currentFilteringWord.isNotEmpty ? currentFilteringWord : null,
             filters: filters,
@@ -2396,25 +2395,6 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
             _codigosNextIdCodigo = null;
             _codigosHasMore = false;
           }
-          break;
-        case ReportType.movidos:
-          // Movidos: 다른 메뉴와 동일하게 선택 즉시 서버 요청
-          final movidosStart = _movidosStartDate ?? DateTime.now();
-          final movidosEnd = _movidosEndDate ?? DateTime.now();
-          final currentFilteringWord = filteringWord ?? _filteringWordController.text.trim();
-          final filters = <String, dynamic>{
-            'fecha_inicio': DateFormat('yyyy-MM-dd').format(movidosStart),
-            'fecha_fin': DateFormat('yyyy-MM-dd').format(movidosEnd),
-            if (_movidosItemView) 'item_view': '1',
-          };
-          if (_selectedSucursal != null) {
-            filters['sucursal'] = _selectedSucursal;
-          }
-          debugPrint('   → [Movidos] 전달할 filters: $filters');
-          data = await _databaseService.getMovidosReport(
-            filteringWord: currentFilteringWord.isNotEmpty ? currentFilteringWord : null,
-            filters: filters,
-          );
           break;
       }
 
@@ -2633,12 +2613,6 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
             debugPrint('   → sucursal 필터 있음 또는 목록 이미 설정됨 - 기존 목록 유지');
             debugPrint('   → _availableSucursales 유지: $_availableSucursales');
             extractedSucursales = _availableSucursales; // 기존 목록 유지
-          }
-        } else if (widget.reportType == ReportType.movidos) {
-          // Movidos: data['data'] 리스트에서 이미 추출된 sucursales 사용 (공통 추출 루프)
-          extractedSucursales = sucursales;
-          if (sucursales != null) {
-            debugPrint('🔍 [Movidos] 데이터에서 sucursal 목록 사용: $sucursales');
           }
         }
         
@@ -3084,7 +3058,19 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
     }
   }
 
-  String _getReportTitle() => ReportUtils.getReportTitle(widget.reportType);
+  /// 접속된 DB 이름 로드 (제목 옆 { dbname } 표시용)
+  Future<void> _loadConnectedDatabaseName() async {
+    final name = await SecureStorageHelper.read('database_name');
+    if (mounted) {
+      setState(() => _connectedDatabaseName = name?.trim().isNotEmpty == true ? name : null);
+    }
+  }
+
+  String _getReportTitle() {
+    final base = ReportUtils.getReportTitle(widget.reportType);
+    final db = _connectedDatabaseName ?? '';
+    return db.isEmpty ? '$base { }' : '$base { $db }';
+  }
   IconData _getReportIcon() => ReportUtils.getReportIcon(widget.reportType);
   Color _getReportColor() => ReportUtils.getReportColor(widget.reportType);
 
@@ -3415,9 +3401,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
       appBar: AppBar(
         automaticallyImplyLeading: false,
             toolbarHeight: needsThreeLineAppBar ? kToolbarHeight * 3 : (needsTwoLineAppBar ? kToolbarHeight * 2 : null),
-        title: widget.reportType == ReportType.movidos
-            ? _buildMovidosAppBarTitle(context, reportTitle, reportIcon, reportColor)
-            : widget.reportType == ReportType.stocks
+        title: widget.reportType == ReportType.stocks
             ? LayoutBuilder(
                 builder: (context, constraints) {
                   // ============================================================
@@ -3946,6 +3930,10 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                           child: _buildSucursalSelector(),
                                         ),
                                       ],
+                                      if (widget.reportType == ReportType.ingresos) ...[
+                                        const SizedBox(width: 8),
+                                        _buildIngresosMovidosCheckbox(),
+                                      ],
                                       const SizedBox(width: 8),
                                       Expanded(
                                         child: _buildFilteringWordFieldInAppBar(),
@@ -4033,6 +4021,10 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                   Flexible(
                                     child: _buildSucursalSelector(),
                                   ),
+                                ],
+                                if (widget.reportType == ReportType.ingresos) ...[
+                                  const SizedBox(width: 8),
+                                  _buildIngresosMovidosCheckbox(),
                                 ],
                               ],
                             ),
@@ -4143,6 +4135,10 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                           // 지점 선택 UI (sucursal이 2개 이상일 때만 표시)
                           if (_availableSucursales != null && _availableSucursales!.length > 1) ...[
                               _buildSucursalSelector(),
+                              const SizedBox(width: 16),
+                          ],
+                          if (widget.reportType == ReportType.ingresos) ...[
+                              _buildIngresosMovidosCheckbox(),
                               const SizedBox(width: 16),
                           ],
                           // Clientes 보고서의 경우 필터들 추가
@@ -4451,6 +4447,10 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                       Flexible(
                                         child: _buildSucursalSelector(),
                                       ),
+                                    ],
+                                    if (widget.reportType == ReportType.ingresos) ...[
+                                      const SizedBox(width: 8),
+                                      _buildIngresosMovidosCheckbox(),
                                     ],
                                           ],
                                         );
@@ -5769,7 +5769,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                 if (_data != null)
                   IconButton(
                     icon: const Icon(Icons.share, color: Colors.white),
-                    tooltip: widget.reportType == ReportType.movidos ? 'Exportación' : 'Compartir como PDF',
+                    tooltip: 'Compartir como PDF',
                     onPressed: () => _shareReport(),
                   ),
                 ];
@@ -6016,83 +6016,32 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
     );
   }
 
-  /// Movidos 보고서 전용 AppBar 타이틀: 달력 2개(Ventas와 동일), Item view 체크박스, filteringWord
-  Widget _buildMovidosAppBarTitle(
-    BuildContext context,
-    String reportTitle,
-    IconData reportIcon,
-    Color reportColor,
-  ) {
-    final isLargeScreen = MobileLayoutHelper.getLayoutInfo(context).isLargeScreen;
-    final dateButtonWidth = isLargeScreen ? 150.0 : 90.0; // 대형 화면에서 날짜가 충분히 보이도록 폭 확대
-    return Row(
-      children: [
-        IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-          tooltip: 'Volver',
-        ),
-        const SizedBox(width: 4),
-        // 달력 1 (Desde) - Ventas와 동일한 _buildSingleDateButton 사용
-        Flexible(
-          child: SizedBox(
-            width: dateButtonWidth,
-            child: _buildSingleDateButton(
-              label: 'Desde',
-              date: _movidosStartDate,
-              reportColor: reportColor,
-              onDateSelected: (date) {
-                setState(() => _movidosStartDate = date);
+  /// Ingresos 보고서: Sucursal 콤보 옆 Movidos 체크박스
+  Widget _buildIngresosMovidosCheckbox() {
+    final reportColor = _getReportColor();
+    return SizedBox(
+      width: 110,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            height: 24,
+            width: 24,
+            child: Checkbox(
+              value: _ingresosMovidos,
+              onChanged: (v) {
+                setState(() => _ingresosMovidos = v ?? false);
                 _loadData();
               },
+              activeColor: reportColor,
+              fillColor: WidgetStateProperty.resolveWith((_) => Colors.white),
+              checkColor: reportColor,
             ),
           ),
-        ),
-        const SizedBox(width: 4),
-        // 달력 2 (Hasta) - Ventas와 동일한 _buildSingleDateButton 사용
-        Flexible(
-          child: SizedBox(
-            width: dateButtonWidth,
-            child: _buildSingleDateButton(
-              label: 'Hasta',
-              date: _movidosEndDate,
-              reportColor: reportColor,
-              onDateSelected: (date) {
-                setState(() => _movidosEndDate = date);
-                _loadData();
-              },
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        // Item view 체크박스
-        SizedBox(
-          width: 110,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                height: 24,
-                width: 24,
-                child: Checkbox(
-                  value: _movidosItemView,
-                  onChanged: (v) => setState(() => _movidosItemView = v ?? false),
-                  activeColor: reportColor,
-                  fillColor: WidgetStateProperty.resolveWith((_) => Colors.white),
-                  checkColor: reportColor,
-                ),
-              ),
-              const SizedBox(width: 4),
-              const Text('Item view', style: TextStyle(color: Colors.white, fontSize: 11)),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        // Sucursal 선택 (Todos, Sucursal 1, Sucursal 2 … — 데이터/initial에서 자동 결정)
-        _buildSucursalSelector(),
-        const SizedBox(width: 8),
-        Expanded(child: _buildFilteringWordFieldInAppBar()),
-      ],
+          const SizedBox(width: 4),
+          const Text('Movidos', style: TextStyle(color: Colors.white, fontSize: 11)),
+        ],
+      ),
     );
   }
 
@@ -6117,9 +6066,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
               tooltip: 'Menú',
             )
           : null,
-      title: widget.reportType == ReportType.movidos
-          ? _buildMovidosAppBarTitle(context, reportTitle, reportIcon, reportColor)
-          : widget.reportType == ReportType.stocks
+      title: widget.reportType == ReportType.stocks
           ? LayoutBuilder(
               builder: (context, constraints) {
                 // ============================================================
@@ -6527,6 +6474,10 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                         child: _buildSucursalSelector(),
                                       ),
                                     ],
+                                    if (widget.reportType == ReportType.ingresos) ...[
+                                      const SizedBox(width: 8),
+                                      _buildIngresosMovidosCheckbox(),
+                                    ],
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: _buildFilteringWordFieldInAppBar(),
@@ -6609,6 +6560,10 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                 Flexible(
                                   child: _buildSucursalSelector(),
                                 ),
+                              ],
+                              if (widget.reportType == ReportType.ingresos) ...[
+                                const SizedBox(width: 8),
+                                _buildIngresosMovidosCheckbox(),
                               ],
                               const SizedBox(width: 8),
                               Expanded(
@@ -6831,6 +6786,10 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                               // 지점 선택 UI (sucursal이 2개 이상일 때만 표시)
                               if (_availableSucursales != null && _availableSucursales!.length > 1) ...[
                                   _buildSucursalSelector(),
+                                  const SizedBox(width: 16),
+                              ],
+                              if (widget.reportType == ReportType.ingresos) ...[
+                                  _buildIngresosMovidosCheckbox(),
                                   const SizedBox(width: 16),
                               ],
                               // Alertas 보고서의 경우 VCancelado 및 Jefe 버튼 추가
@@ -7971,23 +7930,6 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
 
     // 데이터 구조 분석 및 적절한 위젯 반환
     final data = _data!;
-    
-    // Movidos 보고서: placeholder (API 연동 전)
-    if (widget.reportType == ReportType.movidos) {
-      final reportColor = _getReportColor();
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.swap_horiz, size: 64, color: reportColor),
-            const SizedBox(height: 16),
-            Text('Movidos', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: reportColor)),
-            const SizedBox(height: 8),
-            Text('No hay datos disponibles', style: TextStyle(color: Colors.grey[600])),
-          ],
-        ),
-      );
-    }
     
     // Stocks 보고서의 경우 특별 처리
     if (widget.reportType == ReportType.stocks) {

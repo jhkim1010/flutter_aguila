@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/report_utils.dart';
+import '../services/secure_storage_helper.dart';
 import 'report_screen_legacy.dart';
 import 'reports/stocks_report_view.dart';
 
@@ -49,6 +50,26 @@ class ReportScreen extends StatefulWidget {
 class _ReportScreenState extends State<ReportScreen> {
   /// 현재 본문(뷰)에서 등록한 공유 콜백. 공통 AppBar의 Share 버튼에서 호출.
   void Function()? _currentShare;
+  /// 접속된 DB 이름 (제목 옆 { } 표시용)
+  String? _connectedDatabaseName;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadConnectedDatabaseName();
+  }
+
+  Future<void> _loadConnectedDatabaseName() async {
+    final name = await SecureStorageHelper.read('database_name');
+    if (mounted) {
+      setState(() => _connectedDatabaseName = name?.trim().isNotEmpty == true ? name : null);
+    }
+  }
+
+  String _titleWithDb(String baseTitle) {
+    final db = _connectedDatabaseName ?? '';
+    return db.isEmpty ? '$baseTitle { }' : '$baseTitle { $db }';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -96,7 +117,8 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   Widget _buildStocksShell() {
-    final reportTitle = ReportUtils.getReportTitle(ReportType.stocks);
+    final baseTitle = ReportUtils.getReportTitle(ReportType.stocks);
+    final reportTitle = _titleWithDb(baseTitle);
     final reportIcon = ReportUtils.getReportIcon(ReportType.stocks);
     final reportColor = ReportUtils.getReportColor(ReportType.stocks);
 
@@ -190,7 +212,6 @@ class _ReportScreenState extends State<ReportScreen> {
       ReportType.todocodigos,
       ReportType.items,
       ReportType.ingresos,
-      ReportType.movidos,
       ReportType.gastos,
       ReportType.clientes,
       ReportType.alertas,
