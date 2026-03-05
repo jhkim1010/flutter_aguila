@@ -1,4 +1,4 @@
-﻿; Inno Setup script file
+; Inno Setup script file
 ; For creating Windows installer for Flutter app
 
 #define MyAppName "Be COOL"
@@ -36,6 +36,7 @@ Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
+; 반드시 먼저 "flutter build windows"를 실행해 build\windows\x64\runner\Release\ 폴더가 있어야 합니다.
 Source: "build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]

@@ -45,3 +45,8 @@ flutter_launcher_icons:
   ios: true
   image_path: "assets/icon.png"
 
+msix_config:
+  display_name: Flutter Águila
+  publisher_display_name: Your Name
+  identity_name: com.yourcompany.flutter_aguila
+  logo_path: assets\icon.png
