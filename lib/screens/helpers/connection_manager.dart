@@ -105,9 +105,8 @@ class ConnectionManager {
   Future<ConnectionResult> connectWithSavedConnection(
     ConnectionInfo connection,
   ) async {
+    final service = DatabaseService(serverUrl: connection.serverUrl);
     try {
-      final service = DatabaseService(serverUrl: connection.serverUrl);
-
       final request = DatabaseConnectionRequest(
         databaseName: connection.databaseName,
         username: connection.username,
@@ -148,6 +147,8 @@ class ConnectionManager {
     } catch (e) {
       final errorMessage = e.toString().replaceFirst('Exception: ', '');
       return ConnectionResult.failed(errorMessage);
+    } finally {
+      service.dispose(); // HTTP 클라이언트 정리, 연결 풀 낭비 방지
     }
   }
 

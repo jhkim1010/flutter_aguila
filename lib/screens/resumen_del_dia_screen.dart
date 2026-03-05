@@ -478,6 +478,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
   }
 
   Future<void> _switchConnection(ConnectionInfo connection) async {
+    final service = DatabaseService(serverUrl: connection.serverUrl);
     try {
       // 로딩 표시
       if (mounted) {
@@ -489,8 +490,6 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
           ),
         );
       }
-
-      final service = DatabaseService(serverUrl: connection.serverUrl);
 
       final request = DatabaseConnectionRequest(
         databaseName: connection.databaseName,
@@ -563,6 +562,8 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
           ),
         );
       }
+    } finally {
+      service.dispose(); // HTTP 클라이언트 정리, 연결 풀 낭비 방지
     }
   }
 

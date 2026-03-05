@@ -156,9 +156,8 @@ class _ConnectionListScreenState extends State<ConnectionListScreen> {
   }
 
   Future<void> _connectToDatabase(ConnectionInfo connection) async {
+    final service = DatabaseService(serverUrl: connection.serverUrl);
     try {
-      final service = DatabaseService(serverUrl: connection.serverUrl);
-      
       // 연결 변경 시 기존 캐시 초기화
       service.clearTiposTemporadasCache();
       
@@ -210,6 +209,8 @@ class _ConnectionListScreenState extends State<ConnectionListScreen> {
           ),
         );
       }
+    } finally {
+      service.dispose(); // HTTP 클라이언트 정리, 연결 풀 낭비 방지
     }
   }
 

@@ -55,9 +55,8 @@ class AutoConnectionHandler {
     required String password,
     required Function(String serverUrl) onSuccess,
   }) async {
+    final service = DatabaseService(serverUrl: serverUrl);
     try {
-      final service = DatabaseService(serverUrl: serverUrl);
-      
       final request = DatabaseConnectionRequest(
         databaseName: databaseName,
         username: username,
@@ -72,26 +71,21 @@ class AutoConnectionHandler {
       // 데이터베이스 연결 성공 시
       if (success) {
         print('✅ 자동 연결 성공');
-        // 성능 최적화: Tipos/Temporadas는 백그라운드에서 비동기로 로드
-        // 화면 전환을 지연시키지 않도록 즉시 onSuccess 호출
         onSuccess(serverUrl);
-        
-        // 백그라운드에서 Tipos/Temporadas 로드 (화면 전환 후)
-        service.getTipos(forceRefresh: true).catchError((e) {
-          print('⚠️ Tipos 로드 실패 (계속 진행): $e');
-          return <Map<String, dynamic>>[];
-        });
-        service.getTemporadas(forceRefresh: true).catchError((e) {
-          print('⚠️ Temporadas 로드 실패 (계속 진행): $e');
-          return <Map<String, dynamic>>[];
-        });
-        
+        try {
+          await service.getTipos(forceRefresh: true);
+          await service.getTemporadas(forceRefresh: true);
+        } catch (e) {
+          print('⚠️ Tipos/Temporadas 로드 실패 (계속 진행): $e');
+        }
         return AutoConnectionResult.success(serverUrl);
       } else {
         return AutoConnectionResult.failed('연결에 실패했습니다.');
       }
     } catch (e) {
       return AutoConnectionResult.failed(e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      service.dispose(); // HTTP 클라이언트 정리, 연결 풀 낭비 방지
     }
   }
 }

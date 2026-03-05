@@ -111,6 +111,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
         _isConnected = true;
         _currentServerUrl = status.serverUrl;
         _currentDatabaseName = status.databaseName;
+        _databaseService?.dispose();
         _databaseService = DatabaseService(serverUrl: status.serverUrl!);
       });
     }
@@ -234,6 +235,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
 
   @override
   void dispose() {
+    _databaseService?.dispose(); // HTTP 클라이언트 정리, 연결 풀 낭비 방지
     _profileNameController.dispose();
     _databaseNameController.dispose();
     _usernameController.dispose();
@@ -278,11 +280,13 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
           _isConnected = true;
           _currentServerUrl = serverUrl;
           _currentDatabaseName = databaseName;
+          _databaseService?.dispose();
           _databaseService = DatabaseService(serverUrl: serverUrl);
         } else {
           _isConnected = false;
           _currentServerUrl = null;
           _currentDatabaseName = null;
+          _databaseService?.dispose();
           _databaseService = null;
         }
       });
@@ -431,11 +435,9 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
       _errorMessage = null;
     });
 
+    final serverUrl = _serverUrlController.text.trim();
+    final service = DatabaseService(serverUrl: serverUrl);
     try {
-      final serverUrl = _serverUrlController.text.trim();
-      
-      final service = DatabaseService(serverUrl: serverUrl);
-
       final request = DatabaseConnectionRequest(
         databaseName: _databaseNameController.text.trim(),
         username: _usernameController.text.trim(),
@@ -572,6 +574,8 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
           ),
         );
       }
+    } finally {
+      service.dispose(); // HTTP 클라이언트 정리, 연결 풀 낭비 방지
     }
   }
 

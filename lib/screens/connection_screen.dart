@@ -184,11 +184,9 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       _errorMessage = null;
     });
 
+    final serverUrl = _serverUrlController.text.trim();
+    final service = DatabaseService(serverUrl: serverUrl);
     try {
-      final serverUrl = _serverUrlController.text.trim();
-      
-      final service = DatabaseService(serverUrl: serverUrl);
-
       final request = DatabaseConnectionRequest(
         databaseName: _databaseNameController.text.trim(),
         username: _usernameController.text.trim(),
@@ -234,6 +232,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         _errorMessage = e.toString().replaceFirst('Exception: ', '');
         _isLoading = false;
       });
+    } finally {
+      service.dispose(); // HTTP 클라이언트 정리, 연결 풀 낭비 방지
     }
   }
 
