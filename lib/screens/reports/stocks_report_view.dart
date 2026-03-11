@@ -485,8 +485,13 @@ class _StocksReportViewState extends State<StocksReportView> {
     if (_data == null || _data!.isEmpty) {
       return Center(child: Text(l10n.noData));
     }
-    // AppBar에 필터 바를 넣을 수 있으면 한 번만 전달 (상태 변경 시 필터 바가 갱신되도록 매 빌드에서 전달)
-    widget.onFilterBarReady?.call(_buildAppBarFilterRow());
+    // AppBar에 필터 바 전달 (post-frame으로 하여 setState during build 방지)
+    if (widget.onFilterBarReady != null) {
+      final filterBar = _buildAppBarFilterRow();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        widget.onFilterBarReady?.call(filterBar);
+      });
+    }
     return LayoutBuilder(
       builder: (context, constraints) {
         final isLargeScreen = constraints.maxWidth >= 800;
