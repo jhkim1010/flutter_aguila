@@ -44,14 +44,12 @@ class StocksBuilder {
     final containerPadding = 32.0; // 좌우 padding
     final extraPadding = 20.0; // 오른쪽 끝 패턴 방지를 위한 추가 공간
     final totalWidth = rowContentWidth + containerPadding + extraPadding; // 실제 컨텐츠 너비
+    // 최소 필요 너비: 이보다 작으면 수평 스크롤 필수 (Row 2084 + Container padding 32)
+    const double kMinWidthForNoScroll = 2084.0 + 32.0; // 2116
     final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-    final needsHorizontalScroll = totalWidth > screenWidth;
+    // 주의: needsHorizontalScroll은 LayoutBuilder 내부에서 실제 제약(expandedConstraints.maxWidth)으로 계산함.
+    // MediaQuery.size만 쓰면 패널/사이드바 등으로 실제 가용 너비가 더 좁을 때 오버플로우 발생.
     
-    // ============================================================
-    // 📱 Stocks 화면 깨짐 현상 디버깅
-    // ============================================================
-    // 핸드폰에서 화면 깨짐 현상 원인 파악을 위한 디버깅
     final layoutInfo = MobileLayoutHelper.getLayoutInfo(context);
     final isMobilePhone = layoutInfo.isMobilePhone;
     final isMobilePhonePortrait = layoutInfo.isMobilePhonePortrait;
@@ -60,14 +58,11 @@ class StocksBuilder {
     debugPrint('═══════════════════════════════════════════════════════');
     debugPrint('📱 [Stocks Builder] buildContent 시작');
     debugPrint('   → isMobilePhone: $isMobilePhone');
-    debugPrint('   → isMobilePhonePortrait: $isMobilePhonePortrait');
-    debugPrint('   → isMobilePhoneLandscape: $isMobilePhoneLandscape');
-    debugPrint('   → screenWidth: $screenWidth');
-    debugPrint('   → screenHeight: $screenHeight');
-    debugPrint('   → totalWidth: $totalWidth');
-    debugPrint('   → needsHorizontalScroll: $needsHorizontalScroll');
+    debugPrint('   → screenWidth (MediaQuery): $screenWidth');
+    debugPrint('   → totalWidth (필요): $totalWidth');
+    debugPrint('   → kMinWidthForNoScroll: $kMinWidthForNoScroll');
+    debugPrint('   → needsHorizontalScroll: LayoutBuilder 내부에서 실제 제약으로 결정');
     debugPrint('   → dataList.length: ${dataList.length}');
-    debugPrint('   → filteredDataList.length: ${filteredDataList.length}');
     debugPrint('═══════════════════════════════════════════════════════');
 
     // 헤더와 Row의 크기를 추적하기 위한 GlobalKey
@@ -76,7 +71,7 @@ class StocksBuilder {
     
     return Builder(
       builder: (context) {
-        // 렌더링 후 실제 크기 측정
+        // 렌더링 후 실제 크기 측정 (오버플로우 분석용)
         WidgetsBinding.instance.addPostFrameCallback((_) {
           try {
             final RenderBox? columnBox = context.findRenderObject() as RenderBox?;
@@ -92,13 +87,15 @@ class StocksBuilder {
             if (headerBox != null) {
               debugPrint('   → Header size: ${headerBox.size}');
               debugPrint('   → Header width: ${headerBox.size.width}');
-              debugPrint('   → 예상 header width: ${needsHorizontalScroll ? totalWidth : screenWidth}');
             }
             if (rowBox != null) {
               debugPrint('   → First Row size: ${rowBox.size}');
               debugPrint('   → First Row width: ${rowBox.size.width}');
-              debugPrint('   → 예상 row width: ${needsHorizontalScroll ? totalWidth : screenWidth}');
-              debugPrint('   → Row width 차이: ${rowBox.size.width - (needsHorizontalScroll ? totalWidth : screenWidth)}');
+              debugPrint('   → Row constraints.maxWidth: ${rowBox.constraints.maxWidth}');
+              final overflow = rowBox.size.width - rowBox.constraints.maxWidth;
+              if (overflow > 0) {
+                debugPrint('   ⚠️ [오버플로우] Row가 제약 초과: ${overflow.toStringAsFixed(0)}px');
+              }
             }
             debugPrint('═══════════════════════════════════════════════════════');
           } catch (e) {
@@ -108,12 +105,7 @@ class StocksBuilder {
         
         return LayoutBuilder(
           builder: (context, columnConstraints) {
-            debugPrint('═══════════════════════════════════════════════════════');
-            debugPrint('📱 [Stocks Builder] 최상위 Column 빌드');
-            debugPrint('   → Column constraints: ${columnConstraints.maxWidth} x ${columnConstraints.maxHeight}');
-            debugPrint('   → isLoadingMore: $isLoadingMore');
-            debugPrint('   → needsHorizontalScroll: $needsHorizontalScroll');
-            debugPrint('═══════════════════════════════════════════════════════');
+            debugPrint('📱 [Stocks Builder] Column constraints: ${columnConstraints.maxWidth} x ${columnConstraints.maxHeight}');
             
             return Column(
               children: [
@@ -147,8 +139,18 @@ class StocksBuilder {
                 Expanded(
                   child: LayoutBuilder(
                     builder: (context, expandedConstraints) {
-                      debugPrint('📱 [Stocks Builder] Expanded 빌드');
-                      debugPrint('   → Expanded constraints: ${expandedConstraints.maxWidth} x ${expandedConstraints.maxHeight}');
+                      // 실제 가용 너비로 수평 스크롤 여부 결정 (오버플로우 방지)
+                      final availableWidth = expandedConstraints.maxWidth;
+                      final needsHorizontalScroll = totalWidth > availableWidth;
+                      debugPrint('═══════════════════════════════════════════════════════');
+                      debugPrint('📱 [Stocks Builder] Expanded 레이아웃 결정');
+                      debugPrint('   → availableWidth (실제 제약): $availableWidth');
+                      debugPrint('   → totalWidth (필요): $totalWidth');
+                      debugPrint('   → needsHorizontalScroll: $needsHorizontalScroll ${needsHorizontalScroll ? "(수평 스크롤 사용)" : "(일반 모드)"}');
+                      if (!needsHorizontalScroll && availableWidth < kMinWidthForNoScroll) {
+                        debugPrint('   ⚠️ [오버플로우 위험] availableWidth < kMinWidthForNoScroll → Row가 넘칠 수 있음');
+                      }
+                      debugPrint('═══════════════════════════════════════════════════════');
                       
                       return needsHorizontalScroll
                           ? LayoutBuilder(
@@ -296,16 +298,16 @@ class StocksBuilder {
                             )
                           : LayoutBuilder(
                               builder: (context, constraints) {
-                                debugPrint('📱 [Stocks Builder] 일반 모드 (수평 스크롤 없음)');
-                                debugPrint('   → LayoutBuilder constraints: ${constraints.maxWidth} x ${constraints.maxHeight}');
-                                debugPrint('   → screenWidth: $screenWidth');
+                                // 일반 모드: 실제 가용 너비 사용 (screenWidth 사용 시 패널/사이드바에서 오버플로우)
+                                final contentWidth = constraints.maxWidth;
+                                debugPrint('📱 [Stocks Builder] 일반 모드 (수평 스크롤 없음) contentWidth: $contentWidth');
                                 
                                 return Column(
                       children: [
                         // 칼럼 헤더
                         SizedBox(
                           key: headerKey,
-                          width: screenWidth,
+                          width: contentWidth,
                           child: headerWidget,
                         ),
                         // 데이터 리스트
@@ -426,21 +428,19 @@ class StocksBuilder {
           debugPrint('   → 너비 차이: $widthDifference');
           
           if (widthDifference > 0) {
-            debugPrint('   ⚠️ 경고: Row가 사용 가능한 너비보다 ${widthDifference}px 더 큼!');
-            debugPrint('   ⚠️ 이로 인해 overflow가 발생할 수 있습니다.');
-            debugPrint('   ⚠️ 해결 방법: Row를 SingleChildScrollView로 감싸거나 너비 조정 필요');
+            debugPrint('   ⚠️ Row가 사용 가능한 너비보다 ${widthDifference}px 더 큼 → 수평 스크롤로 감쌈');
           } else if (widthDifference < -10) {
-            debugPrint('   ℹ️ 정보: Row가 사용 가능한 너비보다 ${widthDifference.abs()}px 작음 (정상)');
+            debugPrint('   ℹ️ Row 여유: ${widthDifference.abs()}px');
           }
           debugPrint('═══════════════════════════════════════════════════════');
         }
         
-        // Row가 constraint를 초과하지 않도록 처리
-        // 수평 스크롤 모드에서는 이미 전체가 SingleChildScrollView 안에 있으므로
-        // Row는 min size로 설정하고, 필요시 Flexible로 감싸서 overflow 방지
-        return Row(
+        // Row 고정 너비 (2084)가 constraint보다 크면 오버플로우 → 항상 수평 스크롤로 감싸서 방지
+        const double kStockRowMinWidth = 2084.0; // 칼럼 너비 합 + 간격
+        final rowFits = constraints.maxWidth >= kStockRowMinWidth;
+        final rowContent = Row(
           key: rowKey,
-          mainAxisSize: MainAxisSize.min, // min으로 설정하여 overflow 방지
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
         // Codigo
@@ -695,6 +695,14 @@ class StocksBuilder {
         ),
       ],
     );
+        if (rowFits) {
+          return rowContent;
+        }
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const ClampingScrollPhysics(),
+          child: rowContent,
+        );
       },
     );
   }
@@ -791,84 +799,31 @@ class StocksBuilder {
           ),
           child: LayoutBuilder(
             builder: (context, innerConstraints) {
-              // 대형 화면 여부 확인 (800px 이상)
-              final isLargeScreen = innerConstraints.maxWidth > 800;
-              final screenWidth = MediaQuery.of(context).size.width;
-              final needsScroll = screenWidth < 800; // 작은 화면에서만 스크롤 필요
+              // 헤더 Row 실제 필요 너비 (칼럼 합계 + 간격)
+              final expectedRowWidth = 1940.0 + 144.0; // 2084
+              final availableWidth = innerConstraints.maxWidth;
+              // 가용 너비가 필요 너비보다 작으면 수평 스크롤 사용 (오버플로우 방지)
+              final needsScroll = availableWidth < expectedRowWidth;
+              final isLargeScreen = availableWidth > expectedRowWidth;
               
               debugPrint('📱 [Stocks Builder] Header 빌드 (내부)');
               debugPrint('   → innerConstraints: ${innerConstraints.maxWidth} x ${innerConstraints.maxHeight}');
-              debugPrint('   → screenWidth: $screenWidth');
+              debugPrint('   → availableWidth: $availableWidth');
+              debugPrint('   → expectedRowWidth: $expectedRowWidth');
               debugPrint('   → isLargeScreen: $isLargeScreen');
               debugPrint('   → needsScroll: $needsScroll');
               
-              // Row의 예상 너비와 비교
-              final expectedRowWidth = 1940.0 + 144.0;
-              final widthDifference = expectedRowWidth - innerConstraints.maxWidth;
-              
-              debugPrint('   → 예상 Row 너비: $expectedRowWidth');
-              debugPrint('   → 사용 가능 너비: ${innerConstraints.maxWidth}');
+              final widthDifference = expectedRowWidth - availableWidth;
               debugPrint('   → 너비 차이: $widthDifference');
               
-              // 작은 화면에서만 SingleChildScrollView 사용
-              if (needsScroll) {
-                if (widthDifference > 0) {
-                  debugPrint('   ✅ 작은 화면: Row가 SingleChildScrollView로 감싸져 있어 overflow 방지됨');
-                }
-                
-                return SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  clipBehavior: Clip.hardEdge,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      _buildSortableHeader('codigo', 'Codigo', 120, sortColumn, sortAscending, onSort, reportColor),
-                      const SizedBox(width: 8),
-                      _buildSortableHeader('descripcion', 'Descripción', 250, sortColumn, sortAscending, onSort, reportColor),
-                      const SizedBox(width: 8),
-                      _buildSortableHeader('totaling', 'Totaling', 90, sortColumn, sortAscending, onSort, reportColor),
-                      const SizedBox(width: 8),
-                      _buildSortableHeader('totalventa', 'Total Venta', 100, sortColumn, sortAscending, onSort, reportColor),
-                      const SizedBox(width: 8),
-                      _buildSortableHeader('todayingreso', 'Today Ingreso', 110, sortColumn, sortAscending, onSort, reportColor),
-                      const SizedBox(width: 8),
-                      _buildSortableHeader('todayventa', 'Today Venta', 100, sortColumn, sortAscending, onSort, reportColor),
-                      const SizedBox(width: 8),
-                      _buildSortableHeader('totalreservado', 'Total Reservado', 120, sortColumn, sortAscending, onSort, reportColor),
-                      const SizedBox(width: 8),
-                      _buildSortableHeader('cntoffset', 'Cnt Offset', 100, sortColumn, sortAscending, onSort, reportColor),
-                      const SizedBox(width: 8),
-                      _buildSortableHeader('stockreal', 'Stock Real', 100, sortColumn, sortAscending, onSort, reportColor),
-                      const SizedBox(width: 8),
-                      _buildSortableHeader('porcentaje', 'Porcentaje', 100, sortColumn, sortAscending, onSort, reportColor),
-                      const SizedBox(width: 8),
-                      _buildSortableHeader('first_date', 'First Date', 100, sortColumn, sortAscending, onSort, reportColor),
-                      const SizedBox(width: 8),
-                      _buildSortableHeader('last_date', 'Last Date', 100, sortColumn, sortAscending, onSort, reportColor),
-                      const SizedBox(width: 8),
-                      _buildSortableHeader('pre1', 'Precio 1', 90, sortColumn, sortAscending, onSort, reportColor),
-                      const SizedBox(width: 8),
-                      _buildSortableHeader('pre2', 'Precio 2', 90, sortColumn, sortAscending, onSort, reportColor),
-                      const SizedBox(width: 8),
-                      _buildSortableHeader('pre3', 'Precio 3', 90, sortColumn, sortAscending, onSort, reportColor),
-                      const SizedBox(width: 8),
-                      _buildSortableHeader('pre4', 'Precio 4', 90, sortColumn, sortAscending, onSort, reportColor),
-                      const SizedBox(width: 8),
-                      _buildSortableHeader('pre5', 'Precio 5', 90, sortColumn, sortAscending, onSort, reportColor),
-                      const SizedBox(width: 8),
-                      _buildSortableHeader('sucursal', 'Sucursal', 90, sortColumn, sortAscending, onSort, reportColor),
-                      const SizedBox(width: 8),
-                      _buildSortableHeader('id_codigo1', 'ID Codigo1', 100, sortColumn, sortAscending, onSort, reportColor),
-                    ],
-                  ),
-                );
-              } else {
-                // 대형 화면에서는 SingleChildScrollView 없이 일반 Row 사용
-                debugPrint('   ✅ 대형 화면: 일반 Row 사용 (변경 없음)');
-                return Row(
-                  mainAxisSize: MainAxisSize.max,
+              // 항상 SingleChildScrollView로 감싸서 어떤 제약에서도 헤더 Row 오버플로우 방지
+              debugPrint('   → Header Row: SingleChildScrollView 사용 (overflow 방지)');
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                clipBehavior: Clip.hardEdge,
+                physics: const ClampingScrollPhysics(),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
@@ -910,8 +865,8 @@ class StocksBuilder {
                     const SizedBox(width: 8),
                     _buildSortableHeader('id_codigo1', 'ID Codigo1', 100, sortColumn, sortAscending, onSort, reportColor),
                   ],
-                );
-              }
+                ),
+              );
             },
           ),
         );

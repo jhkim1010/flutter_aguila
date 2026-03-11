@@ -312,6 +312,7 @@ class CodigosBuilder {
   }
 
   /// Codigos 칼럼 헤더 빌드
+  /// [onColumnResize]가 있으면 각 칼럼 오른쪽에 리사이즈 핸들을 표시합니다.
   static Widget buildHeader({
     required ReportType reportType,
     required String? sortColumn,
@@ -321,7 +322,12 @@ class CodigosBuilder {
     required List<String> columnKeys,
     required Map<String, double> columnWidths,
     required Map<String, String> columnDisplayNames,
+    void Function(String columnKey, double newWidth)? onColumnResize,
   }) {
+    const double resizeHandleWidth = 6.0;
+    const double minColumnWidth = 50.0;
+    const double maxColumnWidth = 500.0;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -335,26 +341,49 @@ class CodigosBuilder {
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: columnKeys.map((key) {
-          final width = columnWidths[key] ?? 100.0;
-          final displayName = columnDisplayNames[key] ?? key;
-          
-          return Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: _buildSortableHeader(
-              key, 
-              displayName, 
-              width, 
-              reportType, 
-              sortColumn, 
-              sortAscending, 
-              onSort, 
-              reportColor
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (int i = 0; i < columnKeys.length; i++) ...[
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: _buildSortableHeader(
+                columnKeys[i],
+                columnDisplayNames[columnKeys[i]] ?? columnKeys[i],
+                columnWidths[columnKeys[i]] ?? 100.0,
+                reportType,
+                sortColumn,
+                sortAscending,
+                onSort,
+                reportColor,
+              ),
             ),
-          );
-        }).toList(),
+            if (onColumnResize != null)
+              _buildColumnResizeHandle(
+                columnKeys[i],
+                columnWidths[columnKeys[i]] ?? 100.0,
+                resizeHandleWidth,
+                (double newWidth) {
+                  final clamped = newWidth.clamp(minColumnWidth, maxColumnWidth);
+                  onColumnResize(columnKeys[i], clamped);
+                },
+              ),
+          ],
+        ],
       ),
+    );
+  }
+
+  static Widget _buildColumnResizeHandle(
+    String columnKey,
+    double currentWidth,
+    double handleWidth,
+    void Function(double newWidth) onResize,
+  ) {
+    return _ColumnResizeHandle(
+      key: ValueKey('resize_$columnKey'),
+      currentWidth: currentWidth,
+      handleWidth: handleWidth,
+      onResize: onResize,
     );
   }
 
@@ -853,6 +882,65 @@ class CodigosBuilder {
       print('✅ 업데이트 완료');
       return response;
     }
+  }
+}
+
+/// 칼럼 너비 리사이즈 핸들 (드래그 시 누적 델타 반영)
+class _ColumnResizeHandle extends StatefulWidget {
+  final double currentWidth;
+  final double handleWidth;
+  final void Function(double newWidth) onResize;
+
+  const _ColumnResizeHandle({
+    super.key,
+    required this.currentWidth,
+    required this.handleWidth,
+    required this.onResize,
+  });
+
+  @override
+  State<_ColumnResizeHandle> createState() => _ColumnResizeHandleState();
+}
+
+class _ColumnResizeHandleState extends State<_ColumnResizeHandle> {
+  double _dragStartWidth = 0;
+  double _accumulatedDelta = 0;
+
+  @override
+  void didUpdateWidget(covariant _ColumnResizeHandle oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.currentWidth != widget.currentWidth) {
+      _dragStartWidth = widget.currentWidth;
+      _accumulatedDelta = 0;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.resizeColumn,
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onHorizontalDragStart: (_) {
+          _dragStartWidth = widget.currentWidth;
+          _accumulatedDelta = 0;
+        },
+        onHorizontalDragUpdate: (details) {
+          _accumulatedDelta += details.delta.dx;
+          widget.onResize(_dragStartWidth + _accumulatedDelta);
+        },
+        child: SizedBox(
+          width: widget.handleWidth,
+          child: Center(
+            child: Container(
+              width: 2,
+              margin: const EdgeInsets.symmetric(vertical: 4),
+              color: Colors.grey[400],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

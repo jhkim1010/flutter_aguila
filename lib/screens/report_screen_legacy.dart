@@ -27,6 +27,7 @@ import '../widgets/report_header_builders.dart';
 import '../widgets/report_total_row_builder.dart';
 import '../widgets/report_filter_widgets.dart';
 import '../services/secure_storage_helper.dart';
+import '../services/codigos_column_width_storage.dart';
 import '../generated/build_info.dart';
 
 // ReportType is used by ReportScreenLegacy; export from report_screen.dart
@@ -152,6 +153,9 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
   bool _isLoadingMoreCodigos = false; // 추가 codigos 로딩 중 여부
   String? _codigosNextIdCodigo; // 다음 페이지의 id_codigo
   bool _codigosHasMore = false; // 더 많은 페이지가 있는지 여부
+  bool _codigosSoloBorrados = false; // Codigos/Todocodigos: solo borrados 체크박스
+  Map<String, double>? _codigosColumnWidths; // DB·보고서별 저장된 칼럼 너비 (codigos/todocodigos)
+  String? _codigosColumnWidthsDbKey; // 현재 로드된 키 'dbName_codigos' or 'dbName_todocodigos'
   
   // Clientes 보고서용 페이지네이션 상태
   int _clientesOffset = 0; // 현재 offset
@@ -2313,6 +2317,9 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
           if (_selectedSucursal != null) {
             filters['sucursal'] = _selectedSucursal;
           }
+          if (_codigosSoloBorrados) {
+            filters['solo_borrados'] = '1';
+          }
           debugPrint('   → [Codigos] 전달할 filters: $filters');
           debugPrint('   → [Codigos] color_id: $_selectedCodigosColorCode');
           debugPrint('   → [Codigos] sucursal: $_selectedSucursal');
@@ -2370,6 +2377,9 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
           }
           if (_selectedSucursal != null) {
             filters['sucursal'] = _selectedSucursal;
+          }
+          if (_codigosSoloBorrados) {
+            filters['solo_borrados'] = '1';
           }
           debugPrint('   → [TodoCodigos] 전달할 filters: $filters');
           debugPrint('   → [TodoCodigos] sucursal: $_selectedSucursal');
@@ -2773,6 +2783,9 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
       }
       if (_selectedCodigosColorCode != null) {
         filters['color_id'] = _selectedCodigosColorCode;
+      }
+      if (_codigosSoloBorrados) {
+        filters['solo_borrados'] = '1';
       }
       
       if (widget.reportType == ReportType.todocodigos) {
@@ -5558,7 +5571,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                       },
                                     ),
                                     const SizedBox(height: 4),
-                                    // 세 번째 줄: 필터링 단어 필드
+                                    // 세 번째 줄: Solo borrados 체크박스, 필터링 단어 필드
                                     Builder(
                                       builder: (rowContext) {
                                         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -5571,6 +5584,8 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                         });
                                         return Row(
                                           children: [
+                                            _buildCodigosSoloBorradosCheckbox(),
+                                            const SizedBox(width: 8),
                                             Expanded(
                                               child: _buildFilteringWordFieldInAppBar(),
                                             ),
@@ -5604,6 +5619,8 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                       const SizedBox(width: 8),
                                     ],
                                   ],
+                                  _buildCodigosSoloBorradosCheckbox(),
+                                  const SizedBox(width: 8),
                                   Expanded(
                                     child: _buildFilteringWordFieldInAppBar(),
                                   ),
@@ -6098,7 +6115,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      // 두 번째 줄: Tipo, Temporada 콤보박스, 필터링 단어 필드
+                      // 두 번째 줄: Tipo, Temporada 콤보박스, Solo borrados, 필터링 단어 필드
                       Row(
                         children: [
                           if (_tiposList.length > 1 || _temporadasList.length > 1) ...[
@@ -6111,6 +6128,8 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                               const SizedBox(width: 8),
                             ],
                           ],
+                          _buildCodigosSoloBorradosCheckbox(),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: _buildFilteringWordFieldInAppBar(),
                           ),
@@ -6138,6 +6157,8 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                         const SizedBox(width: 8),
                       ],
                     ],
+                    _buildCodigosSoloBorradosCheckbox(),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: _buildFilteringWordFieldInAppBar(),
                     ),
@@ -7556,7 +7577,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                     },
                                   ),
                                   const SizedBox(height: 4),
-                                  // 세 번째 줄: 필터링 단어 필드
+                                  // 세 번째 줄: Solo borrados, 필터링 단어 필드
                                   Builder(
                                     builder: (rowContext) {
                                       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -7569,6 +7590,8 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                       });
                                       return Row(
                                         children: [
+                                          _buildCodigosSoloBorradosCheckbox(),
+                                          const SizedBox(width: 8),
                                           Expanded(
                                             child: _buildFilteringWordFieldInAppBar(),
                                           ),
@@ -7598,6 +7621,8 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
                                     const SizedBox(width: 8),
                                   ],
                                 ],
+                                _buildCodigosSoloBorradosCheckbox(),
+                                const SizedBox(width: 8),
                                 Expanded(
                                   child: _buildFilteringWordFieldInAppBar(),
                                 ),
@@ -12445,6 +12470,48 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
     );
   }
 
+  /// Codigos/Todocodigos: Solo borrados 체크박스 (filteringWord 왼쪽에 배치)
+  Widget _buildCodigosSoloBorradosCheckbox() {
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _codigosSoloBorrados = !_codigosSoloBorrados;
+        });
+        _reloadDataWithFilters();
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: Checkbox(
+                value: _codigosSoloBorrados,
+                onChanged: (bool? value) {
+                  setState(() => _codigosSoloBorrados = value ?? false);
+                  _reloadDataWithFilters();
+                },
+                fillColor: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.selected)) return Colors.white;
+                  return Colors.transparent;
+                }),
+                checkColor: _getReportColor(),
+                side: const BorderSide(color: Colors.white70),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              'Solo borrados',
+              style: TextStyle(color: Colors.white, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // Clientes 보고서용 필터 UI 빌더들 - ReportFilterWidgets로 이동
   // Responsable Ins 콤보박스
   Widget _buildClientesResponsableInsSelector() {
@@ -12925,7 +12992,25 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
       }
     }
 
-    // 헤더 위젯 생성
+    // DB·보고서별 저장된 칼럼 너비 로드 및 병합
+    final dbKey = '${_connectedDatabaseName ?? ""}_${widget.reportType == ReportType.todocodigos ? "todocodigos" : "codigos"}';
+    if (_codigosColumnWidthsDbKey != dbKey) {
+      _codigosColumnWidthsDbKey = dbKey;
+      _codigosColumnWidths = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        final saved = await CodigosColumnWidthStorage.load(_connectedDatabaseName ?? '', widget.reportType);
+        if (!mounted) return;
+        setState(() {
+          _codigosColumnWidths = saved != null ? Map<String, double>.from(saved) : null;
+        });
+      });
+    }
+    final mergedColumnWidths = Map<String, double>.from(columnWidths);
+    if (_codigosColumnWidths != null && _codigosColumnWidthsDbKey == dbKey) {
+      mergedColumnWidths.addAll(_codigosColumnWidths!);
+    }
+
+    // 헤더 위젯 생성 (리사이즈 시 상태 반영 및 저장)
     final headerWidget = CodigosBuilder.buildHeader(
       reportType: widget.reportType,
       sortColumn: _codigosSortColumn,
@@ -12944,8 +13029,15 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
       },
       reportColor: _getReportColor(),
       columnKeys: columnKeys,
-      columnWidths: columnWidths,
+      columnWidths: mergedColumnWidths,
       columnDisplayNames: columnDisplayNames,
+      onColumnResize: (String columnKey, double newWidth) {
+        setState(() {
+          _codigosColumnWidths ??= Map<String, double>.from(mergedColumnWidths);
+          _codigosColumnWidths![columnKey] = newWidth;
+        });
+        CodigosColumnWidthStorage.save(_connectedDatabaseName ?? '', widget.reportType, _codigosColumnWidths!);
+      },
     );
 
     // ============================================================
@@ -13065,7 +13157,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
             isLoadingMore: _isLoadingMoreCodigos,
             reportColor: _getReportColor(),
             columnKeys: columnKeys,
-            columnWidths: columnWidths,
+            columnWidths: mergedColumnWidths,
             headerWidget: headerWidget,
             editedCodigoIdentifier: _editedCodigoIdentifier,
                     reportType: widget.reportType,
