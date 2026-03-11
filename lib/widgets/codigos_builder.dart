@@ -324,9 +324,9 @@ class CodigosBuilder {
     required Map<String, String> columnDisplayNames,
     void Function(String columnKey, double newWidth)? onColumnResize,
   }) {
-    const double resizeHandleWidth = 6.0;
+    const double resizeHandleWidth = 14.0; // 넓게 해서 잡기 쉽고, 스크롤 제스처와 구분
     const double minColumnWidth = 50.0;
-    const double maxColumnWidth = 500.0;
+    const double maxColumnWidth = 2000.0; // descripcion 등 긴 텍스트도 넓게 확장 가능
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -341,7 +341,7 @@ class CodigosBuilder {
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           for (int i = 0; i < columnKeys.length; i++) ...[
             Padding(
@@ -462,6 +462,9 @@ class CodigosBuilder {
             : codigo['codigo']?.toString();
         final isEdited = editedCodigoIdentifier != null && currentCodigoIdentifier == editedCodigoIdentifier;
         final isCodeKey = key == 'codigo' || key == 'tcodigo';
+        // descripcion / tdesc 는 여러 줄 허용 (긴 설명 전체 표시)
+        final isDescColumn = key == 'descripcion' || key == 'tdesc';
+        final maxLines = isDescColumn ? 5 : 1;
         
         return Padding(
           padding: const EdgeInsets.only(right: 12),
@@ -479,7 +482,7 @@ class CodigosBuilder {
                         : (isCodeKey ? Colors.black87 : Colors.grey[700])),
               ),
               textAlign: isNumeric ? TextAlign.right : TextAlign.left,
-              maxLines: 1,
+              maxLines: maxLines,
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -903,43 +906,57 @@ class _ColumnResizeHandle extends StatefulWidget {
 }
 
 class _ColumnResizeHandleState extends State<_ColumnResizeHandle> {
-  double _dragStartWidth = 0;
-  double _accumulatedDelta = 0;
+  double _initialWidth = 0;
+  double _initialPointerX = 0;
+  bool _isDragging = false;
 
   @override
   void didUpdateWidget(covariant _ColumnResizeHandle oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.currentWidth != widget.currentWidth) {
-      _dragStartWidth = widget.currentWidth;
-      _accumulatedDelta = 0;
+    if (oldWidget.currentWidth != widget.currentWidth && !_isDragging) {
+      // 외부에서 너비가 바뀌었을 때만 동기화
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.resizeColumn,
-      child: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onHorizontalDragStart: (_) {
-          _dragStartWidth = widget.currentWidth;
-          _accumulatedDelta = 0;
+    return Tooltip(
+      message: 'Arrastrar para ajustar ancho',
+      child: MouseRegion(
+        cursor: SystemMouseCursors.resizeColumn,
+        child: Listener(
+        behavior: HitTestBehavior.opaque,
+        onPointerDown: (e) {
+          _initialWidth = widget.currentWidth;
+          _initialPointerX = e.position.dx;
+          _isDragging = true;
         },
-        onHorizontalDragUpdate: (details) {
-          _accumulatedDelta += details.delta.dx;
-          widget.onResize(_dragStartWidth + _accumulatedDelta);
+        onPointerMove: (e) {
+          if (!_isDragging) return;
+          final totalDelta = e.position.dx - _initialPointerX;
+          widget.onResize(_initialWidth + totalDelta);
+        },
+        onPointerUp: (_) {
+          _isDragging = false;
+        },
+        onPointerCancel: (_) {
+          _isDragging = false;
         },
         child: SizedBox(
           width: widget.handleWidth,
           child: Center(
             child: Container(
-              width: 2,
-              margin: const EdgeInsets.symmetric(vertical: 4),
-              color: Colors.grey[400],
+              width: 3,
+              margin: const EdgeInsets.symmetric(vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.grey[600],
+                borderRadius: BorderRadius.circular(1.5),
+              ),
             ),
           ),
         ),
       ),
+    ),
     );
   }
 }

@@ -464,14 +464,14 @@ class StocksBuilder {
         SizedBox(
           width: 250,
           child: Text(
-            stock['descripcion']?.toString() ?? 
-            stock['tdesc']?.toString() ?? 
+            stock['descripcion']?.toString() ??
+            stock['tdesc']?.toString() ??
             'N/A',
             style: TextStyle(
               fontSize: 11,
               color: Colors.grey[600],
             ),
-            maxLines: 1,
+            maxLines: 5,
             overflow: TextOverflow.ellipsis,
           ),
         ),
