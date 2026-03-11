@@ -28,6 +28,7 @@ import '../widgets/report_total_row_builder.dart';
 import '../widgets/report_filter_widgets.dart';
 import '../services/secure_storage_helper.dart';
 import '../services/codigos_column_width_storage.dart';
+import '../services/stocks_column_width_storage.dart';
 import '../generated/build_info.dart';
 
 // ReportType is used by ReportScreenLegacy; export from report_screen.dart
@@ -156,6 +157,8 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
   bool _codigosSoloBorrados = false; // Codigos/Todocodigos: solo borrados 체크박스
   Map<String, double>? _codigosColumnWidths; // DB·보고서별 저장된 칼럼 너비 (codigos/todocodigos)
   String? _codigosColumnWidthsDbKey; // 현재 로드된 키 'dbName_codigos' or 'dbName_todocodigos'
+  Map<String, double>? _stocksColumnWidths; // DB별 Stocks 칼럼 너비
+  String? _stocksColumnWidthsDbKey;
   
   // Clientes 보고서용 페이지네이션 상태
   int _clientesOffset = 0; // 현재 offset
@@ -9265,7 +9268,24 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
       stocksColor = Colors.orange;
     }
     
-    // 헤더 위젯 생성
+    final stocksDbKey = _connectedDatabaseName ?? '';
+    if (_stocksColumnWidthsDbKey != stocksDbKey) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        final loaded = await StocksColumnWidthStorage.load(stocksDbKey);
+        if (mounted) {
+          setState(() {
+            _stocksColumnWidthsDbKey = stocksDbKey;
+            _stocksColumnWidths = loaded;
+          });
+        }
+      });
+    }
+    final stocksDefaults = StocksBuilder.defaultStockColumnWidths;
+    final mergedStocksColumnWidths = Map<String, double>.from(stocksDefaults);
+    if (_stocksColumnWidths != null && _stocksColumnWidthsDbKey == stocksDbKey) {
+      mergedStocksColumnWidths.addAll(_stocksColumnWidths!);
+    }
+    
     final headerWidget = StocksBuilder.buildHeader(
       reportType: ReportType.stocks,
       sortColumn: _stocksSortColumn,
@@ -9283,6 +9303,14 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
         _reloadDataWithFilters();
       },
       reportColor: stocksColor,
+      columnWidths: mergedStocksColumnWidths,
+      onColumnResize: (columnKey, newWidth) {
+        setState(() {
+          _stocksColumnWidths ??= Map<String, double>.from(mergedStocksColumnWidths);
+          _stocksColumnWidths![columnKey] = newWidth;
+        });
+        StocksColumnWidthStorage.save(stocksDbKey, _stocksColumnWidths!);
+      },
     );
     
     return StocksBuilder.buildContent(
@@ -9292,6 +9320,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
       isLoadingMore: _isLoadingMoreStocks,
       reportColor: stocksColor,
       headerWidget: headerWidget,
+      columnWidths: mergedStocksColumnWidths,
     );
   }
 

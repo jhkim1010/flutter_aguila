@@ -13,6 +13,7 @@ import '../../widgets/report_filters.dart';
 import '../../widgets/report_filter_widgets.dart';
 import '../../widgets/report_total_row_builder.dart';
 import '../../widgets/stocks_builder.dart';
+import '../../services/stocks_column_width_storage.dart';
 import 'report_view_connector.dart';
 
 /// Stocks 보고서 전용 화면/로직. ReportScreen(셸)에서 라우팅 시 사용.
@@ -62,6 +63,8 @@ class _StocksReportViewState extends State<StocksReportView> {
   bool _isLoadingMoreStocks = false;
   String? _selectedSucursal;
   String? _selectedStocksColorCode;
+  Map<String, double>? _stocksColumnWidths;
+  String? _stocksColumnWidthsDbKey;
 
   Color get _reportColor => ReportUtils.getReportColor(ReportType.stocks);
 
@@ -385,6 +388,21 @@ class _StocksReportViewState extends State<StocksReportView> {
     } else if (data.containsKey('bcolorview')) {
       stocksColor = ReportUtils.isBcolorviewEnabled(data['bcolorview']) ? Colors.orange : Colors.lightBlue;
     }
+    final dbKey = ''; // Stocks 전용 뷰는 DB 키 없이 하나의 저장소 사용
+    if (_stocksColumnWidthsDbKey != dbKey) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        final loaded = await StocksColumnWidthStorage.load(dbKey);
+        if (mounted) {
+          setState(() {
+            _stocksColumnWidthsDbKey = dbKey;
+            _stocksColumnWidths = loaded;
+          });
+        }
+      });
+    }
+    final defaults = StocksBuilder.defaultStockColumnWidths;
+    final mergedColumnWidths = Map<String, double>.from(defaults)
+      ..addAll(_stocksColumnWidths ?? {});
     final headerWidget = StocksBuilder.buildHeader(
       reportType: ReportType.stocks,
       sortColumn: _stocksSortColumn,
@@ -402,6 +420,14 @@ class _StocksReportViewState extends State<StocksReportView> {
         _reloadDataWithFilters();
       },
       reportColor: stocksColor,
+      columnWidths: mergedColumnWidths,
+      onColumnResize: (columnKey, newWidth) {
+        setState(() {
+          _stocksColumnWidths ??= {};
+          _stocksColumnWidths![columnKey] = newWidth;
+        });
+        StocksColumnWidthStorage.save(dbKey, _stocksColumnWidths!);
+      },
     );
     return StocksBuilder.buildContent(
       data: data,
@@ -410,6 +436,7 @@ class _StocksReportViewState extends State<StocksReportView> {
       isLoadingMore: _isLoadingMoreStocks,
       reportColor: stocksColor,
       headerWidget: headerWidget,
+      columnWidths: mergedColumnWidths,
     );
   }
 

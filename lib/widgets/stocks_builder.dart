@@ -5,6 +5,32 @@ import '../utils/mobile_layout_helper.dart';
 
 /// Stocks 보고서 UI 빌더
 class StocksBuilder {
+  /// 칼럼 키 순서 (헤더·행과 동일)
+  static const List<String> stockColumnKeys = [
+    'codigo', 'descripcion', 'totaling', 'totalventa', 'todayingreso', 'todayventa',
+    'totalreservado', 'cntoffset', 'stockreal', 'porcentaje', 'first_date', 'last_date',
+    'pre1', 'pre2', 'pre3', 'pre4', 'pre5', 'sucursal', 'id_codigo1',
+  ];
+
+  /// 기본 칼럼 너비
+  static Map<String, double> get defaultStockColumnWidths => {
+    'codigo': 120, 'descripcion': 250, 'totaling': 90, 'totalventa': 100,
+    'todayingreso': 110, 'todayventa': 100, 'totalreservado': 120, 'cntoffset': 100,
+    'stockreal': 100, 'porcentaje': 100, 'first_date': 100, 'last_date': 100,
+    'pre1': 90, 'pre2': 90, 'pre3': 90, 'pre4': 90, 'pre5': 90,
+    'sucursal': 90, 'id_codigo1': 100,
+  };
+
+  /// 칼럼 표시 이름
+  static Map<String, String> get stockColumnDisplayNames => {
+    'codigo': 'Codigo', 'descripcion': 'Descripción', 'totaling': 'Totaling',
+    'totalventa': 'Total Venta', 'todayingreso': 'Today Ingreso', 'todayventa': 'Today Venta',
+    'totalreservado': 'Total Reservado', 'cntoffset': 'Cnt Offset', 'stockreal': 'Stock Real',
+    'porcentaje': 'Porcentaje', 'first_date': 'First Date', 'last_date': 'Last Date',
+    'pre1': 'Precio 1', 'pre2': 'Precio 2', 'pre3': 'Precio 3', 'pre4': 'Precio 4', 'pre5': 'Precio 5',
+    'sucursal': 'Sucursal', 'id_codigo1': 'ID Codigo1',
+  };
+
   /// Stocks 콘텐츠 빌드
   static Widget buildContent({
     required Map<String, dynamic> data,
@@ -13,6 +39,7 @@ class StocksBuilder {
     required bool isLoadingMore,
     required Color reportColor,
     required Widget headerWidget, // 헤더 위젯 추가
+    required Map<String, double> columnWidths,
   }) {
     // 새로운 응답 형식 지원: data 배열이 최상위에 있음
     final dataList = data['data'] as List? ?? [];
@@ -33,19 +60,14 @@ class StocksBuilder {
     
     final filteredDataList = dataList;
     
-    // 실제 컨텐츠 너비 계산 (각 칼럼 너비 + 간격)
-    // 칼럼 너비 합계: 120+250+90+100+110+100+120+100+100+100+100+100+90+90+90+90+90+90+100 = 1940
-    // 칼럼 사이 간격 (8px * 18개): 144
-    // Row의 좌우 padding은 Container에 있으므로 Row 자체 너비는 1940 + 144 = 2084
-    // Container의 좌우 padding (16px * 2): 32
-    // 총 너비: 2084 + 32 = 2116
-    // 오른쪽 끝 패턴 문제 방지를 위해 약간의 여유 공간 추가
-    final rowContentWidth = 1940.0 + 144.0; // Row 자체 너비 (padding 제외)
+    // 실제 컨텐츠 너비 계산 (columnWidths 합 + 간격)
+    final columnsTotalWidth = stockColumnKeys.fold(0.0, (sum, k) => sum + (columnWidths[k] ?? 100));
+    const double columnGap = 8.0;
+    final rowContentWidth = columnsTotalWidth + (stockColumnKeys.length - 1) * columnGap;
     final containerPadding = 32.0; // 좌우 padding
     final extraPadding = 20.0; // 오른쪽 끝 패턴 방지를 위한 추가 공간
-    final totalWidth = rowContentWidth + containerPadding + extraPadding; // 실제 컨텐츠 너비
-    // 최소 필요 너비: 이보다 작으면 수평 스크롤 필수 (Row 2084 + Container padding 32)
-    const double kMinWidthForNoScroll = 2084.0 + 32.0; // 2116
+    final totalWidth = rowContentWidth + containerPadding + extraPadding;
+    final kMinWidthForNoScroll = rowContentWidth + 32.0;
     final screenWidth = MediaQuery.of(context).size.width;
     // 주의: needsHorizontalScroll은 LayoutBuilder 내부에서 실제 제약(expandedConstraints.maxWidth)으로 계산함.
     // MediaQuery.size만 쓰면 패널/사이드바 등으로 실제 가용 너비가 더 좁을 때 오버플로우 발생.
@@ -280,7 +302,7 @@ class StocksBuilder {
                                         ),
                                       ),
                                     ),
-                                    child: _buildStockRow(stock, reportColor, index == 0),
+                                    child: _buildStockRow(stock, reportColor, columnWidths, index == 0),
                                   );
                                 },
                               ),
@@ -334,7 +356,7 @@ class StocksBuilder {
                                     ),
                                   ),
                                 ),
-                                child: _buildStockRow(stock, reportColor, index == 0),
+                                child: _buildStockRow(stock, reportColor, columnWidths, index == 0),
                               );
                             },
                           ),
@@ -354,347 +376,40 @@ class StocksBuilder {
     );
   }
 
-  static Widget _buildStockRow(Map<String, dynamic> stock, Color reportColor, [bool isFirstRow = false]) {
-    // 첫 번째 Row에만 디버깅 정보 출력
+  static Widget _buildStockRow(Map<String, dynamic> stock, Color reportColor, Map<String, double> columnWidths, [bool isFirstRow = false]) {
     final rowKey = isFirstRow ? GlobalKey() : null;
-    
+    final expectedRowWidth = stockColumnKeys.fold(0.0, (sum, k) => sum + (columnWidths[k] ?? 100)) + (stockColumnKeys.length - 1) * 8.0;
+
     if (isFirstRow) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         try {
           if (rowKey?.currentContext != null) {
             final RenderBox? renderBox = rowKey!.currentContext!.findRenderObject() as RenderBox?;
             if (renderBox != null) {
-              debugPrint('═══════════════════════════════════════════════════════');
               debugPrint('📱 [Stocks Builder] 첫 번째 Row 렌더링 후 실제 크기');
-              debugPrint('   → Row 실제 size: ${renderBox.size}');
-              debugPrint('   → Row constraints: ${renderBox.constraints}');
-              debugPrint('   → Row hasSize: ${renderBox.hasSize}');
-              debugPrint('   → Row 타입: ${renderBox.runtimeType}');
-              
-              // Row의 실제 너비와 constraint 비교
-              debugPrint('   → Row 실제 너비: ${renderBox.size.width}');
-              debugPrint('   → Row constraint.maxWidth: ${renderBox.constraints.maxWidth}');
-              
-              if (renderBox.size.width > renderBox.constraints.maxWidth) {
-                debugPrint('   ⚠️ 경고: Row가 constraint를 초과함!');
-                debugPrint('   ⚠️ constraint.maxWidth: ${renderBox.constraints.maxWidth}');
-                debugPrint('   ⚠️ 실제 width: ${renderBox.size.width}');
-                debugPrint('   ⚠️ 초과량: ${renderBox.size.width - renderBox.constraints.maxWidth}px');
-              } else {
-                debugPrint('   ✅ Row가 constraint 내에 있음');
-                debugPrint('   → 여유 공간: ${renderBox.constraints.maxWidth - renderBox.size.width}px');
-              }
-              debugPrint('═══════════════════════════════════════════════════════');
+              debugPrint('   → Row 실제 width: ${renderBox.size.width}, expected: $expectedRowWidth');
             }
           }
         } catch (e, stackTrace) {
           debugPrint('❌ [Stocks Builder] Row 크기 측정 중 에러: $e');
-          debugPrint('   → StackTrace: $stackTrace');
         }
       });
     }
-    
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (isFirstRow) {
-          debugPrint('═══════════════════════════════════════════════════════');
-          debugPrint('📱 [Stocks Builder] 첫 번째 Row 빌드 시작');
-          debugPrint('   → Row constraints: ${constraints.maxWidth} x ${constraints.maxHeight}');
-          debugPrint('   → constraints.isTight: ${constraints.isTight}');
-          debugPrint('   → constraints.isNormalized: ${constraints.isNormalized}');
-          
-          // 실제 칼럼 너비 계산
-          final columnWidths = [120, 250, 90, 100, 110, 100, 120, 100, 100, 100, 100, 100, 90, 90, 90, 90, 90, 90, 100];
-          final totalColumnWidth = columnWidths.fold(0.0, (sum, width) => sum + width);
-          final spacingCount = columnWidths.length - 1; // 18개
-          final totalSpacing = spacingCount * 8.0;
-          final expectedRowWidth = totalColumnWidth + totalSpacing;
-          
-          debugPrint('   → 칼럼 개수: ${columnWidths.length}');
-          debugPrint('   → 칼럼 너비 합계: $totalColumnWidth');
-          debugPrint('   → 간격 개수: $spacingCount');
-          debugPrint('   → 간격 합계: $totalSpacing');
-          debugPrint('   → 예상 Row 너비 (padding 제외): $expectedRowWidth');
-          debugPrint('   → Container padding: 32 (좌우 각 16)');
-          debugPrint('   → 예상 총 너비 (padding 포함): ${expectedRowWidth + 32}');
-          debugPrint('   → 실제 사용 가능 너비: ${constraints.maxWidth}');
-          
-          // Row의 실제 너비 계산
-          final availableWidth = constraints.maxWidth; // Container padding은 이미 제외됨
-          final widthDifference = expectedRowWidth - availableWidth;
-          
-          debugPrint('   → 예상 Row 너비: $expectedRowWidth');
-          debugPrint('   → 사용 가능 너비: $availableWidth');
-          debugPrint('   → 너비 차이: $widthDifference');
-          
-          if (widthDifference > 0) {
-            debugPrint('   ⚠️ Row가 사용 가능한 너비보다 ${widthDifference}px 더 큼 → 수평 스크롤로 감쌈');
-          } else if (widthDifference < -10) {
-            debugPrint('   ℹ️ Row 여유: ${widthDifference.abs()}px');
-          }
-          debugPrint('═══════════════════════════════════════════════════════');
-        }
-        
-        // Row 고정 너비 (2084)가 constraint보다 크면 오버플로우 → 항상 수평 스크롤로 감싸서 방지
-        const double kStockRowMinWidth = 2084.0; // 칼럼 너비 합 + 간격
-        final rowFits = constraints.maxWidth >= kStockRowMinWidth;
+        final rowFits = constraints.maxWidth >= expectedRowWidth;
         final rowContent = Row(
           key: rowKey,
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-        // Codigo
-        SizedBox(
-          width: 120,
-          child: Text(
-            stock['codigo']?.toString() ?? 
-            stock['tcode']?.toString() ?? 
-            'N/A',
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
-              color: Colors.black87,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        const SizedBox(width: 8),
-        // Descripción
-        SizedBox(
-          width: 250,
-          child: Text(
-            stock['descripcion']?.toString() ??
-            stock['tdesc']?.toString() ??
-            'N/A',
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.grey[600],
-            ),
-            maxLines: 5,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        const SizedBox(width: 8),
-        // Totaling
-        SizedBox(
-          width: 90,
-          child: Text(
-            stock['totaling']?.toString() ?? 'N/A',
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.grey[700],
-            ),
-            textAlign: TextAlign.right,
-          ),
-        ),
-        const SizedBox(width: 8),
-        // Total Venta
-        SizedBox(
-          width: 100,
-          child: Text(
-            stock['totalventa']?.toString() ?? 'N/A',
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.grey[700],
-            ),
-            textAlign: TextAlign.right,
-          ),
-        ),
-        const SizedBox(width: 8),
-        // Today Ingreso
-        SizedBox(
-          width: 110,
-          child: Text(
-            stock['todayingreso']?.toString() ?? 'N/A',
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.grey[700],
-            ),
-            textAlign: TextAlign.right,
-          ),
-        ),
-        const SizedBox(width: 8),
-        // Today Venta
-        SizedBox(
-          width: 100,
-          child: Text(
-            stock['todayventa']?.toString() ?? 'N/A',
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.grey[700],
-            ),
-            textAlign: TextAlign.right,
-          ),
-        ),
-        const SizedBox(width: 8),
-        // Total Reservado
-        SizedBox(
-          width: 120,
-          child: Text(
-            stock['totalreservado']?.toString() ?? 'N/A',
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.grey[700],
-            ),
-            textAlign: TextAlign.right,
-          ),
-        ),
-        const SizedBox(width: 8),
-        // Cnt Offset
-        SizedBox(
-          width: 100,
-          child: Text(
-            stock['cntoffset']?.toString() ?? 'N/A',
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.grey[700],
-            ),
-            textAlign: TextAlign.right,
-          ),
-        ),
-        const SizedBox(width: 8),
-        // Stock Real
-        SizedBox(
-          width: 100,
-          child: Text(
-            stock['stockreal']?.toString() ?? 
-            stock['stockreal3']?.toString() ?? 
-            'N/A',
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.grey[700],
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.right,
-          ),
-        ),
-        const SizedBox(width: 8),
-        // Porcentaje (소수점 1자리)
-        SizedBox(
-          width: 100,
-          child: Text(
-            _formatPorcentaje(stock['porcentaje']),
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.grey[700],
-            ),
-            textAlign: TextAlign.right,
-          ),
-        ),
-        const SizedBox(width: 8),
-        // First Date
-        SizedBox(
-          width: 100,
-          child: Text(
-            stock['first_date']?.toString() ?? 'N/A',
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.grey[700],
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        // Last Date
-        SizedBox(
-          width: 100,
-          child: Text(
-            stock['last_date']?.toString() ?? 'N/A',
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.grey[700],
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        // Precio 1-5
-        SizedBox(
-          width: 90,
-          child: Text(
-            stock['pre1']?.toString() ?? 'N/A',
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.grey[700],
-            ),
-            textAlign: TextAlign.right,
-          ),
-        ),
-        const SizedBox(width: 8),
-        SizedBox(
-          width: 90,
-          child: Text(
-            stock['pre2']?.toString() ?? 'N/A',
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.grey[700],
-            ),
-            textAlign: TextAlign.right,
-          ),
-        ),
-        const SizedBox(width: 8),
-        SizedBox(
-          width: 90,
-          child: Text(
-            stock['pre3']?.toString() ?? 'N/A',
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.grey[700],
-            ),
-            textAlign: TextAlign.right,
-          ),
-        ),
-        const SizedBox(width: 8),
-        SizedBox(
-          width: 90,
-          child: Text(
-            stock['pre4']?.toString() ?? 'N/A',
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.grey[700],
-            ),
-            textAlign: TextAlign.right,
-          ),
-        ),
-        const SizedBox(width: 8),
-        SizedBox(
-          width: 90,
-          child: Text(
-            stock['pre5']?.toString() ?? 'N/A',
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.grey[700],
-            ),
-            textAlign: TextAlign.right,
-          ),
-        ),
-        const SizedBox(width: 8),
-        // Sucursal
-        SizedBox(
-          width: 90,
-          child: Text(
-            stock['sucursal']?.toString() ?? 'N/A',
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.grey[700],
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ),
-        const SizedBox(width: 8),
-        // ID Codigo1
-        SizedBox(
-          width: 100,
-          child: Text(
-            stock['id_codigo1']?.toString() ?? 'N/A',
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.grey[700],
-            ),
-            textAlign: TextAlign.right,
-          ),
-        ),
-      ],
-    );
+            for (int i = 0; i < stockColumnKeys.length; i++) ...[
+              if (i > 0) const SizedBox(width: 8),
+              _buildStockCell(stock, stockColumnKeys[i], columnWidths[stockColumnKeys[i]] ?? 100, reportColor),
+            ],
+          ],
+        );
         if (rowFits) {
           return rowContent;
         }
@@ -707,170 +422,115 @@ class StocksBuilder {
     );
   }
 
-  /// Stocks 칼럼 헤더 빌드
+  static const Set<String> _rightAlignKeys = {
+    'totaling', 'totalventa', 'todayingreso', 'todayventa', 'totalreservado',
+    'cntoffset', 'stockreal', 'porcentaje', 'pre1', 'pre2', 'pre3', 'pre4', 'pre5', 'id_codigo1',
+  };
+
+  static Widget _buildStockCell(Map<String, dynamic> stock, String key, double width, Color reportColor) {
+    final isCode = key == 'codigo';
+    final isDesc = key == 'descripcion';
+    String displayValue;
+    if (key == 'codigo') {
+      displayValue = stock['codigo']?.toString() ?? stock['tcode']?.toString() ?? 'N/A';
+    } else if (key == 'descripcion') {
+      displayValue = stock['descripcion']?.toString() ?? stock['tdesc']?.toString() ?? 'N/A';
+    } else if (key == 'stockreal') {
+      displayValue = stock['stockreal']?.toString() ?? stock['stockreal3']?.toString() ?? 'N/A';
+    } else if (key == 'porcentaje') {
+      displayValue = _formatPorcentaje(stock['porcentaje']);
+    } else {
+      displayValue = stock[key]?.toString() ?? 'N/A';
+    }
+    final textAlign = key == 'sucursal' ? TextAlign.center : (_rightAlignKeys.contains(key) ? TextAlign.right : TextAlign.left);
+    return SizedBox(
+      width: width,
+      child: Text(
+        displayValue,
+        style: TextStyle(
+          fontWeight: isCode ? FontWeight.bold : FontWeight.normal,
+          fontSize: isCode ? 12 : 10,
+          color: isCode ? Colors.black87 : Colors.grey[700],
+        ),
+        maxLines: isDesc ? 5 : 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: textAlign,
+      ),
+    );
+  }
+
+  /// Stocks 칼럼 헤더 빌드. [columnWidths]와 [onColumnResize]가 있으면 칼럼 리사이즈 가능.
   static Widget buildHeader({
     required ReportType reportType,
     required String? sortColumn,
     required bool sortAscending,
     required Function(String, bool) onSort,
     required Color reportColor,
+    required Map<String, double> columnWidths,
+    void Function(String columnKey, double newWidth)? onColumnResize,
   }) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        debugPrint('📱 [Stocks Builder] Header 빌드');
-        debugPrint('   → Header constraints: ${constraints.maxWidth} x ${constraints.maxHeight}');
-        debugPrint('   → 예상 Header 너비: ${1940.0 + 144.0 + 32.0} (칼럼 너비 + 간격 + padding)');
-        debugPrint('   → 실제 사용 가능 너비: ${constraints.maxWidth}');
-        
-        final expectedHeaderWidth = 1940.0 + 144.0 + 32.0; // 2116
-        final availableWidth = constraints.maxWidth;
-        final widthDifference = expectedHeaderWidth - availableWidth;
-        
-        // 실제 칼럼 너비 계산 (19개 칼럼)
-        final actualColumnWidth = 120 + 250 + 90 + 100 + 110 + 100 + 120 + 100 + 100 + 100 + 100 + 100 + 90 + 90 + 90 + 90 + 90 + 90 + 100;
-        final actualSpacing = 8 * 18; // 18개 간격
-        final actualRowWidth = actualColumnWidth + actualSpacing; // 2084
-        final actualTotalWidth = actualRowWidth + 32; // Container padding 포함
-        
-        debugPrint('   → 예상 Header 너비: $expectedHeaderWidth');
-        debugPrint('   → 실제 칼럼 너비 합계: $actualColumnWidth');
-        debugPrint('   → 실제 간격 합계: $actualSpacing');
-        debugPrint('   → 실제 Row 너비 (padding 제외): $actualRowWidth');
-        debugPrint('   → 실제 총 너비 (padding 포함): $actualTotalWidth');
-        debugPrint('   → 사용 가능 너비: $availableWidth');
-        debugPrint('   → 너비 차이: $widthDifference');
-        
-        if (widthDifference > 0) {
-          debugPrint('   ⚠️ 경고: Header가 사용 가능한 너비보다 ${widthDifference}px 더 큼!');
-          debugPrint('   ✅ 해결: Header Row를 SingleChildScrollView로 감싸서 overflow 방지');
-        }
-        
-        // Header Container의 실제 크기 측정을 위한 GlobalKey
-        final containerKey = GlobalKey();
-        
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          try {
-            if (containerKey.currentContext != null) {
-              final RenderBox? renderBox = containerKey.currentContext!.findRenderObject() as RenderBox?;
-              if (renderBox != null) {
-                debugPrint('═══════════════════════════════════════════════════════');
-                debugPrint('📱 [Stocks Builder] Header Container 렌더링 후 실제 크기');
-                debugPrint('   → Container 실제 size: ${renderBox.size}');
-                debugPrint('   → Container constraints: ${renderBox.constraints}');
-                debugPrint('   → Container padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12)');
-                
-                // Padding을 제외한 내부 크기 계산
-                final innerWidth = renderBox.size.width - 32; // 좌우 padding 16*2
-                final innerHeight = renderBox.size.height - 24; // 상하 padding 12*2
-                
-                debugPrint('   → Container 내부 너비 (padding 제외): $innerWidth');
-                debugPrint('   → Container 내부 높이 (padding 제외): $innerHeight');
-                
-                // Row의 예상 너비와 비교
-                final expectedRowWidth = 1940.0 + 144.0; // 2084
-                final rowWidthDifference = expectedRowWidth - innerWidth;
-                
-                debugPrint('   → 예상 Row 너비: $expectedRowWidth');
-                debugPrint('   → Row 너비 차이: $rowWidthDifference');
-                
-                if (rowWidthDifference > 0) {
-                  debugPrint('   ⚠️ 경고: Row가 Container 내부 너비보다 ${rowWidthDifference}px 더 큼!');
-                }
-                debugPrint('═══════════════════════════════════════════════════════');
-              }
-            }
-          } catch (e, stackTrace) {
-            debugPrint('❌ [Stocks Builder] Header Container 크기 측정 중 에러: $e');
-            debugPrint('   → StackTrace: $stackTrace');
-          }
-        });
-        
-        return Container(
-          key: containerKey,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: reportColor.withOpacity(0.1),
-            border: Border(
-              bottom: BorderSide(
-                color: Colors.grey[400]!,
-                width: 2,
+    const double resizeHandleWidth = 14.0;
+    const double minColumnWidth = 50.0;
+    const double maxColumnWidth = 2000.0;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: reportColor.withOpacity(0.1),
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.grey[400]!,
+            width: 2,
+          ),
+        ),
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        clipBehavior: Clip.hardEdge,
+        physics: const ClampingScrollPhysics(),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            for (int i = 0; i < stockColumnKeys.length; i++) ...[
+              if (i > 0) const SizedBox(width: 8),
+              _buildSortableHeader(
+                stockColumnKeys[i],
+                stockColumnDisplayNames[stockColumnKeys[i]] ?? stockColumnKeys[i],
+                columnWidths[stockColumnKeys[i]] ?? 100,
+                sortColumn,
+                sortAscending,
+                onSort,
+                reportColor,
               ),
-            ),
-          ),
-          child: LayoutBuilder(
-            builder: (context, innerConstraints) {
-              // 헤더 Row 실제 필요 너비 (칼럼 합계 + 간격)
-              final expectedRowWidth = 1940.0 + 144.0; // 2084
-              final availableWidth = innerConstraints.maxWidth;
-              // 가용 너비가 필요 너비보다 작으면 수평 스크롤 사용 (오버플로우 방지)
-              final needsScroll = availableWidth < expectedRowWidth;
-              final isLargeScreen = availableWidth > expectedRowWidth;
-              
-              debugPrint('📱 [Stocks Builder] Header 빌드 (내부)');
-              debugPrint('   → innerConstraints: ${innerConstraints.maxWidth} x ${innerConstraints.maxHeight}');
-              debugPrint('   → availableWidth: $availableWidth');
-              debugPrint('   → expectedRowWidth: $expectedRowWidth');
-              debugPrint('   → isLargeScreen: $isLargeScreen');
-              debugPrint('   → needsScroll: $needsScroll');
-              
-              final widthDifference = expectedRowWidth - availableWidth;
-              debugPrint('   → 너비 차이: $widthDifference');
-              
-              // 항상 SingleChildScrollView로 감싸서 어떤 제약에서도 헤더 Row 오버플로우 방지
-              debugPrint('   → Header Row: SingleChildScrollView 사용 (overflow 방지)');
-              return SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                clipBehavior: Clip.hardEdge,
-                physics: const ClampingScrollPhysics(),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    _buildSortableHeader('codigo', 'Codigo', 120, sortColumn, sortAscending, onSort, reportColor),
-                    const SizedBox(width: 8),
-                    _buildSortableHeader('descripcion', 'Descripción', 250, sortColumn, sortAscending, onSort, reportColor),
-                    const SizedBox(width: 8),
-                    _buildSortableHeader('totaling', 'Totaling', 90, sortColumn, sortAscending, onSort, reportColor),
-                    const SizedBox(width: 8),
-                    _buildSortableHeader('totalventa', 'Total Venta', 100, sortColumn, sortAscending, onSort, reportColor),
-                    const SizedBox(width: 8),
-                    _buildSortableHeader('todayingreso', 'Today Ingreso', 110, sortColumn, sortAscending, onSort, reportColor),
-                    const SizedBox(width: 8),
-                    _buildSortableHeader('todayventa', 'Today Venta', 100, sortColumn, sortAscending, onSort, reportColor),
-                    const SizedBox(width: 8),
-                    _buildSortableHeader('totalreservado', 'Total Reservado', 120, sortColumn, sortAscending, onSort, reportColor),
-                    const SizedBox(width: 8),
-                    _buildSortableHeader('cntoffset', 'Cnt Offset', 100, sortColumn, sortAscending, onSort, reportColor),
-                    const SizedBox(width: 8),
-                    _buildSortableHeader('stockreal', 'Stock Real', 100, sortColumn, sortAscending, onSort, reportColor),
-                    const SizedBox(width: 8),
-                    _buildSortableHeader('porcentaje', 'Porcentaje', 100, sortColumn, sortAscending, onSort, reportColor),
-                    const SizedBox(width: 8),
-                    _buildSortableHeader('first_date', 'First Date', 100, sortColumn, sortAscending, onSort, reportColor),
-                    const SizedBox(width: 8),
-                    _buildSortableHeader('last_date', 'Last Date', 100, sortColumn, sortAscending, onSort, reportColor),
-                    const SizedBox(width: 8),
-                    _buildSortableHeader('pre1', 'Precio 1', 90, sortColumn, sortAscending, onSort, reportColor),
-                    const SizedBox(width: 8),
-                    _buildSortableHeader('pre2', 'Precio 2', 90, sortColumn, sortAscending, onSort, reportColor),
-                    const SizedBox(width: 8),
-                    _buildSortableHeader('pre3', 'Precio 3', 90, sortColumn, sortAscending, onSort, reportColor),
-                    const SizedBox(width: 8),
-                    _buildSortableHeader('pre4', 'Precio 4', 90, sortColumn, sortAscending, onSort, reportColor),
-                    const SizedBox(width: 8),
-                    _buildSortableHeader('pre5', 'Precio 5', 90, sortColumn, sortAscending, onSort, reportColor),
-                    const SizedBox(width: 8),
-                    _buildSortableHeader('sucursal', 'Sucursal', 90, sortColumn, sortAscending, onSort, reportColor),
-                    const SizedBox(width: 8),
-                    _buildSortableHeader('id_codigo1', 'ID Codigo1', 100, sortColumn, sortAscending, onSort, reportColor),
-                  ],
+              if (onColumnResize != null)
+                _buildStocksResizeHandle(
+                  stockColumnKeys[i],
+                  columnWidths[stockColumnKeys[i]] ?? 100,
+                  resizeHandleWidth,
+                  (double newWidth) {
+                    final clamped = newWidth.clamp(minColumnWidth, maxColumnWidth);
+                    onColumnResize(stockColumnKeys[i], clamped);
+                  },
                 ),
-              );
-            },
-          ),
-        );
-      },
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  static Widget _buildStocksResizeHandle(
+    String columnKey,
+    double currentWidth,
+    double handleWidth,
+    void Function(double newWidth) onResize,
+  ) {
+    return _StocksColumnResizeHandle(
+      key: ValueKey('stocks_resize_$columnKey'),
+      currentWidth: currentWidth,
+      handleWidth: handleWidth,
+      onResize: onResize,
     );
   }
 
@@ -1151,3 +811,67 @@ class StocksBuilder {
   }
 }
 
+/// Stocks 칼럼 너비 리사이즈 핸들 (드래그 시 누적 델타 반영)
+class _StocksColumnResizeHandle extends StatefulWidget {
+  final double currentWidth;
+  final double handleWidth;
+  final void Function(double newWidth) onResize;
+
+  const _StocksColumnResizeHandle({
+    super.key,
+    required this.currentWidth,
+    required this.handleWidth,
+    required this.onResize,
+  });
+
+  @override
+  State<_StocksColumnResizeHandle> createState() => _StocksColumnResizeHandleState();
+}
+
+class _StocksColumnResizeHandleState extends State<_StocksColumnResizeHandle> {
+  double _initialWidth = 0;
+  double _initialPointerX = 0;
+  bool _isDragging = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Arrastrar para ajustar ancho',
+      child: MouseRegion(
+        cursor: SystemMouseCursors.resizeColumn,
+        child: Listener(
+          behavior: HitTestBehavior.opaque,
+          onPointerDown: (e) {
+            _initialWidth = widget.currentWidth;
+            _initialPointerX = e.position.dx;
+            _isDragging = true;
+          },
+          onPointerMove: (e) {
+            if (!_isDragging) return;
+            final totalDelta = e.position.dx - _initialPointerX;
+            widget.onResize(_initialWidth + totalDelta);
+          },
+          onPointerUp: (_) {
+            _isDragging = false;
+          },
+          onPointerCancel: (_) {
+            _isDragging = false;
+          },
+          child: SizedBox(
+            width: widget.handleWidth,
+            child: Center(
+              child: Container(
+                width: 3,
+                margin: const EdgeInsets.symmetric(vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.grey[600],
+                  borderRadius: BorderRadius.circular(1.5),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

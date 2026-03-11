@@ -452,8 +452,10 @@ class CodigosBuilder {
         final isCodeColumn = key == 'codigo' || key == 'tcodigo';
         final isNumeric = !isCodeColumn && ReportUtils.isNumeric(value);
         
-        // codigo 칼럼은 원본 문자열 그대로 표시 (포맷팅 없이)
-        final displayValue = isCodeColumn 
+        // descripcion/tdesc 는 formatValue의 50자 잘림 적용하지 않고 원문 전체 표시
+        final isDescColumn = key == 'descripcion' || key == 'tdesc';
+        // codigo 칼럼·descripcion/tdesc 는 원본 문자열 그대로, 나머지는 formatValue
+        final displayValue = (isCodeColumn || isDescColumn)
             ? (value?.toString() ?? 'N/A')
             : ReportUtils.formatValue(value);
         
@@ -462,9 +464,9 @@ class CodigosBuilder {
             : codigo['codigo']?.toString();
         final isEdited = editedCodigoIdentifier != null && currentCodigoIdentifier == editedCodigoIdentifier;
         final isCodeKey = key == 'codigo' || key == 'tcodigo';
-        // descripcion / tdesc 는 여러 줄 허용 (긴 설명 전체 표시)
-        final isDescColumn = key == 'descripcion' || key == 'tdesc';
-        final maxLines = isDescColumn ? 5 : 1;
+        // descripcion / tdesc 는 생략 없이 전체 표시 (줄 수 제한 없음)
+        final maxLines = isDescColumn ? null : 1;
+        final overflow = isDescColumn ? TextOverflow.visible : TextOverflow.ellipsis;
         
         return Padding(
           padding: const EdgeInsets.only(right: 12),
@@ -483,7 +485,7 @@ class CodigosBuilder {
               ),
               textAlign: isNumeric ? TextAlign.right : TextAlign.left,
               maxLines: maxLines,
-              overflow: TextOverflow.ellipsis,
+              overflow: overflow,
             ),
           ),
         );
