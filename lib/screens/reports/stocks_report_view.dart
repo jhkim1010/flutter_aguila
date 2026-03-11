@@ -495,9 +495,15 @@ class _StocksReportViewState extends State<StocksReportView> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isLargeScreen = constraints.maxWidth >= 800;
+        final showFilterBarInBody = widget.onFilterBarReady == null;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (showFilterBarInBody)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: _buildAppBarFilterRow(),
+              ),
             if (!isLargeScreen) _buildStocksViewType(),
             Expanded(
               child: RefreshIndicator(

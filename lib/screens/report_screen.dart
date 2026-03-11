@@ -123,6 +123,8 @@ class _ReportScreenState extends State<ReportScreen> {
     final reportTitle = _titleWithDb(baseTitle);
     final reportIcon = ReportUtils.getReportIcon(ReportType.stocks);
     final reportColor = ReportUtils.getReportColor(ReportType.stocks);
+    final isLargeScreen = MediaQuery.of(context).size.width >= 800;
+    final showFilterInOneLine = isLargeScreen && _stocksAppBarFilterBar != null;
 
     return Scaffold(
       appBar: AppBar(
@@ -141,17 +143,24 @@ class _ReportScreenState extends State<ReportScreen> {
           children: [
             Icon(reportIcon, color: Colors.white),
             const SizedBox(width: 8),
-            Expanded(
+            Flexible(
               child: Text(
                 reportTitle,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontSize: 18),
               ),
             ),
+            if (showFilterInOneLine) ...[
+              const SizedBox(width: 16),
+              Expanded(
+                flex: 2,
+                child: _stocksAppBarFilterBar!,
+              ),
+            ],
           ],
         ),
         backgroundColor: reportColor,
-        bottom: _stocksAppBarFilterBar != null
+        bottom: !showFilterInOneLine && _stocksAppBarFilterBar != null
             ? PreferredSize(
                 preferredSize: const Size.fromHeight(52),
                 child: Material(
