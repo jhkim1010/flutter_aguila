@@ -27,6 +27,8 @@ class StocksReportView extends StatefulWidget {
   final VoidCallback? onMenuPressed;
   final List<String>? initialAvailableSucursales;
   final RegisterShareCallback? registerShare;
+  /// AppBar에 필터 바(tipos, temporada, filtering word)를 넣을 때 호출. ReportScreen이 전달.
+  final void Function(Widget filterBar)? onFilterBarReady;
 
   const StocksReportView({
     super.key,
@@ -39,6 +41,7 @@ class StocksReportView extends StatefulWidget {
     this.onMenuPressed,
     this.initialAvailableSucursales,
     this.registerShare,
+    this.onFilterBarReady,
   });
 
   @override
@@ -482,29 +485,14 @@ class _StocksReportViewState extends State<StocksReportView> {
     if (_data == null || _data!.isEmpty) {
       return Center(child: Text(l10n.noData));
     }
+    // AppBar에 필터 바를 넣을 수 있으면 한 번만 전달 (상태 변경 시 필터 바가 갱신되도록 매 빌드에서 전달)
+    widget.onFilterBarReady?.call(_buildAppBarFilterRow());
     return LayoutBuilder(
       builder: (context, constraints) {
         final isLargeScreen = constraints.maxWidth >= 800;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 필터 바: Tipo, Temporada, 필터링 단어 (공통 AppBar 외 본문 상단)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Row(
-                children: [
-                  if (_tiposList.length > 1) ...[
-                    Expanded(flex: 1, child: _buildTipoSelector()),
-                    const SizedBox(width: 8),
-                  ],
-                  if (_temporadasList.length > 1) ...[
-                    Expanded(flex: 1, child: _buildTemporadaSelector()),
-                    const SizedBox(width: 8),
-                  ],
-                  Expanded(flex: 2, child: _buildFilteringWordField()),
-                ],
-              ),
-            ),
             if (!isLargeScreen) _buildStocksViewType(),
             Expanded(
               child: RefreshIndicator(
@@ -515,6 +503,23 @@ class _StocksReportViewState extends State<StocksReportView> {
           ],
         );
       },
+    );
+  }
+
+  /// AppBar 하단에 표시할 필터 행 (tipos, temporada, filtering word). onFilterBarReady로 전달.
+  Widget _buildAppBarFilterRow() {
+    return Row(
+      children: [
+        if (_tiposList.length > 1) ...[
+          Expanded(flex: 1, child: _buildTipoSelector()),
+          const SizedBox(width: 8),
+        ],
+        if (_temporadasList.length > 1) ...[
+          Expanded(flex: 1, child: _buildTemporadaSelector()),
+          const SizedBox(width: 8),
+        ],
+        Expanded(flex: 2, child: _buildFilteringWordField()),
+      ],
     );
   }
 }

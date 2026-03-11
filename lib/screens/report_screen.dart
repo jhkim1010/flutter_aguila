@@ -52,6 +52,8 @@ class _ReportScreenState extends State<ReportScreen> {
   void Function()? _currentShare;
   /// 접속된 DB 이름 (제목 옆 { } 표시용)
   String? _connectedDatabaseName;
+  /// Stocks 보고서용: AppBar 하단에 표시할 필터 바 (tipos, temporada, filtering word)
+  Widget? _stocksAppBarFilterBar;
 
   @override
   void initState() {
@@ -149,6 +151,18 @@ class _ReportScreenState extends State<ReportScreen> {
           ],
         ),
         backgroundColor: reportColor,
+        bottom: _stocksAppBarFilterBar != null
+            ? PreferredSize(
+                preferredSize: const Size.fromHeight(52),
+                child: Material(
+                  color: reportColor.withOpacity(0.15),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    child: _stocksAppBarFilterBar!,
+                  ),
+                ),
+              )
+            : null,
         actions: [
           PopupMenuButton<ReportType>(
             icon: const Icon(Icons.assessment, color: Colors.white),
@@ -198,6 +212,9 @@ class _ReportScreenState extends State<ReportScreen> {
         initialAvailableSucursales: widget.initialAvailableSucursales,
         registerShare: (void Function() shareFn) {
           setState(() => _currentShare = shareFn);
+        },
+        onFilterBarReady: (Widget filterBar) {
+          if (mounted) setState(() => _stocksAppBarFilterBar = filterBar);
         },
       ),
     );
