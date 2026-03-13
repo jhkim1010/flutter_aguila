@@ -1,7 +1,10 @@
 {
   "report": {
     "ventas": {
-      "showTpago": true  
+      "showTpago": false 
+    },
+    "resumenDelDia": {
+      "showAmounts": false
     },
     "gastos": {
       "modificarGasto": true

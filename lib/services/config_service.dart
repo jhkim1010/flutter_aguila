@@ -83,9 +83,18 @@ class ConfigService {
   }
   
   /// Resumen del Día 보고서 설정 가져오기
-  /// ventas 설정을 재사용함
+  /// report.resumenDelDia가 있으면 사용, 없으면 ventas 설정을 재사용
   Map<String, dynamic>? getResumenDelDiaConfig() {
+    final resumen = _config?['report']?['resumenDelDia'] as Map<String, dynamic>?;
+    if (resumen != null && resumen.isNotEmpty) return resumen;
     return getVentasConfig();
+  }
+
+  /// Encargado 모드: Resumen del Día에서 금액을 숨기고 판매 수·마지막 venta·gastos 수만 표시
+  /// showAmounts == false 이면 true
+  bool isResumenDelDiaEncargadoMode() {
+    final resumen = getResumenDelDiaConfig();
+    return resumen?['showAmounts'] == false;
   }
   
   /// 특정 필드 표시 여부 확인 (Ventas 보고서용)

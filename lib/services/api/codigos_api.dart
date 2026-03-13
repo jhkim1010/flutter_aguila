@@ -119,4 +119,21 @@ class CodigosApi {
     
     return await _httpHandler.performPutRequest(endpoint, updatedData);
   }
+
+  /// Codigo madre(todocodigo)에 연결된 모든 codigo hijo 일괄 업데이트
+  /// 서버: PUT /api/codigos/by-todocodigo/:idTodocodigo
+  /// body: codigo 테이블 필드 (pre1..pre5, borrado, liquidacion, promocion 등)
+  Future<Map<String, dynamic>> updateCodigosByTodocodigo({
+    required String idTodocodigo,
+    required Map<String, dynamic> updatedData,
+  }) async {
+    if (idTodocodigo.isEmpty) {
+      throw Exception('id_todocodigo가 필요합니다.');
+    }
+    final endpoint = '/api/codigos/by-todocodigo/$idTodocodigo';
+    print('=== Codigos bulk update by todocodigo ===');
+    print('id_todocodigo: $idTodocodigo');
+    print('endpoint: $endpoint');
+    return await _httpHandler.performPutRequest(endpoint, updatedData);
+  }
 }

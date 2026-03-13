@@ -771,6 +771,27 @@ class CodigosBuilder {
     );
   }
 
+  /// Todocodigo 수정 데이터를 codigo hijo bulk payload로 변환 (tpre* -> pre*, borrado 등)
+  static Map<String, dynamic> _mapTodocodigoDataToCodigoPayload(Map<String, dynamic> todocodigoData) {
+    final payload = <String, dynamic>{};
+    for (var i = 1; i <= 5; i++) {
+      final key = 'tpre$i';
+      if (todocodigoData.containsKey(key)) {
+        payload['pre$i'] = todocodigoData[key];
+      }
+    }
+    if (todocodigoData.containsKey('borrado')) {
+      payload['borrado'] = todocodigoData['borrado'];
+    }
+    if (todocodigoData.containsKey('liquidacion')) {
+      payload['liquidacion'] = todocodigoData['liquidacion'];
+    }
+    if (todocodigoData.containsKey('promocion')) {
+      payload['promocion'] = todocodigoData['promocion'];
+    }
+    return payload;
+  }
+
   /// Codigo 변경사항 저장 (로깅 포함)
   static Future<Map<String, dynamic>> saveCodigoChanges({
     required DatabaseService databaseService,
@@ -850,7 +871,21 @@ class CodigosBuilder {
         updatedData: updatedData,
       );
       
-      print('✅ 업데이트 완료');
+      print('✅ Todocodigo 업데이트 완료');
+      // Codigo madre 수정 시 해당하는 모든 codigo hijo 가격·상태 일괄 반영 (codigos 라우터 bulk)
+      final payloadForHijos = _mapTodocodigoDataToCodigoPayload(updatedData);
+      if (payloadForHijos.isNotEmpty) {
+        try {
+          await databaseService.updateCodigosByTodocodigo(
+            idTodocodigo: idTodocodigo,
+            updatedData: payloadForHijos,
+          );
+          print('✅ Codigos hijos 일괄 업데이트 완료');
+        } catch (e, st) {
+          print('⚠️ Codigos hijos 일괄 업데이트 실패 (madre는 이미 저장됨): $e');
+          print('   $st');
+        }
+      }
       return response;
     } else {
       // Codigo 업데이트 요청

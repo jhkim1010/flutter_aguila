@@ -109,6 +109,15 @@ class DatabaseService {
     updatedData: updatedData,
   );
 
+  /// Codigo madre에 연결된 모든 codigo hijo 일괄 업데이트 (가격·상태)
+  Future<Map<String, dynamic>> updateCodigosByTodocodigo({
+    required String idTodocodigo,
+    required Map<String, dynamic> updatedData,
+  }) => _codigosApi.updateCodigosByTodocodigo(
+    idTodocodigo: idTodocodigo,
+    updatedData: updatedData,
+  );
+
   // ========== Todocodigos API ==========
   
   /// Todocodigo 업데이트하기

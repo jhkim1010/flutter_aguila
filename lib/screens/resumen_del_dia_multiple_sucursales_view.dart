@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../l10n/app_localizations.dart';
+import '../services/config_service.dart';
 import 'report_screen.dart';
 
 /// 여러 sucursal일 때 사용하는 Resumen del Dia 뷰
@@ -721,8 +722,18 @@ class ResumenDelDiaMultipleSucursalesView extends StatelessWidget {
 
     debugPrint('📊 수집된 메트릭: ${allMetrics.length}개 - $allMetrics');
 
+    // Encargado 모드: 금액 숨김, 오직 판매 수·마지막 venta·gastos 수만 표시
+    final configService = ConfigService();
+    final isEncargado = configService.isResumenDelDiaEncargadoMode();
+    final List<String> displayMetrics = isEncargado
+        ? allMetrics.where((m) => _isEncargadoAllowedMetric(m)).toList()
+        : allMetrics;
+    if (isEncargado) {
+      debugPrint('   → Encargado 모드: 메트릭 필터 적용 (${displayMetrics.length}개) - $displayMetrics');
+    }
+
     // 메트릭이 없으면 빈 테이블 메시지 표시
-    if (allMetrics.isEmpty) {
+    if (displayMetrics.isEmpty) {
       return Card(
         elevation: 2,
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -772,7 +783,7 @@ class ResumenDelDiaMultipleSucursalesView extends StatelessWidget {
               ),
             ),
           ],
-          rows: allMetrics.map((metric) {
+          rows: displayMetrics.map((metric) {
             // 메트릭 이름과 카테고리 파싱
             final parts = metric.split('_');
             final category = parts[0]; // vcodes, gastos, vdetalle, mpago, ingresos, fventas, fventas_mes
@@ -1056,12 +1067,17 @@ class ResumenDelDiaMultipleSucursalesView extends StatelessWidget {
                               !metric.contains('_count_') &&
                               !metric.contains('events');
             
+            // Encargado 모드에서 금액 칸은 **** 로 표시 (필터 후에도 방어적으로 적용)
+            final maskAmount = isEncargado && isCurrency;
             return DataRow(
               cells: [
                 DataCell(Text(metricName)),
                 ...sucursalValues.map((value) {
                   if (value == null) {
                     return const DataCell(Text('-'));
+                  }
+                  if (maskAmount) {
+                    return const DataCell(Text('****'));
                   }
                   if (isCurrency && value is num) {
                     return DataCell(Text(NumberFormat.currency(symbol: '\$', decimalDigits: 0).format(value)));
@@ -1071,9 +1087,11 @@ class ResumenDelDiaMultipleSucursalesView extends StatelessWidget {
                 DataCell(
                   totalValue == null
                       ? const Text('-')
-                      : isCurrency && totalValue is num
-                          ? Text(NumberFormat.currency(symbol: '\$', decimalDigits: 0).format(totalValue))
-                          : Text(totalValue.toString()),
+                      : maskAmount
+                          ? const Text('****')
+                          : isCurrency && totalValue is num
+                              ? Text(NumberFormat.currency(symbol: '\$', decimalDigits: 0).format(totalValue))
+                              : Text(totalValue.toString()),
                 ),
               ],
             );
@@ -1084,7 +1102,20 @@ class ResumenDelDiaMultipleSucursalesView extends StatelessWidget {
   }
 
   // ==================== 헬퍼 함수들 ====================
-  
+
+  /// Encargado 모드일 때 허용하는 메트릭만 표시: 판매 수, 마지막 venta 시각, gastos 수
+  static bool _isEncargadoAllowedMetric(String metric) {
+    const allowed = {
+      'vcodes_total_count_ropas',   // Total de Ropas (몇 개 판매)
+      'vcodes_last_venta_hour',     // Última Venta (마지막 venta 시각)
+      'gastos_gasto_count',         // Evento de Gastos (gastos 몇 개)
+      'vcodes_operation_count',     // 이벤트 수 (서버에서 오는 경우)
+    };
+    if (allowed.contains(metric)) return true;
+    if (metric.startsWith('vcodes_') && (metric.contains('operation_count') || metric.contains('event_count'))) return true;
+    return false;
+  }
+
   bool _isLargeScreen(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     return screenWidth >= 1200;
