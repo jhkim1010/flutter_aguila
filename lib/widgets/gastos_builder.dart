@@ -1237,15 +1237,8 @@ class GastosBuilder {
           }
           
           final total = totals[key] ?? 0;
-          String formattedTotal;
-          if (key == 'costo') {
-            formattedTotal = NumberFormat.currency(
-              symbol: '\$',
-              decimalDigits: 2,
-            ).format(total);
-          } else {
-            formattedTotal = ReportUtils.formatValue(total);
-          }
+          // showTpago false면 합계 행 금액 칸도 **** 표시
+          final String formattedTotal = ReportUtils.formatValueForTotalRow(total, key);
           
           return SizedBox(
             width: columnWidth + (index < keys.length - 1 ? 12 : 0), // DataTable의 columnSpacing(12)과 일치

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/config_service.dart';
 import 'report_utils.dart';
 
 /// 보고서 테이블의 합계 행을 빌드하는 유틸리티 클래스
@@ -20,8 +21,9 @@ class ReportTotalRowBuilder {
     bool isResumida,
     Color reportColor,
   ) {
-    // 캐시 키 생성: 데이터 길이 + 키 목록 + isResumida 조합
-    final cacheKey = '${dataList.length}_${orderedKeys.join('_')}_$isResumida';
+    // 캐시 키에 showTpago 포함 (false면 금액 칸 **** 표시)
+    final showTpago = ConfigService().getVentasConfig()?['showTpago'];
+    final cacheKey = '${dataList.length}_${orderedKeys.join('_')}_$isResumida}_$showTpago';
     
     // 캐시 확인
     if (_totalRowCache.containsKey(cacheKey) && _lastTotalRowCacheKey == cacheKey) {
@@ -74,7 +76,7 @@ class ReportTotalRowBuilder {
           Align(
             alignment: Alignment.centerRight,
             child: Text(
-              ReportUtils.formatValue(total),
+              ReportUtils.formatValueForTotalRow(total, key),
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
@@ -105,8 +107,9 @@ class ReportTotalRowBuilder {
     List<dynamic> dataList,
     Color reportColor,
   ) {
-    // 캐시 키 생성: 데이터 길이 + 키 목록 조합
-    final cacheKey = '${dataList.length}_${keys.join('_')}';
+    // 캐시 키에 showTpago 포함 (false면 금액 칸 **** 표시)
+    final showTpago = ConfigService().getVentasConfig()?['showTpago'];
+    final cacheKey = '${dataList.length}_${keys.join('_')}_$showTpago';
     
     // 캐시 확인
     if (_totalRowCache.containsKey(cacheKey) && _lastTotalRowCacheKey == cacheKey) {
@@ -159,7 +162,7 @@ class ReportTotalRowBuilder {
           Align(
             alignment: Alignment.centerRight,
             child: Text(
-              ReportUtils.formatValue(total),
+              ReportUtils.formatValueForTotalRow(total, key),
               style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,

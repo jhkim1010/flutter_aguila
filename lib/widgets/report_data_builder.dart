@@ -192,7 +192,7 @@ class ReportDataBuilder {
           Align(
             alignment: Alignment.centerRight,
             child: Text(
-              ReportUtils.formatValue(total),
+              ReportUtils.formatValueForTotalRow(total, key),
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
@@ -251,7 +251,7 @@ class ReportDataBuilder {
           Align(
             alignment: Alignment.centerRight,
             child: Text(
-              ReportUtils.formatValue(total),
+              ReportUtils.formatValueForTotalRow(total, key),
               style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,

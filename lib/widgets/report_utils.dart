@@ -150,6 +150,20 @@ class ReportUtils {
     String strValue = value.toString();
     return strValue.replaceAll('\$', '').trim();
   }
+
+  /// 합계 행(맨 마지막 줄)용 포맷: showTpago == false 이면 금액 칸은 **** 표시 (ventas 포함 모든 테이블)
+  static String formatValueForTotalRow(dynamic value, String? fieldName) {
+    final configService = ConfigService();
+    final ventasConfig = configService.getVentasConfig();
+    if (ventasConfig?['showTpago'] == false && fieldName != null && isAmountField(fieldName)) {
+      return '****';
+    }
+    return formatValue(
+      value,
+      fieldName: fieldName,
+      isCurrency: fieldName != null && isAmountField(fieldName),
+    );
+  }
   
   /// 필드명이 금액 필드인지 확인 (갯수 필드는 제외)
   static bool isAmountField(String? fieldName) {

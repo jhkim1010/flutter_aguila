@@ -4415,10 +4415,10 @@ class ReportTableBuilder {
                       ),
                     );
                   }
-                // monto 컬럼에 Factura A와 B의 monto 합계를 모두 표시
+                // monto 컬럼에 Factura A와 B의 monto 합계를 모두 표시 (showTpago false면 ****)
                   else if (index == montoIndex) {
-                  final montoAText = ReportUtils.formatValue(fventasSummary!['montoA'] as double);
-                  final montoBText = ReportUtils.formatValue(fventasSummary!['montoB'] as double);
+                  final montoAText = ReportUtils.formatValueForTotalRow(fventasSummary!['montoA'] as double, 'monto');
+                  final montoBText = ReportUtils.formatValueForTotalRow(fventasSummary!['montoB'] as double, 'monto');
                   final text = '$montoAText | $montoBText';
                   debugPrint('   → [푸터 셀] monto 컬럼 텍스트: "$text"');
                   debugPrint('   → [푸터 셀] monto 컬럼 너비: $columnWidth');
@@ -4620,9 +4620,9 @@ class ReportTableBuilder {
                         )
                       : total != null
                           ? Align(
-                              alignment: isNumericColumn ? Alignment.centerRight : Alignment.centerLeft, // 숫자 칼럼은 오른쪽 정렬
+                              alignment: isNumericColumn ? Alignment.centerRight : Alignment.centerLeft, // 숫자 칼럼은 오른쪽 정렬 (showTpago false면 금액 칸 ****)
                               child: Text(
-                                ReportUtils.formatValue(total),
+                                ReportUtils.formatValueForTotalRow(total, key),
                                 style: TextStyle(
                                   fontSize: 14, // ventas 보고서도 14px로 통일
                                   fontWeight: FontWeight.bold,
@@ -5274,14 +5274,14 @@ class ReportTableBuilder {
           return const DataCell(Text(''));
         }
         
-        // 합계가 계산된 컬럼만 합계 값 표시
+        // 합계가 계산된 컬럼만 합계 값 표시 (showTpago false면 금액 칸 ****)
         if (totals.containsKey(key)) {
           final total = totals[key] ?? 0;
           return DataCell(
             Align(
               alignment: Alignment.centerRight,
               child: Text(
-                ReportUtils.formatValue(total),
+                ReportUtils.formatValueForTotalRow(total, key),
                 style: TextStyle(
                   fontSize: 14, // ventas 보고서도 14px로 통일
                   fontWeight: FontWeight.bold,
@@ -5324,7 +5324,7 @@ class ReportTableBuilder {
         final total = totals[key] ?? 0;
         return DataCell(
           Text(
-            ReportUtils.formatValue(total),
+            ReportUtils.formatValueForTotalRow(total, key),
             textAlign: TextAlign.right,
             style: const TextStyle(
               fontWeight: FontWeight.bold,
