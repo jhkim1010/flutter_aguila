@@ -861,11 +861,19 @@ class _StocksColumnResizeHandleState extends State<_StocksColumnResizeHandle> {
             width: widget.handleWidth,
             child: Center(
               child: Container(
-                width: 3,
-                margin: const EdgeInsets.symmetric(vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.grey[600],
-                  borderRadius: BorderRadius.circular(1.5),
+                  color: Colors.grey.withOpacity(0.25),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border(
+                    left: BorderSide(color: Colors.grey[500]!, width: 1),
+                    right: BorderSide(color: Colors.grey[500]!, width: 1),
+                  ),
+                ),
+                child: Icon(
+                  Icons.drag_indicator,
+                  size: 14,
+                  color: Colors.grey[700],
                 ),
               ),
             ),

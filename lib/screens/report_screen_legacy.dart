@@ -29,6 +29,7 @@ import '../widgets/report_filter_widgets.dart';
 import '../services/secure_storage_helper.dart';
 import '../services/codigos_column_width_storage.dart';
 import '../services/stocks_column_width_storage.dart';
+import '../services/report_column_width_storage.dart';
 import '../generated/build_info.dart';
 
 // ReportType is used by ReportScreenLegacy; export from report_screen.dart
@@ -159,6 +160,10 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
   String? _codigosColumnWidthsDbKey; // 현재 로드된 키 'dbName_codigos' or 'dbName_todocodigos'
   Map<String, double>? _stocksColumnWidths; // DB별 Stocks 칼럼 너비
   String? _stocksColumnWidthsDbKey;
+  Map<String, double>? _itemsColumnWidths;
+  String? _itemsColumnWidthsDbKey;
+  Map<String, double>? _ingresosColumnWidths;
+  String? _ingresosColumnWidthsDbKey;
   
   // Clientes 보고서용 페이지네이션 상태
   int _clientesOffset = 0; // 현재 offset
@@ -8106,6 +8111,20 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
         itemsColor = ReportUtils.isBcolorviewEnabled(bcolorview) ? Colors.orange : Colors.lightBlue;
       }
       
+      final itemsDbKey = _connectedDatabaseName ?? '';
+      if (_itemsColumnWidthsDbKey != itemsDbKey) {
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          final loaded = await ReportColumnWidthStorage.load(itemsDbKey, ReportType.items);
+          if (mounted) {
+            setState(() {
+              _itemsColumnWidthsDbKey = itemsDbKey;
+              _itemsColumnWidths = loaded;
+            });
+          }
+        });
+      }
+      final mergedItemsColumnWidths = Map<String, double>.from(_itemsColumnWidths ?? {});
+
       return RepaintBoundary(
         child: ItemsBuilder.buildContent(
           data: data,
@@ -8141,8 +8160,15 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
               _selectedCategoryCode = null; // 색상 선택 시 카테고리 선택 해제
               debugPrint('🔍 [ReportScreen] _selectedColorCode 업데이트: $_selectedColorCode');
             });
-            // 색상 선택 시 API 재요청
             _reloadDataWithFilters();
+          },
+          columnWidths: mergedItemsColumnWidths.isEmpty ? null : mergedItemsColumnWidths,
+          onColumnResize: (columnKey, newWidth) {
+            setState(() {
+              _itemsColumnWidths ??= {};
+              _itemsColumnWidths![columnKey] = newWidth;
+            });
+            ReportColumnWidthStorage.save(itemsDbKey, ReportType.items, _itemsColumnWidths!);
           },
         ),
       );
@@ -8160,6 +8186,20 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
       // Ingresos 보고서 색상 (기본값: 녹색)
       Color ingresosColor = Colors.green;
       
+      final ingresosDbKey = _connectedDatabaseName ?? '';
+      if (_ingresosColumnWidthsDbKey != ingresosDbKey) {
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          final loaded = await ReportColumnWidthStorage.load(ingresosDbKey, ReportType.ingresos);
+          if (mounted) {
+            setState(() {
+              _ingresosColumnWidthsDbKey = ingresosDbKey;
+              _ingresosColumnWidths = loaded;
+            });
+          }
+        });
+      }
+      final mergedIngresosColumnWidths = Map<String, double>.from(_ingresosColumnWidths ?? {});
+
       return RepaintBoundary(
         child: IngresosBuilder.buildContent(
           data: data,
@@ -8182,11 +8222,10 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
             debugPrint('🔍 [ReportScreen] Ingresos Category 선택 콜백 호출: $categoryCode');
             setState(() {
               _selectedIngresosCategoryCode = categoryCode;
-              _selectedIngresosCompanyCode = null; // 카테고리 선택 시 회사 선택 해제
-              _selectedIngresosColorCode = null; // 카테고리 선택 시 색상 선택 해제
+              _selectedIngresosCompanyCode = null;
+              _selectedIngresosColorCode = null;
               debugPrint('🔍 [ReportScreen] _selectedIngresosCategoryCode 업데이트: $_selectedIngresosCategoryCode');
             });
-            // 카테고리 선택 시 API 재요청
             _reloadDataWithFilters();
           },
           selectedCompanyCode: _selectedIngresosCompanyCode,
@@ -8194,11 +8233,10 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
             debugPrint('🔍 [ReportScreen] Ingresos Company 선택 콜백 호출: $companyCode');
             setState(() {
               _selectedIngresosCompanyCode = companyCode;
-              _selectedIngresosCategoryCode = null; // 회사 선택 시 카테고리 선택 해제
-              _selectedIngresosColorCode = null; // 회사 선택 시 색상 선택 해제
+              _selectedIngresosCategoryCode = null;
+              _selectedIngresosColorCode = null;
               debugPrint('🔍 [ReportScreen] _selectedIngresosCompanyCode 업데이트: $_selectedIngresosCompanyCode');
             });
-            // 회사 선택 시 API 재요청
             _reloadDataWithFilters();
           },
           selectedColorCode: _selectedIngresosColorCode,
@@ -8214,6 +8252,14 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy> {
             _reloadDataWithFilters();
           },
           reportColor: ingresosColor,
+          columnWidths: mergedIngresosColumnWidths.isEmpty ? null : mergedIngresosColumnWidths,
+          onColumnResize: (columnKey, newWidth) {
+            setState(() {
+              _ingresosColumnWidths ??= {};
+              _ingresosColumnWidths![columnKey] = newWidth;
+            });
+            ReportColumnWidthStorage.save(ingresosDbKey, ReportType.ingresos, _ingresosColumnWidths!);
+          },
         ),
       );
     }

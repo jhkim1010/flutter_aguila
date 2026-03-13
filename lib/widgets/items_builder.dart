@@ -24,6 +24,8 @@ class ItemsBuilder {
     Function(String?)? onCategorySelected,
     String? selectedColorCode,
     Function(String?)? onColorSelected,
+    Map<String, double>? columnWidths,
+    void Function(String columnKey, double newWidth)? onColumnResize,
   }) {
     debugPrint('═══════════════════════════════════════════════════════');
     debugPrint('🔍 [Items Builder] buildContent 시작');
@@ -51,6 +53,8 @@ class ItemsBuilder {
       onCategorySelected: onCategorySelected,
       selectedColorCode: selectedColorCode,
       onColorSelected: onColorSelected,
+      columnWidths: columnWidths,
+      onColumnResize: onColumnResize,
     );
 
     debugPrint('   → extractedData.summaryCard != null: ${extractedData.summaryCard != null}');
@@ -92,6 +96,8 @@ class ItemsBuilder {
     Function(String?)? onCategorySelected,
     String? selectedColorCode,
     Function(String?)? onColorSelected,
+    Map<String, double>? columnWidths,
+    void Function(String columnKey, double newWidth)? onColumnResize,
   }) {
     // summary 카드 (모바일 폰에서는 표시하지 않음)
     Widget? summaryCard;
@@ -366,6 +372,8 @@ class ItemsBuilder {
                   }
                   debugPrint('═══════════════════════════════════════════════════════');
                 },
+                externalColumnWidths: columnWidths,
+                onColumnResize: onColumnResize,
               );
               
               debugPrint('═══════════════════════════════════════════════════════');
@@ -395,8 +403,9 @@ class ItemsBuilder {
                   onSort: (columnIndex, ascending) {
                     debugPrint('🔍 [Items Builder] 빈 productsTable onSort 콜백 호출');
                     debugPrint('   → columnIndex: $columnIndex, ascending: $ascending');
-                    // 빈 테이블에서는 정렬할 데이터가 없지만 콜백은 유지
                   },
+                  externalColumnWidths: columnWidths,
+                  onColumnResize: onColumnResize,
                 );
                 debugPrint('   → 빈 productsTable 생성 완료');
               } else {
@@ -424,6 +433,8 @@ class ItemsBuilder {
       summaryByColorTable: summaryByColorTable,
       productsTable: productsTable,
       scrollController: scrollController,
+      columnWidths: columnWidths,
+      onColumnResize: onColumnResize,
     );
   }
 
@@ -605,6 +616,8 @@ class ItemsBuilder {
         onSort: (columnIndex, ascending) {
           debugPrint('🔍 [Items Builder] 빈 productsTable onSort (대형화면 레이아웃 유지용)');
         },
+        externalColumnWidths: data.columnWidths,
+        onColumnResize: data.onColumnResize,
       );
       
       return LayoutBuilder(
@@ -1799,6 +1812,8 @@ class _ExtractedData {
   final Widget? summaryByColorTable;
   final Widget? productsTable;
   final ScrollController scrollController;
+  final Map<String, double>? columnWidths;
+  final void Function(String columnKey, double newWidth)? onColumnResize;
 
   const _ExtractedData({
     this.summaryCard,
@@ -1807,6 +1822,8 @@ class _ExtractedData {
     this.summaryByColorTable,
     this.productsTable,
     required this.scrollController,
+    this.columnWidths,
+    this.onColumnResize,
   });
 }
 

@@ -26,6 +26,8 @@ class IngresosBuilder {
     Function(String?)? onCompanySelected,
     String? selectedColorCode,
     Function(String?)? onColorSelected,
+    Map<String, double>? columnWidths,
+    void Function(String columnKey, double newWidth)? onColumnResize,
   }) {
     // 공통 데이터 추출
     final extractedData = _extractCommonData(
@@ -46,6 +48,8 @@ class IngresosBuilder {
       onCompanySelected: onCompanySelected,
       selectedColorCode: selectedColorCode,
       onColorSelected: onColorSelected,
+      columnWidths: columnWidths,
+      onColumnResize: onColumnResize,
     );
 
     // 화면 크기에 따라 적절한 레이아웃 선택
@@ -80,6 +84,8 @@ class IngresosBuilder {
     Function(String?)? onCompanySelected,
     String? selectedColorCode,
     Function(String?)? onColorSelected,
+    Map<String, double>? columnWidths,
+    void Function(String columnKey, double newWidth)? onColumnResize,
   }) {
     // summary 카드 (모바일 폰에서는 표시하지 않음)
     Widget? summaryCard;
@@ -280,6 +286,8 @@ class IngresosBuilder {
                     onSort(key, ascending);
                   }
                 },
+                externalColumnWidths: columnWidths,
+                onColumnResize: onColumnResize,
               );
               
               debugPrint('   → productsTable: 생성됨 (타입: ${productsTable.runtimeType})');
@@ -307,6 +315,8 @@ class IngresosBuilder {
       summaryByColorTable: summaryByColorTable,
       productsTable: productsTable,
       scrollController: scrollController,
+      columnWidths: columnWidths,
+      onColumnResize: onColumnResize,
     );
   }
 
@@ -810,6 +820,8 @@ class _ExtractedData {
   final Widget? summaryByColorTable;
   final Widget? productsTable;
   final ScrollController scrollController;
+  final Map<String, double>? columnWidths;
+  final void Function(String columnKey, double newWidth)? onColumnResize;
 
   const _ExtractedData({
     this.summaryCard,
@@ -818,6 +830,8 @@ class _ExtractedData {
     this.summaryByColorTable,
     this.productsTable,
     required this.scrollController,
+    this.columnWidths,
+    this.onColumnResize,
   });
 }
 

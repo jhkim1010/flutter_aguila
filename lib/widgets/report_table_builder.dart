@@ -297,6 +297,8 @@ class ReportTableBuilder {
     String? unit, // ventas report의 unit (vcode, day, month, year)
     Function(Map<String, dynamic>)? onRowDoubleTap, // 행 더블 클릭 콜백
     Function(Map<String, dynamic>)? onRowTap, // 행 단일 클릭 콜백
+    Map<String, double>? externalColumnWidths, // Items/Ingresos/Gastos 칼럼 리사이즈용
+    void Function(String columnKey, double newWidth)? onColumnResize,
   }) {
     // 디버깅: buildTableFromList 시작
     debugPrint('═══════════════════════════════════════════════════════');
@@ -767,6 +769,9 @@ class ReportTableBuilder {
       debugPrint('   → tcredito: $baseTcredito -> ${columnWidths['tcredito']}');
       debugPrint('   → tbanco: $baseTbanco -> ${columnWidths['tbanco']}');
     }
+    if (externalColumnWidths != null && externalColumnWidths.isNotEmpty) {
+      columnWidths.addAll(externalColumnWidths);
+    }
     
     final columns = keys.asMap().entries.map((entry) {
       final index = entry.key;
@@ -1225,6 +1230,7 @@ class ReportTableBuilder {
         unit: unit,
         scrollController: scrollController,
         horizontalScrollController: horizontalScrollController,
+        onColumnResize: onColumnResize,
       );
     }
     
@@ -2512,6 +2518,7 @@ class ReportTableBuilder {
     bool sortAscending = true,
     bool isLargeScreen = false, // 대형 화면 여부 (칼럼 간격 조정용)
     bool useMeasuredWidths = false, // _ItemsTableWithMeasuredColumns에서 측정된 너비인지 여부
+    bool hideHeadingRow = false, // true면 items/ingresos에서 DataTable 헤더 숨김 (커스텀 헤더+리사이즈 사용 시)
   }) {
     // 디버깅: buildDataTable 파라미터 확인
     debugPrint('═══════════════════════════════════════════════════════');
@@ -2633,10 +2640,10 @@ class ReportTableBuilder {
     final isIngresos = reportType == ReportType.ingresos;
     final isItemsOrIngresos = isItems || isIngresos;
     
-    // items/ingresos: DataTable 기본 헤더 사용(37) → 헤더와 데이터가 같은 레이아웃으로 정렬 보장
+    // items/ingresos: hideHeadingRow이면 커스텀 헤더 사용(0), 아니면 DataTable 기본 헤더(37)
     // ventas: 별도 헤더 사용하므로 DataTable 헤더 숨김(0)
     final isVentas = reportType == ReportType.ventas;
-    final headingRowHeight = isVentas ? 0.0 : (isItemsOrIngresos ? 37.0 : 56.0);
+    final headingRowHeight = isVentas ? 0.0 : (isItemsOrIngresos && hideHeadingRow ? 0.0 : (isItemsOrIngresos ? 37.0 : 56.0));
     
     debugPrint('═══════════════════════════════════════════════════════');
     debugPrint('🔍 [Items/Ingresos/Ventas DataTable] buildDataTable 호출 - 헤더 중복 및 정렬 디버깅');
@@ -4646,7 +4653,7 @@ class ReportTableBuilder {
     );
   }
 
-  // 헤더 행 빌드 (수평 스크롤 동기화용)
+  // 헤더 행 빌드 (수평 스크롤 동기화용). onColumnResize가 있으면 items/ingresos에서 칼럼 사이에 리사이즈 핸들 표시
   static Widget buildHeaderRow(
     List<String> keys,
     List<DataColumn> columns,
@@ -4658,8 +4665,9 @@ class ReportTableBuilder {
     ReportType? reportType,
     double? explicitWidth,
     String? unit,
-    bool useMeasuredWidths = false, // _ItemsTableWithMeasuredColumns에서 측정된 너비인지 여부
-    bool isLargeScreen = false, // 대형 화면 여부 (헤더 칼럼 간격 조정용)
+    bool useMeasuredWidths = false,
+    bool isLargeScreen = false,
+    void Function(String columnKey, double newWidth)? onColumnResize,
   }) {
     // 디버깅: 함수 진입 확인 (가장 먼저 실행)
     debugPrint('═══════════════════════════════════════════════════════');
@@ -5200,8 +5208,14 @@ class ReportTableBuilder {
                 );
               },
             ),
-            // 마지막 칼럼이 아니면 columnSpacing 추가 (alertas는 1, 다른 보고서는 8)
-            // 헤더와 데이터 행의 칼럼 간격이 정확히 일치해야 함
+            // Items/Ingresos에서 칼럼 리사이즈 사용 시: 칼럼 사이에 리사이즈 핸들 표시
+            if (onColumnResize != null && isItemsOrIngresos && index < columns.length - 1)
+              _ReportTableResizeHandle(
+                key: ValueKey('rt_resize_$key'),
+                columnKey: key,
+                currentWidth: baseColumnWidth,
+                onResize: (double w) => onColumnResize!(key, w.clamp(50.0, 2000.0)),
+              ),
             if (index < columns.length - 1) SizedBox(width: headerColumnSpacing.toDouble()),
           ];
         }).toList(),
@@ -5396,6 +5410,7 @@ class _ItemsTableWithMeasuredColumns extends StatefulWidget {
   final String? unit;
   final ScrollController scrollController;
   final ScrollController? horizontalScrollController;
+  final void Function(String columnKey, double newWidth)? onColumnResize;
 
   const _ItemsTableWithMeasuredColumns({
     Key? key,
@@ -5414,6 +5429,7 @@ class _ItemsTableWithMeasuredColumns extends StatefulWidget {
     this.unit,
     required this.scrollController,
     this.horizontalScrollController,
+    this.onColumnResize,
   }) : super(key: key);
 
   @override
@@ -5880,7 +5896,8 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
         print('   → useMeasuredWidthsForHeader: $useMeasuredWidthsForHeader');
         
         final isItemsOrIngresosTable = widget.reportType == ReportType.items || widget.reportType == ReportType.ingresos;
-        final headerRow = isItemsOrIngresosTable
+        final useCustomHeaderWithResize = isItemsOrIngresosTable && widget.onColumnResize != null;
+        final headerRow = isItemsOrIngresosTable && !useCustomHeaderWithResize
             ? null  // items/ingresos는 DataTable 기본 헤더 사용 → 별도 헤더 미생성
             : ReportTableBuilder.buildHeaderRow(
                 widget.keys,
@@ -5894,6 +5911,7 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
                 unit: widget.unit,
                 useMeasuredWidths: useMeasuredWidthsForHeader,
                 isLargeScreen: isLargeScreen,
+                onColumnResize: widget.onColumnResize,
               );
         
         debugPrint('🔍 [_ItemsTableWithMeasuredColumns] buildHeaderRow 호출 후 (items/ingresos면 null)');
@@ -6061,8 +6079,9 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
                   columnWidths: columnWidthsForHeader, // 헤더와 동일한 칼럼 너비 사용
                   sortColumn: widget.sortColumn,
                   sortAscending: widget.sortAscending,
-                  isLargeScreen: isLargeScreenForTable, // 대형 화면 여부 전달 (칼럼 간격 조정용)
-                  useMeasuredWidths: useMeasuredWidthsForData, // 헤더와 동일하게 설정
+                  isLargeScreen: isLargeScreenForTable,
+                  useMeasuredWidths: useMeasuredWidthsForData,
+                  hideHeadingRow: useCustomHeaderWithResize, // 커스텀 헤더(리사이즈) 사용 시 DataTable 헤더 숨김
                 );
                 
                 debugPrint('═══════════════════════════════════════════════════════');
@@ -6246,5 +6265,72 @@ class _ItemsTableWithMeasuredColumnsState extends State<_ItemsTableWithMeasuredC
       },
     );
   }
+}
+
+/// ReportTable(Items/Ingresos) 칼럼 리사이즈 핸들
+class _ReportTableResizeHandle extends StatefulWidget {
+  final String columnKey;
+  final double currentWidth;
+  final void Function(double newWidth) onResize;
+
+  const _ReportTableResizeHandle({
+    super.key,
+    required this.columnKey,
+    required this.currentWidth,
+    required this.onResize,
+  });
+
+  @override
+  State<_ReportTableResizeHandle> createState() => _ReportTableResizeHandleState();
+}
+
+class _ReportTableResizeHandleState extends State<_ReportTableResizeHandle> {
+  static const double _handleWidth = 14.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Arrastrar para ajustar ancho',
+      child: MouseRegion(
+        cursor: SystemMouseCursors.resizeColumn,
+        child: Listener(
+          behavior: HitTestBehavior.opaque,
+          onPointerDown: (e) {
+            _initialWidth = widget.currentWidth;
+            _initialPointerX = e.position.dx;
+            _isDragging = true;
+          },
+          onPointerMove: (e) {
+            if (!_isDragging) return;
+            final totalDelta = e.position.dx - _initialPointerX;
+            widget.onResize(_initialWidth + totalDelta);
+          },
+          onPointerUp: (_) => _isDragging = false,
+          onPointerCancel: (_) => _isDragging = false,
+          child: SizedBox(
+            width: _handleWidth,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.grey.withOpacity(0.25),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border(
+                    left: BorderSide(color: Colors.grey[500]!, width: 1),
+                    right: BorderSide(color: Colors.grey[500]!, width: 1),
+                  ),
+                ),
+                child: Icon(Icons.drag_indicator, size: 14, color: Colors.grey[700]),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  double _initialWidth = 0;
+  double _initialPointerX = 0;
+  bool _isDragging = false;
 }
 
