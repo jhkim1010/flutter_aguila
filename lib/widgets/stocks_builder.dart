@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'report_utils.dart';
 import '../utils/mobile_layout_helper.dart';
+import 'resizable_data_table.dart';
 
 /// Stocks 보고서 UI 빌더
 class StocksBuilder {
@@ -30,6 +31,66 @@ class StocksBuilder {
     'pre1': 'Precio 1', 'pre2': 'Precio 2', 'pre3': 'Precio 3', 'pre4': 'Precio 4', 'pre5': 'Precio 5',
     'sucursal': 'Sucursal', 'id_codigo1': 'ID Codigo1',
   };
+
+  /// ResizableDataTable에 전달할 칼럼 정의 리스트.
+  static List<TableColumnDef> buildColumnDefs() => [
+    const TableColumnDef(key: 'codigo',         label: 'Codigo',          defaultWidth: 120, sortable: true),
+    const TableColumnDef(key: 'descripcion',    label: 'Descripción',     defaultWidth: 250, sortable: true),
+    const TableColumnDef(key: 'totaling',       label: 'Totaling',        defaultWidth: 90,  textAlign: TextAlign.right),
+    const TableColumnDef(key: 'totalventa',     label: 'Total Venta',     defaultWidth: 100, textAlign: TextAlign.right),
+    const TableColumnDef(key: 'todayingreso',   label: 'Today Ingreso',   defaultWidth: 110, textAlign: TextAlign.right),
+    const TableColumnDef(key: 'todayventa',     label: 'Today Venta',     defaultWidth: 100, textAlign: TextAlign.right),
+    const TableColumnDef(key: 'totalreservado', label: 'Total Reservado', defaultWidth: 120, textAlign: TextAlign.right),
+    const TableColumnDef(key: 'cntoffset',      label: 'Cnt Offset',      defaultWidth: 100, textAlign: TextAlign.right),
+    const TableColumnDef(key: 'stockreal',      label: 'Stock Real',      defaultWidth: 100, textAlign: TextAlign.right),
+    const TableColumnDef(key: 'porcentaje',     label: 'Porcentaje',      defaultWidth: 100, textAlign: TextAlign.right),
+    const TableColumnDef(key: 'first_date',     label: 'First Date',      defaultWidth: 100),
+    const TableColumnDef(key: 'last_date',      label: 'Last Date',       defaultWidth: 100),
+    const TableColumnDef(key: 'pre1',           label: 'Precio 1',        defaultWidth: 90,  textAlign: TextAlign.right),
+    const TableColumnDef(key: 'pre2',           label: 'Precio 2',        defaultWidth: 90,  textAlign: TextAlign.right),
+    const TableColumnDef(key: 'pre3',           label: 'Precio 3',        defaultWidth: 90,  textAlign: TextAlign.right),
+    const TableColumnDef(key: 'pre4',           label: 'Precio 4',        defaultWidth: 90,  textAlign: TextAlign.right),
+    const TableColumnDef(key: 'pre5',           label: 'Precio 5',        defaultWidth: 90,  textAlign: TextAlign.right),
+    const TableColumnDef(key: 'sucursal',       label: 'Sucursal',        defaultWidth: 90,  textAlign: TextAlign.center),
+    const TableColumnDef(key: 'id_codigo1',     label: 'ID Codigo1',      defaultWidth: 100, textAlign: TextAlign.right),
+  ];
+
+  /// 데이터 리스트를 셀 위젯 리스트로 변환.
+  /// 셀 크기(SizedBox 래핑)는 ResizableDataTable 내부에서 columnWidths 기준으로 적용된다.
+  static List<List<Widget>> buildRows(List<dynamic> data) {
+    return data.map((item) => _buildRowCells(item as Map<String, dynamic>)).toList();
+  }
+
+  static List<Widget> _buildRowCells(Map<String, dynamic> stock) {
+    String val(String key) => stock[key]?.toString() ?? 'N/A';
+    return [
+      Text(stock['codigo']?.toString() ?? stock['tcode']?.toString() ?? 'N/A',
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+          maxLines: 1, overflow: TextOverflow.ellipsis),
+      Text(stock['descripcion']?.toString() ?? stock['tdesc']?.toString() ?? 'N/A',
+          style: TextStyle(fontSize: 10, color: Colors.grey[700]),
+          maxLines: 5, overflow: TextOverflow.ellipsis),
+      Text(val('totaling'),       style: TextStyle(fontSize: 10, color: Colors.grey[700]), textAlign: TextAlign.right),
+      Text(val('totalventa'),     style: TextStyle(fontSize: 10, color: Colors.grey[700]), textAlign: TextAlign.right),
+      Text(val('todayingreso'),   style: TextStyle(fontSize: 10, color: Colors.grey[700]), textAlign: TextAlign.right),
+      Text(val('todayventa'),     style: TextStyle(fontSize: 10, color: Colors.grey[700]), textAlign: TextAlign.right),
+      Text(val('totalreservado'), style: TextStyle(fontSize: 10, color: Colors.grey[700]), textAlign: TextAlign.right),
+      Text(val('cntoffset'),      style: TextStyle(fontSize: 10, color: Colors.grey[700]), textAlign: TextAlign.right),
+      Text(stock['stockreal']?.toString() ?? stock['stockreal3']?.toString() ?? 'N/A',
+          style: TextStyle(fontSize: 10, color: Colors.grey[700]), textAlign: TextAlign.right),
+      Text(_formatPorcentaje(stock['porcentaje']),
+          style: TextStyle(fontSize: 10, color: Colors.grey[700]), textAlign: TextAlign.right),
+      Text(val('first_date'),  style: TextStyle(fontSize: 10, color: Colors.grey[700])),
+      Text(val('last_date'),   style: TextStyle(fontSize: 10, color: Colors.grey[700])),
+      Text(val('pre1'),  style: TextStyle(fontSize: 10, color: Colors.grey[700]), textAlign: TextAlign.right),
+      Text(val('pre2'),  style: TextStyle(fontSize: 10, color: Colors.grey[700]), textAlign: TextAlign.right),
+      Text(val('pre3'),  style: TextStyle(fontSize: 10, color: Colors.grey[700]), textAlign: TextAlign.right),
+      Text(val('pre4'),  style: TextStyle(fontSize: 10, color: Colors.grey[700]), textAlign: TextAlign.right),
+      Text(val('pre5'),  style: TextStyle(fontSize: 10, color: Colors.grey[700]), textAlign: TextAlign.right),
+      Text(val('sucursal'),   style: TextStyle(fontSize: 10, color: Colors.grey[700]), textAlign: TextAlign.center),
+      Text(val('id_codigo1'), style: TextStyle(fontSize: 10, color: Colors.grey[700]), textAlign: TextAlign.right),
+    ];
+  }
 
   /// Stocks 콘텐츠 빌드
   static Widget buildContent({
