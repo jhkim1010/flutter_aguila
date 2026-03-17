@@ -149,19 +149,8 @@ git commit -m "feat: add TableColumnDef model with tests"
 - Modify: `lib/widgets/resizable_data_table.dart`
 - Modify: `test/widgets/resizable_data_table_test.dart`
 
-- [ ] **Step 1: 리사이즈 핸들 위젯 테스트 추가**
-
-`test/widgets/resizable_data_table_test.dart`에 추가:
-
-```dart
-  group('_TableResizeHandle (간접 테스트)', () {
-    testWidgets('헤더 셀이 정확히 columnWidth만 차지한다 (핸들 너비 미포함)', (tester) async {
-      // 이 테스트는 Task 3 (ResizableDataTable) 완성 후 실행 가능.
-      // 여기서는 핸들이 Stack 오버레이임을 확인하기 위한 자리 표시자.
-      expect(true, true); // placeholder
-    });
-  });
-```
+- [ ] **Step 1: `_TableResizeHandle` 구현을 `resizable_data_table.dart`에 추가**
+> **참고:** 핸들 레이아웃 너비 검증 테스트는 Task 3의 `'헤더 SizedBox가 columnWidth만큼 차지한다'`에서 수행한다. 여기에 별도 placeholder 그룹은 추가하지 않는다.
 
 - [ ] **Step 2: `_TableResizeHandle` 구현을 `resizable_data_table.dart`에 추가**
 
@@ -253,7 +242,7 @@ Expected: `All tests passed`
 - [ ] **Step 4: 커밋**
 
 ```bash
-git add lib/widgets/resizable_data_table.dart test/widgets/resizable_data_table_test.dart
+git add lib/widgets/resizable_data_table.dart
 git commit -m "feat: add _TableResizeHandle with Stack overlay approach"
 ```
 
@@ -479,6 +468,14 @@ class _ResizableDataTableState extends State<ResizableDataTable> {
   double _columnWidth(String key) =>
       widget.columnWidths[key] ?? widget.columns.firstWhere((c) => c.key == key).defaultWidth;
 
+  /// 모든 칼럼 너비 + 칼럼 간격(8px × (n-1)) + 좌우 패딩(16 × 2)의 합계.
+  /// 데이터 영역 SingleChildScrollView의 child SizedBox 너비로 사용한다.
+  double _totalContentWidth() {
+    final colWidths = widget.columns.fold<double>(0, (sum, c) => sum + _columnWidth(c.key));
+    final gaps = widget.columns.length > 1 ? (widget.columns.length - 1) * 8.0 : 0.0;
+    return colWidths + gaps + 32.0; // 32 = 좌우 패딩 16 × 2
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -524,38 +521,44 @@ class _ResizableDataTableState extends State<ResizableDataTable> {
             ),
           ),
         ),
-        // 데이터 행 리스트 (세로 스크롤)
+        // 데이터 행 리스트 (가로 스크롤 + 세로 스크롤)
+        // _dataScrollController는 여기 단 하나의 SingleChildScrollView에만 연결된다.
+        // ListView.builder 내부에 per-row SingleChildScrollView를 두면
+        // Flutter StateError ("ScrollController attached to multiple scroll views")가 발생한다.
         Expanded(
-          child: ListView.builder(
-            itemCount: widget.rows.length,
-            itemBuilder: (context, index) {
-              return Container(
-                decoration: BoxDecoration(
-                  border: Border(bottom: BorderSide(color: Colors.grey[300]!, width: 1)),
-                ),
-                child: SingleChildScrollView(
-                  controller: _dataScrollController,
-                  scrollDirection: Axis.horizontal,
-                  physics: const ClampingScrollPhysics(),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        for (int i = 0; i < widget.columns.length; i++) ...[
-                          if (i > 0) const SizedBox(width: 8),
-                          SizedBox(
-                            width: _columnWidth(widget.columns[i].key),
-                            child: widget.rows[index][i],
-                          ),
-                        ],
-                      ],
+          child: SingleChildScrollView(
+            controller: _dataScrollController,
+            scrollDirection: Axis.horizontal,
+            physics: const ClampingScrollPhysics(),
+            child: SizedBox(
+              width: _totalContentWidth(),
+              child: ListView.builder(
+                itemCount: widget.rows.length,
+                itemBuilder: (context, index) {
+                  return Container(
+                    decoration: BoxDecoration(
+                      border: Border(bottom: BorderSide(color: Colors.grey[300]!, width: 1)),
                     ),
-                  ),
-                ),
-              );
-            },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          for (int i = 0; i < widget.columns.length; i++) ...[
+                            if (i > 0) const SizedBox(width: 8),
+                            SizedBox(
+                              width: _columnWidth(widget.columns[i].key),
+                              child: widget.rows[index][i],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
           ),
         ),
         // 푸터 (합계 행 등, 선택사항)
@@ -698,11 +701,14 @@ void main() {
       // 필터가 AppBar 내부 Row에 포함됨 (1줄)
       expect(find.text('Filter1'), findsOneWidget);
       expect(find.text('Filter2'), findsOneWidget);
-      // preferredSize.height == kToolbarHeight
+      // preferredSize.height는 StatelessWidget이라 BuildContext가 없으므로
+      // 항상 kToolbarHeight * 2를 반환한다 (Scaffold 공간 예약용 고정값).
+      // 실제 렌더링 높이(1줄)는 build() 내부 AppBar의 toolbarHeight로 결정되며
+      // 테스트 범위 밖이다 (Scaffold integration test에서 검증).
       final appBar = tester.widget<ReportResponsiveAppBar>(
         find.byType(ReportResponsiveAppBar),
       );
-      expect(appBar.preferredSize.height, kToolbarHeight);
+      expect(appBar.preferredSize.height, kToolbarHeight * 2);
     });
 
     testWidgets('width < 600일 때 2줄 레이아웃이다', (tester) async {
