@@ -39,6 +39,9 @@ void main() {
       // 필터가 AppBar 내부 Row에 포함됨 (1줄)
       expect(find.text('Filter1'), findsOneWidget);
       expect(find.text('Filter2'), findsOneWidget);
+      // 1줄 레이아웃의 AppBar 키 확인 (2줄 레이아웃이 아님을 보장)
+      expect(find.byKey(const Key('report_appbar_1line')), findsOneWidget);
+      expect(find.byKey(const Key('report_appbar_2line')), findsNothing);
       // preferredSize.height는 StatelessWidget이라 BuildContext가 없으므로
       // 항상 kToolbarHeight * 2를 반환한다 (Scaffold 공간 예약용 고정값).
       // 실제 렌더링 높이(1줄)는 build() 내부 AppBar의 toolbarHeight로 결정되며
@@ -60,6 +63,10 @@ void main() {
         find.byType(ReportResponsiveAppBar),
       );
       expect(appBar.preferredSize.height, kToolbarHeight * 2);
+      // 2줄 레이아웃의 AppBar 키 확인
+      expect(find.byKey(const Key('report_appbar_2line')), findsOneWidget);
+      // 필터 위젯이 2줄에서 실제로 렌더링됨
+      expect(find.text('Filter1'), findsOneWidget);
     });
   });
 }

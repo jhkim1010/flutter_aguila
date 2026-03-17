@@ -55,6 +55,7 @@ class ReportResponsiveAppBar extends StatelessWidget
     if (!twoLine) {
       // 1줄: 제목 + 필터 + actions 모두 한 줄
       return AppBar(
+        key: const Key('report_appbar_1line'),
         backgroundColor: color,
         foregroundColor: Colors.white,
         leading: onMenuPressed != null
@@ -74,6 +75,7 @@ class ReportResponsiveAppBar extends StatelessWidget
 
     // 2줄: 제목 행 + 필터 행
     return AppBar(
+      key: const Key('report_appbar_2line'),
       backgroundColor: color,
       foregroundColor: Colors.white,
       toolbarHeight: kToolbarHeight * 2,
