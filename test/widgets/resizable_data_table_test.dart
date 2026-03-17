@@ -27,6 +27,10 @@ void main() {
         sortable: true,
       );
       expect(col.key, 'price');
+      expect(col.label, 'Precio');
+      expect(col.defaultWidth, 80.0);
+      expect(col.minWidth, 40.0);
+      expect(col.maxWidth, 300.0);
       expect(col.textAlign, TextAlign.right);
       expect(col.sortable, true);
     });
