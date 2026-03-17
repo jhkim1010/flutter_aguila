@@ -50,5 +50,9 @@ if (_codigosSoloBorrados) {
 ## Scope
 
 - 수정 파일: `report_data_loader.dart` 1개
-- 수정 행: 3개 블록 (codigos, todocodigos, 재로드 공통)
+- 수정 행: 3개 블록 (codigos 초기 로드, todocodigos 초기 로드, 페이지네이션 공통)
 - 백엔드: `borrado=0` 쿼리 파라미터 지원 확인됨
+
+## Known Pre-existing Issue (Out of Scope)
+
+페이지네이션 블록(라인 ~1153)은 이미 `_selectedSucursal` 필터가 누락된 상태이나, 이는 이번 변경의 범위 밖이다. `borrado` 필터만 추가하고 sucursal 누락은 별도 이슈로 처리한다.
