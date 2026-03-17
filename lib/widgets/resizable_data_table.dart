@@ -54,16 +54,16 @@ class _TableResizeHandleState extends State<_TableResizeHandle> {
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: 'Arrastrar para ajustar ancho',
-      child: MouseRegion(
-        cursor: SystemMouseCursors.resizeColumn,
+    return MouseRegion(
+      cursor: SystemMouseCursors.resizeColumn,
+      child: Tooltip(
+        message: 'Arrastrar para ajustar ancho',
         child: Listener(
           behavior: HitTestBehavior.opaque,
           onPointerDown: (e) {
             _initialWidth = widget.currentWidth;
             _initialPointerX = e.position.dx;
-            _isDragging = true;
+            setState(() => _isDragging = true);
           },
           onPointerMove: (e) {
             if (!_isDragging) return;
@@ -72,15 +72,15 @@ class _TableResizeHandleState extends State<_TableResizeHandle> {
                 .clamp(widget.minWidth, widget.maxWidth);
             widget.onResize(newWidth);
           },
-          onPointerUp: (_) => _isDragging = false,
-          onPointerCancel: (_) => _isDragging = false,
+          onPointerUp: (_) => setState(() => _isDragging = false),
+          onPointerCancel: (_) => setState(() => _isDragging = false),
           child: SizedBox(
             width: 14,
             child: Center(
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.25),
+                  color: Colors.grey.withValues(alpha: 0.25),
                   borderRadius: BorderRadius.circular(4),
                   border: Border(
                     left: BorderSide(color: Colors.grey[500]!, width: 1),
