@@ -4,9 +4,86 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'report_utils.dart';
 import '../utils/platform_utils.dart';
 import 'report_table_builder.dart';
+import 'resizable_data_table.dart';
 
 /// Items 보고서 UI 빌더
 class ItemsBuilder {
+  /// 칼럼 키 순서 (ResizableDataTable용 — start_date/end_date/sucursal 제외)
+  static const List<String> itemsColumnKeys = [
+    'codigo1', 'desc1', 'ProductName', 'totalCantidad',
+    'CategoryCode', 'CompanyCode', 'tprendas', 'timporte',
+  ];
+
+  /// ResizableDataTable에 전달할 칼럼 정의 리스트.
+  static List<TableColumnDef> buildColumnDefs() => [
+    const TableColumnDef(key: 'codigo1',      label: 'Código',          defaultWidth: 300, sortable: true),
+    const TableColumnDef(key: 'desc1',         label: 'Desc',             defaultWidth: 200, sortable: true),
+    const TableColumnDef(key: 'ProductName',   label: 'Producto',         defaultWidth: 400, sortable: true),
+    const TableColumnDef(key: 'totalCantidad', label: 'Total Cantidad',   defaultWidth: 156, textAlign: TextAlign.right, sortable: true),
+    const TableColumnDef(key: 'CategoryCode',  label: 'Categoría',        defaultWidth: 150, sortable: true),
+    const TableColumnDef(key: 'CompanyCode',   label: 'Empresa',          defaultWidth: 150, sortable: true),
+    const TableColumnDef(key: 'tprendas',      label: 'T.Prendas',        defaultWidth: 100, textAlign: TextAlign.right),
+    const TableColumnDef(key: 'timporte',      label: 'T.Importe',        defaultWidth: 120, textAlign: TextAlign.right),
+  ];
+
+  /// 데이터 리스트를 셀 위젯 리스트로 변환 (ResizableDataTable용).
+  static List<List<Widget>> buildRows(List<dynamic> data) {
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map((item) => _buildRowCells(item))
+        .toList();
+  }
+
+  static List<Widget> _buildRowCells(Map<String, dynamic> item) {
+    String val(String key) => item[key]?.toString() ?? '';
+
+    // totalCantidad: 숫자 포맷
+    final cantidadRaw = item['totalCantidad'];
+    final cantidadNum = num.tryParse(
+          cantidadRaw?.toString().replaceAll(',', '') ?? '0') ??
+        0;
+    final formattedCantidad = NumberFormat('#,##0').format(cantidadNum);
+
+    // tprendas: 숫자 포맷
+    final tprendasRaw = item['tprendas'];
+    final tprendasNum = num.tryParse(
+          tprendasRaw?.toString().replaceAll(',', '') ?? '0') ??
+        0;
+    final formattedTprendas = NumberFormat('#,##0').format(tprendasNum);
+
+    // timporte: 숫자 포맷
+    final timporteRaw = item['timporte'];
+    final timporteNum = num.tryParse(
+          timporteRaw?.toString().replaceAll(',', '').replaceAll('\$', '') ?? '0') ??
+        0;
+    final formattedTimporte = NumberFormat('#,##0').format(timporteNum);
+
+    return [
+      Text(val('codigo1'),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+          maxLines: 1, overflow: TextOverflow.ellipsis),
+      Text(val('desc1'),
+          style: TextStyle(fontSize: 10, color: Colors.grey[700]),
+          maxLines: 2, overflow: TextOverflow.ellipsis),
+      Text(val('ProductName'),
+          style: TextStyle(fontSize: 10, color: Colors.grey[700]),
+          maxLines: 2, overflow: TextOverflow.ellipsis),
+      Text(formattedCantidad,
+          style: TextStyle(fontSize: 10, color: Colors.grey[700]),
+          textAlign: TextAlign.right),
+      Text(val('CategoryCode'),
+          style: TextStyle(fontSize: 10, color: Colors.grey[700])),
+      Text(val('CompanyCode'),
+          style: TextStyle(fontSize: 10, color: Colors.grey[700])),
+      Text(formattedTprendas,
+          style: TextStyle(fontSize: 10, color: Colors.grey[700]),
+          textAlign: TextAlign.right),
+      Text(formattedTimporte,
+          style: TextStyle(fontSize: 10, color: Colors.grey[700]),
+          textAlign: TextAlign.right),
+    ];
+  }
+
   /// Items 콘텐츠 빌드 (화면 크기에 따라 적절한 레이아웃 선택)
   static Widget buildContent({
     required Map<String, dynamic> data,
@@ -329,83 +406,69 @@ class ItemsBuilder {
               debugPrint('   → ⚠️ [정렬 확인] onSort 콜백이 제대로 전달되는지 확인');
               debugPrint('═══════════════════════════════════════════════════════');
               
-              productsTable = ReportTableBuilder.buildTableFromList(
-                productsList,
-                displayedItemsCount,
-                itemsPerPage,
-                scrollController,
-                ReportType.items,
+              // ResizableDataTable을 사용한 products 테이블 빌드
+              final colDefs = buildColumnDefs();
+              // 실제 데이터에 존재하는 키 기준으로 활성 칼럼 결정
+              final dataKeys = productsList.isNotEmpty
+                  ? (productsList.first as Map<String, dynamic>).keys.toSet()
+                  : <String>{};
+              final activeColDefs = colDefs
+                  .where((c) => dataKeys.contains(c.key) || productsList.isEmpty)
+                  .toList();
+              // colDefs에 없는 새로운 키 추가 (start_date/end_date/sucursal 제외)
+              final excludedKeys = <String>{
+                'start_date', 'end_date', 'startDate', 'endDate', 'sucursal'
+              };
+              for (final key in dataKeys) {
+                if (!excludedKeys.contains(key) &&
+                    !activeColDefs.any((c) => c.key == key)) {
+                  activeColDefs.add(TableColumnDef(
+                    key: key,
+                    label: key,
+                    defaultWidth: 120,
+                  ));
+                }
+              }
+
+              final defaults = {for (final c in activeColDefs) c.key: c.defaultWidth};
+              final mergedWidths = Map<String, double>.from(defaults)
+                ..addAll(columnWidths ?? {});
+
+              final rows = buildRows(productsList.take(displayedItemsCount).toList());
+
+              productsTable = ResizableDataTable(
+                columns: activeColDefs,
+                rows: rows,
+                columnWidths: mergedWidths,
+                onColumnResize: onColumnResize ?? (_, __) {},
                 sortColumn: sortColumn,
                 sortAscending: sortAscending,
-                horizontalScrollController: horizontalScrollController,
-                reportColor: reportColor,
-                onSort: (columnIndex, ascending) {
-                  debugPrint('═══════════════════════════════════════════════════════');
-                  debugPrint('🔍 [Items Builder] productsTable onSort 콜백 호출');
-                  debugPrint('   → columnIndex: $columnIndex');
-                  debugPrint('   → ascending: $ascending');
-                  debugPrint('   → productsList.length: ${productsList.length}');
-                  debugPrint('   → ⚠️ [문제 확인] productsTable 정렬이 다른 테이블에 영향을 주는지 확인');
-                  debugPrint('   → ⚠️ [해결] productsTable만 정렬되도록 확인 필요');
-                  
-                  final allKeys = productsList.isNotEmpty 
-                      ? (productsList.first as Map<String, dynamic>).keys.toList()
-                      : <String>[];
-                  debugPrint('   → allKeys: $allKeys');
-                  debugPrint('   → allKeys.length: ${allKeys.length}');
-                  
-                  if (columnIndex >= 0 && columnIndex < allKeys.length) {
-                    final key = allKeys[columnIndex];
-                    debugPrint('   → 선택된 정렬 키: $key');
-                    debugPrint('   → 현재 sortColumn: $sortColumn');
-                    debugPrint('   → 현재 sortAscending: $sortAscending');
-                    debugPrint('   → ⚠️ [문제 확인] 이 키($key)가 Category/Color 테이블의 키와 겹치는지 확인');
-                    debugPrint('   → ⚠️ [문제 확인] Category 테이블 키: CategoryCode, CategoryName, totalCantidad');
-                    debugPrint('   → ⚠️ [문제 확인] Color 테이블 키: ColorCode, ColorName, totalCantidad');
-                    debugPrint('   → ⚠️ [문제 확인] Products 테이블 키: $allKeys');
-                    debugPrint('   → ⚠️ [문제] totalCantidad가 겹치면 Category/Color 테이블도 정렬됨!');
-                    debugPrint('   → onSort 호출: onSort($key, $ascending)');
-                    onSort(key, ascending);
-                    debugPrint('   ✅ onSort 호출 완료');
-                  } else {
-                    debugPrint('   ⚠️ 경고: columnIndex($columnIndex)가 유효 범위를 벗어남 (0~${allKeys.length - 1})');
-                  }
-                  debugPrint('═══════════════════════════════════════════════════════');
-                },
-                externalColumnWidths: columnWidths,
-                onColumnResize: onColumnResize,
+                onSort: (column, ascending) => onSort(column, ascending),
+                headerColor: reportColor ?? Colors.blue,
+                scrollController: scrollController,
               );
-              
-              debugPrint('═══════════════════════════════════════════════════════');
-              debugPrint('🔍 [Items Builder] buildTableFromList 호출 후');
-              debugPrint('   → productsTable: 생성됨');
-              debugPrint('   → ⚠️ [중복 확인] 별도 헤더와 DataTable 헤더가 동시에 표시되는지 확인');
-              debugPrint('   → ⚠️ [정렬 확인] 헤더 칼럼 클릭 시 onSort 콜백이 호출되는지 확인');
-              debugPrint('═══════════════════════════════════════════════════════');
-              
-              debugPrint('   → productsTable: 생성됨 (타입: ${productsTable.runtimeType})');
+
+              debugPrint('   → productsTable: ResizableDataTable 생성됨 (rows: ${rows.length})');
             } else {
               debugPrint('   ⚠️ [ItemsBuilder] productsList가 비어있습니다! (필터링 후)');
               
               // 대형화면에서는 빈 테이블이라도 표시 (레이아웃 유지)
               if (PlatformUtils.isDesktop()) {
-                debugPrint('   → 대형화면: 빈 테이블 생성 (레이아웃 유지)');
-                productsTable = ReportTableBuilder.buildTableFromList(
-                  <Map<String, dynamic>>[],
-                  displayedItemsCount,
-                  itemsPerPage,
-                  scrollController,
-                  ReportType.items,
+                debugPrint('   → 대형화면: 빈 ResizableDataTable 생성 (레이아웃 유지)');
+                final colDefs = buildColumnDefs();
+                final defaults = {for (final c in colDefs) c.key: c.defaultWidth};
+                final mergedWidths = Map<String, double>.from(defaults)
+                  ..addAll(columnWidths ?? {});
+                productsTable = ResizableDataTable(
+                  columns: colDefs,
+                  rows: const [],
+                  columnWidths: mergedWidths,
+                  onColumnResize: onColumnResize ?? (_, __) {},
                   sortColumn: sortColumn,
                   sortAscending: sortAscending,
-                  horizontalScrollController: horizontalScrollController,
-                  reportColor: reportColor,
-                  onSort: (columnIndex, ascending) {
-                    debugPrint('🔍 [Items Builder] 빈 productsTable onSort 콜백 호출');
-                    debugPrint('   → columnIndex: $columnIndex, ascending: $ascending');
-                  },
-                  externalColumnWidths: columnWidths,
-                  onColumnResize: onColumnResize,
+                  onSort: (column, ascending) => onSort(column, ascending),
+                  headerColor: reportColor ?? Colors.blue,
+                  scrollController: scrollController,
                 );
                 debugPrint('   → 빈 productsTable 생성 완료');
               } else {
@@ -602,22 +665,21 @@ class ItemsBuilder {
       debugPrint('   ⚠️ summary는 있지만 productsTable이 null');
       debugPrint('   → 대형화면: 좌우 분할 레이아웃 유지 (빈 productsTable 표시)');
       
-      // 빈 productsTable 생성
-      final emptyProductsTable = ReportTableBuilder.buildTableFromList(
-        <Map<String, dynamic>>[],
-        100,
-        100,
-        data.scrollController,
-        ReportType.items,
+      // 빈 productsTable 생성 (ResizableDataTable)
+      final emptyColDefs = buildColumnDefs();
+      final emptyDefaults = {for (final c in emptyColDefs) c.key: c.defaultWidth};
+      final emptyMergedWidths = Map<String, double>.from(emptyDefaults)
+        ..addAll(data.columnWidths ?? {});
+      final emptyProductsTable = ResizableDataTable(
+        columns: emptyColDefs,
+        rows: const [],
+        columnWidths: emptyMergedWidths,
+        onColumnResize: data.onColumnResize ?? (_, __) {},
         sortColumn: null,
         sortAscending: true,
-        horizontalScrollController: null,
-        reportColor: null,
-        onSort: (columnIndex, ascending) {
-          debugPrint('🔍 [Items Builder] 빈 productsTable onSort (대형화면 레이아웃 유지용)');
-        },
-        externalColumnWidths: data.columnWidths,
-        onColumnResize: data.onColumnResize,
+        onSort: (column, ascending) {},
+        headerColor: Colors.blue,
+        scrollController: data.scrollController,
       );
       
       return LayoutBuilder(
