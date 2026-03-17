@@ -3,10 +3,54 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'report_utils.dart';
+import 'resizable_data_table.dart';
 import '../utils/platform_utils.dart';
 
 /// Gastos 보고서 UI 빌더
 class GastosBuilder {
+  /// 상세 내역 테이블 칼럼 정의 (ResizableDataTable용)
+  static List<TableColumnDef> buildColumnDefs() => [
+    const TableColumnDef(key: 'fecha',    label: 'Fecha',    defaultWidth: 120, sortable: true),
+    const TableColumnDef(key: 'hora',     label: 'Hora',     defaultWidth: 100, sortable: true),
+    const TableColumnDef(key: 'tema',     label: 'Tema',     defaultWidth: 200, sortable: true),
+    const TableColumnDef(key: 'rubro',    label: 'Rubro',    defaultWidth: 150, sortable: true),
+    const TableColumnDef(key: 'codigo',   label: 'Código',   defaultWidth: 120, sortable: true),
+    const TableColumnDef(key: 'costo',    label: 'Costo',    defaultWidth: 150, textAlign: TextAlign.right, sortable: true),
+    const TableColumnDef(key: 'sucursal', label: 'Sucursal', defaultWidth: 120, sortable: true),
+  ];
+
+  /// 상세 내역 테이블 행 데이터 빌드 (ResizableDataTable용)
+  static List<List<Widget>> buildRows(List<dynamic> data) {
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map((item) => _buildRowCells(item))
+        .toList();
+  }
+
+  static List<Widget> _buildRowCells(Map<String, dynamic> item) {
+    String val(String key) => item[key]?.toString() ?? '';
+
+    // costo: 통화 형식
+    final costoRaw = item['costo'];
+    final costoNum = num.tryParse(
+          costoRaw?.toString().replaceAll(',', '').replaceAll('\$', '') ?? '0') ??
+        0;
+    final formattedCosto = NumberFormat.currency(
+      symbol: '\$',
+      decimalDigits: 2,
+    ).format(costoNum);
+
+    return [
+      Text(val('fecha'),    style: const TextStyle(fontSize: 12)),
+      Text(val('hora'),     style: const TextStyle(fontSize: 12)),
+      Text(val('tema'),     style: const TextStyle(fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis),
+      Text(val('rubro'),    style: const TextStyle(fontSize: 12)),
+      Text(val('codigo'),   style: const TextStyle(fontSize: 12)),
+      Text(formattedCosto,  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.red), textAlign: TextAlign.right),
+      Text(val('sucursal'), style: const TextStyle(fontSize: 12)),
+    ];
+  }
+
   /// Gastos 콘텐츠 빌드
   static Widget buildContent({
     required Map<String, dynamic> data,
@@ -20,6 +64,8 @@ class GastosBuilder {
     Function(String?)? onRubroSelected,
     bool isLoadingDetail = false,
     ScrollController? horizontalScrollController,
+    Map<String, double>? columnWidths,
+    void Function(String key, double newWidth)? onColumnResize,
   }) {
     // summary 카드
     Widget? summaryCard;
@@ -92,6 +138,8 @@ class GastosBuilder {
           sortColumn,
           sortAscending,
           horizontalScrollController: horizontalScrollController,
+          columnWidths: columnWidths,
+          onColumnResize: onColumnResize,
         );
       }
     }
@@ -134,6 +182,8 @@ class GastosBuilder {
           sortColumn,
           sortAscending,
           horizontalScrollController: horizontalScrollController,
+          columnWidths: columnWidths,
+          onColumnResize: onColumnResize,
         );
       }
     }
@@ -868,6 +918,8 @@ class GastosBuilder {
     String? sortColumn,
     bool sortAscending, {
     ScrollController? horizontalScrollController,
+    Map<String, double>? columnWidths,
+    void Function(String key, double newWidth)? onColumnResize,
   }) {
     if (detailList.isEmpty) {
       return const Center(
@@ -959,187 +1011,41 @@ class GastosBuilder {
 
     final reportColor = Colors.red;
 
-    // 테이블 너비 계산
-    final columnWidths = <String, double>{
-      'fecha': 120,
-      'hora': 100,
-      'tema': 200,
-      'rubro': 150,
-      'codigo': 120,
-      'costo': 150,
-      'sucursal': 120,
-    };
-    double tableWidth = 0.0;
-    for (int i = 0; i < orderedKeys.length; i++) {
-      final key = orderedKeys[i];
-      final width = columnWidths[key] ?? 150.0;
-      tableWidth += width;
-      if (i < orderedKeys.length - 1) {
-        tableWidth += 12; // columnSpacing
+    // 칼럼 정의 (buildColumnDefs() 기준) 및 너비 병합
+    final colDefs = buildColumnDefs();
+    // orderedKeys에 실제 존재하는 컬럼만 colDefs에서 필터링
+    final activeColDefs = colDefs.where((c) => orderedKeys.contains(c.key)).toList();
+    // orderedKeys에 있지만 colDefs에 없는 추가 키도 포함
+    for (final key in orderedKeys) {
+      if (!activeColDefs.any((c) => c.key == key)) {
+        activeColDefs.add(TableColumnDef(key: key, label: _getColumnLabel(key), defaultWidth: 150));
       }
     }
-    
-    // horizontalScrollController가 없으면 새로 생성
-    // 테이블과 footer가 같은 컨트롤러를 공유하되, 테이블은 별도 컨트롤러를 사용하고 NotificationListener로 동기화
-    final tableHorizontalScrollController = horizontalScrollController ?? ScrollController();
-    final effectiveHorizontalScrollController = horizontalScrollController ?? ScrollController();
-    
-    return Column(
-      children: [
-        Expanded(
-          child: SingleChildScrollView(
-            controller: scrollController,
-            scrollDirection: Axis.vertical,
-            child: NotificationListener<ScrollNotification>(
-              onNotification: (notification) {
-                // 디버깅: gastos 스크롤 이벤트 감지
-                debugPrint('🔍 [Gastos Detail] NotificationListener 스크롤 이벤트');
-                debugPrint('   → notification 타입: ${notification.runtimeType}');
-                debugPrint('   → notification.depth: ${notification.depth}');
-                
-                // 테이블의 수평 스크롤 이벤트를 footer에 전달
-                if (notification is ScrollUpdateNotification) {
-                  debugPrint('   → ScrollUpdateNotification 감지');
-                  debugPrint('   → metrics.axis: ${notification.metrics.axis}');
-                  debugPrint('   → metrics.pixels: ${notification.metrics.pixels}');
-                  debugPrint('   → metrics.maxScrollExtent: ${notification.metrics.maxScrollExtent}');
-                  debugPrint('   → effectiveHorizontalScrollController.hasClients: ${effectiveHorizontalScrollController.hasClients}');
-                  
-                  if (notification.metrics.axis == Axis.horizontal) {
-                    debugPrint('   ✅ 수평 스크롤 이벤트 확인');
-                    
-                    if (effectiveHorizontalScrollController.hasClients) {
-                      // footer의 스크롤 위치를 테이블과 동기화
-                      final tableScrollPosition = notification.metrics.pixels;
-                      final footerScrollPosition = effectiveHorizontalScrollController.position.pixels;
-                      final difference = (tableScrollPosition - footerScrollPosition).abs();
-                      
-                      debugPrint('   → 테이블 스크롤 위치: $tableScrollPosition');
-                      debugPrint('   → 푸터 스크롤 위치: $footerScrollPosition');
-                      debugPrint('   → 위치 차이: $difference');
-                      
-                      // 위치가 다를 때만 업데이트 (무한 루프 방지)
-                      if (difference > 0.1) {
-                        debugPrint('   ✅ 위치 차이 > 0.1, jumpTo 호출: $tableScrollPosition');
-                        effectiveHorizontalScrollController.jumpTo(tableScrollPosition);
-                      } else {
-                        debugPrint('   ⚠️ 위치 차이 <= 0.1, 동기화 스킵');
-                      }
-                    } else {
-                      debugPrint('   ⚠️ effectiveHorizontalScrollController에 클라이언트가 없음');
-                    }
-                  } else {
-                    debugPrint('   ⚠️ 수직 스크롤 이벤트 (무시)');
-                  }
-                } else if (notification is ScrollStartNotification) {
-                  debugPrint('   → ScrollStartNotification 감지');
-                  debugPrint('   → metrics.axis: ${notification.metrics.axis}');
-                } else if (notification is ScrollEndNotification) {
-                  debugPrint('   → ScrollEndNotification 감지');
-                  debugPrint('   → metrics.axis: ${notification.metrics.axis}');
-                }
-                return false;
-              },
-              child: SingleChildScrollView(
-                controller: tableHorizontalScrollController,
-                scrollDirection: Axis.horizontal,
-                child: NotificationListener<ScrollNotification>(
-                  onNotification: (notification) {
-                    // 테이블의 수평 스크롤을 footer에 동기화
-                    if (notification is ScrollUpdateNotification &&
-                        notification.metrics.axis == Axis.horizontal &&
-                        effectiveHorizontalScrollController.hasClients) {
-                      final tableScrollPosition = notification.metrics.pixels;
-                      final footerScrollPosition = effectiveHorizontalScrollController.position.pixels;
-                      final difference = (tableScrollPosition - footerScrollPosition).abs();
-                      
-                      if (difference > 0.1) {
-                        effectiveHorizontalScrollController.jumpTo(tableScrollPosition);
-                      }
-                    }
-                    return false;
-                  },
-                  child: SizedBox(
-                    width: tableWidth,
-                    child: DataTable(
-                      columnSpacing: 12,
-                      dataRowMinHeight: 32,
-                      dataRowMaxHeight: 37,
-                      headingRowHeight: 37,
-                      headingRowColor: MaterialStateProperty.all(
-                        reportColor.withOpacity(0.1),
-                      ),
-                      columns: orderedKeys.map((key) {
-                        final isSorted = sortColumn == key;
-                        return DataColumn(
-                          label: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                _getColumnLabel(key),
-                                style: const TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              if (isSorted)
-                                Icon(
-                                  sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                                  size: 16,
-                                  color: reportColor,
-                                ),
-                            ],
-                          ),
-                          onSort: (columnIndex, ascending) {
-                            onSort(key, ascending);
-                          },
-                        );
-                      }).toList(),
-                      rows: sortedList.map((item) {
-                        if (item is Map<String, dynamic>) {
-                          return DataRow(
-                            cells: orderedKeys.map((key) {
-                              final value = item[key];
-                              String formattedValue = ReportUtils.formatValue(value);
-                              
-                              // costo 필드는 통화 형식으로 표시
-                              final isCosto = key == 'costo';
-                              if (isCosto) {
-                                final costoNum = num.tryParse(value?.toString().replaceAll(',', '').replaceAll('\$', '') ?? '0') ?? 0;
-                                formattedValue = NumberFormat.currency(
-                                  symbol: '\$',
-                                  decimalDigits: 2,
-                                ).format(costoNum);
-                              }
-                              
-                              // 숫자 또는 금액 필드는 오른쪽 정렬
-                              final isNumeric = ReportUtils.isNumeric(value) || isCosto;
-                              return DataCell(
-                                Text(
-                                  formattedValue,
-                                  textAlign: isNumeric ? TextAlign.right : TextAlign.left,
-                                ),
-                              );
-                            }).toList(),
-                          );
-                        }
-                        return DataRow(cells: orderedKeys.map((_) => const DataCell(Text(''))).toList());
-                      }).toList(),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        // 총합 행 추가 (수평 스크롤 동기화)
-        SingleChildScrollView(
-          controller: effectiveHorizontalScrollController,
-          scrollDirection: Axis.horizontal,
-          physics: const NeverScrollableScrollPhysics(),
-          child: SizedBox(
-            width: tableWidth,
-            child: GastosBuilder._buildFixedTotalRow(orderedKeys, sortedList, reportColor),
-          ),
-        ),
-      ],
+
+    final defaults = {for (final c in activeColDefs) c.key: c.defaultWidth};
+    final mergedWidths = Map<String, double>.from(defaults)
+      ..addAll(columnWidths ?? {});
+
+    final rows = buildRows(sortedList);
+
+    // 합계 행 빌드 (footer)
+    final footerRow = _buildFixedTotalRow(
+      activeColDefs.map((c) => c.key).toList(),
+      sortedList,
+      reportColor,
+    );
+
+    return ResizableDataTable(
+      columns: activeColDefs,
+      rows: rows,
+      columnWidths: mergedWidths,
+      onColumnResize: onColumnResize ?? (_, __) {},
+      sortColumn: sortColumn,
+      sortAscending: sortAscending,
+      onSort: (column, ascending) => onSort(column, ascending),
+      headerColor: reportColor,
+      scrollController: scrollController,
+      footerWidget: footerRow,
     );
   }
 

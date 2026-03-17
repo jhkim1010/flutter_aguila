@@ -3,10 +3,83 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'report_utils.dart';
 import '../utils/platform_utils.dart';
-import 'report_table_builder.dart';
+import 'resizable_data_table.dart';
 
 /// Ingresos 보고서 UI 빌더
 class IngresosBuilder {
+  /// Known ingresos products column definitions for ResizableDataTable.
+  /// Columns are listed in the canonical order returned by the API.
+  /// Columns excluded by the old path (start_date, end_date, startDate, endDate, sucursal)
+  /// are not included here.
+  static List<TableColumnDef> buildColumnDefs() => const [
+    TableColumnDef(key: 'codigo',      label: 'Código',       defaultWidth: 180, sortable: true),
+    TableColumnDef(key: 'descripcion', label: 'Descripción',  defaultWidth: 200, sortable: true),
+    TableColumnDef(key: 'CategoryCode', label: 'Categoría',   defaultWidth: 150, sortable: true),
+    TableColumnDef(key: 'CompanyCode',  label: 'Empresa',     defaultWidth: 150, sortable: true),
+    TableColumnDef(key: 'tevent',      label: 'T.Evento',     defaultWidth: 100, textAlign: TextAlign.right, sortable: true),
+    TableColumnDef(key: 'tcant',       label: 'Cantidad',     defaultWidth: 120, textAlign: TextAlign.right, sortable: true),
+    TableColumnDef(key: 'tIngreso',    label: 'T.Ingreso',    defaultWidth: 120, textAlign: TextAlign.right, sortable: true),
+    TableColumnDef(key: 'tingreso',    label: 'T.Ingreso',    defaultWidth: 120, textAlign: TextAlign.right, sortable: true),
+    TableColumnDef(key: 'cntEvent',    label: 'Cnt.Evento',   defaultWidth: 100, textAlign: TextAlign.right, sortable: true),
+    TableColumnDef(key: 'cntevent',    label: 'Cnt.Evento',   defaultWidth: 100, textAlign: TextAlign.right, sortable: true),
+  ];
+
+  /// Filters buildColumnDefs() to only the columns that actually appear in [data].
+  /// This mirrors the old path: columns are derived dynamically from the first item's keys,
+  /// excluding start_date / end_date / startDate / endDate / sucursal.
+  static List<TableColumnDef> buildColumnDefsForData(List<dynamic> data) {
+    if (data.isEmpty) return buildColumnDefs();
+    final firstItem = data.first;
+    if (firstItem is! Map) return buildColumnDefs();
+    final presentKeys = Set<String>.from(firstItem.keys.where((k) =>
+        k != 'start_date' &&
+        k != 'end_date' &&
+        k != 'startDate' &&
+        k != 'endDate' &&
+        k != 'sucursal'));
+    final defs = buildColumnDefs().where((d) => presentKeys.contains(d.key)).toList();
+    if (defs.isEmpty) return buildColumnDefs();
+    return defs;
+  }
+
+  /// Converts a products list into ResizableDataTable row cells.
+  static List<List<Widget>> buildRows(
+    List<dynamic> data, {
+    List<TableColumnDef>? columnDefs,
+  }) {
+    final cols = columnDefs ?? buildColumnDefsForData(data);
+    return data
+        .map((item) => _buildRowCells(item as Map<String, dynamic>, cols))
+        .toList();
+  }
+
+  static List<Widget> _buildRowCells(
+    Map<String, dynamic> item,
+    List<TableColumnDef> columnDefs,
+  ) {
+    return columnDefs.map((col) {
+      final key = col.key;
+      final value = item[key];
+      final isCode = key == 'codigo';
+      final isDesc = key == 'descripcion' || key == 'CategoryCode' || key == 'CompanyCode';
+      final isNumeric = !isCode && !isDesc && ReportUtils.isNumeric(value);
+      final displayValue = (isCode || isDesc)
+          ? (value?.toString() ?? '')
+          : ReportUtils.formatValue(value);
+      return Text(
+        displayValue,
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: isCode ? FontWeight.bold : FontWeight.normal,
+          color: isCode ? null : Colors.grey[700],
+        ),
+        textAlign: isNumeric ? TextAlign.right : TextAlign.left,
+        maxLines: isDesc ? 3 : 1,
+        overflow: TextOverflow.ellipsis,
+      );
+    }).toList();
+  }
+
   /// Ingresos 콘텐츠 빌드 (화면 크기에 따라 적절한 레이아웃 선택)
   static Widget buildContent({
     required Map<String, dynamic> data,
@@ -260,37 +333,30 @@ class IngresosBuilder {
             
             if (productsList.isNotEmpty) {
               debugPrint('═══════════════════════════════════════════════════════');
-              debugPrint('📊 [IngresosBuilder] productsTable 생성 시작');
+              debugPrint('📊 [IngresosBuilder] productsTable 생성 시작 (ResizableDataTable)');
               debugPrint('   → productsList.length: ${productsList.length}');
               debugPrint('   → displayedItemsCount: $displayedItemsCount');
-              debugPrint('   → itemsPerPage: $itemsPerPage');
-              debugPrint('   → scrollController: ${scrollController != null}');
-              debugPrint('   → horizontalScrollController: ${horizontalScrollController != null}');
-              
-              productsTable = ReportTableBuilder.buildTableFromList(
-                productsList,
-                displayedItemsCount,
-                itemsPerPage,
-                scrollController,
-                ReportType.ingresos,
+
+              final displayedList = productsList.take(displayedItemsCount).toList();
+              final cols = buildColumnDefsForData(displayedList);
+              final mergedWidths = <String, double>{
+                for (final col in cols) col.key: col.defaultWidth,
+                if (columnWidths != null) ...columnWidths,
+              };
+
+              productsTable = ResizableDataTable(
+                columns: cols,
+                rows: buildRows(displayedList, columnDefs: cols),
+                columnWidths: mergedWidths,
+                onColumnResize: onColumnResize ?? (_, __) {},
                 sortColumn: sortColumn,
                 sortAscending: sortAscending,
-                horizontalScrollController: horizontalScrollController,
-                reportColor: reportColor,
-                onSort: (columnIndex, ascending) {
-                  final allKeys = productsList.isNotEmpty 
-                      ? (productsList.first as Map<String, dynamic>).keys.toList()
-                      : <String>[];
-                  if (columnIndex >= 0 && columnIndex < allKeys.length) {
-                    final key = allKeys[columnIndex];
-                    onSort(key, ascending);
-                  }
-                },
-                externalColumnWidths: columnWidths,
-                onColumnResize: onColumnResize,
+                onSort: onSort,
+                headerColor: reportColor ?? Colors.purple,
+                scrollController: scrollController,
               );
-              
-              debugPrint('   → productsTable: 생성됨 (타입: ${productsTable.runtimeType})');
+
+              debugPrint('   → productsTable: ResizableDataTable 생성됨');
             } else {
               debugPrint('   ⚠️ [IngresosBuilder] productsList가 비어있습니다! (필터링 후)');
             }

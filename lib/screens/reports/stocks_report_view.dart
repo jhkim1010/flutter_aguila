@@ -13,6 +13,7 @@ import '../../widgets/report_filters.dart';
 import '../../widgets/report_filter_widgets.dart';
 import '../../widgets/report_total_row_builder.dart';
 import '../../widgets/stocks_builder.dart';
+import '../../widgets/resizable_data_table.dart';
 import '../../services/stocks_column_width_storage.dart';
 import 'report_view_connector.dart';
 
@@ -391,7 +392,7 @@ class _StocksReportViewState extends State<StocksReportView> {
     } else if (data.containsKey('bcolorview')) {
       stocksColor = ReportUtils.isBcolorviewEnabled(data['bcolorview']) ? Colors.orange : Colors.lightBlue;
     }
-    final dbKey = ''; // Stocks 전용 뷰는 DB 키 없이 하나의 저장소 사용
+    const dbKey = ''; // Stocks 전용 뷰는 DB 키 없이 하나의 저장소 사용
     if (_stocksColumnWidthsDbKey != dbKey) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         final loaded = await StocksColumnWidthStorage.load(dbKey);
@@ -403,43 +404,37 @@ class _StocksReportViewState extends State<StocksReportView> {
         }
       });
     }
-    final defaults = StocksBuilder.defaultStockColumnWidths;
+    final defaults = {
+      for (final col in StocksBuilder.buildColumnDefs()) col.key: col.defaultWidth
+    };
     final mergedColumnWidths = Map<String, double>.from(defaults)
       ..addAll(_stocksColumnWidths ?? {});
-    final headerWidget = StocksBuilder.buildHeader(
-      reportType: ReportType.stocks,
+
+    final dataList = data['data'] as List? ?? [];
+
+    return ResizableDataTable(
+      columns: StocksBuilder.buildColumnDefs(),
+      rows: StocksBuilder.buildRows(dataList),
+      columnWidths: mergedColumnWidths,
+      onColumnResize: (key, newWidth) {
+        setState(() {
+          _stocksColumnWidths ??= {};
+          _stocksColumnWidths![key] = newWidth;
+        });
+        StocksColumnWidthStorage.save(dbKey, _stocksColumnWidths!);
+      },
       sortColumn: _stocksSortColumn,
       sortAscending: _stocksSortAscending,
       onSort: (column, ascending) {
         setState(() {
-          if (_stocksSortColumn == column) {
-            _stocksSortAscending = ascending;
-          } else {
-            _stocksSortColumn = column;
-            _stocksSortAscending = false;
-          }
+          _stocksSortColumn = column;
+          _stocksSortAscending = ascending;
         });
         _notifyStateChanged();
         _reloadDataWithFilters();
       },
-      reportColor: stocksColor,
-      columnWidths: mergedColumnWidths,
-      onColumnResize: (columnKey, newWidth) {
-        setState(() {
-          _stocksColumnWidths ??= {};
-          _stocksColumnWidths![columnKey] = newWidth;
-        });
-        StocksColumnWidthStorage.save(dbKey, _stocksColumnWidths!);
-      },
-    );
-    return StocksBuilder.buildContent(
-      data: data,
-      context: context,
-      scrollController: _scrollController,
+      headerColor: stocksColor,
       isLoadingMore: _isLoadingMoreStocks,
-      reportColor: stocksColor,
-      headerWidget: headerWidget,
-      columnWidths: mergedColumnWidths,
     );
   }
 

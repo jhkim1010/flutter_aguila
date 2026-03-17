@@ -17,6 +17,7 @@ import '../widgets/report_utils.dart';
 import '../widgets/items_date_range_selector.dart';
 import '../widgets/report_table_builder.dart';
 import '../widgets/codigos_builder.dart';
+import '../widgets/resizable_data_table.dart';
 import '../widgets/stocks_builder.dart';
 import '../widgets/gastos_builder.dart';
 import '../widgets/items_builder.dart';
@@ -29,6 +30,7 @@ import '../widgets/report_filter_widgets.dart';
 import '../services/secure_storage_helper.dart';
 import '../services/codigos_column_width_storage.dart';
 import '../services/stocks_column_width_storage.dart';
+import '../services/gastos_column_width_storage.dart';
 import '../services/report_column_width_storage.dart';
 import '../generated/build_info.dart';
 
@@ -171,6 +173,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy>
   String? _codigosColumnWidthsDbKey; // 현재 로드된 키 'dbName_codigos' or 'dbName_todocodigos'
   Map<String, double>? _stocksColumnWidths; // DB별 Stocks 칼럼 너비
   String? _stocksColumnWidthsDbKey;
+  Map<String, double>? _gastosColumnWidths; // Gastos 상세 내역 칼럼 너비
   Map<String, double>? _itemsColumnWidths;
   String? _itemsColumnWidthsDbKey;
   Map<String, double>? _ingresosColumnWidths;
@@ -322,6 +325,17 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy>
         print('📅 Ventas 보고서 초기 descontado 필터 설정: $_ventasDescontado');
       }
     }
+    // Gastos 보고서의 경우 저장된 칼럼 너비 로드
+    if (widget.reportType == ReportType.gastos) {
+      GastosColumnWidthStorage.load().then((loaded) {
+        if (loaded != null && mounted) {
+          setState(() {
+            _gastosColumnWidths = loaded;
+          });
+        }
+      });
+    }
+
     // 초기 상태 저장
     WidgetsBinding.instance.addPostFrameCallback((_) {
       print('🟦🟦🟦 [report_screen.dart:280] addPostFrameCallback 실행');
@@ -5432,6 +5446,11 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy>
         // _getDisplayedData()를 사용하여 필터링/정렬 적용
         final displayedData = _getDisplayedData();
         // 성능 최적화: RepaintBoundary로 감싸서 불필요한 리페인트 방지
+        final gastosDefaults = {
+          for (final col in GastosBuilder.buildColumnDefs()) col.key: col.defaultWidth
+        };
+        final mergedGastosWidths = Map<String, double>.from(gastosDefaults)
+          ..addAll(_gastosColumnWidths ?? {});
         return RepaintBoundary(
           child: GastosBuilder.buildContent(
             data: displayedData,
@@ -5449,6 +5468,14 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy>
             selectedRubroCode: _selectedRubroCode,
             isLoadingDetail: _isLoadingGastosDetail,
             horizontalScrollController: _horizontalScrollController,
+            columnWidths: mergedGastosWidths,
+            onColumnResize: (key, newWidth) {
+              setState(() {
+                _gastosColumnWidths ??= {};
+                _gastosColumnWidths![key] = newWidth;
+              });
+              GastosColumnWidthStorage.save(_gastosColumnWidths!);
+            },
             onRubroSelected: (rubroCode) {
               debugPrint('🔍 [ReportScreen] Rubro 선택 콜백 호출: $rubroCode');
               setState(() {
@@ -5461,15 +5488,20 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy>
           ),
         );
       }
-      
+
       // 기존 구조: data가 Map이고 detail 키가 있는 경우
-      if (data.containsKey('data') && 
+      if (data.containsKey('data') &&
           data['data'] is Map &&
           (data['data'] as Map).containsKey('detail')) {
         print('📊 Gastos 기존 구조 감지: data(Map) + detail');
         final filteringWord = _filteringWordController.text.trim();
         // _getDisplayedData()를 사용하여 필터링/정렬 적용
         final displayedData = _getDisplayedData();
+        final gastosDefaults = {
+          for (final col in GastosBuilder.buildColumnDefs()) col.key: col.defaultWidth
+        };
+        final mergedGastosWidths = Map<String, double>.from(gastosDefaults)
+          ..addAll(_gastosColumnWidths ?? {});
         // 성능 최적화: RepaintBoundary로 감싸서 불필요한 리페인트 방지
         return RepaintBoundary(
           child: GastosBuilder.buildContent(
@@ -5488,6 +5520,14 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy>
             selectedRubroCode: _selectedRubroCode,
             isLoadingDetail: _isLoadingGastosDetail,
             horizontalScrollController: _horizontalScrollController,
+            columnWidths: mergedGastosWidths,
+            onColumnResize: (key, newWidth) {
+              setState(() {
+                _gastosColumnWidths ??= {};
+                _gastosColumnWidths![key] = newWidth;
+              });
+              GastosColumnWidthStorage.save(_gastosColumnWidths!);
+            },
             onRubroSelected: (rubroCode) {
               debugPrint('🔍 [ReportScreen] Rubro 선택 콜백 호출: $rubroCode');
               setState(() {

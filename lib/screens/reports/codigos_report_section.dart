@@ -129,36 +129,6 @@ mixin CodigosReportMixin on State<ReportScreenLegacy> {
       mergedColumnWidths.addAll(_codigosColumnWidths!);
     }
 
-    // 헤더 위젯 생성 (리사이즈 시 상태 반영 및 저장)
-    final headerWidget = CodigosBuilder.buildHeader(
-      reportType: widget.reportType,
-      sortColumn: _codigosSortColumn,
-      sortAscending: _codigosSortAscending,
-      onSort: (column, ascending) {
-        setState(() {
-          if (_codigosSortColumn == column) {
-            _codigosSortAscending = ascending;
-          } else {
-            _codigosSortColumn = column;
-            _codigosSortAscending = false; // 첫 클릭 시 내림차순
-          }
-        });
-        _notifyStateChanged();
-        _reloadDataWithFilters();
-      },
-      reportColor: _getReportColor(),
-      columnKeys: columnKeys,
-      columnWidths: mergedColumnWidths,
-      columnDisplayNames: columnDisplayNames,
-      onColumnResize: (String columnKey, double newWidth) {
-        setState(() {
-          _codigosColumnWidths ??= Map<String, double>.from(mergedColumnWidths);
-          _codigosColumnWidths![columnKey] = newWidth;
-        });
-        CodigosColumnWidthStorage.save(_connectedDatabaseName ?? '', widget.reportType, _codigosColumnWidths!);
-      },
-    );
-
     // ============================================================
     // 📱 Codigos/Todocodigos Row 레이아웃 디버깅
     // ============================================================
@@ -224,62 +194,107 @@ mixin CodigosReportMixin on State<ReportScreenLegacy> {
                     }
                   });
                   
-                  return CodigosBuilder.buildContent(
-            data: data,
-            context: context,
-            scrollController: _scrollController,
-            selectedCodigo: _selectedCodigo,
-            onCodigoSelected: (codigo) {
-              // todocodigos인 경우 id_todocodigo가 없으면 편집 불가
-              if (widget.reportType == ReportType.todocodigos) {
-                final idTodocodigo = codigo['id_todocodigo']?.toString();
-                if (idTodocodigo == null || idTodocodigo.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('id_todocodigo가 없어서 편집할 수 없습니다.'),
-                      backgroundColor: Colors.red,
-                      duration: Duration(seconds: 3),
+                  // ResizableDataTable 사용: 행 선택/편집 강조를 위해 인덱스 계산
+                  final isTodocodigos = widget.reportType == ReportType.todocodigos;
+                  int? selectedIdx;
+                  if (_selectedCodigo != null) {
+                    final i = dataList.indexWhere((item) {
+                      final m = item as Map<String, dynamic>;
+                      return isTodocodigos
+                          ? m['tcodigo'] == _selectedCodigo!['tcodigo']
+                          : m['codigo'] == _selectedCodigo!['codigo'];
+                    });
+                    selectedIdx = i < 0 ? null : i;
+                  }
+                  int? editedIdx;
+                  if (_editedCodigoIdentifier != null) {
+                    final i = dataList.indexWhere((item) {
+                      final m = item as Map<String, dynamic>;
+                      final id = isTodocodigos
+                          ? m['tcodigo']?.toString()
+                          : m['codigo']?.toString();
+                      return id == _editedCodigoIdentifier;
+                    });
+                    editedIdx = i < 0 ? null : i;
+                  }
+                  return ResizableDataTable(
+                    columns: CodigosBuilder.buildColumnDefs(isTodocodigos: isTodocodigos),
+                    rows: CodigosBuilder.buildRows(
+                      dataList,
+                      isTodocodigos: isTodocodigos,
+                      selectedCodigo: _selectedCodigo,
+                      editedCodigoIdentifier: _editedCodigoIdentifier,
+                      reportColor: _getReportColor(),
                     ),
-                  );
-                  return;
-                }
-              }
-              
-              setState(() {
-                _selectedCodigo = Map<String, dynamic>.from(codigo);
-                _isEditingCodigo = false;
-                _initializeCodigoEditControllers();
-              });
-            },
-            onCodigoDoubleTap: (codigo) {
-              // todocodigos인 경우 id_todocodigo가 없으면 편집 불가
-              if (widget.reportType == ReportType.todocodigos) {
-                final idTodocodigo = codigo['id_todocodigo']?.toString();
-                if (idTodocodigo == null || idTodocodigo.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('id_todocodigo가 없어서 편집할 수 없습니다.'),
-                      backgroundColor: Colors.red,
-                      duration: Duration(seconds: 3),
-                    ),
-                  );
-                  return;
-                }
-              }
-              
-              setState(() {
-                _selectedCodigo = Map<String, dynamic>.from(codigo);
-                _isEditingCodigo = false;
-                _initializeCodigoEditControllers();
-              });
-            },
-            isLoadingMore: _isLoadingMoreCodigos,
-            reportColor: _getReportColor(),
-            columnKeys: columnKeys,
-            columnWidths: mergedColumnWidths,
-            headerWidget: headerWidget,
-            editedCodigoIdentifier: _editedCodigoIdentifier,
-                    reportType: widget.reportType,
+                    columnWidths: mergedColumnWidths,
+                    onColumnResize: (String columnKey, double newWidth) {
+                      setState(() {
+                        _codigosColumnWidths ??= Map<String, double>.from(mergedColumnWidths);
+                        _codigosColumnWidths![columnKey] = newWidth;
+                      });
+                      CodigosColumnWidthStorage.save(_connectedDatabaseName ?? '', widget.reportType, _codigosColumnWidths!);
+                    },
+                    sortColumn: _codigosSortColumn,
+                    sortAscending: _codigosSortAscending,
+                    onSort: (column, ascending) {
+                      setState(() {
+                        if (_codigosSortColumn == column) {
+                          _codigosSortAscending = ascending;
+                        } else {
+                          _codigosSortColumn = column;
+                          _codigosSortAscending = false;
+                        }
+                      });
+                      _notifyStateChanged();
+                      _reloadDataWithFilters();
+                    },
+                    headerColor: _getReportColor(),
+                    isLoadingMore: _isLoadingMoreCodigos,
+                    scrollController: _scrollController,
+                    selectedRowIndex: selectedIdx,
+                    editedRowIndex: editedIdx,
+                    onRowTap: (index) {
+                      final codigo = dataList[index] as Map<String, dynamic>;
+                      if (isTodocodigos) {
+                        final idTodocodigo = codigo['id_todocodigo']?.toString();
+                        if (idTodocodigo == null || idTodocodigo.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('id_todocodigo가 없어서 편집할 수 없습니다.'),
+                              backgroundColor: Colors.red,
+                              duration: Duration(seconds: 3),
+                            ),
+                          );
+                          return;
+                        }
+                      }
+                      setState(() {
+                        _selectedCodigo = Map<String, dynamic>.from(codigo);
+                        _isEditingCodigo = false;
+                        _initializeCodigoEditControllers();
+                      });
+                    },
+                    onRowDoubleTap: (index) {
+                      final codigo = dataList[index] as Map<String, dynamic>;
+                      if (isTodocodigos) {
+                        final idTodocodigo = codigo['id_todocodigo']?.toString();
+                        if (idTodocodigo == null || idTodocodigo.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('id_todocodigo가 없어서 편집할 수 없습니다.'),
+                              backgroundColor: Colors.red,
+                              duration: Duration(seconds: 3),
+                            ),
+                          );
+                          return;
+                        }
+                      }
+                      setState(() {
+                        _selectedCodigo = Map<String, dynamic>.from(codigo);
+                        _isEditingCodigo = false;
+                        _initializeCodigoEditControllers();
+                      });
+                    },
                   );
                 },
               ),
