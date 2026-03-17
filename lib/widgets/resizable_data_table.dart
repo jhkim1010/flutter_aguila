@@ -56,6 +56,22 @@ class ResizableDataTable extends StatefulWidget {
   final Widget? footerWidget;
   final bool isLoadingMore;
 
+  /// 행 탭 콜백. 인덱스를 전달한다.
+  final void Function(int index)? onRowTap;
+
+  /// 행 더블탭 콜백. 인덱스를 전달한다.
+  final void Function(int index)? onRowDoubleTap;
+
+  /// 선택된 행 인덱스 (선택 강조 색 적용).
+  final int? selectedRowIndex;
+
+  /// 편집된 행 인덱스 (편집 강조 색 적용).
+  final int? editedRowIndex;
+
+  /// 데이터 리스트 스크롤 컨트롤러 (외부에서 주입, 무한스크롤 등에 사용).
+  /// null 이면 내부 컨트롤러를 사용한다.
+  final ScrollController? scrollController;
+
   const ResizableDataTable({
     super.key,
     required this.columns,
@@ -68,6 +84,11 @@ class ResizableDataTable extends StatefulWidget {
     required this.headerColor,
     this.footerWidget,
     this.isLoadingMore = false,
+    this.onRowTap,
+    this.onRowDoubleTap,
+    this.selectedRowIndex,
+    this.editedRowIndex,
+    this.scrollController,
   });
 
   @override
@@ -76,13 +97,20 @@ class ResizableDataTable extends StatefulWidget {
 
 class _ResizableDataTableState extends State<ResizableDataTable> {
   late final ScrollController _headerScrollController;
-  late final ScrollController _dataScrollController;
+  late ScrollController _dataScrollController;
+  bool _ownsDataScrollController = false;
 
   @override
   void initState() {
     super.initState();
     _headerScrollController = ScrollController();
-    _dataScrollController = ScrollController();
+    if (widget.scrollController != null) {
+      _dataScrollController = widget.scrollController!;
+      _ownsDataScrollController = false;
+    } else {
+      _dataScrollController = ScrollController();
+      _ownsDataScrollController = true;
+    }
     _headerScrollController.addListener(_syncHeaderToData);
     _dataScrollController.addListener(_syncDataToHeader);
   }
@@ -92,7 +120,9 @@ class _ResizableDataTableState extends State<ResizableDataTable> {
     _headerScrollController.removeListener(_syncHeaderToData);
     _dataScrollController.removeListener(_syncDataToHeader);
     _headerScrollController.dispose();
-    _dataScrollController.dispose();
+    if (_ownsDataScrollController) {
+      _dataScrollController.dispose();
+    }
     super.dispose();
   }
 
@@ -184,8 +214,17 @@ class _ResizableDataTableState extends State<ResizableDataTable> {
               child: ListView.builder(
                 itemCount: widget.rows.length,
                 itemBuilder: (context, index) {
-                  return Container(
+                  final isSelected = widget.selectedRowIndex == index;
+                  final isEdited = widget.editedRowIndex == index;
+                  Color? rowColor;
+                  if (isEdited) {
+                    rowColor = Colors.green.withValues(alpha: 0.2);
+                  } else if (isSelected) {
+                    rowColor = Colors.teal.withValues(alpha: 0.1);
+                  }
+                  final rowWidget = Container(
                     decoration: BoxDecoration(
+                      color: rowColor,
                       border: Border(bottom: BorderSide(color: Colors.grey[300]!, width: 1)),
                     ),
                     child: Padding(
@@ -205,6 +244,14 @@ class _ResizableDataTableState extends State<ResizableDataTable> {
                       ),
                     ),
                   );
+                  if (widget.onRowTap != null || widget.onRowDoubleTap != null) {
+                    return InkWell(
+                      onTap: widget.onRowTap != null ? () => widget.onRowTap!(index) : null,
+                      onDoubleTap: widget.onRowDoubleTap != null ? () => widget.onRowDoubleTap!(index) : null,
+                      child: rowWidget,
+                    );
+                  }
+                  return rowWidget;
                 },
               ),
             ),

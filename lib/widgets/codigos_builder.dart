@@ -4,9 +4,121 @@ import '../services/database_service.dart';
 import '../utils/device_info_helper.dart';
 import '../utils/mobile_layout_helper.dart';
 import 'report_utils.dart';
+import 'resizable_data_table.dart';
 
 /// Codigos 보고서 UI 빌더
 class CodigosBuilder {
+  /// Codigos 보고서의 칼럼 정의 (ResizableDataTable 용).
+  /// todocodigos 여부에 따라 다른 칼럼 셋을 반환한다.
+  static List<TableColumnDef> buildColumnDefs({bool isTodocodigos = false}) {
+    if (isTodocodigos) {
+      return const [
+        TableColumnDef(key: 'id_todocodigo', label: 'ID Todo Codigo', defaultWidth: 120, textAlign: TextAlign.right),
+        TableColumnDef(key: 'tcodigo',        label: 'T Codigo',       defaultWidth: 120, sortable: true),
+        TableColumnDef(key: 'tdesc',          label: 'T Desc',         defaultWidth: 300, sortable: true),
+        TableColumnDef(key: 'tpre1',          label: 'T Precio 1',     defaultWidth: 100, textAlign: TextAlign.right),
+        TableColumnDef(key: 'tpre2',          label: 'T Precio 2',     defaultWidth: 100, textAlign: TextAlign.right),
+        TableColumnDef(key: 'tpre3',          label: 'T Precio 3',     defaultWidth: 100, textAlign: TextAlign.right),
+        TableColumnDef(key: 'tpre4',          label: 'T Precio 4',     defaultWidth: 100, textAlign: TextAlign.right),
+        TableColumnDef(key: 'tpre5',          label: 'T Precio 5',     defaultWidth: 100, textAlign: TextAlign.right),
+        TableColumnDef(key: 'utime',          label: 'Utime',          defaultWidth: 150),
+        TableColumnDef(key: 'borrado',        label: 'Borrado',        defaultWidth: 80,  textAlign: TextAlign.center),
+        TableColumnDef(key: 'ip',             label: 'IP',             defaultWidth: 120),
+        TableColumnDef(key: 'mac',            label: 'MAC',            defaultWidth: 150),
+      ];
+    }
+    return const [
+      TableColumnDef(key: 'codigo',                  label: 'Codigo',                 defaultWidth: 150, sortable: true),
+      TableColumnDef(key: 'descripcion',             label: 'Descripción',            defaultWidth: 300, sortable: true),
+      TableColumnDef(key: 'pre1',                    label: 'Precio 1',               defaultWidth: 100, textAlign: TextAlign.right),
+      TableColumnDef(key: 'pre2',                    label: 'Precio 2',               defaultWidth: 100, textAlign: TextAlign.right),
+      TableColumnDef(key: 'pre3',                    label: 'Precio 3',               defaultWidth: 100, textAlign: TextAlign.right),
+      TableColumnDef(key: 'pre4',                    label: 'Precio 4',               defaultWidth: 100, textAlign: TextAlign.right),
+      TableColumnDef(key: 'pre5',                    label: 'Precio 5',               defaultWidth: 100, textAlign: TextAlign.right),
+      TableColumnDef(key: 'preorg',                  label: 'Precio Org',             defaultWidth: 100, textAlign: TextAlign.right),
+      TableColumnDef(key: 'utime',                   label: 'Utime',                  defaultWidth: 150),
+      TableColumnDef(key: 'borrado',                 label: 'Borrado',                defaultWidth: 80,  textAlign: TextAlign.center),
+      TableColumnDef(key: 'ip',                      label: 'IP',                     defaultWidth: 120),
+      TableColumnDef(key: 'mac',                     label: 'MAC',                    defaultWidth: 150),
+      TableColumnDef(key: 'b_sincronizar_x_web',     label: 'Sincronizar Web',        defaultWidth: 120, textAlign: TextAlign.center),
+      TableColumnDef(key: 'id_codigo',               label: 'ID Codigo',              defaultWidth: 100, textAlign: TextAlign.right),
+    ];
+  }
+
+  /// 데이터 리스트를 ResizableDataTable 행 셀 위젯 리스트로 변환.
+  /// [isTodocodigos] が true の場合は todocodigos 列を使用する。
+  /// [selectedCodigo] と [editedCodigoIdentifier] は行の強調表示に使用する。
+  static List<List<Widget>> buildRows(
+    List<dynamic> data, {
+    bool isTodocodigos = false,
+    Map<String, dynamic>? selectedCodigo,
+    String? editedCodigoIdentifier,
+    Color reportColor = Colors.teal,
+  }) {
+    return data.map((item) => _buildRowCells(
+      item as Map<String, dynamic>,
+      isTodocodigos: isTodocodigos,
+      selectedCodigo: selectedCodigo,
+      editedCodigoIdentifier: editedCodigoIdentifier,
+      reportColor: reportColor,
+    )).toList();
+  }
+
+  static List<Widget> _buildRowCells(
+    Map<String, dynamic> codigo, {
+    bool isTodocodigos = false,
+    Map<String, dynamic>? selectedCodigo,
+    String? editedCodigoIdentifier,
+    Color reportColor = Colors.teal,
+  }) {
+    final columnDefs = buildColumnDefs(isTodocodigos: isTodocodigos);
+    final currentId = isTodocodigos
+        ? codigo['tcodigo']?.toString()
+        : codigo['codigo']?.toString();
+    final isSelected = selectedCodigo != null && (isTodocodigos
+        ? selectedCodigo['tcodigo'] == codigo['tcodigo']
+        : selectedCodigo['codigo'] == codigo['codigo']);
+    final isEdited = editedCodigoIdentifier != null && currentId == editedCodigoIdentifier;
+
+    return columnDefs.map((col) {
+      final key = col.key;
+      final value = codigo[key];
+      final isCodeColumn = key == 'codigo' || key == 'tcodigo';
+      final isDescColumn = key == 'descripcion' || key == 'tdesc';
+      final isNumeric = !isCodeColumn && ReportUtils.isNumeric(value);
+
+      final displayValue = (isCodeColumn || isDescColumn)
+          ? (value?.toString() ?? 'N/A')
+          : ReportUtils.formatValue(value);
+
+      final maxLines = isDescColumn ? null : 1;
+      final overflow = isDescColumn ? TextOverflow.visible : TextOverflow.ellipsis;
+
+      Color textColor;
+      if (isEdited) {
+        textColor = Colors.green[700]!;
+      } else if (isSelected && isCodeColumn) {
+        textColor = Colors.teal[700]!;
+      } else if (isCodeColumn) {
+        textColor = Colors.black87;
+      } else {
+        textColor = Colors.grey[700]!;
+      }
+
+      return Text(
+        displayValue,
+        style: TextStyle(
+          fontWeight: isCodeColumn ? FontWeight.bold : FontWeight.normal,
+          fontSize: isCodeColumn ? 14 : 12,
+          color: textColor,
+        ),
+        textAlign: isNumeric ? TextAlign.right : col.textAlign,
+        maxLines: maxLines,
+        overflow: overflow,
+      );
+    }).toList();
+  }
+
   /// Codigos 콘텐츠 빌드
   static Widget buildContent({
     required Map<String, dynamic> data,

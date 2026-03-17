@@ -17,6 +17,7 @@ import '../widgets/report_utils.dart';
 import '../widgets/items_date_range_selector.dart';
 import '../widgets/report_table_builder.dart';
 import '../widgets/codigos_builder.dart';
+import '../widgets/resizable_data_table.dart';
 import '../widgets/stocks_builder.dart';
 import '../widgets/gastos_builder.dart';
 import '../widgets/items_builder.dart';
