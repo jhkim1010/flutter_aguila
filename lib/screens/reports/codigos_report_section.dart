@@ -129,36 +129,6 @@ mixin CodigosReportMixin on State<ReportScreenLegacy> {
       mergedColumnWidths.addAll(_codigosColumnWidths!);
     }
 
-    // 헤더 위젯 생성 (리사이즈 시 상태 반영 및 저장)
-    final headerWidget = CodigosBuilder.buildHeader(
-      reportType: widget.reportType,
-      sortColumn: _codigosSortColumn,
-      sortAscending: _codigosSortAscending,
-      onSort: (column, ascending) {
-        setState(() {
-          if (_codigosSortColumn == column) {
-            _codigosSortAscending = ascending;
-          } else {
-            _codigosSortColumn = column;
-            _codigosSortAscending = false; // 첫 클릭 시 내림차순
-          }
-        });
-        _notifyStateChanged();
-        _reloadDataWithFilters();
-      },
-      reportColor: _getReportColor(),
-      columnKeys: columnKeys,
-      columnWidths: mergedColumnWidths,
-      columnDisplayNames: columnDisplayNames,
-      onColumnResize: (String columnKey, double newWidth) {
-        setState(() {
-          _codigosColumnWidths ??= Map<String, double>.from(mergedColumnWidths);
-          _codigosColumnWidths![columnKey] = newWidth;
-        });
-        CodigosColumnWidthStorage.save(_connectedDatabaseName ?? '', widget.reportType, _codigosColumnWidths!);
-      },
-    );
-
     // ============================================================
     // 📱 Codigos/Todocodigos Row 레이아웃 디버깅
     // ============================================================
