@@ -684,7 +684,9 @@ mixin ReportDataLoaderMixin on State<ReportScreenLegacy> {
             filters['sucursal'] = _selectedSucursal;
           }
           if (_codigosSoloBorrados) {
-            filters['solo_borrados'] = '1';
+            filters['borrado'] = '1';
+          } else {
+            filters['borrado'] = '0';
           }
           debugPrint('   → [Codigos] 전달할 filters: $filters');
           debugPrint('   → [Codigos] color_id: $_selectedCodigosColorCode');
@@ -745,7 +747,9 @@ mixin ReportDataLoaderMixin on State<ReportScreenLegacy> {
             filters['sucursal'] = _selectedSucursal;
           }
           if (_codigosSoloBorrados) {
-            filters['solo_borrados'] = '1';
+            filters['borrado'] = '1';
+          } else {
+            filters['borrado'] = '0';
           }
           debugPrint('   → [TodoCodigos] 전달할 filters: $filters');
           debugPrint('   → [TodoCodigos] sucursal: $_selectedSucursal');
@@ -1151,9 +1155,11 @@ mixin ReportDataLoaderMixin on State<ReportScreenLegacy> {
         filters['color_id'] = _selectedCodigosColorCode;
       }
       if (_codigosSoloBorrados) {
-        filters['solo_borrados'] = '1';
+        filters['borrado'] = '1';
+      } else {
+        filters['borrado'] = '0';
       }
-      
+
       if (widget.reportType == ReportType.todocodigos) {
         print('📄 다음 Todocodigos 페이지 로드 중... (id_todocodigo=$_codigosNextIdCodigo)');
         response = await _databaseService.getTodocodigos(
