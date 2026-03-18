@@ -17,7 +17,7 @@ class TodocodigosApi {
     bool? sortAscending,
     Map<String, dynamic>? filters,
   }) async {
-    final endpoint = '/api/todocodigos';
+    const endpoint = '/api/todocodigos';
     final queryParams = <String, String>{};
     
     if (idTodocodigo != null && idTodocodigo.isNotEmpty) {

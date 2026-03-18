@@ -1,6 +1,6 @@
 part of '../report_screen_legacy.dart';
 
-mixin VentasReportMixin on State<ReportScreenLegacy> {
+mixin VentasReportMixin on _ReportScreenStateBase {
   Widget _buildVentasHeader() {
     return ReportHeaderBuilders.buildVentasHeader(
       context: context,

@@ -177,7 +177,7 @@ class MobileLayoutHelper {
     final prefix = tag != null ? '[$tag] ' : '';
     
     debugPrint('═══════════════════════════════════════════════════════');
-    debugPrint('${prefix}📱 [모바일 화면 구성 정보]');
+    debugPrint('$prefix📱 [모바일 화면 구성 정보]');
     debugPrint('   → 파일: mobile_layout_helper.dart');
     debugPrint('   → isLargeScreen: ${info.isLargeScreen} (기준: $_largeScreenThreshold)');
     debugPrint('   → isTablet: ${info.isTablet}');

@@ -1,6 +1,6 @@
 part of '../report_screen_legacy.dart';
 
-mixin ReportUtilsMixin on State<ReportScreenLegacy> {
+mixin ReportUtilsMixin on _ReportScreenStateBase {
 
   // Stocks 보고서의 vista 타입 표시 (Body용)
   Widget _buildStocksViewType() {

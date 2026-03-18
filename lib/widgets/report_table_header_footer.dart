@@ -258,7 +258,7 @@ class ReportTableHeaderFooter {
                 
                 // tipofactura 컬럼에 Factura A와 B 정보를 모두 표시
                   if (index == tipofacturaIndex) {
-                  final text = 'Factura A: ${fventasSummary!['countA']} | Factura B: ${fventasSummary!['countB']}';
+                  final text = 'Factura A: ${fventasSummary!['countA']} | Factura B: ${fventasSummary['countB']}';
                   debugPrint('   → [푸터 셀] tipofactura 컬럼 텍스트: "$text"');
                   debugPrint('   → [푸터 셀] tipofactura 컬럼 너비: $columnWidth');
                   
@@ -288,7 +288,7 @@ class ReportTableHeaderFooter {
                 // monto 컬럼에 Factura A와 B의 monto 합계를 모두 표시 (showTpago false면 ****)
                   else if (index == montoIndex) {
                   final montoAText = ReportUtils.formatValueForTotalRow(fventasSummary!['montoA'] as double, 'monto');
-                  final montoBText = ReportUtils.formatValueForTotalRow(fventasSummary!['montoB'] as double, 'monto');
+                  final montoBText = ReportUtils.formatValueForTotalRow(fventasSummary['montoB'] as double, 'monto');
                   final text = '$montoAText | $montoBText';
                   debugPrint('   → [푸터 셀] monto 컬럼 텍스트: "$text"');
                   debugPrint('   → [푸터 셀] monto 컬럼 너비: $columnWidth');
@@ -482,7 +482,7 @@ class ReportTableHeaderFooter {
                           alignment: Alignment.centerLeft,
                           child: Text(
                             'Total: $totalCount',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 14, // ventas 보고서도 14px로 통일
                               fontWeight: FontWeight.bold,
                             ),
@@ -493,7 +493,7 @@ class ReportTableHeaderFooter {
                               alignment: isNumericColumn ? Alignment.centerRight : Alignment.centerLeft, // 숫자 칼럼은 오른쪽 정렬 (showTpago false면 금액 칸 ****)
                               child: Text(
                                 ReportUtils.formatValueForTotalRow(total, key),
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 14, // ventas 보고서도 14px로 통일
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -898,7 +898,7 @@ class ReportTableHeaderFooter {
                           final newAscending = isSorted ? !sortAscending : false;
                           debugPrint('   → 새 정렬 방향: $newAscending (${isSorted ? "토글" : "첫 클릭"})');
                           debugPrint('   → effectiveOnSort($index, $newAscending) 호출');
-                          effectiveOnSort!(index, newAscending);
+                          effectiveOnSort(index, newAscending);
                           debugPrint('   ✅ onSort 호출 완료');
                         } else {
                           debugPrint('   ⚠️ effectiveOnSort가 null이므로 정렬 불가');
@@ -929,7 +929,7 @@ class ReportTableHeaderFooter {
                               Flexible(
                                 child: Text(
                                   labelText,
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 14, // ventas 보고서도 14px로 통일
                                   ),
@@ -974,7 +974,7 @@ class ReportTableHeaderFooter {
                 key: ValueKey('rt_resize_$key'),
                 columnKey: key,
                 currentWidth: baseColumnWidth,
-                onResize: (double w) => onColumnResize!(key, w.clamp(50.0, 2000.0)),
+                onResize: (double w) => onColumnResize(key, w.clamp(50.0, 2000.0)),
               ),
             if (index < columns.length - 1) SizedBox(width: headerColumnSpacing.toDouble()),
           ];
@@ -1019,7 +1019,7 @@ class ReportTableHeaderFooter {
     final isVentas = reportType == ReportType.ventas;
     
     return DataRow(
-      color: MaterialStateProperty.all(reportColor.withOpacity(0.1)),
+      color: WidgetStateProperty.all(reportColor.withOpacity(0.1)),
       cells: keys.map((key) {
         // 합계를 계산하지 않아야 하는 컬럼들
         final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1' || key == 'vcode' || key == 'id';
@@ -1079,7 +1079,7 @@ class ReportTableHeaderFooter {
     }
     
     return DataRow(
-      color: MaterialStateProperty.all(reportColor.withOpacity(0.1)),
+      color: WidgetStateProperty.all(reportColor.withOpacity(0.1)),
       cells: data.keys.map((key) {
         final total = totals[key] ?? 0;
         return DataCell(

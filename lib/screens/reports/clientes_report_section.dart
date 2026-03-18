@@ -1,6 +1,6 @@
 part of '../report_screen_legacy.dart';
 
-mixin ClientesReportMixin on State<ReportScreenLegacy> {
+mixin ClientesReportMixin on _ReportScreenStateBase {
   /// Cliente 행 탭 핸들러 - cliente 상세 정보 보기 (모달리스 대화상자)
   void _handleClienteRowTap(Map<String, dynamic> rowData) async {
     if (widget.reportType != ReportType.clientes) return;
@@ -51,7 +51,7 @@ mixin ClientesReportMixin on State<ReportScreenLegacy> {
     try {
       debugPrint('→ Cliente 상세 정보 요청 시작: dni=$dni');
       final clienteDetailData = await _databaseService.getClienteDetail(
-        dni: dni.toString(),
+        cuit: dni.toString(),
       );
 
       debugPrint('→ Cliente 상세 정보 응답 받음');

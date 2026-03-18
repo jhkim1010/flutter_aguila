@@ -1,6 +1,6 @@
 part of '../report_screen_legacy.dart';
 
-mixin ReportShareMixin on State<ReportScreenLegacy> {
+mixin ReportShareMixin on _ReportScreenStateBase {
 
   /// 보고서 공유 (macOS/Windows: Excel, 기타: PDF)
   Future<void> _shareReport() async {

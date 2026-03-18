@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, kDebugMode;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:window_manager/window_manager.dart';
-import 'dart:ui';
 import 'l10n/app_localizations.dart';
 import 'screens/main_connection_screen.dart';
 import 'screens/biometric_auth_screen.dart';

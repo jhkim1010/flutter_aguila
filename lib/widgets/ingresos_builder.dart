@@ -555,19 +555,17 @@ class IngresosBuilder {
                   debugPrint('⚠️ [IngresosBuilder] _buildRightPanel expandedConstraints.maxHeight가 무한대입니다!');
                   debugPrint('   → productsTable이 null인지 확인: ${productsTable == null}');
                   // maxHeight가 무한대인 경우에도 productsTable을 표시해야 함
-                  if (productsTable != null) {
-                    return ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minWidth: expandedConstraints.maxWidth,
-                        maxWidth: expandedConstraints.maxWidth,
-                      ),
-                      child: SizedBox(
-                        width: expandedConstraints.maxWidth,
-                        child: productsTable,
-                      ),
-                    );
-                  }
-                  return const SizedBox.shrink();
+                  return ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minWidth: expandedConstraints.maxWidth,
+                      maxWidth: expandedConstraints.maxWidth,
+                    ),
+                    child: SizedBox(
+                      width: expandedConstraints.maxWidth,
+                      child: productsTable,
+                    ),
+                  );
+                                  return const SizedBox.shrink();
                 }
                 
                 return ConstrainedBox(
@@ -1244,7 +1242,7 @@ class _IngresosCompanyTableWithIndependentSortState extends State<_IngresosCompa
           columnSpacing: 8,
           dataRowMinHeight: 32,
           dataRowMaxHeight: 37,
-          headingRowColor: MaterialStateProperty.all(color.withOpacity(0.1)),
+          headingRowColor: WidgetStateProperty.all(color.withOpacity(0.1)),
           columns: columns,
           rows: rows,
         ),
@@ -1469,7 +1467,7 @@ class _IngresosCategoryTableWithIndependentSortState extends State<_IngresosCate
           columnSpacing: 8,
           dataRowMinHeight: 32,
           dataRowMaxHeight: 37,
-          headingRowColor: MaterialStateProperty.all(color.withOpacity(0.1)),
+          headingRowColor: WidgetStateProperty.all(color.withOpacity(0.1)),
           columns: columns,
           rows: rows,
         ),
@@ -1694,7 +1692,7 @@ class _IngresosColorTableWithIndependentSortState extends State<_IngresosColorTa
           columnSpacing: 8,
           dataRowMinHeight: 32,
           dataRowMaxHeight: 37,
-          headingRowColor: MaterialStateProperty.all(color.withOpacity(0.1)),
+          headingRowColor: WidgetStateProperty.all(color.withOpacity(0.1)),
           columns: columns,
           rows: rows,
         ),

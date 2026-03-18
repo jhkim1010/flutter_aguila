@@ -1,6 +1,6 @@
 part of '../report_screen_legacy.dart';
 
-mixin StocksReportMixin on State<ReportScreenLegacy> {
+mixin StocksReportMixin on _ReportScreenStateBase {
 
   // Stocks 보고서 전용 콘텐츠 빌드
   Widget _buildStocksContent(Map<String, dynamic> data) {

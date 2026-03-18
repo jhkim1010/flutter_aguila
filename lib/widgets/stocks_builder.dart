@@ -125,8 +125,8 @@ class StocksBuilder {
     final columnsTotalWidth = stockColumnKeys.fold(0.0, (sum, k) => sum + (columnWidths[k] ?? 100));
     const double columnGap = 8.0;
     final rowContentWidth = columnsTotalWidth + (stockColumnKeys.length - 1) * columnGap;
-    final containerPadding = 32.0; // 좌우 padding
-    final extraPadding = 20.0; // 오른쪽 끝 패턴 방지를 위한 추가 공간
+    const containerPadding = 32.0; // 좌우 padding
+    const extraPadding = 20.0; // 오른쪽 끝 패턴 방지를 위한 추가 공간
     final totalWidth = rowContentWidth + containerPadding + extraPadding;
     final kMinWidthForNoScroll = rowContentWidth + 32.0;
     final screenWidth = MediaQuery.of(context).size.width;
@@ -148,9 +148,11 @@ class StocksBuilder {
     debugPrint('   → dataList.length: ${dataList.length}');
     debugPrint('═══════════════════════════════════════════════════════');
 
-    // 헤더와 Row의 크기를 추적하기 위한 GlobalKey
+    // 헤더와 Row의 크기를 추적하기 위한 GlobalKey (디버그 측정 전용 - 위젯 key로 사용 금지)
     final headerKey = GlobalKey();
     final firstRowKey = GlobalKey();
+    // 주의: 위 GlobalKey들은 addPostFrameCallback에서 크기 측정용으로만 사용.
+    // SizedBox key로 사용하면 매 빌드마다 헤더가 재생성되어 ResizeHandle 상태가 리셋됨.
     
     return Builder(
       builder: (context) {
@@ -313,7 +315,6 @@ class StocksBuilder {
                                 });
                                 
                                 return SizedBox(
-                                  key: headerKey,
                                   width: totalWidth, // Container padding 포함한 전체 너비
                                   child: headerWidget,
                                 );
@@ -352,7 +353,6 @@ class StocksBuilder {
                                   final stock = filteredDataList[index] as Map<String, dynamic>;
                                   
                                   return Container(
-                                    key: index == 0 ? firstRowKey : null,
                                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
                                     decoration: BoxDecoration(
                                       color: Colors.transparent,
@@ -389,7 +389,6 @@ class StocksBuilder {
                       children: [
                         // 칼럼 헤더
                         SizedBox(
-                          key: headerKey,
                           width: contentWidth,
                           child: headerWidget,
                         ),
@@ -406,7 +405,6 @@ class StocksBuilder {
                               final stock = filteredDataList[index] as Map<String, dynamic>;
                               
                               return Container(
-                                key: index == 0 ? firstRowKey : null,
                                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
                                 decoration: BoxDecoration(
                                   color: Colors.transparent,
@@ -451,7 +449,7 @@ class StocksBuilder {
               debugPrint('   → Row 실제 width: ${renderBox.size.width}, expected: $expectedRowWidth');
             }
           }
-        } catch (e, stackTrace) {
+        } catch (e) {
           debugPrint('❌ [Stocks Builder] Row 크기 측정 중 에러: $e');
         }
       });
@@ -728,7 +726,7 @@ class StocksBuilder {
           debugPrint('   ⚠️ 경고: selectedSucursal "$selectedSucursal"이 items에 없음!');
           debugPrint('   ⚠️ 이로 인해 DropdownButton 에러가 발생할 수 있습니다.');
         } else if (foundCount > 1) {
-          debugPrint('   ⚠️ 경고: selectedSucursal "$selectedSucursal"이 items에 ${foundCount}개 있음!');
+          debugPrint('   ⚠️ 경고: selectedSucursal "$selectedSucursal"이 items에 $foundCount개 있음!');
           debugPrint('   ⚠️ 이로 인해 DropdownButton 에러가 발생할 수 있습니다.');
         }
       }
@@ -793,8 +791,8 @@ class StocksBuilder {
                   
                   // items에 중복이 있는지 확인
                   final duplicates = <String>[];
-                  for (var item in sucursales!) {
-                    if (sucursales!.where((s) => s == item).length > 1) {
+                  for (var item in sucursales) {
+                    if (sucursales.where((s) => s == item).length > 1) {
                       if (!duplicates.contains(item)) {
                         duplicates.add(item);
                       }
@@ -834,12 +832,12 @@ class StocksBuilder {
                           value: null,
                           child: Text('Todos', style: TextStyle(fontSize: 12)),
                         ),
-                        ...sucursales!.map((sucursal) {
+                        ...sucursales.map((sucursal) {
                           return DropdownMenuItem<String?>(
                             value: sucursal,
                             child: Text(sucursal, style: const TextStyle(fontSize: 12)),
                           );
-                        }).toList(),
+                        }),
                       ],
                       onChanged: onSucursalChanged,
                     ),

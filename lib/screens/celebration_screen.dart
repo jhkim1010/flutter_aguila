@@ -137,18 +137,18 @@ class _CelebrationScreenState extends State<CelebrationScreen>
                         ),
                       ),
                     )),
-                Center(
+                const Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.check_circle,
                         size: 100,
                         color: Colors.white,
                       ),
-                      const SizedBox(height: 30),
-                      const Text(
+                      SizedBox(height: 30),
+                      Text(
                         '🎉 ¡Conexión Exitosa! 🎉',
                         textAlign: TextAlign.center,
                         style: TextStyle(
@@ -164,8 +164,8 @@ class _CelebrationScreenState extends State<CelebrationScreen>
                           ],
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      const Padding(
+                      SizedBox(height: 20),
+                      Padding(
                         padding: EdgeInsets.symmetric(horizontal: 32),
                         child: Text(
                           '¡La conexión a la base de datos fue exitosa!',
@@ -176,13 +176,13 @@ class _CelebrationScreenState extends State<CelebrationScreen>
                           ),
                         ),
                       ),
-                      const SizedBox(height: 60),
+                      SizedBox(height: 60),
                       // 로딩 인디케이터 표시
-                      const CircularProgressIndicator(
+                      CircularProgressIndicator(
                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
-                      const SizedBox(height: 20),
-                      const Text(
+                      SizedBox(height: 20),
+                      Text(
                         'Cargando resumen del día...',
                         textAlign: TextAlign.center,
                         style: TextStyle(

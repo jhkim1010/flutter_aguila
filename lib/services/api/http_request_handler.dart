@@ -133,11 +133,11 @@ class HttpRequestHandler {
             } else {
               itemCount = decoded.length;
             }
-            print('✅ 응답 성공: ${itemCount}개 항목');
+            print('✅ 응답 성공: $itemCount개 항목');
             return decoded as Map<String, dynamic>;
           } else if (decoded is List) {
             itemCount = decoded.length;
-            print('✅ 응답 성공: ${itemCount}개 항목');
+            print('✅ 응답 성공: $itemCount개 항목');
             return {'data': decoded};
           } else {
             print('✅ 응답 성공');
@@ -188,7 +188,7 @@ class HttpRequestHandler {
       print('=== POST $endpoint 요청 ===');
       print('URL: $serverUrl$endpoint');
       print('Headers: $headers');
-      print('Timeout: ${timeoutSeconds}초');
+      print('Timeout: $timeoutSeconds초');
       print('Request Body Length: ${json.encode(body).length} bytes');
       
       final requestStartTime = DateTime.now();
@@ -202,8 +202,8 @@ class HttpRequestHandler {
           Duration(seconds: timeoutSeconds),
           onTimeout: () {
             final elapsed = DateTime.now().difference(requestStartTime);
-            print('❌ 요청 타임아웃 (${timeoutSeconds}초 초과, 실제 경과: ${elapsed.inSeconds}초)');
-            throw Exception('요청 타임아웃: 서버 응답이 ${timeoutSeconds}초를 초과했습니다. 서버가 실행 중인지 확인하세요.');
+            print('❌ 요청 타임아웃 ($timeoutSeconds초 초과, 실제 경과: ${elapsed.inSeconds}초)');
+            throw Exception('요청 타임아웃: 서버 응답이 $timeoutSeconds초를 초과했습니다. 서버가 실행 중인지 확인하세요.');
           },
         );
         final elapsed = DateTime.now().difference(requestStartTime);
@@ -311,11 +311,11 @@ class HttpRequestHandler {
             } else {
               itemCount = filteredDecoded.length;
             }
-            print('✅ 응답 성공: ${itemCount}개 항목');
+            print('✅ 응답 성공: $itemCount개 항목');
             return filteredDecoded;
           } else if (decoded is List) {
             int itemCount = decoded.length;
-            print('✅ 응답 성공: ${itemCount}개 항목');
+            print('✅ 응답 성공: $itemCount개 항목');
             return {'data': decoded};
           } else {
             print('✅ 응답 성공');
@@ -334,7 +334,7 @@ class HttpRequestHandler {
           // 최대 3번 재시도 (총 4번 시도), 간격을 늘려서 서버 복구 시간 제공
           for (int retry = 1; retry <= 3; retry++) {
             final delaySeconds = retry; // 1초, 2초, 3초
-            print('🔄 재시도 $retry/3... (${delaySeconds}초 대기 후)');
+            print('🔄 재시도 $retry/3... ($delaySeconds초 대기 후)');
             await Future.delayed(Duration(seconds: delaySeconds));
             
             try {
@@ -379,7 +379,7 @@ class HttpRequestHandler {
                     } else {
                       itemCount = filteredDecoded.length;
                     }
-                    print('✅ 응답 성공: ${itemCount}개 항목');
+                    print('✅ 응답 성공: $itemCount개 항목');
                     return filteredDecoded;
                   } else if (decoded is List) {
                     print('✅ 응답 성공: ${decoded.length}개 항목');
@@ -484,11 +484,11 @@ class HttpRequestHandler {
             } else {
               itemCount = decoded.length;
             }
-            print('✅ 응답 성공: ${itemCount}개 항목');
+            print('✅ 응답 성공: $itemCount개 항목');
             return decoded as Map<String, dynamic>;
           } else if (decoded is List) {
             itemCount = decoded.length;
-            print('✅ 응답 성공: ${itemCount}개 항목');
+            print('✅ 응답 성공: $itemCount개 항목');
             return {'data': decoded};
           } else {
             print('✅ 응답 성공');
@@ -621,7 +621,7 @@ class HttpRequestHandler {
         bodyLower.contains('<head>') ||
         bodyLower.contains('<body>')) {
       print('⚠️ HTML 응답 감지: ${bodyTrimmed.length} bytes');
-      print('   HTML 내용 미리보기: ${bodyTrimmed.length > 200 ? bodyTrimmed.substring(0, 200) + "..." : bodyTrimmed}');
+      print('   HTML 내용 미리보기: ${bodyTrimmed.length > 200 ? "${bodyTrimmed.substring(0, 200)}..." : bodyTrimmed}');
       return _extractMessageFromHtml(bodyTrimmed, response.statusCode);
     }
     
@@ -977,7 +977,7 @@ class HttpRequestHandler {
     
     // 의미 있는 메시지만 남기기 (너무 길면 잘라내기)
     if (cleaned.length > 200) {
-      cleaned = cleaned.substring(0, 200) + '...';
+      cleaned = '${cleaned.substring(0, 200)}...';
     }
     
     return cleaned.trim();

@@ -96,7 +96,7 @@ class ReportFilterWidgets {
           value: id,
           child: Text(nombre, style: const TextStyle(fontSize: 12)),
         );
-      }).where((item) => item != null).cast<DropdownMenuItem<int?>>().toList(),
+      }).where((item) => item != null).cast<DropdownMenuItem<int?>>(),
     ];
     
     return Tooltip(
@@ -195,7 +195,7 @@ class ReportFilterWidgets {
           value: id,
           child: Text(nombre, style: const TextStyle(fontSize: 12)),
         );
-      }).where((item) => item != null).cast<DropdownMenuItem<int?>>().toList(),
+      }).where((item) => item != null).cast<DropdownMenuItem<int?>>(),
     ];
     
     return Tooltip(
@@ -381,8 +381,8 @@ class ReportFilterWidgets {
           value: value,
           onChanged: (bool? newValue) => onChanged(newValue ?? false),
           checkColor: Colors.white,
-          fillColor: MaterialStateProperty.resolveWith<Color>((Set<MaterialState> states) {
-            if (states.contains(MaterialState.selected)) {
+          fillColor: WidgetStateProperty.resolveWith<Color>((Set<WidgetState> states) {
+            if (states.contains(WidgetState.selected)) {
               return Colors.white.withOpacity(0.3);
             }
             return Colors.transparent;
@@ -408,8 +408,8 @@ class ReportFilterWidgets {
           value: value,
           onChanged: (bool? newValue) => onChanged(newValue ?? false),
           checkColor: Colors.white,
-          fillColor: MaterialStateProperty.resolveWith<Color>((Set<MaterialState> states) {
-            if (states.contains(MaterialState.selected)) {
+          fillColor: WidgetStateProperty.resolveWith<Color>((Set<WidgetState> states) {
+            if (states.contains(WidgetState.selected)) {
               return Colors.white.withOpacity(0.3);
             }
             return Colors.transparent;
@@ -466,13 +466,13 @@ class ReportFilterWidgets {
               child: Text('Todos', style: TextStyle(fontSize: 12, color: Colors.black87)),
             ),
             if (availableSucursales != null)
-              ...availableSucursales!.map((sucursal) {
+              ...availableSucursales.map((sucursal) {
                 debugPrint('   → DropdownMenuItem 생성: Sucursal $sucursal');
                 return DropdownMenuItem<String?>(
                   value: sucursal,
                   child: Text('Sucursal $sucursal', style: const TextStyle(fontSize: 12, color: Colors.black87)),
                 );
-              }).toList(),
+              }),
           ],
           onChanged: (String? value) {
             debugPrint('   → 콤보박스 값 변경: $value');

@@ -262,7 +262,7 @@ class LocalDatabaseService {
     final dbPath = join(await getDatabasesPath(), _databaseName);
     final backupPath = join(
       await getDatabasesPath(),
-      '${_databaseName}.backup.${DateTime.now().millisecondsSinceEpoch}',
+      '$_databaseName.backup.${DateTime.now().millisecondsSinceEpoch}',
     );
     
     // 파일 복사 로직은 path_provider와 함께 사용

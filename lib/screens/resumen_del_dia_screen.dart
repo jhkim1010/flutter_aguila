@@ -73,7 +73,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
   // Ventas 보고서의 descontado 필터 (할인 통계 카드 클릭 시 사용)
   bool? _currentVentasDescontado;
   List<ConnectionInfo> _savedConnections = []; // 저장된 연결 목록
-  bool _showAllConnections = false; // 연결 목록 전체 표시 여부
+  final bool _showAllConnections = false; // 연결 목록 전체 표시 여부
   bool _isAddingNewConnection = false; // 새 연결 추가 모드 여부
   bool _isLeftPanelCollapsed = false; // 왼쪽 패널 축소 상태 (큰 화면에서만 사용)
   
@@ -344,7 +344,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                           },
                         ),
                       );
-                    }).toList(),
+                    }),
                 ],
               ),
             ),
@@ -398,11 +398,11 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Row(
+        title: const Row(
           children: [
-            const Icon(Icons.logout, color: Colors.orange),
-            const SizedBox(width: 8),
-            const Text('연결 끊기'),
+            Icon(Icons.logout, color: Colors.orange),
+            SizedBox(width: 8),
+            Text('연결 끊기'),
           ],
         ),
         content: const Text('기존 연결을 끊고 초기 화면으로 이동하시겠습니까?'),
@@ -607,7 +607,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
               print('       첫 번째 항목: ${value[0]}');
             }
           } else if (value is Map) {
-            print('     - $key: Map (${(value as Map).keys.toList()})');
+            print('     - $key: Map (${(value).keys.toList()})');
           } else {
             print('     - $key: ${value.runtimeType} = $value');
           }
@@ -627,31 +627,29 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       }
       
       // 응답 데이터에 에러 메시지가 포함되어 있는지 확인
-      if (data is Map<String, dynamic>) {
-        // 에러 메시지 필드 확인
-        final errorFields = ['error', 'message', '오류', '에러'];
-        for (final field in errorFields) {
-          if (data.containsKey(field)) {
-            final errorValue = data[field];
-            if (errorValue != null && errorValue.toString().isNotEmpty) {
-              final errorStr = errorValue.toString().toLowerCase();
-              // 게이트웨이 오류나 서버 오류인 경우
-              if (errorStr.contains('게이트웨이') || 
-                  errorStr.contains('bad gateway') ||
-                  errorStr.contains('서버 오류')) {
-                print('⚠️ 응답 데이터에 에러 메시지 포함: $errorValue');
-                throw Exception(errorValue.toString());
-              }
+      // 에러 메시지 필드 확인
+      final errorFields = ['error', 'message', '오류', '에러'];
+      for (final field in errorFields) {
+        if (data.containsKey(field)) {
+          final errorValue = data[field];
+          if (errorValue != null && errorValue.toString().isNotEmpty) {
+            final errorStr = errorValue.toString().toLowerCase();
+            // 게이트웨이 오류나 서버 오류인 경우
+            if (errorStr.contains('게이트웨이') || 
+                errorStr.contains('bad gateway') ||
+                errorStr.contains('서버 오류')) {
+              print('⚠️ 응답 데이터에 에러 메시지 포함: $errorValue');
+              throw Exception(errorValue.toString());
             }
           }
         }
-        
-        // 데이터가 비어있거나 에러 메시지만 있는 경우 확인
-        if (data.isEmpty || (data.length == 1 && data.values.first.toString().toLowerCase().contains('오류'))) {
-          print('⚠️ 응답 데이터가 비어있거나 에러 메시지만 포함되어 있습니다.');
-        }
       }
       
+      // 데이터가 비어있거나 에러 메시지만 있는 경우 확인
+      if (data.isEmpty || (data.length == 1 && data.values.first.toString().toLowerCase().contains('오류'))) {
+        print('⚠️ 응답 데이터가 비어있거나 에러 메시지만 포함되어 있습니다.');
+      }
+          
       // Stock resumen도 함께 가져오기 (stocks GET 요청에서 resumen_del_dia 포함)
       try {
         final stockResumen = await _databaseService.getStocksReport(
@@ -663,7 +661,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         );
         
         // Stock resumen 데이터를 resumen del dia 데이터에 추가
-        if (stockResumen != null && stockResumen.isNotEmpty) {
+        if (stockResumen.isNotEmpty) {
           // 새로운 응답 형식: resumen_del_dia 배열이 stocks 응답에 포함됨
           if (stockResumen.containsKey('resumen_del_dia') && stockResumen['resumen_del_dia'] is List) {
             final resumenDelDia = stockResumen['resumen_del_dia'] as List;
@@ -883,7 +881,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                     // 큰 화면에서 두 섹션이 나란히 있을 때를 고려하여 최소 너비 보장
                     final availableWidth = constraints.maxWidth;
                     // 카드 하나당 최소 너비를 고려 (약 250px)
-                    final minCardWidth = 250.0;
+                    const minCardWidth = 250.0;
                     final maxCrossAxisCount = (availableWidth / minCardWidth).floor();
                     final crossAxisCount = maxCrossAxisCount >= 4 ? 4 : (maxCrossAxisCount >= 3 ? 3 : 2);
                     
@@ -952,7 +950,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         scrollDirection: Axis.horizontal,
         child: DataTable(
           columnSpacing: 20,
-          headingRowColor: MaterialStateProperty.all(
+          headingRowColor: WidgetStateProperty.all(
             Theme.of(context).colorScheme.primary.withOpacity(0.1),
           ),
           columns: tableData.keys.map((key) {
@@ -1040,10 +1038,10 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                   children: [
                     const Icon(Icons.assessment, color: Colors.white, size: 20),
                     const SizedBox(width: 8),
-                    Expanded(
+                    const Expanded(
                       child: Text(
                         'Reportes',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
@@ -1164,14 +1162,14 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.primary,
           ),
-          child: Row(
+          child: const Row(
             children: [
-              const Icon(Icons.storage, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
+              Icon(Icons.storage, color: Colors.white, size: 20),
+              SizedBox(width: 8),
               Expanded(
                 child: Text(
                   '연결 관리',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
@@ -1279,33 +1277,33 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                                   },
                                   itemBuilder: (context) => [
                                     if (!isCurrentConnection)
-                                      PopupMenuItem(
+                                      const PopupMenuItem(
                                         value: 'connect',
                                         child: Row(
                                           children: [
-                                            const Icon(Icons.play_arrow, size: 16, color: Colors.green),
-                                            const SizedBox(width: 8),
-                                            const Text('연결', style: TextStyle(fontSize: 11)),
+                                            Icon(Icons.play_arrow, size: 16, color: Colors.green),
+                                            SizedBox(width: 8),
+                                            Text('연결', style: TextStyle(fontSize: 11)),
                                           ],
                                         ),
                                       ),
-                                    PopupMenuItem(
+                                    const PopupMenuItem(
                                       value: 'edit',
                                       child: Row(
                                         children: [
-                                          const Icon(Icons.edit, size: 16, color: Colors.blue),
-                                          const SizedBox(width: 8),
-                                          const Text('편집', style: TextStyle(fontSize: 11)),
+                                          Icon(Icons.edit, size: 16, color: Colors.blue),
+                                          SizedBox(width: 8),
+                                          Text('편집', style: TextStyle(fontSize: 11)),
                                           ],
                                         ),
                                       ),
-                                    PopupMenuItem(
+                                    const PopupMenuItem(
                                       value: 'delete',
                                       child: Row(
                                         children: [
-                                          const Icon(Icons.delete, size: 16, color: Colors.red),
-                                          const SizedBox(width: 8),
-                                          const Text('삭제', style: TextStyle(fontSize: 11, color: Colors.red)),
+                                          Icon(Icons.delete, size: 16, color: Colors.red),
+                                          SizedBox(width: 8),
+                                          Text('삭제', style: TextStyle(fontSize: 11, color: Colors.red)),
                                         ],
                                       ),
                                     ),
@@ -1319,7 +1317,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                               ),
                             ),
                           );
-                        }).toList(),
+                        }),
                       const SizedBox(height: 8),
                       // 새 연결 추가 버튼
                       SizedBox(
@@ -1374,7 +1372,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     final l10n = AppLocalizations.of(context)!;
     
     // 서버 URL 자동 생성
-    void _updateServerUrl() {
+    void updateServerUrl() {
       if (_newSelectedServerType == ServerType.hostinger) {
         _newServerUrlController.text = 'https://sync.coolsistema.com';
       } else if (_newLocalIpController.text.isNotEmpty) {
@@ -1458,7 +1456,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                   onChanged: (value) {
                     setState(() {
                       _newSelectedServerType = value!;
-                      _updateServerUrl();
+                      updateServerUrl();
                     });
                   },
                   contentPadding: EdgeInsets.zero,
@@ -1473,7 +1471,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                   onChanged: (value) {
                     setState(() {
                       _newSelectedServerType = value!;
-                      _updateServerUrl();
+                      updateServerUrl();
                     });
                   },
                   contentPadding: EdgeInsets.zero,
@@ -1498,7 +1496,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
               style: const TextStyle(fontSize: 11),
               keyboardType: TextInputType.number,
               onChanged: (value) {
-                _updateServerUrl();
+                updateServerUrl();
               },
             ),
           if (_newSelectedServerType == ServerType.local)
@@ -2747,7 +2745,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
     
       // total_gasto_day 또는 total 필드 확인
       final totalGastoDay = gastos['total_gasto_day'] ?? gastos['total'];
-      if (totalGastoDay != null && (totalGastoDay is num) && (totalGastoDay as num) > 0) {
+      if (totalGastoDay != null && (totalGastoDay is num) && totalGastoDay > 0) {
         debugPrint('   → total_gasto_day 카드 추가: $totalGastoDay');
       cards.add(_buildDataCard(
         'Total de Gastos',
@@ -2867,7 +2865,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                           );
                         }
                         return const SizedBox.shrink();
-                      }).toList(),
+                      }),
                     ],
                   ),
                 ),
@@ -3119,7 +3117,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.calendar_month, color: Colors.blue, size: 20),
+                              const Icon(Icons.calendar_month, color: Colors.blue, size: 20),
                               const SizedBox(width: 8),
                               Flexible(
                                 child: Text(
@@ -3216,14 +3214,14 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
+                      const Row(
                         children: [
                           Icon(Icons.calendar_today, color: Colors.green, size: 20),
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           Flexible(
                             child: Text(
                               'Total Facturas del Mes',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -3420,7 +3418,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
               scrollDirection: Axis.horizontal,
               child: DataTable(
                 columnSpacing: 20,
-                headingRowColor: MaterialStateProperty.all(
+                headingRowColor: WidgetStateProperty.all(
                   Theme.of(context).colorScheme.primary.withOpacity(0.1),
                 ),
                 columns: const [
@@ -3449,7 +3447,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                   )),
                   // 합계 행
                   DataRow(
-                    color: MaterialStateProperty.all(
+                    color: WidgetStateProperty.all(
                       Theme.of(context).colorScheme.primary.withOpacity(0.05),
                     ),
                     cells: [
@@ -3863,7 +3861,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
                 value: sucursal,
                 child: Text('Sucursal $sucursal', style: const TextStyle(fontSize: 12, color: Colors.white)),
               );
-            }).toList(),
+            }),
         ],
         onChanged: (String? value) {
           setState(() {
@@ -3902,7 +3900,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
               final sucursalValue = item['sucursal'];
               debugPrint('         → sucursal 값: $sucursalValue (타입: ${sucursalValue.runtimeType})');
               final sucursal = sucursalValue is int 
-                  ? sucursalValue as int 
+                  ? sucursalValue 
                   : int.tryParse(sucursalValue.toString()) ?? 0;
               debugPrint('         → 파싱된 sucursal: $sucursal');
               if (sucursal > 0) {
@@ -3997,7 +3995,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         if (item is Map && item.containsKey('sucursal')) {
           final sucursalValue = item['sucursal'];
           final sucursal = sucursalValue is int 
-              ? sucursalValue as int 
+              ? sucursalValue 
               : int.tryParse(sucursalValue.toString()) ?? 0;
           debugPrint('         → sucursal: $sucursal (원본: $sucursalValue)');
           
@@ -4475,61 +4473,61 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       // vcodes 항목
       if (sucursalData.containsKey('vcodes') && sucursalData['vcodes'] is Map) {
         final vcodes = sucursalData['vcodes'] as Map<String, dynamic>;
-        vcodes.keys.forEach((key) {
+        for (var key in vcodes.keys) {
           if (!allMetrics.contains('vcodes_$key')) {
             allMetrics.add('vcodes_$key');
           }
-        });
+        }
       }
       
       // gastos 항목
       if (sucursalData.containsKey('gastos') && sucursalData['gastos'] is Map) {
         final gastos = sucursalData['gastos'] as Map<String, dynamic>;
-        gastos.keys.forEach((key) {
+        for (var key in gastos.keys) {
           if (!allMetrics.contains('gastos_$key')) {
             allMetrics.add('gastos_$key');
           }
-        });
+        }
       }
       
       // vdetalle 항목
       if (sucursalData.containsKey('vdetalle') && sucursalData['vdetalle'] is Map) {
         final vdetalle = sucursalData['vdetalle'] as Map<String, dynamic>;
-        vdetalle.keys.forEach((key) {
+        for (var key in vdetalle.keys) {
           if (!allMetrics.contains('vdetalle_$key')) {
             allMetrics.add('vdetalle_$key');
           }
-        });
+        }
       }
       
       // vcodes_mpago 항목
       if (sucursalData.containsKey('vcodes_mpago') && sucursalData['vcodes_mpago'] is Map) {
         final mpago = sucursalData['vcodes_mpago'] as Map<String, dynamic>;
-        mpago.keys.forEach((key) {
+        for (var key in mpago.keys) {
           if (!allMetrics.contains('mpago_$key')) {
             allMetrics.add('mpago_$key');
           }
-        });
+        }
       }
       
       // ingresos 항목
       if (sucursalData.containsKey('ingresos') && sucursalData['ingresos'] is Map) {
         final ingresos = sucursalData['ingresos'] as Map<String, dynamic>;
-        ingresos.keys.forEach((key) {
+        for (var key in ingresos.keys) {
           if (!allMetrics.contains('ingresos_$key')) {
             allMetrics.add('ingresos_$key');
           }
-        });
+        }
       }
       
       // stocks 항목
       if (sucursalData.containsKey('stocks') && sucursalData['stocks'] is Map) {
         final stocks = sucursalData['stocks'] as Map<String, dynamic>;
-        stocks.keys.forEach((key) {
+        for (var key in stocks.keys) {
           if (!allMetrics.contains('stocks_$key')) {
             allMetrics.add('stocks_$key');
           }
-        });
+        }
       }
     }
 
@@ -4714,7 +4712,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
         scrollDirection: Axis.vertical,
         child: DataTable(
           columnSpacing: 20,
-          headingRowColor: MaterialStateProperty.all(
+          headingRowColor: WidgetStateProperty.all(
             Theme.of(context).colorScheme.primary.withOpacity(0.1),
           ),
           columns: columns,
@@ -4976,7 +4974,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
           ],
         ),
       ),
-      PopupMenuItem<String>(
+      const PopupMenuItem<String>(
         value: 'gastos',
         enabled: true,
         child: Row(
@@ -4986,7 +4984,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
               color: Colors.red,
               size: 20,
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Text(
               'Gastos',
               style: TextStyle(
@@ -4997,7 +4995,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
           ],
         ),
       ),
-      PopupMenuItem<String>(
+      const PopupMenuItem<String>(
         value: 'alertas',
         enabled: true,
         child: Row(
@@ -5007,7 +5005,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
               color: Colors.orange,
               size: 20,
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Text(
               'Alertas',
               style: TextStyle(

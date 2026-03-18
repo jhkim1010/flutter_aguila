@@ -249,7 +249,7 @@ class CodigosBuilder {
                       // 편집 가능한 필드만 표시
                       if (reportType == ReportType.todocodigos)
                         // Todocodigos: tcodigo, tdesc, tpre1, tpre2, tpre3, tpre4, tpre5, borrado
-                        ...(['tcodigo', 'tdesc', 'tpre1', 'tpre2', 'tpre3', 'tpre4', 'tpre5', 'borrado'] as List<String>).where((key) => selectedCodigo.containsKey(key)).toList().asMap().entries.map((entry) {
+                        ...(['tcodigo', 'tdesc', 'tpre1', 'tpre2', 'tpre3', 'tpre4', 'tpre5', 'borrado']).where((key) => selectedCodigo.containsKey(key)).toList().asMap().entries.map((entry) {
                           final index = entry.key;
                           final key = entry.value;
                           final displayNames = {
@@ -272,10 +272,10 @@ class CodigosBuilder {
                               const SizedBox(height: 16),
                             ],
                           );
-                        }).toList()
+                        })
                       else
                         // Codigos: codigo, descripcion, pre1, pre2, pre3, pre4, pre5, b_mostrar_vcontrol, borrado
-                        ...(['codigo', 'descripcion', 'pre1', 'pre2', 'pre3', 'pre4', 'pre5', 'b_mostrar_vcontrol', 'borrado'] as List<String>).asMap().entries.map((entry) {
+                        ...(['codigo', 'descripcion', 'pre1', 'pre2', 'pre3', 'pre4', 'pre5', 'b_mostrar_vcontrol', 'borrado']).asMap().entries.map((entry) {
                           final index = entry.key;
                           final key = entry.value;
                           // 필드가 없어도 편집 가능한 필드는 표시 (기본값 사용)
@@ -300,7 +300,7 @@ class CodigosBuilder {
                               const SizedBox(height: 16),
                             ],
                           );
-                        }).toList(),
+                        }),
                       const SizedBox(height: 8),
                       FocusTraversalOrder(
                         order: const NumericFocusOrder(999), // 마지막 순서
@@ -378,7 +378,7 @@ class CodigosBuilder {
           border: const OutlineInputBorder(),
           enabled: true,
         ),
-        keyboardType: isNumericField ? TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
+        keyboardType: isNumericField ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
         textInputAction: TextInputAction.next,
         onChanged: onChanged,
         onSubmitted: (_) {

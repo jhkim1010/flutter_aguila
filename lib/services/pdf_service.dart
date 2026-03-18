@@ -100,7 +100,7 @@ class PdfService {
               pw.Center(
                 child: pw.Text(
                   'No hay datos disponibles',
-                  style: pw.TextStyle(fontSize: 14, color: PdfColors.grey700),
+                  style: const pw.TextStyle(fontSize: 14, color: PdfColors.grey700),
                 ),
               )
             else
@@ -205,7 +205,7 @@ class PdfService {
           pw.Center(
             child: pw.Text(
               'No hay datos disponibles',
-              style: pw.TextStyle(fontSize: 14, color: PdfColors.grey700),
+              style: const pw.TextStyle(fontSize: 14, color: PdfColors.grey700),
             ),
           ),
         );
@@ -240,7 +240,7 @@ class PdfService {
       widgets.add(
         pw.Text(
           'Formato de datos no reconocido',
-          style: pw.TextStyle(fontSize: 12, color: PdfColors.red),
+          style: const pw.TextStyle(fontSize: 12, color: PdfColors.red),
         ),
       );
     }
@@ -323,8 +323,8 @@ class PdfService {
                   }).toList(),
                 );
               }
-              return pw.TableRow(children: []);
-            }).toList(),
+              return const pw.TableRow(children: []);
+            }),
           ],
         ),
       );
@@ -545,8 +545,8 @@ class PdfService {
                             }).toList(),
                           );
                         }
-                        return pw.TableRow(children: []);
-                      }).toList(),
+                        return const pw.TableRow(children: []);
+                      }),
                     ],
                   ),
                 );

@@ -44,7 +44,7 @@ class ReportFilters {
             hintStyle: TextStyle(color: hintColor),
             border: border ?? InputBorder.none,
             enabledBorder: border ?? InputBorder.none,
-            focusedBorder: light ? OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: Colors.orange, width: 1.5)) : null,
+            focusedBorder: light ? OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: const BorderSide(color: Colors.orange, width: 1.5)) : null,
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             prefixIcon: Icon(Icons.search, color: iconColor, size: 20),
             suffixIcon: ValueListenableBuilder<TextEditingValue>(

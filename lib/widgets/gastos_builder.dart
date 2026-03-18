@@ -121,7 +121,7 @@ class GastosBuilder {
           }
           return false;
         }).toList();
-        debugPrint('   → filteringWord 필터링 후: ${detailList.length}개 (${beforeFilterCount}개 중)');
+        debugPrint('   → filteringWord 필터링 후: ${detailList.length}개 ($beforeFilterCount개 중)');
       }
       
       if (detailList.isEmpty) {
@@ -165,7 +165,7 @@ class GastosBuilder {
           }
           return false;
         }).toList();
-        debugPrint('   → filteringWord 필터링 후: ${dataList.length}개 (${beforeFilterCount}개 중)');
+        debugPrint('   → filteringWord 필터링 후: ${dataList.length}개 ($beforeFilterCount개 중)');
       }
       
       if (dataList.isEmpty) {
@@ -267,7 +267,7 @@ class GastosBuilder {
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  CircularProgressIndicator(
+                                  const CircularProgressIndicator(
                                     color: Colors.red,
                                   ),
                                   const SizedBox(height: 16),
@@ -457,7 +457,7 @@ class GastosBuilder {
       return const SizedBox.shrink();
     }
 
-    final reportColor = Colors.red;
+    const reportColor = Colors.red;
     
     // 정렬 적용
     List<dynamic> sortedList = List.from(summaryByRubroList);
@@ -638,7 +638,7 @@ class GastosBuilder {
       return DataRow(
         selected: isSelected,
         color: isSelected 
-            ? MaterialStateProperty.all(Colors.blue.withOpacity(0.1))
+            ? WidgetStateProperty.all(Colors.blue.withOpacity(0.1))
             : null,
         onSelectChanged: onRubroSelected != null ? (selected) {
           if (selected == true) {
@@ -734,7 +734,7 @@ class GastosBuilder {
         dataRowMinHeight: 32,  // items 보고서와 동일하게 2/3로 조정 (48 * 2/3 = 32)
         dataRowMaxHeight: 37,  // items 보고서와 동일하게 2/3로 조정 (56 * 2/3 ≈ 37)
         headingRowHeight: 37,  // items 보고서와 동일하게 조정
-        headingRowColor: MaterialStateProperty.all(
+        headingRowColor: WidgetStateProperty.all(
           reportColor.withOpacity(0.1),
         ),
         columns: columns,
@@ -742,7 +742,7 @@ class GastosBuilder {
           ...rows,
           // 총합 행
           DataRow(
-            color: MaterialStateProperty.all(reportColor.withOpacity(0.1)),
+            color: WidgetStateProperty.all(reportColor.withOpacity(0.1)),
             cells: [
               const DataCell(Text('Total', style: TextStyle(fontWeight: FontWeight.bold))),
               const DataCell(Text('')),
@@ -1009,7 +1009,7 @@ class GastosBuilder {
       }
     }
 
-    final reportColor = Colors.red;
+    const reportColor = Colors.red;
 
     // 칼럼 정의 (buildColumnDefs() 기준) 및 너비 병합
     final colDefs = buildColumnDefs();
@@ -1128,11 +1128,11 @@ class GastosBuilder {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), // items 보고서와 동일하게 vertical: 8
                 height: 37, // items 보고서와 동일하게 37
-                child: Align(
+                child: const Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
                     'Total',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),

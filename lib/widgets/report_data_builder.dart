@@ -169,16 +169,16 @@ class ReportDataBuilder {
     }
     
     return DataRow(
-      color: MaterialStateProperty.all(reportColor.withOpacity(0.1)),
+      color: WidgetStateProperty.all(reportColor.withOpacity(0.1)),
       cells: orderedKeys.map((key) {
         final isCodigoColumn = key == 'codigo' || key == 'tcode' || key == 'codigo1' || key == 'id_codigo1';
         if (isCodigoColumn) {
-          return DataCell(
+          return const DataCell(
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
                 'Total',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
                 ),
@@ -228,16 +228,16 @@ class ReportDataBuilder {
     }
     
     return DataRow(
-      color: MaterialStateProperty.all(reportColor.withOpacity(0.1)),
+      color: WidgetStateProperty.all(reportColor.withOpacity(0.1)),
       cells: keys.map((key) {
         final isCodigoColumn = key == 'codigo' || key == 'codigo1' || key == 'tcode' || key == 'id_codigo1';
         if (isCodigoColumn) {
-          return DataCell(
+          return const DataCell(
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
                 'Total',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                 ),

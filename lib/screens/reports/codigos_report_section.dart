@@ -1,6 +1,6 @@
 part of '../report_screen_legacy.dart';
 
-mixin CodigosReportMixin on State<ReportScreenLegacy> {
+mixin CodigosReportMixin on _ReportScreenStateBase {
   // Codigos 보고서 콘텐츠 빌드
   Widget _buildCodigosContent(Map<String, dynamic> data) {
     // ============================================================

@@ -7,7 +7,7 @@ class StocksColumnWidthStorage {
 
   static String _storageKey(String databaseName) {
     final db = databaseName.isEmpty ? 'default' : databaseName;
-    return '${_keyPrefix}_${db}';
+    return '${_keyPrefix}_$db';
   }
 
   /// 저장된 칼럼 너비 로드 (DB명별). 없으면 null.

@@ -279,7 +279,7 @@ class _ConnectionListScreenState extends State<ConnectionListScreen> {
                             const SizedBox(height: 4),
                             Text(l10n.server(connection.serverUrl)),
                             Text(l10n.db(connection.databaseName)),
-                            Text(l10n.port(connection.port?.toString() ?? "N/A")),
+                            Text(l10n.port(connection.port.toString() ?? "N/A")),
                           ],
                         ),
                         trailing: PopupMenuButton<String>(

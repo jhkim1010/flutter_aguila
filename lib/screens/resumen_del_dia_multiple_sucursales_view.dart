@@ -566,23 +566,23 @@ class ResumenDelDiaMultipleSucursalesView extends StatelessWidget {
       // vcodes 항목 (sucursal 제외)
       if (sucursalData.containsKey('vcodes') && sucursalData['vcodes'] is Map) {
         final vcodes = sucursalData['vcodes'] as Map<String, dynamic>;
-        vcodes.keys.forEach((key) {
+        for (var key in vcodes.keys) {
           // sucursal 키는 제외 (이미 컬럼 헤더에 표시됨)
           if (key != 'sucursal' && !allMetrics.contains('vcodes_$key')) {
             allMetrics.add('vcodes_$key');
           }
-        });
+        }
       }
       
       // gastos 항목 (갯수와 총 금액, sucursal 제외)
       if (sucursalData.containsKey('gastos') && sucursalData['gastos'] is Map) {
         final gastos = sucursalData['gastos'] as Map<String, dynamic>;
-        gastos.keys.forEach((key) {
+        for (var key in gastos.keys) {
           // sucursal 키는 제외 (이미 컬럼 헤더에 표시됨)
           if (key != 'sucursal' && !allMetrics.contains('gastos_$key')) {
             allMetrics.add('gastos_$key');
           }
-        });
+        }
       }
       
       // vdetalle 항목 (Descuento 포함, sucursal 제외)
@@ -596,7 +596,7 @@ class ResumenDelDiaMultipleSucursalesView extends StatelessWidget {
         final vdetalle = sucursalData['vdetalle'] as Map<String, dynamic>;
         debugPrint('         ✅ vdetalle이 Map임 - 키 수집 시작');
         debugPrint('         → vdetalle 키: ${vdetalle.keys.toList()}');
-        vdetalle.keys.forEach((key) {
+        for (var key in vdetalle.keys) {
           // sucursal 키는 제외 (이미 컬럼 헤더에 표시됨)
           if (key != 'sucursal' && !allMetrics.contains('vdetalle_$key')) {
             allMetrics.add('vdetalle_$key');
@@ -606,7 +606,7 @@ class ResumenDelDiaMultipleSucursalesView extends StatelessWidget {
           } else {
             debugPrint('            → 이미 존재하는 메트릭: vdetalle_$key');
           }
-        });
+        }
         debugPrint('         → vdetalle 메트릭 수집 완료');
       } else {
         debugPrint('         ⚠️ vdetalle이 없거나 Map이 아님');
@@ -615,23 +615,23 @@ class ResumenDelDiaMultipleSucursalesView extends StatelessWidget {
       // vcodes_mpago 항목 (갯수와 총 금액, sucursal 제외) - MPago 포함
       if (sucursalData.containsKey('vcodes_mpago') && sucursalData['vcodes_mpago'] is Map) {
         final mpago = sucursalData['vcodes_mpago'] as Map<String, dynamic>;
-        mpago.keys.forEach((key) {
+        for (var key in mpago.keys) {
           // sucursal 키는 제외 (이미 컬럼 헤더에 표시됨)
           if (key != 'sucursal' && !allMetrics.contains('mpago_$key')) {
             allMetrics.add('mpago_$key');
           }
-        });
+        }
       }
       
       // ingresos 항목 (sucursal 제외)
       if (sucursalData.containsKey('ingresos') && sucursalData['ingresos'] is Map) {
         final ingresos = sucursalData['ingresos'] as Map<String, dynamic>;
-        ingresos.keys.forEach((key) {
+        for (var key in ingresos.keys) {
           // sucursal 키는 제외 (이미 컬럼 헤더에 표시됨)
           if (key != 'sucursal' && !allMetrics.contains('ingresos_$key')) {
             allMetrics.add('ingresos_$key');
           }
-        });
+        }
       }
     }
     
@@ -712,8 +712,8 @@ class ResumenDelDiaMultipleSucursalesView extends StatelessWidget {
       
       // 각 tipofactura에 대해 메트릭 추가
       for (var tipofactura in tipofacturaSet) {
-        if (!allMetrics.contains('fventas_mes_${tipofactura}')) {
-          allMetrics.add('fventas_mes_${tipofactura}');
+        if (!allMetrics.contains('fventas_mes_$tipofactura')) {
+          allMetrics.add('fventas_mes_$tipofactura');
           debugPrint('      - FVentas Mes 메트릭 추가: $tipofactura');
         }
       }
@@ -1369,7 +1369,7 @@ class ResumenDelDiaMultipleSucursalesView extends StatelessWidget {
               scrollDirection: Axis.horizontal,
               child: DataTable(
                 columnSpacing: 20,
-                headingRowColor: MaterialStateProperty.all(
+                headingRowColor: WidgetStateProperty.all(
                   Theme.of(context).colorScheme.primary.withOpacity(0.1),
                 ),
                 columns: const [
@@ -1396,7 +1396,7 @@ class ResumenDelDiaMultipleSucursalesView extends StatelessWidget {
                     ],
                   )),
                   DataRow(
-                    color: MaterialStateProperty.all(
+                    color: WidgetStateProperty.all(
                       Theme.of(context).colorScheme.primary.withOpacity(0.05),
                     ),
                     cells: [
@@ -1580,7 +1580,7 @@ class _ResizableSplitViewState extends State<_ResizableSplitView> {
         
         // 화면 크기에 맞게 조정
         final maxLeftWidth = constraints.maxWidth * 0.8;
-        final minLeftWidth = 200.0;
+        const minLeftWidth = 200.0;
         final adjustedLeftWidth = _leftWidth.clamp(minLeftWidth, maxLeftWidth);
         
         if (adjustedLeftWidth != _leftWidth) {

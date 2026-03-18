@@ -185,7 +185,7 @@ class ReportHeaderBuilders {
                                     ),
                                   ),
                                   child: TextField(
-                                    key: ValueKey('filtering_word_field_header'), // 키 추가로 재생성 방지
+                                    key: const ValueKey('filtering_word_field_header'), // 키 추가로 재생성 방지
                                     controller: filteringWordController,
                                     style: TextStyle(
                                       color: reportColor,
@@ -252,7 +252,7 @@ class ReportHeaderBuilders {
                       Icon(Icons.attach_money, color: reportColor, size: 14),
                       const SizedBox(width: 4),
                       Text(
-                        _getTotalLabel(unit) + ': ${_formatNumber(totalVentaDay)}',
+                        '${_getTotalLabel(unit)}: ${_formatNumber(totalVentaDay)}',
                         style: TextStyle(
                           color: reportColor,
                           fontSize: 11,
@@ -290,7 +290,7 @@ class ReportHeaderBuilders {
                           value: sucursal,
                           child: Text(sucursal, style: const TextStyle(fontSize: 11)),
                         );
-                      }).toList(),
+                      }),
                     ],
                     onChanged: onSucursalChanged,
                   ),

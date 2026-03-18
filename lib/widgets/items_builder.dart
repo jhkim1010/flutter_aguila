@@ -1263,7 +1263,7 @@ class ItemsBuilder {
           columnSpacing: 8,
           dataRowMinHeight: 32,  // 오른쪽 테이블과 동일하게 2/3로 조정 (48 * 2/3 = 32)
           dataRowMaxHeight: 37,  // 오른쪽 테이블과 동일하게 2/3로 조정 (56 * 2/3 ≈ 37)
-          headingRowColor: MaterialStateProperty.all(color.withOpacity(0.1)),
+          headingRowColor: WidgetStateProperty.all(color.withOpacity(0.1)),
           columns: columns,
           rows: rows,
         ),
@@ -1342,21 +1342,21 @@ class ItemsBuilder {
             columnSpacing: 8,
             dataRowMinHeight: 32,
             dataRowMaxHeight: 37,
-            headingRowColor: MaterialStateProperty.all((reportColor ?? Colors.purple).withOpacity(0.1)),
-            columns: [
-              const DataColumn(label: Text('Código', style: TextStyle(fontWeight: FontWeight.bold))),
-              const DataColumn(label: Text('Color', style: TextStyle(fontWeight: FontWeight.bold))),
-              const DataColumn(
+            headingRowColor: WidgetStateProperty.all((reportColor ?? Colors.purple).withOpacity(0.1)),
+            columns: const [
+              DataColumn(label: Text('Código', style: TextStyle(fontWeight: FontWeight.bold))),
+              DataColumn(label: Text('Color', style: TextStyle(fontWeight: FontWeight.bold))),
+              DataColumn(
                 label: Text('Total Cantidad', style: TextStyle(fontWeight: FontWeight.bold)),
                 numeric: true,
               ),
             ],
-            rows: [
+            rows: const [
               DataRow(
                 cells: [
-                  const DataCell(Text('No hay datos')),
-                  const DataCell(Text('')),
-                  const DataCell(Text('')),
+                  DataCell(Text('No hay datos')),
+                  DataCell(Text('')),
+                  DataCell(Text('')),
                 ],
               ),
             ],
@@ -1613,7 +1613,7 @@ class _CategoryTableWithIndependentSortState extends State<_CategoryTableWithInd
           columnSpacing: 8,
           dataRowMinHeight: 32,
           dataRowMaxHeight: 37,
-          headingRowColor: MaterialStateProperty.all(color.withOpacity(0.1)),
+          headingRowColor: WidgetStateProperty.all(color.withOpacity(0.1)),
           columns: columns,
           rows: rows,
         ),
@@ -1857,7 +1857,7 @@ class _ColorTableWithIndependentSortState extends State<_ColorTableWithIndepende
           columnSpacing: 8,
           dataRowMinHeight: 32,
           dataRowMaxHeight: 37,
-          headingRowColor: MaterialStateProperty.all(color.withOpacity(0.1)),
+          headingRowColor: WidgetStateProperty.all(color.withOpacity(0.1)),
           columns: columns,
           rows: rows,
         ),

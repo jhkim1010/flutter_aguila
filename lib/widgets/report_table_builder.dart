@@ -815,7 +815,7 @@ class ReportTableBuilder {
           children: [
             Text(
               key.toString(),
-              style: TextStyle(
+              style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 14, // ventas 보고서도 14px로 통일
               ),
@@ -981,7 +981,7 @@ class ReportTableBuilder {
                         debugPrint('   → keys: $keys');
                         debugPrint('   → dynamicColumnWidths: $dynamicColumnWidths');
                         debugPrint('   → 총 너비 계산: $totalTableWidth');
-                        debugPrint('   → 칼럼별 너비: ${keys.map((k) => '${k}=${dynamicColumnWidths[k] ?? 150.0}').join(', ')}');
+                        debugPrint('   → 칼럼별 너비: ${keys.map((k) => '$k=${dynamicColumnWidths[k] ?? 150.0}').join(', ')}');
                         debugPrint('═══════════════════════════════════════════════════════');
                         
                         // DataTable이 칼럼 너비를 자동으로 계산하므로, Table 위젯을 사용하여
@@ -1108,7 +1108,7 @@ class ReportTableBuilder {
                                     child: const Text(''),
                                   )).toList(),
                                 );
-                              }).toList(),
+                              }),
                             ],
                           ),
                         );
@@ -1463,7 +1463,7 @@ class ReportTableBuilder {
                       
                       // columnWidths를 복사하여 수정 (원본은 유지)
                       var finalColumnWidths = columnWidths;
-                      if (shouldDoubleColumnWidths && columnWidths != null) {
+                      if (shouldDoubleColumnWidths) {
                         final doubledWidths = <String, double>{};
                         // actualKeysFromData를 사용하여 실제 데이터에 맞는 키들만 2배 증가
                         for (final key in actualKeysFromData) {
@@ -2719,7 +2719,7 @@ class ReportTableBuilder {
             dataRowMinHeight: reportType == ReportType.alertas ? 72 : 48,
             dataRowMaxHeight: reportType == ReportType.alertas ? 84 : 56,
             headingRowHeight: headingRowHeight,
-            headingRowColor: MaterialStateProperty.all(
+            headingRowColor: WidgetStateProperty.all(
               isItemsOrIngresos ? color.withOpacity(0.1) : Colors.transparent,
             ),
             dividerThickness: 0.0, // 수평 라인 두께 0으로 설정
@@ -2903,7 +2903,7 @@ class ReportTableBuilder {
                 alignment: alignment,
                 child: Text(
                   formattedValue,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 14, // ventas 보고서도 14px로 통일
                   ),
                   maxLines: null,
@@ -3140,7 +3140,7 @@ class ReportTableBuilder {
                               alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
                               child: Text(
                                 formattedValue,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 14, // ventas 보고서도 14px로 통일
                                 ),
                                 overflow: TextOverflow.ellipsis,
@@ -3240,7 +3240,7 @@ class ReportTableBuilder {
                           alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
                           child: Text(
                             formattedValue,
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 14, // ventas 보고서도 14px로 통일
                             ),
                             overflow: TextOverflow.ellipsis,
@@ -3269,10 +3269,10 @@ class ReportTableBuilder {
                                       reportType == ReportType.gastos ||
                                       reportType == ReportType.clientes;
           
-          MaterialStateProperty<Color?>? rowColor;
+          WidgetStateProperty<Color?>? rowColor;
           if (shouldApplyRowColor && index % 5 == 4) {
             // 매 5번째 행 (0-based index이므로 4, 9, 14, ...)에 약간 다른 색상 적용
-            rowColor = MaterialStateProperty.all(Colors.grey.withOpacity(0.05));
+            rowColor = WidgetStateProperty.all(Colors.grey.withOpacity(0.05));
           }
           
           return DataRow(
@@ -3289,7 +3289,7 @@ class ReportTableBuilder {
                 alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
                 child: Text(
                   index == 0 ? formattedValue : '',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 14, // ventas 보고서도 14px로 통일
                   ),
                 ),
@@ -3305,10 +3305,10 @@ class ReportTableBuilder {
                                       reportType == ReportType.gastos ||
                                       reportType == ReportType.clientes;
           
-          MaterialStateProperty<Color?>? rowColor;
+          WidgetStateProperty<Color?>? rowColor;
           if (shouldApplyRowColor && index % 5 == 4) {
             // 매 5번째 행 (0-based index이므로 4, 9, 14, ...)에 약간 다른 색상 적용
-            rowColor = MaterialStateProperty.all(Colors.grey.withOpacity(0.05));
+            rowColor = WidgetStateProperty.all(Colors.grey.withOpacity(0.05));
           }
           
           return DataRow(
@@ -3427,7 +3427,7 @@ class ReportTableBuilder {
         columnSpacing: 8,
         dataRowMinHeight: 48,
         dataRowMaxHeight: 56,
-        headingRowColor: MaterialStateProperty.all(
+        headingRowColor: WidgetStateProperty.all(
           reportColor.withOpacity(0.1),
         ),
         columns: columns,

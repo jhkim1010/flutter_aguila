@@ -16,7 +16,7 @@ class StocksApi {
     String? sortColumn,
     bool? sortAscending,
   }) async {
-    final endpoint = '/api/reporte/stocks';
+    const endpoint = '/api/reporte/stocks';
     final queryParams = <String, String>{};
     
     if (filteringWord != null && filteringWord.isNotEmpty) {

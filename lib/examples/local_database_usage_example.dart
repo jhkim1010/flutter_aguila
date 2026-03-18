@@ -2,6 +2,7 @@
 /// 
 /// 이 파일은 LocalDatabaseService를 어떻게 사용하는지 보여주는 예시입니다.
 /// 실제 프로젝트에서는 이 코드를 참고하여 구현하세요.
+library;
 
 import '../services/local_database_service.dart';
 import '../models/item.dart';

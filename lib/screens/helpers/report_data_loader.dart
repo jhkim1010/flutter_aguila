@@ -1,6 +1,6 @@
 part of '../report_screen_legacy.dart';
 
-mixin ReportDataLoaderMixin on State<ReportScreenLegacy> {
+mixin ReportDataLoaderMixin on _ReportScreenStateBase {
 
   /// Tipos와 Temporadas 데이터 로드
   Future<void> _loadTiposAndTemporadas() async {

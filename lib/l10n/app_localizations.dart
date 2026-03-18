@@ -306,13 +306,10 @@ class AppLocalizations {
 
   String translate(String key, {Map<String, String>? params}) {
     String? value = _localizedValues[locale.languageCode]?[key];
-    if (value == null) {
-      // Fallback to Spanish if translation not found
-      value = _localizedValues['es']?[key] ?? key;
-    }
+    value ??= _localizedValues['es']?[key] ?? key;
     
     // Replace parameters
-    if (params != null && value != null) {
+    if (params != null) {
       params.forEach((paramKey, paramValue) {
         value = value!.replaceAll('{$paramKey}', paramValue);
       });

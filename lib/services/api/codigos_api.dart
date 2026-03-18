@@ -15,7 +15,7 @@ class CodigosApi {
     bool? sortAscending,
     Map<String, dynamic>? filters,
   }) async {
-    final endpoint = '/api/codigos';
+    const endpoint = '/api/codigos';
     final queryParams = <String, String>{};
     
     if (idCodigo != null && idCodigo.isNotEmpty) {
@@ -86,7 +86,7 @@ class CodigosApi {
       }
     }
     
-    print('🎉 Codigos 전체 로드 완료: 총 ${allData.length}개 항목, ${pageCount}페이지');
+    print('🎉 Codigos 전체 로드 완료: 총 ${allData.length}개 항목, $pageCount페이지');
     
     return {
       'data': allData,

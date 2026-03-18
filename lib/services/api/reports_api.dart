@@ -14,7 +14,7 @@ class ReportsApi {
     DateTime? date,
     String? sucursal,
   }) async {
-    final endpoint = '/api/resumen_del_dia';
+    const endpoint = '/api/resumen_del_dia';
     final body = <String, dynamic>{};
     
     if (date != null) {
@@ -47,7 +47,7 @@ class ReportsApi {
     String? filteringWord,
     Map<String, dynamic>? filters,
   }) async {
-    final endpoint = '/api/reporte/items';
+    const endpoint = '/api/reporte/items';
     final queryParams = <String, String>{};
     
     if (filteringWord != null && filteringWord.isNotEmpty) {
@@ -88,7 +88,7 @@ class ReportsApi {
     int? limit,
     int? offset,
   }) async {
-    final endpoint = '/api/reporte/clientes';
+    const endpoint = '/api/reporte/clientes';
     final queryParams = <String, String>{};
     
     // 페이지네이션 파라미터 추가
@@ -119,7 +119,7 @@ class ReportsApi {
     String? rubroCode,
     Map<String, dynamic>? filters,
   }) async {
-    final endpoint = '/api/gastos';
+    const endpoint = '/api/gastos';
     final queryParams = <String, String>{};
     
     // filteringWord 파라미터 추가
@@ -162,7 +162,7 @@ class ReportsApi {
     String? unit, // 'vcode', 'day', 'month', 'year'
     Map<String, dynamic>? filters,
   }) async {
-    final endpoint = '/api/reporte/ventas';
+    const endpoint = '/api/reporte/ventas';
     final queryParams = <String, String>{};
     
     if (filteringWord != null && filteringWord.isNotEmpty) {
@@ -271,7 +271,7 @@ class ReportsApi {
     String? filteringWord,
     Map<String, dynamic>? filters,
   }) async {
-    final endpoint = '/api/reporte/alertas';
+    const endpoint = '/api/reporte/alertas';
     final queryParams = <String, String>{};
     
     if (filteringWord != null && filteringWord.isNotEmpty) {
@@ -297,7 +297,7 @@ class ReportsApi {
     String? filteringWord,
     Map<String, dynamic>? filters,
   }) async {
-    final endpoint = '/api/reporte/ingresos';
+    const endpoint = '/api/reporte/ingresos';
     final queryParams = <String, String>{};
     
     if (filteringWord != null && filteringWord.isNotEmpty) {
@@ -331,7 +331,7 @@ class ReportsApi {
     Map<String, dynamic>? filters,
     String? lastIdFventa, // 페이지네이션용
   }) async {
-    final endpoint = '/api/fventas';
+    const endpoint = '/api/fventas';
     final queryParams = <String, String>{};
     
     // filtering_word 파라미터 추가 (clientenombre, dni, numfactura, tipofactura에서 검색)
@@ -424,7 +424,7 @@ class ReportsApi {
       print('📋 FVentas 요청 헤더:');
       fventasHeaders.forEach((key, value) {
         if (key.toLowerCase().contains('password')) {
-          print('  - $key: ${'*' * (value.length > 0 ? value.length : 8)}');
+          print('  - $key: ${'*' * (value.isNotEmpty ? value.length : 8)}');
         } else {
           print('  - $key: $value');
         }
@@ -494,7 +494,7 @@ class ReportsApi {
   Future<Map<String, dynamic>> syncFVentasBatch({
     required List<Map<String, dynamic>> data,
   }) async {
-    final endpoint = '/api/fventas';
+    const endpoint = '/api/fventas';
     final body = <String, dynamic>{
       'operation': 'BATCH_SYNC',
       'data': data,
@@ -583,7 +583,7 @@ class ReportsApi {
     required int vcodeId,
     required int sucursal,
   }) async {
-    final endpoint = '/api/vdetalles';
+    const endpoint = '/api/vdetalles';
     final queryParams = <String, String>{
       'vcode_id': vcodeId.toString(),
       'sucursal': sucursal.toString(),
@@ -604,7 +604,7 @@ class ReportsApi {
     headers.forEach((key, value) {
       // 비밀번호는 마스킹 처리
       if (key.toLowerCase().contains('password')) {
-        print('  $key: ${'*' * (value.length > 0 ? value.length : 8)}');
+        print('  $key: ${'*' * (value.isNotEmpty ? value.length : 8)}');
       } else {
         print('  $key: $value');
       }
@@ -639,13 +639,13 @@ class ReportsApi {
 
   /// Tipos 리스트 가져오기
   Future<Map<String, dynamic>> getTipos() async {
-    final endpoint = '/api/tipos';
+    const endpoint = '/api/tipos';
     return await _httpHandler.performGetRequest(endpoint);
   }
 
   /// Temporadas 리스트 가져오기
   Future<Map<String, dynamic>> getTemporadas() async {
-    final endpoint = '/api/temporadas';
+    const endpoint = '/api/temporadas';
     return await _httpHandler.performGetRequest(endpoint);
   }
 
@@ -653,7 +653,7 @@ class ReportsApi {
   Future<Map<String, dynamic>> getClienteDetail({
     required String cuit,
   }) async {
-    final endpoint = '/api/cliente/detail';
+    const endpoint = '/api/cliente/detail';
     final queryParams = <String, String>{
       'cuit': cuit,
     };

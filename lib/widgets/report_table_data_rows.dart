@@ -160,7 +160,7 @@ class ReportTableDataRows {
     
     debugPrint('      → isItemsOrIngresos: $isItemsOrIngresos');
     debugPrint('      → isAlertas: $isAlertas');
-    final defaultColumnWidths = kReportDefaultColumnWidths;
+    const defaultColumnWidths = kReportDefaultColumnWidths;
     
     final finalColumnWidths = columnWidths ?? defaultColumnWidths;
     
@@ -538,10 +538,10 @@ class ReportTableDataRows {
                                 reportType == ReportType.gastos ||
                                 reportType == ReportType.clientes;
     
-    MaterialStateProperty<Color?>? rowColor;
+    WidgetStateProperty<Color?>? rowColor;
     if (shouldApplyRowColor && rowIndex % 5 == 4) {
       // 매 5번째 행 (0-based index이므로 4, 9, 14, ...)에 약간 다른 색상 적용
-      rowColor = MaterialStateProperty.all(Colors.grey.withOpacity(0.05));
+      rowColor = WidgetStateProperty.all(Colors.grey.withOpacity(0.05));
     }
     
     return DataRow(
@@ -743,7 +743,7 @@ class ReportTableDataRows {
             debugPrint('→ reportType: $reportType');
             debugPrint('→ unit: $unit');
             debugPrint('→ item: $item');
-            onRowTap!(item);
+            onRowTap(item);
           } : null,
           onDoubleTap: shouldAddOnDoubleTap ? () {
             debugPrint('═══════════════════════════════════════════════════════');
@@ -753,7 +753,7 @@ class ReportTableDataRows {
             debugPrint('   → item keys: ${item.keys.toList()}');
             debugPrint('   → item: $item');
             debugPrint('   → onRowDoubleTap 콜백 호출 시작');
-            onRowDoubleTap!(item);
+            onRowDoubleTap(item);
             debugPrint('   → onRowDoubleTap 콜백 호출 완료');
             debugPrint('═══════════════════════════════════════════════════════');
           } : null,

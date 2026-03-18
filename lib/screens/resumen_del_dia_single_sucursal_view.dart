@@ -593,7 +593,7 @@ class ResumenDelDiaSingleSucursalView extends StatelessWidget {
               ? LayoutBuilder(
                   builder: (context, constraints) {
                     final availableWidth = constraints.maxWidth;
-                    final minCardWidth = 250.0;
+                    const minCardWidth = 250.0;
                     final maxCrossAxisCount = (availableWidth / minCardWidth).floor();
                     final crossAxisCount = maxCrossAxisCount >= 4 ? 4 : (maxCrossAxisCount >= 3 ? 3 : 2);
                     
@@ -1615,7 +1615,7 @@ class ResumenDelDiaSingleSucursalView extends StatelessWidget {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.calendar_month, color: Colors.blue, size: 20),
+                              const Icon(Icons.calendar_month, color: Colors.blue, size: 20),
                               const SizedBox(width: 8),
                               Flexible(
                                 child: Text(
@@ -1692,14 +1692,14 @@ class ResumenDelDiaSingleSucursalView extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
+                      const Row(
                         children: [
                           Icon(Icons.calendar_today, color: Colors.green, size: 20),
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           Flexible(
                             child: Text(
                               'Total Facturas del Mes',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -1873,7 +1873,7 @@ class ResumenDelDiaSingleSucursalView extends StatelessWidget {
               scrollDirection: Axis.horizontal,
               child: DataTable(
                 columnSpacing: 20,
-                headingRowColor: MaterialStateProperty.all(
+                headingRowColor: WidgetStateProperty.all(
                   Theme.of(context).colorScheme.primary.withOpacity(0.1),
                 ),
                 columns: const [
@@ -1900,7 +1900,7 @@ class ResumenDelDiaSingleSucursalView extends StatelessWidget {
                     ],
                   )),
                   DataRow(
-                    color: MaterialStateProperty.all(
+                    color: WidgetStateProperty.all(
                       Theme.of(context).colorScheme.primary.withOpacity(0.05),
                     ),
                     cells: [

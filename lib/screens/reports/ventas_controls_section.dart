@@ -1,6 +1,6 @@
 part of '../report_screen_legacy.dart';
 
-mixin VentasControlsMixin on State<ReportScreenLegacy> {
+mixin VentasControlsMixin on _ReportScreenStateBase {
 
   Widget _buildVentasControlsInAppBar() {
     final reportColor = _getReportColor();

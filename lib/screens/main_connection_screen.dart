@@ -545,7 +545,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                   Text(l10n.connectionFailedMessage),
                   const SizedBox(height: 16),
                   Text(
-                    '${l10n.error(errorMessage)}',
+                    l10n.error(errorMessage),
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.red,
@@ -988,7 +988,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                   Expanded(
                     flex: 2,
                     child: DropdownButtonFormField<String>(
-                      value: widget.currentLocale?.languageCode ?? 
+                      initialValue: widget.currentLocale?.languageCode ?? 
                              (Localizations.localeOf(context).languageCode == 'es' || 
                               Localizations.localeOf(context).languageCode == 'en' ||
                               Localizations.localeOf(context).languageCode == 'ko'
@@ -1273,10 +1273,10 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
             children: [
               const Icon(Icons.assessment, color: Colors.white, size: 18),
               const SizedBox(width: 8),
-              Expanded(
+              const Expanded(
                 child: Text(
                   'Reportes',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
@@ -1730,7 +1730,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                       onTap: _isLoading ? null : () => _connectWithSavedConnection(connection),
                     ),
                   );
-                }).toList(),
+                }),
                 const SizedBox(height: 16),
                 const Divider(),
                 const SizedBox(height: 16),
@@ -1757,7 +1757,7 @@ class _MainConnectionScreenState extends State<MainConnectionScreen> {
                   Expanded(
                     flex: 2,
                     child: DropdownButtonFormField<String>(
-                      value: widget.currentLocale?.languageCode ?? 
+                      initialValue: widget.currentLocale?.languageCode ?? 
                              (Localizations.localeOf(context).languageCode == 'es' || 
                               Localizations.localeOf(context).languageCode == 'en' ||
                               Localizations.localeOf(context).languageCode == 'ko'

@@ -451,12 +451,12 @@ class ReportAppBarBuilders {
               child: Text('Todos', style: TextStyle(fontSize: 12)),
             ),
             if (availableSucursales != null)
-              ...availableSucursales!.map((sucursal) {
+              ...availableSucursales.map((sucursal) {
                 return DropdownMenuItem<String?>(
                   value: sucursal,
                   child: Text('Sucursal $sucursal', style: const TextStyle(fontSize: 12)),
                 );
-              }).toList(),
+              }),
           ],
           onChanged: (value) {
             onSucursalChanged(value);
@@ -511,7 +511,7 @@ class ReportAppBarBuilders {
     
     // bcolorview 값에 따라 색상 결정
     Color reportColor = Colors.orange; // 기본값
-    if (filters != null && filters.containsKey('bcolorview')) {
+    if (filters.containsKey('bcolorview')) {
       final bcolorviewValue = filters['bcolorview'];
       reportColor = ReportUtils.isBcolorviewEnabled(bcolorviewValue) ? Colors.orange : Colors.lightBlue;
     }
@@ -563,7 +563,7 @@ class ReportAppBarBuilders {
                       value: sucursal,
                       child: Text(sucursal, style: const TextStyle(fontSize: 12, color: Colors.white)),
                     );
-                  }).toList(),
+                  }),
                 ],
                 onChanged: onSucursalChanged,
               ),

@@ -1,6 +1,6 @@
 part of '../report_screen_legacy.dart';
 
-mixin ReportFilterMixin on State<ReportScreenLegacy> {
+mixin ReportFilterMixin on _ReportScreenStateBase {
 
   // Items 보고서용 필터 섹션 (데이터 개수 + 날짜 범위 + 필터링)
   Widget _buildItemsFilterSection() {
@@ -288,7 +288,7 @@ mixin ReportFilterMixin on State<ReportScreenLegacy> {
               ),
             ),
             const SizedBox(width: 4),
-            Text(
+            const Text(
               'Solo borrados',
               style: TextStyle(color: Colors.white, fontSize: 12),
             ),
@@ -420,7 +420,7 @@ mixin ReportFilterMixin on State<ReportScreenLegacy> {
         debugPrint('   ✅ 실제 반환된 위젯 타입: ${widget.runtimeType}');
         debugPrint('   ✅ 위젯이 null인지 확인: ${widget == null}');
         debugPrint('   ✅ 위젯의 key: ${widget.key}');
-        debugPrint('   ✅ 위젯의 child 타입: ${widget is SizedBox ? (widget as SizedBox).child?.runtimeType : "N/A"}');
+        debugPrint('   ✅ 위젯의 child 타입: ${widget is SizedBox ? (widget).child?.runtimeType : "N/A"}');
               debugPrint('═══════════════════════════════════════════════════════');
         return widget;
       } else {

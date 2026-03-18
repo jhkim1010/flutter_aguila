@@ -44,6 +44,9 @@ part 'helpers/report_share_helper.dart';
 part 'reports/ventas_controls_section.dart';
 part 'helpers/report_utils_mixin.dart';
 
+// Library-level constant accessible from all part files
+const int _itemsPerPage = 100;
+
 // ReportType is used by ReportScreenLegacy; export from report_screen.dart
 
 /// 레거시 단일 대형 화면. 타입별로 분리된 뷰로 점진적 이전 예정.
@@ -88,126 +91,116 @@ class ReportScreenLegacy extends StatefulWidget {
   State<ReportScreenLegacy> createState() => _ReportScreenLegacyState();
 }
 
-class _ReportScreenLegacyState extends State<ReportScreenLegacy>
-    with VentasReportMixin, ClientesReportMixin, CodigosReportMixin, ReportDataLoaderMixin, ReportFilterMixin, StocksReportMixin, ReportShareMixin, VentasControlsMixin, ReportUtilsMixin {
+/// Holds all state fields so that the part-of mixins can access them via
+/// the `on _ReportScreenStateBase` constraint without circular dependencies.
+abstract class _ReportScreenStateBase extends State<ReportScreenLegacy> {
   late final DatabaseService _databaseService;
   Map<String, dynamic>? _data;
-  Map<String, dynamic>? _originalGastosData; // Gastos 보고서의 원본 데이터 (summary_by_rubro 포함)
+  Map<String, dynamic>? _originalGastosData;
   bool _isLoading = true;
   String? _errorMessage;
   final TextEditingController _filteringWordController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final ScrollController _horizontalScrollController = ScrollController(); // 수평 스크롤 컨트롤러
-  int _displayedItemsCount = 100; // 처음 표시할 항목 수
-  static const int _itemsPerPage = 100; // 한 번에 추가로 표시할 항목 수
-  
-  // 정렬 및 필터 상태
+  final ScrollController _horizontalScrollController = ScrollController();
+  int _displayedItemsCount = 100;
+
   String? _sortColumn;
   bool _sortAscending = true;
-  final Map<String, String> _columnFilters = {}; // 컬럼별 필터 값
-  String? _selectedSucursal; // 선택된 sucursal 필터 (null이면 "모두")
-  List<String>? _availableSucursales; // 사용 가능한 sucursal 목록
-  
-  // Items 보고서용 날짜 범위
+  final Map<String, String> _columnFilters = {};
+  String? _selectedSucursal;
+  List<String>? _availableSucursales;
+
   DateTime? _itemsStartDate;
   DateTime? _itemsEndDate;
-  // Ventas 보고서용 날짜 범위
   DateTime? _ventasStartDate;
   DateTime? _ventasEndDate;
-  // Ventas 보고서용 그룹화 단위 ('vcode', 'day', 'month', 'year')
-  String _ventasUnit = 'vcode'; // 기본값: 개별 vcode
-  bool _ventasDescontado = false; // Ventas 보고서용 descontado 필터
-  bool _ventasReservado = false; // Ventas 보고서용 reservado 필터
-  bool _ventasCredito = false; // Ventas 보고서용 credito 필터
-  bool _ventasMovidos = false; // Ventas 보고서용 movidos 필터
-  bool _ingresosMovidos = false; // Ingresos 보고서용 movidos 필터 (sucursal 옆 체크박스)
-  String? _connectedDatabaseName; // 접속된 DB 이름 (제목 옆 { } 표시용)
-  bool _alertasVCancelado = false; // Alertas 보고서용 v_cancelado 필터
-  bool _alertasJefe = false; // Alertas 보고서용 jefe 필터
-  bool _alertasWeb = false; // Alertas 보고서용 web 필터
-  
-  // Clientes 보고서용 필터 상태
-  String? _clientesResponsableIns; // "Responsable Ins", "Monotributista", "Sin Rubro"
-  String? _clientesProvincia; // 23 provinces + CABA + "Otro Países"
-  bool _clientesDeudores = false; // Deudores 체크박스
-  bool _clientesReservadores = false; // Reservadores 체크박스
-  
-  // Codigos 보고서용 상태
-  Map<String, dynamic>? _selectedCodigo; // 선택된 codigo
-  final Map<String, TextEditingController> _codigoEditControllers = {}; // 편집용 컨트롤러들
-  final Map<String, FocusNode> _codigoFocusNodes = {}; // 편집용 포커스 노드들
-  
-  // Gastos 보고서용 선택된 rubro 코드
+  String _ventasUnit = 'vcode';
+  bool _ventasDescontado = false;
+  bool _ventasReservado = false;
+  bool _ventasCredito = false;
+  bool _ventasMovidos = false;
+  bool _ingresosMovidos = false;
+  String? _connectedDatabaseName;
+  bool _alertasVCancelado = false;
+  bool _alertasJefe = false;
+  bool _alertasWeb = false;
+
+  String? _clientesResponsableIns;
+  String? _clientesProvincia;
+  bool _clientesDeudores = false;
+  bool _clientesReservadores = false;
+
+  Map<String, dynamic>? _selectedCodigo;
+  final Map<String, TextEditingController> _codigoEditControllers = {};
+  final Map<String, FocusNode> _codigoFocusNodes = {};
+
   String? _selectedRubroCode;
-  
-  // Gastos 보고서 오른쪽 패널(세부 테이블) 로딩 상태
   bool _isLoadingGastosDetail = false;
-  
-  // Items 보고서용 선택된 category 코드
   String? _selectedCategoryCode;
-  
-  // Items 보고서용 선택된 color 코드
   String? _selectedColorCode;
-  
-  // Ingresos 보고서용 선택된 category 코드
   String? _selectedIngresosCategoryCode;
-  
-  // Ingresos 보고서용 선택된 color 코드
   String? _selectedIngresosColorCode;
-  
-  // Codigos 보고서용 선택된 color 코드
   String? _selectedCodigosColorCode;
-  
-  // Stocks 보고서용 선택된 color 코드
   String? _selectedStocksColorCode;
-  
-  // Ingresos 보고서용 선택된 company 코드
   String? _selectedIngresosCompanyCode;
-  bool _isEditingCodigo = false; // 편집 모드 여부
-  String? _editedCodigoIdentifier; // 편집된 codigo 식별자 (색상 표시용)
-  bool _isLoadingMoreCodigos = false; // 추가 codigos 로딩 중 여부
-  String? _codigosNextIdCodigo; // 다음 페이지의 id_codigo
-  bool _codigosHasMore = false; // 더 많은 페이지가 있는지 여부
-  bool _codigosSoloBorrados = false; // Codigos/Todocodigos: solo borrados 체크박스
-  Map<String, double>? _codigosColumnWidths; // DB·보고서별 저장된 칼럼 너비 (codigos/todocodigos)
-  String? _codigosColumnWidthsDbKey; // 현재 로드된 키 'dbName_codigos' or 'dbName_todocodigos'
-  Map<String, double>? _stocksColumnWidths; // DB별 Stocks 칼럼 너비
+  bool _isEditingCodigo = false;
+  String? _editedCodigoIdentifier;
+  bool _isLoadingMoreCodigos = false;
+  String? _codigosNextIdCodigo;
+  bool _codigosHasMore = false;
+  bool _codigosSoloBorrados = false;
+  Map<String, double>? _codigosColumnWidths;
+  String? _codigosColumnWidthsDbKey;
+  Map<String, double>? _stocksColumnWidths;
   String? _stocksColumnWidthsDbKey;
   Map<String, double>? _gastosColumnWidths; // Gastos 상세 내역 칼럼 너비
   Map<String, double>? _itemsColumnWidths;
   String? _itemsColumnWidthsDbKey;
   Map<String, double>? _ingresosColumnWidths;
   String? _ingresosColumnWidthsDbKey;
-  
-  // Clientes 보고서용 페이지네이션 상태
-  int _clientesOffset = 0; // 현재 offset
-  bool _clientesHasMore = false; // 더 많은 페이지가 있는지 여부
-  bool _clientesIsLoadingMore = false; // 다음 페이지 로딩 중인지 여부
-  String? _clientesSortColumn; // Clientes 정렬 칼럼
-  bool _clientesSortAscending = false; // Clientes 정렬 방향 (true: 오름차순, false: 내림차순, 기본값: 내림차순)
-  
-  // Clientes 모달리스 대화상자 상태
-  OverlayEntry? _clienteDetailOverlayEntry; // 모달리스 대화상자 OverlayEntry
-  Map<String, dynamic>? _currentClienteDetailData; // 현재 표시 중인 Cliente 상세 데이터
-  Map<String, dynamic>? _currentClienteRowData; // 현재 표시 중인 Cliente 행 데이터
-  String? _codigosSortColumn = 'codigo'; // Codigos 정렬 칼럼 (기본값: codigo)
-  bool _codigosSortAscending = true; // Codigos 정렬 방향 (true: 오름차순, false: 내림차순)
-  
-  // Stocks 보고서용 페이지네이션 상태
-  String? _stocksNextMaxUtime; // 다음 페이지의 max_utime
-  bool _stocksHasMore = false; // 더 많은 페이지가 있는지 여부
-  bool _isLoadingMoreStocks = false; // 추가 stocks 로딩 중 여부
-  String? _stocksSortColumn = 'codigo'; // Stocks 정렬 칼럼 (기본값: codigo)
-  bool _stocksSortAscending = true; // Stocks 정렬 방향 (true: 오름차순, false: 내림차순)
-  
-  // Movidos 보고서용 상태
-  // Tipos와 Temporadas 관련 상태
+
+  int _clientesOffset = 0;
+  bool _clientesHasMore = false;
+  bool _clientesIsLoadingMore = false;
+  String? _clientesSortColumn;
+  bool _clientesSortAscending = false;
+
+  OverlayEntry? _clienteDetailOverlayEntry;
+  Map<String, dynamic>? _currentClienteDetailData;
+  Map<String, dynamic>? _currentClienteRowData;
+  String? _codigosSortColumn = 'codigo';
+  bool _codigosSortAscending = true;
+
+  String? _stocksNextMaxUtime;
+  bool _stocksHasMore = false;
+  bool _isLoadingMoreStocks = false;
+  String? _stocksSortColumn = 'codigo';
+  bool _stocksSortAscending = true;
+
   List<Map<String, dynamic>> _tiposList = [];
   List<Map<String, dynamic>> _temporadasList = [];
   int? _selectedTipoId;
   int? _selectedTemporadaId;
-  
-  // 성능 최적화: 합계 계산 캐시는 ReportTotalRowBuilder에서 관리
+
+  // Abstract methods implemented by mixins or _ReportScreenLegacyState
+  Future<void> _loadData({String? filteringWord});
+  void _loadMoreItems();
+  Map<String, dynamic> _getDisplayedData();
+  Color _getReportColor();
+  Widget _buildFilteringWordFieldInAppBar();
+  Widget _buildSucursalSelector();
+  Future<void> _reloadDataWithFilters();
+  String? _getInitialFilteringWordForNavigation(ReportType currentReportType, ReportType targetReportType);
+  void _closeClienteDetailOverlay();
+  void _notifyStateChanged();
+  Widget _buildInfoCard(String title, Map<String, dynamic> data, {Color? reportColor});
+  Widget _buildStocksHeader();
+  Future<void> _sharePdfFile(File pdfFile);
+  Future<void> _shareExcelFile(File excelFile);
+}
+
+class _ReportScreenLegacyState extends _ReportScreenStateBase
+    with VentasReportMixin, ClientesReportMixin, CodigosReportMixin, ReportDataLoaderMixin, ReportFilterMixin, StocksReportMixin, ReportShareMixin, VentasControlsMixin, ReportUtilsMixin {
 
   @override
   void initState() {
@@ -378,6 +371,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy>
   }
 
   /// alertas에서 다른 보고서로 이동할 때 filteringWord를 초기화하는 헬퍼 함수
+  @override
   String? _getInitialFilteringWordForNavigation(ReportType currentReportType, ReportType targetReportType) {
     final isFromAlertas = currentReportType == ReportType.alertas;
     final isToAlertas = targetReportType == ReportType.alertas;
@@ -647,6 +641,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy>
   }
   
   // 상태 변경 콜백 호출
+  @override
   void _notifyStateChanged() {
     if (widget.onStateChanged != null) {
       String? sortColumn;
@@ -672,6 +667,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy>
   }
   
   // 필터 및 정렬 기준으로 데이터 재로드
+  @override
   Future<void> _reloadDataWithFilters() async {
     // 성능 최적화: 필터 변경 시 합계 계산 캐시 무효화
     ReportTotalRowBuilder.clearCache();
@@ -710,6 +706,7 @@ class _ReportScreenLegacyState extends State<ReportScreenLegacy>
   }
 
   /// 모달리스 Cliente 상세 정보 대화상자 닫기
+  @override
   void _closeClienteDetailOverlay() {
     debugPrint('📋 [_closeClienteDetailOverlay] 대화상자 닫기');
     if (_clienteDetailOverlayEntry != null) {
