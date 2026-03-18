@@ -27,21 +27,23 @@ class CodigosBuilder {
         TableColumnDef(key: 'mac',            label: 'MAC',            defaultWidth: 150),
       ];
     }
+    // API /api/codigos 실제 반환 키 순서:
+    // [codigo, descripcion, pre1, pre2, pre3, pre4, pre5, preorg,
+    //  tcodigo, borrado, b_sincronizar_x_web, id_woocommerce, id_woocommerce_producto, id_codigo]
+    // utime/ip/mac 은 todocodigos 전용 필드라 regular codigos에는 없음.
     return const [
-      TableColumnDef(key: 'codigo',                  label: 'Codigo',                 defaultWidth: 150, sortable: true),
-      TableColumnDef(key: 'descripcion',             label: 'Descripción',            defaultWidth: 300, sortable: true),
-      TableColumnDef(key: 'pre1',                    label: 'Precio 1',               defaultWidth: 100, textAlign: TextAlign.right),
-      TableColumnDef(key: 'pre2',                    label: 'Precio 2',               defaultWidth: 100, textAlign: TextAlign.right),
-      TableColumnDef(key: 'pre3',                    label: 'Precio 3',               defaultWidth: 100, textAlign: TextAlign.right),
-      TableColumnDef(key: 'pre4',                    label: 'Precio 4',               defaultWidth: 100, textAlign: TextAlign.right),
-      TableColumnDef(key: 'pre5',                    label: 'Precio 5',               defaultWidth: 100, textAlign: TextAlign.right),
-      TableColumnDef(key: 'preorg',                  label: 'Precio Org',             defaultWidth: 100, textAlign: TextAlign.right),
-      TableColumnDef(key: 'utime',                   label: 'Utime',                  defaultWidth: 150),
-      TableColumnDef(key: 'borrado',                 label: 'Borrado',                defaultWidth: 80,  textAlign: TextAlign.center),
-      TableColumnDef(key: 'ip',                      label: 'IP',                     defaultWidth: 120),
-      TableColumnDef(key: 'mac',                     label: 'MAC',                    defaultWidth: 150),
-      TableColumnDef(key: 'b_sincronizar_x_web',     label: 'Sincronizar Web',        defaultWidth: 120, textAlign: TextAlign.center),
-      TableColumnDef(key: 'id_codigo',               label: 'ID Codigo',              defaultWidth: 100, textAlign: TextAlign.right),
+      TableColumnDef(key: 'codigo',              label: 'Codigo',          defaultWidth: 150, sortable: true),
+      TableColumnDef(key: 'descripcion',         label: 'Descripción',     defaultWidth: 300, sortable: true),
+      TableColumnDef(key: 'pre1',                label: 'Precio 1',        defaultWidth: 100, textAlign: TextAlign.right),
+      TableColumnDef(key: 'pre2',                label: 'Precio 2',        defaultWidth: 100, textAlign: TextAlign.right),
+      TableColumnDef(key: 'pre3',                label: 'Precio 3',        defaultWidth: 100, textAlign: TextAlign.right),
+      TableColumnDef(key: 'pre4',                label: 'Precio 4',        defaultWidth: 100, textAlign: TextAlign.right),
+      TableColumnDef(key: 'pre5',                label: 'Precio 5',        defaultWidth: 100, textAlign: TextAlign.right),
+      TableColumnDef(key: 'preorg',              label: 'Precio Org',      defaultWidth: 100, textAlign: TextAlign.right),
+      TableColumnDef(key: 'tcodigo',             label: 'T Codigo',        defaultWidth: 120),
+      TableColumnDef(key: 'borrado',             label: 'Borrado',         defaultWidth: 80,  textAlign: TextAlign.center),
+      TableColumnDef(key: 'b_sincronizar_x_web', label: 'Sincronizar Web', defaultWidth: 120, textAlign: TextAlign.center),
+      TableColumnDef(key: 'id_codigo',           label: 'ID Codigo',       defaultWidth: 100, textAlign: TextAlign.right),
     ];
   }
 
