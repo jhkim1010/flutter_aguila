@@ -884,6 +884,7 @@ mixin VentasReportMixin on _ReportScreenStateBase {
   }
 
   /// 정보 카드 위젯 생성
+  @override
   Widget _buildInfoCard(String title, Map<String, dynamic> data, {Color? reportColor}) {
     final cardColor = reportColor ?? Colors.purple;
     return Card(

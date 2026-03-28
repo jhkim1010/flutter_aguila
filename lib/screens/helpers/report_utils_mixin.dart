@@ -685,6 +685,7 @@ mixin ReportUtilsMixin on _ReportScreenStateBase {
   }
 
   /// 화면에 표시되는 모든 데이터를 수집 (필터링/정렬 적용)
+  @override
   Map<String, dynamic> _getDisplayedData() {
     if (_data == null) {
       return {};
@@ -925,6 +926,7 @@ mixin ReportUtilsMixin on _ReportScreenStateBase {
     return db.isEmpty ? '$base { }' : '$base { $db }';
   }
   IconData _getReportIcon() => ReportUtils.getReportIcon(widget.reportType);
+  @override
   Color _getReportColor() => ReportUtils.getReportColor(widget.reportType);
 
   /// 다른 보고서 타입으로 전환. onSwitchReport가 있으면 콜백 호출(슬림 ReportScreen으로 라우팅), 없으면 기존대로 push.

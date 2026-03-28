@@ -162,6 +162,7 @@ mixin ReportDataLoaderMixin on _ReportScreenStateBase {
     }
   }
 
+  @override
   Future<void> _loadData({String? filteringWord}) async {
     debugPrint('═══════════════════════════════════════════════════════');
     debugPrint('🔍 [_loadData] 함수 호출');
@@ -1424,6 +1425,7 @@ mixin ReportDataLoaderMixin on _ReportScreenStateBase {
   }
 
   // 더 많은 항목 로드
+  @override
   void _loadMoreItems() {
     if (_data == null) return;
     

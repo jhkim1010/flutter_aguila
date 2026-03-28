@@ -288,6 +288,7 @@ mixin ReportShareMixin on _ReportScreenStateBase {
   }
 
   /// PDF 파일 공유
+  @override
   Future<void> _sharePdfFile(File pdfFile) async {
     try {
       await Share.shareXFiles(
@@ -618,6 +619,7 @@ mixin ReportShareMixin on _ReportScreenStateBase {
   }
 
   /// Excel 파일 공유
+  @override
   Future<void> _shareExcelFile(File excelFile) async {
     try {
       await Share.shareXFiles(

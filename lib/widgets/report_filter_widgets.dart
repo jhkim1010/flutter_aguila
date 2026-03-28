@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'report_utils.dart';
 
 /// 보고서 필터 UI 위젯 빌더들
 /// 상태 변경은 콜백을 통해 처리
@@ -50,6 +49,14 @@ class ReportFilterWidgets {
     );
   }
 
+  /// Tipo ID 추출 헬퍼
+  static int? _extractTipoId(Map<String, dynamic> tipo) {
+    return tipo['id_tipo'] is int
+        ? tipo['id_tipo']
+        : (tipo['id_tipo'] != null ? int.tryParse(tipo['id_tipo'].toString()) : null) ??
+          (tipo['id'] is int ? tipo['id'] : (tipo['id'] != null ? int.tryParse(tipo['id'].toString()) : null));
+  }
+
   /// Tipo 선택 드롭다운
   static Widget buildTipoSelector({
     required List<Map<String, dynamic>> tiposList,
@@ -57,38 +64,50 @@ class ReportFilterWidgets {
     required Function(int?) onChanged,
     required Color reportColor,
   }) {
+    // 디버깅: tipos 원본 데이터 출력
+    debugPrint('[buildTipoSelector] tiposList.length: ${tiposList.length}, selectedTipoId: $selectedTipoId');
+    for (var i = 0; i < tiposList.length; i++) {
+      final tipo = tiposList[i];
+      final id = _extractTipoId(tipo);
+      debugPrint('  [$i] id=$id, keys=${tipo.keys.toList()}, values=${tipo.values.toList()}');
+    }
+
+    // 중복 ID 제거 (첫 번째 항목만 유지)
+    final seenIds = <int>{};
+    final uniqueTiposList = <Map<String, dynamic>>[];
+    for (final tipo in tiposList) {
+      final id = _extractTipoId(tipo);
+      if (id != null && !seenIds.contains(id)) {
+        seenIds.add(id);
+        uniqueTiposList.add(tipo);
+      }
+    }
+    if (uniqueTiposList.length != tiposList.length) {
+      debugPrint('[buildTipoSelector] 중복 ID 제거됨: ${tiposList.length} -> ${uniqueTiposList.length}');
+    }
+
     // 현재 선택된 값이 items 리스트에 있는지 확인
-    final availableIds = tiposList.map((tipo) {
-      final id = tipo['id_tipo'] is int 
-          ? tipo['id_tipo'] 
-          : (tipo['id_tipo'] != null ? int.tryParse(tipo['id_tipo'].toString()) : null) ??
-            (tipo['id'] is int ? tipo['id'] : (tipo['id'] != null ? int.tryParse(tipo['id'].toString()) : null));
-      return id;
-    }).where((id) => id != null).cast<int>().toList();
-    
-    final validValue = selectedTipoId != null && availableIds.contains(selectedTipoId)
+    final validValue = selectedTipoId != null && seenIds.contains(selectedTipoId)
         ? selectedTipoId
         : null;
-    
+    if (validValue != selectedTipoId) {
+      debugPrint('[buildTipoSelector] selectedTipoId=$selectedTipoId 가 목록에 없어 null로 리셋');
+    }
+
     // items 생성
     final items = <DropdownMenuItem<int?>>[
       const DropdownMenuItem<int?>(
         value: null,
         child: Text('Todos', style: TextStyle(fontSize: 12)),
       ),
-      ...tiposList.map((tipo) {
-        // id_tipo 또는 id 필드 확인
-        final id = tipo['id_tipo'] is int 
-            ? tipo['id_tipo'] 
-            : (tipo['id_tipo'] != null ? int.tryParse(tipo['id_tipo'].toString()) : null) ??
-              (tipo['id'] is int ? tipo['id'] : (tipo['id'] != null ? int.tryParse(tipo['id'].toString()) : null));
-        // tpdesc, tipodesc, tipo_desc, descripcion, nombre, tipo, tipo_nombre 필드 확인
-        final nombre = tipo['tpdesc']?.toString() ?? 
-                      tipo['tipodesc']?.toString() ?? 
-                      tipo['tipo_desc']?.toString() ?? 
-                      tipo['descripcion']?.toString() ?? 
-                      tipo['nombre']?.toString() ?? 
-                      tipo['tipo']?.toString() ?? 
+      ...uniqueTiposList.map((tipo) {
+        final id = _extractTipoId(tipo);
+        final nombre = tipo['tpdesc']?.toString() ??
+                      tipo['tipodesc']?.toString() ??
+                      tipo['tipo_desc']?.toString() ??
+                      tipo['descripcion']?.toString() ??
+                      tipo['nombre']?.toString() ??
+                      tipo['tipo']?.toString() ??
                       tipo['tipo_nombre']?.toString() ??
                       'N/A';
         if (id == null) return null;
@@ -98,6 +117,7 @@ class ReportFilterWidgets {
         );
       }).where((item) => item != null).cast<DropdownMenuItem<int?>>(),
     ];
+    debugPrint('[buildTipoSelector] 최종 items 개수: ${items.length} (Todos 포함), validValue: $validValue');
     
     return Tooltip(
       message: 'Filtrar por Tipo',
@@ -122,14 +142,8 @@ class ReportFilterWidgets {
                 if (item.value == null) {
                   return const Text('Todos', style: TextStyle(fontSize: 12));
                 }
-                final tipo = tiposList.firstWhere(
-                  (t) {
-                    final id = t['id_tipo'] is int 
-                        ? t['id_tipo'] 
-                        : (t['id_tipo'] != null ? int.tryParse(t['id_tipo'].toString()) : null) ??
-                          (t['id'] is int ? t['id'] : (t['id'] != null ? int.tryParse(t['id'].toString()) : null));
-                    return id == item.value;
-                  },
+                final tipo = uniqueTiposList.firstWhere(
+                  (t) => _extractTipoId(t) == item.value,
                   orElse: () => <String, dynamic>{},
                 );
                 

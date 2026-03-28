@@ -195,6 +195,7 @@ mixin ReportFilterMixin on _ReportScreenStateBase {
   }
 
   // Filtering word 입력 필드 (AppBar용)
+  @override
   Widget _buildFilteringWordFieldInAppBar() {
     debugPrint('═══════════════════════════════════════════════════════════');
     debugPrint('🔍 [_buildFilteringWordFieldInAppBar] 호출됨');
@@ -362,6 +363,7 @@ mixin ReportFilterMixin on _ReportScreenStateBase {
   }
 
   // 지점 선택 UI (AppBar용) - ReportFilterWidgets로 이동
+  @override
   Widget _buildSucursalSelector() {
     debugPrint('═══════════════════════════════════════════════════════');
     debugPrint('🔍 [_buildSucursalSelector] 호출됨');

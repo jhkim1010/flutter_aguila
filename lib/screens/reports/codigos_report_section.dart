@@ -353,6 +353,7 @@ mixin CodigosReportMixin on _ReportScreenStateBase {
   }
   
   // Stocks 칼럼 헤더 빌드
+  @override
   Widget _buildStocksHeader() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

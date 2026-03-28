@@ -2,8 +2,6 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:cross_file/cross_file.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
 import '../../services/database_service.dart';
 import '../../services/pdf_service.dart';
 import '../../services/excel_service.dart';

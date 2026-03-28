@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show debugPrint, defaultTargetPlatform, TargetPlatform;
@@ -183,7 +182,7 @@ abstract class _ReportScreenStateBase extends State<ReportScreenLegacy> {
   int? _selectedTemporadaId;
 
   // Abstract methods implemented by mixins or _ReportScreenLegacyState
-  Future<void> _loadData({String? filteringWord});
+  Future<void> _loadData();
   void _loadMoreItems();
   Map<String, dynamic> _getDisplayedData();
   Color _getReportColor();
