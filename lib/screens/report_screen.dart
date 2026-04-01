@@ -54,6 +54,8 @@ class _ReportScreenState extends State<ReportScreen> {
   String? _connectedDatabaseName;
   /// Stocks 보고서용: AppBar 하단에 표시할 필터 바 (tipos, temporada, filtering word)
   Widget? _stocksAppBarFilterBar;
+  /// Stocks 보고서용: bcolorview 상태에 따른 AppBar 색상
+  Color? _stocksAppBarColor;
 
   @override
   void initState() {
@@ -122,7 +124,7 @@ class _ReportScreenState extends State<ReportScreen> {
     final baseTitle = ReportUtils.getReportTitle(ReportType.stocks);
     final reportTitle = _titleWithDb(baseTitle);
     final reportIcon = ReportUtils.getReportIcon(ReportType.stocks);
-    final reportColor = ReportUtils.getReportColor(ReportType.stocks);
+    final reportColor = _stocksAppBarColor ?? ReportUtils.getReportColor(ReportType.stocks);
     final isLargeScreen = MediaQuery.of(context).size.width >= 800;
     final showFilterInOneLine = isLargeScreen && _stocksAppBarFilterBar != null;
 
@@ -224,6 +226,9 @@ class _ReportScreenState extends State<ReportScreen> {
         },
         onFilterBarReady: (Widget filterBar) {
           if (mounted) setState(() => _stocksAppBarFilterBar = filterBar);
+        },
+        onAppBarColorChanged: (Color color) {
+          if (mounted) setState(() => _stocksAppBarColor = color);
         },
       ),
     );

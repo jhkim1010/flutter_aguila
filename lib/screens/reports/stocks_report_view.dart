@@ -28,6 +28,8 @@ class StocksReportView extends StatefulWidget {
   final RegisterShareCallback? registerShare;
   /// AppBar에 필터 바(tipos, temporada, filtering word)를 넣을 때 호출. ReportScreen이 전달.
   final void Function(Widget filterBar)? onFilterBarReady;
+  /// 데이터 로드 후 bcolorview 상태에 따라 AppBar 색상 변경 콜백
+  final void Function(Color color)? onAppBarColorChanged;
 
   const StocksReportView({
     super.key,
@@ -41,6 +43,7 @@ class StocksReportView extends StatefulWidget {
     this.initialAvailableSucursales,
     this.registerShare,
     this.onFilterBarReady,
+    this.onAppBarColorChanged,
   });
 
   @override
@@ -67,6 +70,8 @@ class _StocksReportViewState extends State<StocksReportView> {
   String? _selectedStocksColorCode;
   Map<String, double>? _stocksColumnWidths;
   String? _stocksColumnWidthsDbKey;
+  /// bcolorview=1(resumido)일 때, 체크하면 bcolorview=0으로 서버 요청
+  bool _verConColorYTalle = false;
 
   Color get _reportColor => ReportUtils.getReportColor(ReportType.stocks);
 
@@ -134,6 +139,8 @@ class _StocksReportViewState extends State<StocksReportView> {
       if (_selectedTemporadaId != null) filters['temporada_id'] = _selectedTemporadaId;
       if (_selectedStocksColorCode != null) filters['color_id'] = _selectedStocksColorCode;
       if (_selectedSucursal != null) filters['sucursal'] = _selectedSucursal;
+      // 체크박스 선택 시 bcolorview=0으로 서버에 요청
+      if (_verConColorYTalle) filters['bcolorview'] = 0;
 
       final data = await _databaseService.getStocksReport(
         filteringWord: currentFilteringWord.isNotEmpty ? currentFilteringWord : null,
@@ -154,6 +161,7 @@ class _StocksReportViewState extends State<StocksReportView> {
           _isLoading = false;
         });
         _notifyStateChanged();
+        _notifyAppBarColor();
         if (_data != null && _data!.isNotEmpty) {
           widget.registerShare?.call(_shareReport);
         }
@@ -173,6 +181,15 @@ class _StocksReportViewState extends State<StocksReportView> {
     _stocksNextMaxUtime = null;
     _stocksHasMore = false;
     await _loadData();
+  }
+
+  /// bcolorview 상태에 따라 AppBar 색상 변경 알림
+  void _notifyAppBarColor() {
+    if (widget.onAppBarColorChanged == null || _data == null) return;
+    final color = _isBcolorviewEnabled && !_verConColorYTalle
+        ? Colors.orange
+        : Colors.lightBlue;
+    widget.onAppBarColorChanged!(color);
   }
 
   void _notifyStateChanged() {
@@ -202,6 +219,7 @@ class _StocksReportViewState extends State<StocksReportView> {
       if (_selectedTemporadaId != null) filters['temporada_id'] = _selectedTemporadaId;
       if (_selectedStocksColorCode != null) filters['color_id'] = _selectedStocksColorCode;
       if (_selectedSucursal != null) filters['sucursal'] = _selectedSucursal;
+      if (_verConColorYTalle) filters['bcolorview'] = 0;
 
       final response = await _databaseService.getStocksReport(
         maxUtime: _stocksNextMaxUtime,
@@ -510,8 +528,23 @@ class _StocksReportViewState extends State<StocksReportView> {
     );
   }
 
+  /// 현재 데이터의 bcolorview가 1(resumido)인지 확인
+  bool get _isBcolorviewEnabled {
+    if (_data == null) return false;
+    if (_data!.containsKey('filters') && _data!['filters'] is Map) {
+      final filters = _data!['filters'] as Map<String, dynamic>;
+      return ReportUtils.isBcolorviewEnabled(filters['bcolorview']);
+    }
+    if (_data!.containsKey('bcolorview')) {
+      return ReportUtils.isBcolorviewEnabled(_data!['bcolorview']);
+    }
+    return false;
+  }
+
   /// AppBar 하단에 표시할 필터 행 (tipos, temporada, filtering word). onFilterBarReady로 전달.
   Widget _buildAppBarFilterRow() {
+    // bcolorview=1(resumido)이거나 이미 체크박스를 사용 중일 때 표시
+    final showColorTalleCheckbox = _isBcolorviewEnabled || _verConColorYTalle;
     return Row(
       children: [
         if (_tiposList.length > 1) ...[
@@ -523,7 +556,45 @@ class _StocksReportViewState extends State<StocksReportView> {
           const SizedBox(width: 8),
         ],
         Expanded(flex: 2, child: _buildFilteringWordField()),
+        if (showColorTalleCheckbox) ...[
+          const SizedBox(width: 8),
+          _buildColorTalleCheckbox(),
+        ],
       ],
+    );
+  }
+
+  /// "Ver con color y talle" 체크박스 위젯
+  Widget _buildColorTalleCheckbox() {
+    return InkWell(
+      onTap: () {
+        setState(() => _verConColorYTalle = !_verConColorYTalle);
+        _reloadDataWithFilters();
+      },
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 24,
+            height: 24,
+            child: Checkbox(
+              value: _verConColorYTalle,
+              onChanged: (value) {
+                setState(() => _verConColorYTalle = value ?? false);
+                _reloadDataWithFilters();
+              },
+              activeColor: Colors.white,
+              checkColor: Colors.orange,
+              side: const BorderSide(color: Colors.white70),
+            ),
+          ),
+          const SizedBox(width: 4),
+          const Text(
+            'Ver con color y talle',
+            style: TextStyle(color: Colors.white, fontSize: 12),
+          ),
+        ],
+      ),
     );
   }
 }
