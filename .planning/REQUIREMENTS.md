@@ -59,19 +59,19 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ALIGN-01 | — | Pending |
-| ALIGN-02 | — | Pending |
-| ALIGN-03 | — | Pending |
-| TBL-01 | — | Pending |
-| TBL-02 | — | Pending |
-| TBL-03 | — | Pending |
-| RVP-01 | — | Pending |
+| ALIGN-01 | Phase 1 | Pending |
+| ALIGN-02 | Phase 1 | Pending |
+| ALIGN-03 | Phase 1 | Pending |
+| TBL-01 | Phase 2 | Pending |
+| TBL-02 | Phase 2 | Pending |
+| TBL-03 | Phase 2 | Pending |
+| RVP-01 | Phase 3 | Pending |
 
 **Coverage:**
 - v1 requirements: 7 total
-- Mapped to phases: 0
-- Unmapped: 7 ⚠️
+- Mapped to phases: 7
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-05*
-*Last updated: 2026-04-05 after initial definition*
+*Last updated: 2026-04-05 after roadmap creation*
