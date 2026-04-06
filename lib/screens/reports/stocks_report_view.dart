@@ -51,6 +51,9 @@ class StocksReportView extends StatefulWidget {
 }
 
 class _StocksReportViewState extends State<StocksReportView> {
+  /// Stocks 칼럼 폭 저장소 키 — load()와 save() 양쪽에서 동일 값 참조
+  static const String _stocksColumnWidthDbKey = '';
+
   late final DatabaseService _databaseService;
   Map<String, dynamic>? _data;
   bool _isLoading = true;
@@ -69,7 +72,6 @@ class _StocksReportViewState extends State<StocksReportView> {
   String? _selectedSucursal;
   String? _selectedStocksColorCode;
   Map<String, double>? _stocksColumnWidths;
-  String? _stocksColumnWidthsDbKey;
   /// bcolorview=1(resumido)일 때, 체크하면 bcolorview=0으로 서버 요청
   bool _verConColorYTalle = false;
 
@@ -90,6 +92,7 @@ class _StocksReportViewState extends State<StocksReportView> {
     }
     _loadTiposAndTemporadas();
     _loadData();
+    _loadColumnWidths(); // 칼럼 폭 초기 로딩 (1회만 실행)
   }
 
   Timer? _filteringWordDebounceTimer;
@@ -109,6 +112,21 @@ class _StocksReportViewState extends State<StocksReportView> {
     _filteringWordController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  /// 칼럼 폭 로딩 (initState에서 1회 호출, try-catch로 에러 처리)
+  Future<void> _loadColumnWidths() async {
+    try {
+      final loaded = await StocksColumnWidthStorage.load(_stocksColumnWidthDbKey);
+      if (mounted) {
+        setState(() {
+          _stocksColumnWidths = loaded;
+        });
+      }
+    } catch (e) {
+      // 칼럼 폭 로딩 실패 시 기본값 사용 (null fallback)
+      print('⚠️ 칼럼 폭 로딩 실패: $e');
+    }
   }
 
   Future<void> _loadTiposAndTemporadas() async {
@@ -408,18 +426,7 @@ class _StocksReportViewState extends State<StocksReportView> {
     } else if (data.containsKey('bcolorview')) {
       stocksColor = ReportUtils.isBcolorviewEnabled(data['bcolorview']) ? Colors.orange : Colors.lightBlue;
     }
-    const dbKey = ''; // Stocks 전용 뷰는 DB 키 없이 하나의 저장소 사용
-    if (_stocksColumnWidthsDbKey != dbKey) {
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        final loaded = await StocksColumnWidthStorage.load(dbKey);
-        if (mounted) {
-          setState(() {
-            _stocksColumnWidthsDbKey = dbKey;
-            _stocksColumnWidths = loaded;
-          });
-        }
-      });
-    }
+    // 칼럼 폭은 initState → _loadColumnWidths()에서 1회 로딩. build에서 재로딩 없음.
     final defaults = {
       for (final col in StocksBuilder.buildColumnDefs()) col.key: col.defaultWidth
     };
@@ -437,7 +444,7 @@ class _StocksReportViewState extends State<StocksReportView> {
           _stocksColumnWidths ??= {};
           _stocksColumnWidths![key] = newWidth;
         });
-        StocksColumnWidthStorage.save(dbKey, _stocksColumnWidths!);
+        StocksColumnWidthStorage.save(_stocksColumnWidthDbKey, _stocksColumnWidths!);
       },
       scrollController: _scrollController, // 세로 스크롤 + 무한스크롤 _onScroll 연동
       sortColumn: _stocksSortColumn,
