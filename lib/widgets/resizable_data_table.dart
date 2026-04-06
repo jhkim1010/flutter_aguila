@@ -96,51 +96,47 @@ class ResizableDataTable extends StatefulWidget {
 }
 
 class _ResizableDataTableState extends State<ResizableDataTable> {
+  /// 헤더 가로 스크롤 컨트롤러 (내부 소유)
   late final ScrollController _headerScrollController;
-  late ScrollController _dataScrollController;
-  bool _ownsDataScrollController = false;
+
+  /// 데이터 가로 스크롤 컨트롤러 (내부 소유, 세로 스크롤과 분리)
+  late final ScrollController _dataHorizontalScrollController;
 
   @override
   void initState() {
     super.initState();
     _headerScrollController = ScrollController();
-    if (widget.scrollController != null) {
-      _dataScrollController = widget.scrollController!;
-      _ownsDataScrollController = false;
-    } else {
-      _dataScrollController = ScrollController();
-      _ownsDataScrollController = true;
-    }
+    _dataHorizontalScrollController = ScrollController();
+    // 헤더 ↔ 데이터 가로 스크롤 양방향 동기화
     _headerScrollController.addListener(_syncHeaderToData);
-    _dataScrollController.addListener(_syncDataToHeader);
+    _dataHorizontalScrollController.addListener(_syncDataToHeader);
   }
 
   @override
   void dispose() {
     _headerScrollController.removeListener(_syncHeaderToData);
-    _dataScrollController.removeListener(_syncDataToHeader);
+    _dataHorizontalScrollController.removeListener(_syncDataToHeader);
     _headerScrollController.dispose();
-    if (_ownsDataScrollController) {
-      _dataScrollController.dispose();
-    }
+    // 가로 스크롤 컨트롤러는 항상 내부 소유이므로 무조건 dispose
+    _dataHorizontalScrollController.dispose();
     super.dispose();
   }
 
-  /// 헤더 스크롤 → 데이터 스크롤 동기화 (race condition 방지: delta 임계값 사용)
+  /// 헤더 가로 스크롤 → 데이터 가로 스크롤 동기화 (race condition 방지: delta 임계값 사용)
   void _syncHeaderToData() {
-    if (!_dataScrollController.hasClients) return;
-    final delta = (_dataScrollController.offset - _headerScrollController.offset).abs();
+    if (!_dataHorizontalScrollController.hasClients) return;
+    final delta = (_dataHorizontalScrollController.offset - _headerScrollController.offset).abs();
     if (delta > 0.5) {
-      _dataScrollController.jumpTo(_headerScrollController.offset);
+      _dataHorizontalScrollController.jumpTo(_headerScrollController.offset);
     }
   }
 
-  /// 데이터 스크롤 → 헤더 스크롤 동기화
+  /// 데이터 가로 스크롤 → 헤더 가로 스크롤 동기화
   void _syncDataToHeader() {
     if (!_headerScrollController.hasClients) return;
-    final delta = (_headerScrollController.offset - _dataScrollController.offset).abs();
+    final delta = (_headerScrollController.offset - _dataHorizontalScrollController.offset).abs();
     if (delta > 0.5) {
-      _headerScrollController.jumpTo(_dataScrollController.offset);
+      _headerScrollController.jumpTo(_dataHorizontalScrollController.offset);
     }
   }
 
@@ -200,18 +196,18 @@ class _ResizableDataTableState extends State<ResizableDataTable> {
             ),
           ),
         ),
-        // 데이터 행 리스트 (가로 스크롤 + 세로 스크롤)
-        // _dataScrollController는 여기 단 하나의 SingleChildScrollView에만 연결된다.
-        // ListView.builder 내부에 per-row SingleChildScrollView를 두면
-        // Flutter StateError ("ScrollController attached to multiple scroll views")가 발생한다.
+        // 데이터 행 리스트 (가로 스크롤: 내부 컨트롤러 / 세로 스크롤: 외부 scrollController)
+        // _dataHorizontalScrollController는 헤더와 동기화되어 가로 스크롤을 담당한다.
+        // widget.scrollController(세로)는 ListView에 직접 전달하여 무한스크롤 등 외부 제어 가능.
         Expanded(
           child: SingleChildScrollView(
-            controller: _dataScrollController,
+            controller: _dataHorizontalScrollController, // 가로 스크롤 (헤더와 동기화)
             scrollDirection: Axis.horizontal,
             physics: const ClampingScrollPhysics(),
             child: SizedBox(
               width: _totalContentWidth(),
               child: ListView.builder(
+                controller: widget.scrollController, // 세로 스크롤 (외부 주입 또는 null)
                 itemCount: widget.rows.length,
                 itemBuilder: (context, index) {
                   final isSelected = widget.selectedRowIndex == index;

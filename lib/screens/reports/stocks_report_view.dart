@@ -439,6 +439,7 @@ class _StocksReportViewState extends State<StocksReportView> {
         });
         StocksColumnWidthStorage.save(dbKey, _stocksColumnWidths!);
       },
+      scrollController: _scrollController, // 세로 스크롤 + 무한스크롤 _onScroll 연동
       sortColumn: _stocksSortColumn,
       sortAscending: _stocksSortAscending,
       onSort: (column, ascending) {
