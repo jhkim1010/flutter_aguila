@@ -35,23 +35,23 @@ class StocksBuilder {
   static List<TableColumnDef> buildColumnDefs() => [
     const TableColumnDef(key: 'codigo',         label: 'Codigo',          defaultWidth: 120, sortable: true),
     const TableColumnDef(key: 'descripcion',    label: 'Descripción',     defaultWidth: 250, sortable: true),
-    const TableColumnDef(key: 'totaling',       label: 'Totaling',        defaultWidth: 90,  textAlign: TextAlign.right),
-    const TableColumnDef(key: 'totalventa',     label: 'Total Venta',     defaultWidth: 100, textAlign: TextAlign.right),
-    const TableColumnDef(key: 'todayingreso',   label: 'Today Ingreso',   defaultWidth: 110, textAlign: TextAlign.right),
-    const TableColumnDef(key: 'todayventa',     label: 'Today Venta',     defaultWidth: 100, textAlign: TextAlign.right),
-    const TableColumnDef(key: 'totalreservado', label: 'Total Reservado', defaultWidth: 120, textAlign: TextAlign.right),
-    const TableColumnDef(key: 'cntoffset',      label: 'Cnt Offset',      defaultWidth: 100, textAlign: TextAlign.right),
-    const TableColumnDef(key: 'stockreal',      label: 'Stock Real',      defaultWidth: 100, textAlign: TextAlign.right),
-    const TableColumnDef(key: 'porcentaje',     label: 'Porcentaje',      defaultWidth: 100, textAlign: TextAlign.right),
-    const TableColumnDef(key: 'first_date',     label: 'First Date',      defaultWidth: 100),
-    const TableColumnDef(key: 'last_date',      label: 'Last Date',       defaultWidth: 100),
-    const TableColumnDef(key: 'pre1',           label: 'Precio 1',        defaultWidth: 90,  textAlign: TextAlign.right),
-    const TableColumnDef(key: 'pre2',           label: 'Precio 2',        defaultWidth: 90,  textAlign: TextAlign.right),
-    const TableColumnDef(key: 'pre3',           label: 'Precio 3',        defaultWidth: 90,  textAlign: TextAlign.right),
-    const TableColumnDef(key: 'pre4',           label: 'Precio 4',        defaultWidth: 90,  textAlign: TextAlign.right),
-    const TableColumnDef(key: 'pre5',           label: 'Precio 5',        defaultWidth: 90,  textAlign: TextAlign.right),
-    const TableColumnDef(key: 'sucursal',       label: 'Sucursal',        defaultWidth: 90,  textAlign: TextAlign.center),
-    const TableColumnDef(key: 'id_codigo1',     label: 'ID Codigo1',      defaultWidth: 100, textAlign: TextAlign.right),
+    const TableColumnDef(key: 'totaling',       label: 'Totaling',        defaultWidth: 90,  textAlign: TextAlign.right, sortable: true),
+    const TableColumnDef(key: 'totalventa',     label: 'Total Venta',     defaultWidth: 100, textAlign: TextAlign.right, sortable: true),
+    const TableColumnDef(key: 'todayingreso',   label: 'Today Ingreso',   defaultWidth: 110, textAlign: TextAlign.right, sortable: true),
+    const TableColumnDef(key: 'todayventa',     label: 'Today Venta',     defaultWidth: 100, textAlign: TextAlign.right, sortable: true),
+    const TableColumnDef(key: 'totalreservado', label: 'Total Reservado', defaultWidth: 120, textAlign: TextAlign.right, sortable: true),
+    const TableColumnDef(key: 'cntoffset',      label: 'Cnt Offset',      defaultWidth: 100, textAlign: TextAlign.right, sortable: true),
+    const TableColumnDef(key: 'stockreal',      label: 'Stock Real',      defaultWidth: 100, textAlign: TextAlign.right, sortable: true),
+    const TableColumnDef(key: 'porcentaje',     label: 'Porcentaje',      defaultWidth: 100, textAlign: TextAlign.right, sortable: true),
+    const TableColumnDef(key: 'first_date',     label: 'First Date',      defaultWidth: 100, sortable: true),
+    const TableColumnDef(key: 'last_date',      label: 'Last Date',       defaultWidth: 100, sortable: true),
+    const TableColumnDef(key: 'pre1',           label: 'Precio 1',        defaultWidth: 90,  textAlign: TextAlign.right, sortable: true),
+    const TableColumnDef(key: 'pre2',           label: 'Precio 2',        defaultWidth: 90,  textAlign: TextAlign.right, sortable: true),
+    const TableColumnDef(key: 'pre3',           label: 'Precio 3',        defaultWidth: 90,  textAlign: TextAlign.right, sortable: true),
+    const TableColumnDef(key: 'pre4',           label: 'Precio 4',        defaultWidth: 90,  textAlign: TextAlign.right, sortable: true),
+    const TableColumnDef(key: 'pre5',           label: 'Precio 5',        defaultWidth: 90,  textAlign: TextAlign.right, sortable: true),
+    const TableColumnDef(key: 'sucursal',       label: 'Sucursal',        defaultWidth: 90,  textAlign: TextAlign.center, sortable: true),
+    const TableColumnDef(key: 'id_codigo1',     label: 'ID Codigo1',      defaultWidth: 100, textAlign: TextAlign.right, sortable: true),
   ];
 
   /// 데이터 리스트를 셀 위젯 리스트로 변환.
@@ -61,7 +61,9 @@ class StocksBuilder {
   }
 
   static List<Widget> _buildRowCells(Map<String, dynamic> stock) {
-    String val(String key) => stock[key]?.toString() ?? 'N/A';
+    // 일반 모드(bcolorview=0) 키 → 통합 모드(bcolorview=1) 키 fallback
+    String val(String key, [String? fallbackKey]) =>
+        stock[key]?.toString() ?? (fallbackKey != null ? stock[fallbackKey]?.toString() : null) ?? 'N/A';
     return [
       Text(stock['codigo']?.toString() ?? stock['tcode']?.toString() ?? 'N/A',
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
@@ -69,12 +71,12 @@ class StocksBuilder {
       Text(stock['descripcion']?.toString() ?? stock['tdesc']?.toString() ?? 'N/A',
           style: TextStyle(fontSize: 10, color: Colors.grey[700]),
           maxLines: 5, overflow: TextOverflow.ellipsis),
-      Text(val('totaling'),       style: TextStyle(fontSize: 10, color: Colors.grey[700]), textAlign: TextAlign.right),
-      Text(val('totalventa'),     style: TextStyle(fontSize: 10, color: Colors.grey[700]), textAlign: TextAlign.right),
-      Text(val('todayingreso'),   style: TextStyle(fontSize: 10, color: Colors.grey[700]), textAlign: TextAlign.right),
-      Text(val('todayventa'),     style: TextStyle(fontSize: 10, color: Colors.grey[700]), textAlign: TextAlign.right),
-      Text(val('totalreservado'), style: TextStyle(fontSize: 10, color: Colors.grey[700]), textAlign: TextAlign.right),
-      Text(val('cntoffset'),      style: TextStyle(fontSize: 10, color: Colors.grey[700]), textAlign: TextAlign.right),
+      Text(val('totaling', 'totaling3'),             style: TextStyle(fontSize: 10, color: Colors.grey[700]), textAlign: TextAlign.right),
+      Text(val('totalventa', 'totalventa3'),          style: TextStyle(fontSize: 10, color: Colors.grey[700]), textAlign: TextAlign.right),
+      Text(val('todayingreso', 'todaying3'),           style: TextStyle(fontSize: 10, color: Colors.grey[700]), textAlign: TextAlign.right),
+      Text(val('todayventa', 'todayvnt3'),             style: TextStyle(fontSize: 10, color: Colors.grey[700]), textAlign: TextAlign.right),
+      Text(val('totalreservado', 'totalreservado3'),   style: TextStyle(fontSize: 10, color: Colors.grey[700]), textAlign: TextAlign.right),
+      Text(val('cntoffset', 'cntoffset3'),             style: TextStyle(fontSize: 10, color: Colors.grey[700]), textAlign: TextAlign.right),
       Text(stock['stockreal']?.toString() ?? stock['stockreal3']?.toString() ?? 'N/A',
           style: TextStyle(fontSize: 10, color: Colors.grey[700]), textAlign: TextAlign.right),
       Text(_formatPorcentaje(stock['porcentaje']),
@@ -498,7 +500,17 @@ class StocksBuilder {
     } else if (key == 'porcentaje') {
       displayValue = _formatPorcentaje(stock['porcentaje']);
     } else {
-      displayValue = stock[key]?.toString() ?? 'N/A';
+      // 일반 모드 → 통합 모드 fallback
+      const fallbackKeys = {
+        'totaling': 'totaling3',
+        'totalventa': 'totalventa3',
+        'todayingreso': 'todaying3',
+        'todayventa': 'todayvnt3',
+        'totalreservado': 'totalreservado3',
+        'cntoffset': 'cntoffset3',
+      };
+      final fallback = fallbackKeys[key];
+      displayValue = stock[key]?.toString() ?? (fallback != null ? stock[fallback]?.toString() : null) ?? 'N/A';
     }
     final textAlign = key == 'sucursal' ? TextAlign.center : (_rightAlignKeys.contains(key) ? TextAlign.right : TextAlign.left);
     return SizedBox(

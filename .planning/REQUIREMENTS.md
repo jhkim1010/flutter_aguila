@@ -15,9 +15,9 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### 테이블 UX
 
-- [ ] **TBL-01**: 칼럼 헤더 클릭으로 오름차순/내림차순 정렬 가능
-- [ ] **TBL-02**: 필터링 인터페이스가 직관적이고 사용하기 쉬움
-- [ ] **TBL-03**: 페이지네이션이 페이지 이동과 페이지 크기 변경을 지원
+- [x] **TBL-01**: 칼럼 헤더 클릭으로 오름차순/내림차순 정렬 가능
+- [x] **TBL-02**: 필터링 인터페이스가 직관적이고 사용하기 쉬움
+- [x] **TBL-03**: 페이지네이션이 페이지 이동과 페이지 크기 변경을 지원
 
 ### Riverpod 전환
 
@@ -62,9 +62,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ALIGN-01 | Phase 1 | Complete |
 | ALIGN-02 | Phase 1 | Complete |
 | ALIGN-03 | Phase 1 | Complete |
-| TBL-01 | Phase 2 | Pending |
-| TBL-02 | Phase 2 | Pending |
-| TBL-03 | Phase 2 | Pending |
+| TBL-01 | Phase 2 | Complete |
+| TBL-02 | Phase 2 | Complete |
+| TBL-03 | Phase 2 | Complete |
 | RVP-01 | Phase 3 | Pending |
 
 **Coverage:**
