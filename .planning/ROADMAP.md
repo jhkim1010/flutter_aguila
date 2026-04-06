@@ -43,7 +43,12 @@ Plans:
   1. 칼럼 헤더를 클릭하면 해당 칼럼 기준으로 오름차순 정렬되고, 다시 클릭하면 내림차순으로 전환된다
   2. 필터 입력 후 데이터가 즉시 좁혀지며, 필터 초기화로 전체 데이터를 복원할 수 있다
   3. 페이지네이션 컨트롤에서 이전/다음 페이지 이동이 작동하고, 페이지 크기(행 수)를 변경할 수 있다
-**Plans**: TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — API offset/limit 전환 + 무한스크롤 제거 + 페이지네이션 컨트롤 구현
+- [ ] 02-02-PLAN.md — 시각적 검증 checkpoint (사용자 확인)
+
 **UI hint**: yes
 
 ### Phase 3: Riverpod Caching
@@ -64,5 +69,5 @@ Phases execute in numeric order: 1 → 2 → 3
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Column Alignment | 1/2 | In Progress|  |
-| 2. Table UX | 0/TBD | Not started | - |
+| 2. Table UX | 0/2 | Not started | - |
 | 3. Riverpod Caching | 0/TBD | Not started | - |
