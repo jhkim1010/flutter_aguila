@@ -27,10 +27,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. 칼럼 리사이즈 핸들을 드래그하면 헤더와 데이터 행 폭이 동시에 업데이트되어 어긋남이 없다
   3. 가로 스크롤 시 헤더와 데이터 행이 동일한 x 오프셋으로 이동하여 칼럼이 항상 정렬된 상태를 유지한다
   4. 세로 스크롤 시 고정 헤더가 데이터 행 칼럼과 항상 정렬된 상태를 유지한다
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
-- [ ] 01-01-PLAN.md — scrollController 세로/가로 분리, 칼럼 폭 로딩 수정, 빌드 검증
+- [x] 01-01-PLAN.md — scrollController 세로/가로 분리, 칼럼 폭 로딩 수정, 빌드 검증
 - [ ] 01-02-PLAN.md — 시각적 검증 checkpoint (사용자 확인)
 
 **UI hint**: yes
@@ -63,6 +63,6 @@ Phases execute in numeric order: 1 → 2 → 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Column Alignment | 0/2 | Not started | - |
+| 1. Column Alignment | 1/2 | In Progress|  |
 | 2. Table UX | 0/TBD | Not started | - |
 | 3. Riverpod Caching | 0/TBD | Not started | - |

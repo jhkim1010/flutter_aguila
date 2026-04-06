@@ -9,9 +9,9 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### 테이블 칼럼 정렬
 
-- [ ] **ALIGN-01**: Stocks 리포트 헤더와 행의 칼럼 폭이 완벽히 일치하여 표시
-- [ ] **ALIGN-02**: 칼럼 리사이즈 후에도 헤더/행 폭이 동기화 유지
-- [ ] **ALIGN-03**: 가로/세로 스크롤 시 헤더 위치가 데이터 행과 정확히 동기화
+- [x] **ALIGN-01**: Stocks 리포트 헤더와 행의 칼럼 폭이 완벽히 일치하여 표시
+- [x] **ALIGN-02**: 칼럼 리사이즈 후에도 헤더/행 폭이 동기화 유지
+- [x] **ALIGN-03**: 가로/세로 스크롤 시 헤더 위치가 데이터 행과 정확히 동기화
 
 ### 테이블 UX
 
@@ -59,9 +59,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ALIGN-01 | Phase 1 | Pending |
-| ALIGN-02 | Phase 1 | Pending |
-| ALIGN-03 | Phase 1 | Pending |
+| ALIGN-01 | Phase 1 | Complete |
+| ALIGN-02 | Phase 1 | Complete |
+| ALIGN-03 | Phase 1 | Complete |
 | TBL-01 | Phase 2 | Pending |
 | TBL-02 | Phase 2 | Pending |
 | TBL-03 | Phase 2 | Pending |
