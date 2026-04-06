@@ -31,7 +31,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 Plans:
 - [x] 01-01-PLAN.md — scrollController 세로/가로 분리, 칼럼 폭 로딩 수정, 빌드 검증
-- [ ] 01-02-PLAN.md — 시각적 검증 checkpoint (사용자 확인)
+- [x] 01-02-PLAN.md — 시각적 검증 checkpoint (사용자 확인)
 
 **UI hint**: yes
 
