@@ -46,7 +46,7 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — API offset/limit 전환 + 무한스크롤 제거 + 페이지네이션 컨트롤 구현
+- [x] 02-01-PLAN.md — API offset/limit 전환 + 무한스크롤 제거 + 페이지네이션 컨트롤 구현
 - [ ] 02-02-PLAN.md — 시각적 검증 checkpoint (사용자 확인)
 
 **UI hint**: yes
