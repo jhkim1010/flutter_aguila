@@ -66,9 +66,9 @@ class _StocksReportViewState extends State<StocksReportView> {
   int? _selectedTemporadaId;
   String? _stocksSortColumn = 'codigo';
   bool _stocksSortAscending = true;
-  String? _stocksNextMaxUtime;
-  bool _stocksHasMore = false;
-  bool _isLoadingMoreStocks = false;
+  int _currentPage = 1;        // 현재 페이지 (1-based)
+  int _pageSize = 100;         // 페이지 크기 (기본 100: 50/100/200 선택 가능)
+  int _totalItems = 0;         // 서버 total (totalPages 계산용)
   String? _selectedSucursal;
   String? _selectedStocksColorCode;
   Map<String, double>? _stocksColumnWidths;
@@ -81,7 +81,6 @@ class _StocksReportViewState extends State<StocksReportView> {
   void initState() {
     super.initState();
     _databaseService = DatabaseService(serverUrl: widget.serverUrl);
-    _scrollController.addListener(_onScroll);
     _filteringWordController.addListener(_onFilteringWordChangedDebounced);
     if (widget.initialFilteringWord != null && widget.initialFilteringWord!.isNotEmpty) {
       _filteringWordController.text = widget.initialFilteringWord!;
@@ -165,13 +164,12 @@ class _StocksReportViewState extends State<StocksReportView> {
         sortColumn: _stocksSortColumn,
         sortAscending: _stocksSortAscending,
         filters: filters.isNotEmpty ? filters : null,
+        offset: (_currentPage - 1) * _pageSize,
+        limit: _pageSize,
       );
       if (data.containsKey('pagination') && data['pagination'] is Map) {
         final pagination = data['pagination'] as Map<String, dynamic>;
-        _stocksHasMore = pagination['hasMore'] == true;
-        _stocksNextMaxUtime = pagination['nextMaxUtime']?.toString();
-      } else {
-        _stocksHasMore = false;
+        _totalItems = pagination['total'] as int? ?? 0;
       }
       if (mounted) {
         setState(() {
@@ -196,9 +194,63 @@ class _StocksReportViewState extends State<StocksReportView> {
 
   Future<void> _reloadDataWithFilters() async {
     ReportTotalRowBuilder.clearCache();
-    _stocksNextMaxUtime = null;
-    _stocksHasMore = false;
+    // 필터/정렬 변경 시 항상 첫 페이지로 (Pitfall 1 방지)
+    _currentPage = 1;
     await _loadData();
+  }
+
+  /// 페이지네이션 컨트롤: 이전/다음 버튼 + 페이지 번호 + 페이지 크기 선택기 (D-04, D-05, D-06)
+  Widget _buildPaginationControls() {
+    final totalPages = (_totalItems / _pageSize).ceil().clamp(1, 99999);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: Colors.grey[300]!, width: 1)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // 이전 페이지 버튼
+          IconButton(
+            icon: const Icon(Icons.chevron_left),
+            onPressed: _currentPage > 1 ? () => _goToPage(_currentPage - 1) : null,
+          ),
+          // 현재 페이지 / 전체 페이지 표시
+          Text('$_currentPage / $totalPages'),
+          // 다음 페이지 버튼
+          IconButton(
+            icon: const Icon(Icons.chevron_right),
+            onPressed: _currentPage < totalPages ? () => _goToPage(_currentPage + 1) : null,
+          ),
+          const SizedBox(width: 16),
+          // 페이지 크기 선택기 (D-05: 50/100/200)
+          DropdownButton<int>(
+            value: _pageSize,
+            items: [50, 100, 200].map((size) =>
+              DropdownMenuItem(value: size, child: Text('$size'))
+            ).toList(),
+            onChanged: (size) {
+              if (size != null) {
+                setState(() {
+                  _pageSize = size;
+                  _currentPage = 1; // 크기 변경 시 첫 페이지로
+                });
+                _loadData();
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 지정 페이지로 이동 (스크롤 상단 복귀 포함)
+  void _goToPage(int page) {
+    setState(() => _currentPage = page);
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
+    _loadData();
   }
 
   /// bcolorview 상태에 따라 AppBar 색상 변경 알림
@@ -217,53 +269,6 @@ class _StocksReportViewState extends State<StocksReportView> {
         _stocksSortColumn,
         _stocksSortAscending,
       );
-    }
-  }
-
-  void _onScroll() {
-    if (!_scrollController.hasClients) return;
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent * 0.8) {
-      _loadNextStocksPage();
-    }
-  }
-
-  Future<void> _loadNextStocksPage() async {
-    if (!_stocksHasMore || _stocksNextMaxUtime == null || _isLoadingMoreStocks) return;
-    setState(() => _isLoadingMoreStocks = true);
-    try {
-      final filteringWord = _filteringWordController.text.trim();
-      final filters = <String, dynamic>{};
-      if (_selectedTipoId != null) filters['tipo_id'] = _selectedTipoId;
-      if (_selectedTemporadaId != null) filters['temporada_id'] = _selectedTemporadaId;
-      if (_selectedStocksColorCode != null) filters['color_id'] = _selectedStocksColorCode;
-      if (_selectedSucursal != null) filters['sucursal'] = _selectedSucursal;
-      if (_verConColorYTalle) filters['bcolorview'] = 0;
-
-      final response = await _databaseService.getStocksReport(
-        maxUtime: _stocksNextMaxUtime,
-        filteringWord: filteringWord.isNotEmpty ? filteringWord : null,
-        sortColumn: _stocksSortColumn,
-        sortAscending: _stocksSortAscending,
-        filters: filters.isNotEmpty ? filters : null,
-      );
-      if (response.containsKey('data') && response['data'] is List && _data != null && _data!.containsKey('data')) {
-        final newData = response['data'] as List;
-        final currentData = _data!['data'] as List;
-        setState(() {
-          _data = { ..._data!, 'data': [...currentData, ...newData] };
-        });
-      }
-      if (response.containsKey('pagination') && response['pagination'] is Map) {
-        final pagination = response['pagination'] as Map<String, dynamic>;
-        _stocksHasMore = pagination['hasMore'] == true;
-        _stocksNextMaxUtime = pagination['nextMaxUtime']?.toString();
-      } else {
-        _stocksHasMore = false;
-      }
-    } catch (e) {
-      debugPrint('StocksReportView _loadNextStocksPage error: $e');
-    } finally {
-      if (mounted) setState(() => _isLoadingMoreStocks = false);
     }
   }
 
@@ -446,7 +451,7 @@ class _StocksReportViewState extends State<StocksReportView> {
         });
         StocksColumnWidthStorage.save(_stocksColumnWidthDbKey, _stocksColumnWidths!);
       },
-      scrollController: _scrollController, // 세로 스크롤 + 무한스크롤 _onScroll 연동
+      scrollController: _scrollController, // 세로 스크롤용 (페이지 내 스크롤)
       sortColumn: _stocksSortColumn,
       sortAscending: _stocksSortAscending,
       onSort: (column, ascending) {
@@ -458,7 +463,8 @@ class _StocksReportViewState extends State<StocksReportView> {
         _reloadDataWithFilters();
       },
       headerColor: stocksColor,
-      isLoadingMore: _isLoadingMoreStocks,
+      isLoadingMore: false,
+      footerWidget: _buildPaginationControls(),
     );
   }
 
