@@ -153,6 +153,12 @@ class _ResizableDataTableState extends State<ResizableDataTable> {
 
   @override
   Widget build(BuildContext context) {
+    // 디버그: 칼럼 수와 행 셀 수 일치 확인 (불일치 시 즉시 감지)
+    assert(
+      widget.rows.isEmpty || widget.rows.every((row) => row.length == widget.columns.length),
+      'ResizableDataTable: 행의 셀 수(${widget.rows.isNotEmpty ? widget.rows.first.length : 0})가 '
+      '칼럼 수(${widget.columns.length})와 불일치',
+    );
     return Column(
       children: [
         // 로딩 인디케이터 (추가 데이터 로딩 중)
