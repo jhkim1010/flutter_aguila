@@ -8,21 +8,22 @@ class StocksApi {
   StocksApi({required HttpRequestHandler httpHandler})
       : _httpHandler = httpHandler;
 
-  /// 재고 보고서 가져오기 (페이지네이션 지원)
+  /// 재고 보고서 가져오기 (offset/limit 기반 페이지네이션)
   Future<Map<String, dynamic>> getStocksReport({
     String? filteringWord,
     Map<String, dynamic>? filters,
-    String? maxUtime,
+    int? offset,
+    int? limit,
     String? sortColumn,
     bool? sortAscending,
   }) async {
     const endpoint = '/api/reporte/stocks';
     final queryParams = <String, String>{};
-    
+
     if (filteringWord != null && filteringWord.isNotEmpty) {
       queryParams['filtering_word'] = filteringWord;
     }
-    
+
     if (filters != null) {
       filters.forEach((key, value) {
         if (value != null) {
@@ -30,11 +31,10 @@ class StocksApi {
         }
       });
     }
-    
-    if (maxUtime != null && maxUtime.isNotEmpty) {
-      queryParams['max_utime'] = maxUtime;
-    }
-    
+
+    if (offset != null) queryParams['offset'] = offset.toString();
+    if (limit != null) queryParams['limit'] = limit.toString();
+
     if (sortColumn != null && sortColumn.isNotEmpty) {
       queryParams['sort_column'] = sortColumn;
       queryParams['sort_ascending'] = (sortAscending ?? true) ? 'true' : 'false';
@@ -75,14 +75,16 @@ class StocksApi {
   Future<StocksResponse> getStocksReportTyped({
     String? filteringWord,
     Map<String, dynamic>? filters,
-    String? maxUtime,
+    int? offset,
+    int? limit,
     String? sortColumn,
     bool? sortAscending,
   }) async {
     final response = await getStocksReport(
       filteringWord: filteringWord,
       filters: filters,
-      maxUtime: maxUtime,
+      offset: offset,
+      limit: limit,
       sortColumn: sortColumn,
       sortAscending: sortAscending,
     );

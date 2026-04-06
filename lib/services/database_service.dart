@@ -51,13 +51,15 @@ class DatabaseService {
   Future<Map<String, dynamic>> getStocksReport({
     String? filteringWord,
     Map<String, dynamic>? filters,
-    String? maxUtime,
+    int? offset,
+    int? limit,
     String? sortColumn,
     bool? sortAscending,
   }) => _stocksApi.getStocksReport(
     filteringWord: filteringWord,
     filters: filters,
-    maxUtime: maxUtime,
+    offset: offset,
+    limit: limit,
     sortColumn: sortColumn,
     sortAscending: sortAscending,
   );
@@ -66,13 +68,15 @@ class DatabaseService {
   Future<StocksResponse> getStocksReportTyped({
     String? filteringWord,
     Map<String, dynamic>? filters,
-    String? maxUtime,
+    int? offset,
+    int? limit,
     String? sortColumn,
     bool? sortAscending,
   }) => _stocksApi.getStocksReportTyped(
     filteringWord: filteringWord,
     filters: filters,
-    maxUtime: maxUtime,
+    offset: offset,
+    limit: limit,
     sortColumn: sortColumn,
     sortAscending: sortAscending,
   );

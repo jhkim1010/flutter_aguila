@@ -1257,7 +1257,6 @@ mixin ReportDataLoaderMixin on _ReportScreenStateBase {
       }
       
       final response = await _databaseService.getStocksReport(
-        maxUtime: _stocksNextMaxUtime,
         filteringWord: filteringWord.isNotEmpty ? filteringWord : null,
         sortColumn: _stocksSortColumn,
         sortAscending: _stocksSortAscending,
