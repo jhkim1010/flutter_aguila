@@ -344,7 +344,16 @@ class ResumenDelDiaMultipleSucursalesView extends StatelessWidget {
           
           debugPrint('   → Column 생성: mainAxisSize=max, children 개수 계산 중...');
           final columnChildren = <Widget>[];
-          
+
+          // 날짜 선택 버튼 (맨 윗줄)
+          debugPrint('   → 날짜 선택 버튼 추가');
+          columnChildren.add(
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: _buildDateSelectorButton(),
+            ),
+          );
+
           // 날짜 표시
           if (data.containsKey('fecha')) {
             debugPrint('   → 날짜 헤더 추가');
@@ -485,6 +494,12 @@ class ResumenDelDiaMultipleSucursalesView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
+          // 날짜 선택 버튼 (맨 윗줄)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: _buildDateSelectorButton(),
+          ),
+
           // 날짜 표시
           if (data.containsKey('fecha'))
             Padding(
@@ -1118,6 +1133,33 @@ class ResumenDelDiaMultipleSucursalesView extends StatelessWidget {
   bool _isLargeScreen(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     return screenWidth >= 1200;
+  }
+
+  /// 날짜 선택 버튼 (단일 sucursal 뷰와 동일한 형태)
+  ///
+  /// 여러 sucursal 뷰에는 이 버튼이 없어서 다른 날짜를 조회할 방법이 없었다.
+  /// _buildDateHeader 는 서버가 응답한 fecha 를 보여주는 표시 전용이라 탭해도 반응하지 않는다.
+  Widget _buildDateSelectorButton() {
+    final labelDate = selectedDate ?? DateTime.now();
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        ElevatedButton.icon(
+          onPressed: onSelectDate,
+          icon: const Icon(Icons.calendar_today),
+          label: Text(
+            DateFormat('yyyy-MM-dd').format(labelDate),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            backgroundColor: Colors.blue[700],
+            foregroundColor: Colors.white,
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildDateHeader(BuildContext context, dynamic fecha) {
