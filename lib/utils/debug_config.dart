@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart' show kDebugMode;
+// debugPrint가 import되지 않아 컴파일 에러가 발생했던 문제 수정
+import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
 
 /// 디버깅 설정
 /// 

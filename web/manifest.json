@@ -1,11 +1,11 @@
 {
-    "name": "flutter_app",
-    "short_name": "flutter_app",
+    "name": "Be COOL - Aguila Reports",
+    "short_name": "Be COOL",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Aguila - Business Reports",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

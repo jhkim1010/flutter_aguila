@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 
@@ -6,9 +7,16 @@ import 'package:http/io_client.dart';
 /// 자체 서명 인증서(self-signed certificate)를 허용합니다.
 class SslClientHelper {
   /// SSL 인증서 검증을 우회하는 HTTP Client를 생성합니다.
-  /// 
+  ///
   /// 주의: 개발 환경에서만 사용하고, 프로덕션에서는 적절한 인증서를 사용해야 합니다.
   static http.Client createUnsafeClient() {
+    // 웹: 브라우저가 TLS를 직접 처리하므로 인증서 우회가 불가능함
+    // → 기본 클라이언트 반환 (서버에 유효한 인증서 필요)
+    if (kIsWeb) {
+      print('🌐 웹 플랫폼: 브라우저 기본 HTTP Client 사용 (SSL 우회 불가)');
+      return http.Client();
+    }
+
     final httpClient = HttpClient()
       ..badCertificateCallback = (X509Certificate cert, String host, int port) {
         // 자체 서명 인증서를 허용합니다.

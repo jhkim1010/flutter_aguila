@@ -14,11 +14,12 @@ mixin ReportShareMixin on _ReportScreenStateBase {
       return;
     }
 
+    // 웹: Platform API 사용 불가 — PDF 다운로드로 처리
     // macOS 또는 Windows인 경우 Excel로 공유
-    if (Platform.isMacOS || Platform.isWindows) {
+    if (!kIsWeb && (Platform.isMacOS || Platform.isWindows)) {
       _shareAsExcel();
     } else {
-      // 모바일/태블릿: 기존대로 PDF만 공유
+      // 모바일/태블릿/웹: 기존대로 PDF만 공유
       _shareAsPdf();
     }
   }
@@ -103,6 +104,19 @@ mixin ReportShareMixin on _ReportScreenStateBase {
       // 로딩 다이얼로그 닫기
       if (mounted) {
         Navigator.of(context).pop();
+      }
+
+      // 웹: 브라우저 다운로드가 이미 완료됨 — 파일 시스템 접근 없이 종료
+      if (kIsWeb) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('PDF descargado'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+        return;
       }
 
       // 파일 존재 확인
@@ -437,6 +451,19 @@ mixin ReportShareMixin on _ReportScreenStateBase {
       // 로딩 다이얼로그 닫기
       if (mounted) {
         Navigator.of(context).pop();
+      }
+
+      // 웹: 브라우저 다운로드가 이미 완료됨 — 파일 시스템 접근 없이 종료
+      if (kIsWeb) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Excel descargado'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+        return;
       }
 
       // 파일 존재 확인

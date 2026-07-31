@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../services/database_service.dart';
@@ -274,7 +275,8 @@ class _StocksReportViewState extends State<StocksReportView> {
 
   Future<void> _shareReport() async {
     if (_data == null) return;
-    if (Platform.isMacOS || Platform.isWindows) {
+    // 웹: Platform API 사용 불가 — PDF 다운로드로 처리
+    if (!kIsWeb && (Platform.isMacOS || Platform.isWindows)) {
       _shareAsExcel();
     } else {
       _shareAsPdf();
@@ -313,6 +315,15 @@ class _StocksReportViewState extends State<StocksReportView> {
         displayedColumns: null,
       );
       if (mounted) Navigator.of(context).pop();
+      // 웹: 브라우저 다운로드가 이미 완료됨 — 공유 다이얼로그 생략
+      if (kIsWeb) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('PDF descargado'), duration: Duration(seconds: 2)),
+          );
+        }
+        return;
+      }
       if (mounted) await Share.shareXFiles([XFile(pdfFile.path)]);
     } catch (e) {
       if (mounted) {
@@ -354,6 +365,15 @@ class _StocksReportViewState extends State<StocksReportView> {
         displayedColumns: null,
       );
       if (mounted) Navigator.of(context).pop();
+      // 웹: 브라우저 다운로드가 이미 완료됨 — 공유 다이얼로그 생략
+      if (kIsWeb) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Excel descargado'), duration: Duration(seconds: 2)),
+          );
+        }
+        return;
+      }
       if (mounted) await Share.shareXFiles([XFile(excelFile.path)]);
     } catch (e) {
       if (mounted) {

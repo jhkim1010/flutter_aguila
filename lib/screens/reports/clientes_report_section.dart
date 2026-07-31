@@ -518,7 +518,8 @@ mixin ClientesReportMixin on _ReportScreenStateBase {
 
   /// Cliente 상세 정보 공유 (macOS/Windows: Excel, 기타: PDF)
   Future<void> _shareClienteDetail(Map<String, dynamic> clienteDetailData) async {
-    if (Platform.isMacOS || Platform.isWindows) {
+    // 웹: Platform API 사용 불가 — PDF 다운로드로 처리
+    if (!kIsWeb && (Platform.isMacOS || Platform.isWindows)) {
       _shareClienteDetailAsExcel(clienteDetailData);
     } else {
       _shareClienteDetailAsPdf(clienteDetailData);
@@ -558,6 +559,16 @@ mixin ClientesReportMixin on _ReportScreenStateBase {
 
       if (mounted) {
         Navigator.of(context).pop();
+      }
+
+      // 웹: 브라우저 다운로드가 이미 완료됨 — 파일 시스템 접근 없이 종료
+      if (kIsWeb) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('PDF descargado'), duration: Duration(seconds: 2)),
+          );
+        }
+        return;
       }
 
       if (!await pdfFile.exists()) {
@@ -622,6 +633,16 @@ mixin ClientesReportMixin on _ReportScreenStateBase {
 
       if (mounted) {
         Navigator.of(context).pop();
+      }
+
+      // 웹: 브라우저 다운로드가 이미 완료됨 — 파일 시스템 접근 없이 종료
+      if (kIsWeb) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Excel descargado'), duration: Duration(seconds: 2)),
+          );
+        }
+        return;
       }
 
       if (!await excelFile.exists()) {

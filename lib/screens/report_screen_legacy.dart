@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show debugPrint, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart' show debugPrint, defaultTargetPlatform, TargetPlatform, kIsWeb;
 import 'package:flutter/rendering.dart' show RenderBox, RenderFlex, FlexParentData, RenderViewport;
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
@@ -733,9 +733,10 @@ class _ReportScreenLegacyState extends _ReportScreenStateBase
     debugPrint('═══════════════════════════════════════════════════════');
     debugPrint('🔍 [ReportScreen.build] 호출됨');
     debugPrint('   → reportType: ${widget.reportType}');
-    debugPrint('   → Platform.isWindows: ${Platform.isWindows}');
-    debugPrint('   → Platform.isMacOS: ${Platform.isMacOS}');
-    debugPrint('   → Platform.isLinux: ${Platform.isLinux}');
+    // 웹에서는 Platform API 사용 불가 — 단락 평가로 예외 방지
+    debugPrint('   → Platform.isWindows: ${!kIsWeb && Platform.isWindows}');
+    debugPrint('   → Platform.isMacOS: ${!kIsWeb && Platform.isMacOS}');
+    debugPrint('   → Platform.isLinux: ${!kIsWeb && Platform.isLinux}');
     debugPrint('   → defaultTargetPlatform: $defaultTargetPlatform');
     debugPrint('   → useFullWidth: ${widget.useFullWidth}');
     debugPrint('   → _isLoading: $_isLoading');
@@ -5192,8 +5193,8 @@ class _ReportScreenLegacyState extends _ReportScreenStateBase
           if (_data != null)
             IconButton(
               icon: const Icon(Icons.share, color: Colors.white),
-              tooltip: Platform.isMacOS || Platform.isWindows 
-                  ? 'Compartir como Excel' 
+              tooltip: !kIsWeb && (Platform.isMacOS || Platform.isWindows)
+                  ? 'Compartir como Excel'
                   : 'Compartir como PDF',
               onPressed: () {
                 debugPrint('🔍 [AppBar Actions] 공유 버튼 클릭됨');
@@ -5210,7 +5211,7 @@ class _ReportScreenLegacyState extends _ReportScreenStateBase
     debugPrint('═══════════════════════════════════════════════════════');
     debugPrint('🔍 [_buildBody] 호출됨');
     debugPrint('   → reportType: ${widget.reportType}');
-    debugPrint('   → Platform.isWindows: ${Platform.isWindows}');
+    debugPrint('   → Platform.isWindows: ${!kIsWeb && Platform.isWindows}');
     debugPrint('   → _isLoading: $_isLoading');
     debugPrint('   → _data: ${_data != null ? "있음 (키: ${_data!.keys.toList()})" : "null"}');
     debugPrint('   → _errorMessage: $_errorMessage');
@@ -5325,7 +5326,7 @@ class _ReportScreenLegacyState extends _ReportScreenStateBase
     debugPrint('═══════════════════════════════════════════════════════');
     debugPrint('🔍 [_buildReportContent] 호출됨');
     debugPrint('   → reportType: ${widget.reportType}');
-    debugPrint('   → Platform.isWindows: ${Platform.isWindows}');
+    debugPrint('   → Platform.isWindows: ${!kIsWeb && Platform.isWindows}');
     debugPrint('   → _data: ${_data != null ? "있음" : "null"}');
     if (widget.reportType == ReportType.ventas) {
       debugPrint('   → [Ventas] _ventasUnit: $_ventasUnit');
@@ -6232,7 +6233,7 @@ class _ReportScreenLegacyState extends _ReportScreenStateBase
           debugPrint('═══════════════════════════════════════════════════════');
           debugPrint('🔍 [report_screen.dart:8876] [Ventas] ReportTableBuilder.buildTableFromList 호출 전');
           debugPrint('   → 라인: 8876');
-          debugPrint('   → [report_screen.dart:8879] Platform.isWindows: ${Platform.isWindows}');
+          debugPrint('   → [report_screen.dart:8879] Platform.isWindows: ${!kIsWeb && Platform.isWindows}');
           debugPrint('   → [report_screen.dart:8880] sortedDataList.length: ${sortedDataList.length}');
           debugPrint('   → [report_screen.dart:8881] _displayedItemsCount: $_displayedItemsCount');
           debugPrint('   → [report_screen.dart:8882] _ventasUnit: $_ventasUnit');

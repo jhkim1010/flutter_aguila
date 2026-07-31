@@ -1,5 +1,5 @@
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, kDebugMode;
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, kDebugMode, kIsWeb;
 import 'dart:io' show exit, Platform;
 import 'package:local_auth/local_auth.dart';
 
@@ -9,6 +9,8 @@ class BiometricAuthHandler {
 
   /// 시뮬레이터 환경인지 확인
   bool _isSimulator() {
+    // 웹: Platform.environment 사용 불가
+    if (kIsWeb) return false;
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       // iOS 시뮬레이터 감지
       try {
@@ -33,6 +35,11 @@ class BiometricAuthHandler {
 
   /// 백그라운드에서 생체 인식 수행
   Future<bool> authenticateInBackground() async {
+    // 웹: 생체 인식 미지원 — 생략하고 계속 진행
+    if (kIsWeb) {
+      print('🌐 웹 플랫폼: 생체 인식 생략');
+      return true;
+    }
     // Windows 플랫폼에서는 생체 인식 생략
     if (defaultTargetPlatform == TargetPlatform.windows) {
       print('🪟 Windows 플랫폼: 생체 인식 생략');
@@ -89,8 +96,14 @@ class BiometricAuthHandler {
   /// 앱 종료
   void exitApp() {
     print('🚪 앱 종료 중...');
-    if (defaultTargetPlatform == TargetPlatform.android || 
-        defaultTargetPlatform == TargetPlatform.iOS) {
+    // 웹: exit() 사용 불가 — 브라우저 탭은 종료할 수 없으므로 무시
+    if (kIsWeb) {
+      print('🌐 웹 플랫폼: 앱 종료 불가 (무시)');
+      return;
+    }
+    if (!kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.android ||
+            defaultTargetPlatform == TargetPlatform.iOS)) {
       SystemNavigator.pop();
     } else {
       exit(0);

@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, kIsWeb;
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 
@@ -8,8 +8,12 @@ class DeviceInfoHelper {
   static final NetworkInfo _networkInfo = NetworkInfo();
   static final DeviceInfoPlugin _deviceInfo = DeviceInfoPlugin();
 
-  /// 플랫폼 정보 가져오기 (mac, windows, android, iphone, ipad)
+  /// 플랫폼 정보 가져오기 (web, mac, windows, android, iphone, ipad)
   static Future<String> getPlatform() async {
+    // 웹: defaultTargetPlatform이 브라우저의 OS를 반환하므로 kIsWeb을 먼저 확인
+    if (kIsWeb) {
+      return 'web';
+    }
     if (defaultTargetPlatform == TargetPlatform.macOS) {
       return 'mac';
     } else if (defaultTargetPlatform == TargetPlatform.windows) {
@@ -40,6 +44,11 @@ class DeviceInfoHelper {
 
   /// MAC 주소 가져오기
   static Future<String?> getMacAddress() async {
+    // 웹: 브라우저에서는 MAC 주소 접근 불가 (Platform API도 사용 불가)
+    if (kIsWeb) {
+      print('🌐 웹 플랫폼: MAC 주소를 가져올 수 없습니다.');
+      return null;
+    }
     try {
       // 플랫폼별로 MAC 주소 가져오기
       if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {

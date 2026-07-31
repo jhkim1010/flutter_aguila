@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, kDebugMode;
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, kDebugMode, kIsWeb;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:window_manager/window_manager.dart';
 import 'l10n/app_localizations.dart';
@@ -11,8 +11,8 @@ import 'utils/log_file_writer.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // 로그 파일 작성자 초기화 (디버그 모드에서만)
-  if (kDebugMode) {
+  // 로그 파일 작성자 초기화 (디버그 모드에서만, 웹 제외 — 웹은 파일 시스템 없음)
+  if (kDebugMode && !kIsWeb) {
     await LogFileWriter.initialize();
     setupFileLogging();
     final logPath = LogFileWriter.getLogFilePath();
@@ -25,7 +25,9 @@ void main() async {
   await ConfigService().initialize();
   
   // 데스크톱 환경에서만 window_manager 초기화
-  if (isDesktop()) {
+  // 주의: 웹에서는 defaultTargetPlatform이 브라우저가 실행 중인 OS를 반환하므로
+  // kIsWeb 체크가 반드시 선행되어야 함
+  if (!kIsWeb && isDesktop()) {
     await windowManager.ensureInitialized();
     
     WindowOptions windowOptions = const WindowOptions(
@@ -115,17 +117,19 @@ class _MyAppState extends State<MyApp> {
       locale: _locale ?? const Locale('es', ''),
       home: Builder(
         builder: (context) {
-          // context가 있으면 플랫폼 정보를 로그 파일에 기록
-          if (kDebugMode) {
+          // context가 있으면 플랫폼 정보를 로그 파일에 기록 (웹 제외)
+          if (kDebugMode && !kIsWeb) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               LogFileWriter.initialize(context: context);
             });
           }
-          
+
           // iPhone(iOS 모바일)이고 Release 모드일 때만 생체 인증 화면 표시
           // Debug 모드에서는 생체 인증 건너뛰고 바로 메인 화면으로 이동
-          if (defaultTargetPlatform == TargetPlatform.iOS && 
-              !isDesktop() && 
+          // 웹에서는 생체 인증 미지원이므로 제외 (iPhone 브라우저도 iOS로 감지되기 때문)
+          if (!kIsWeb &&
+              defaultTargetPlatform == TargetPlatform.iOS &&
+              !isDesktop() &&
               !kDebugMode) {
             return BiometricAuthScreen(
               onLanguageChanged: changeLocale,

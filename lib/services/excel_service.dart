@@ -1,8 +1,10 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb, Uint8List;
 import 'package:excel/excel.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
 import '../widgets/report_utils.dart';
+import '../utils/web_compat/web_file_saver.dart';
 
 class ExcelService {
   /// 필드 이름이 code 관련인지 확인 (code로 끝나거나 code를 포함)
@@ -540,18 +542,8 @@ class ExcelService {
       }
     }
     
-    // 임시 디렉토리에 파일 저장
-    final directory = await getTemporaryDirectory();
-    
-    // 디렉토리가 존재하는지 확인하고 없으면 생성
-    if (!await directory.exists()) {
-      await directory.create(recursive: true);
-      print('📁 디렉토리 생성: ${directory.path}');
-    }
-    
     final fileName = '${reportTitle}_${DateFormat('yyyyMMdd_HHmmss').format(now)}.xlsx';
-    final file = File('${directory.path}/$fileName');
-    
+
     // Excel 저장 전에 Sheet1이 남아있는지 다시 확인하고 삭제
     try {
       if (excel.sheets.keys.contains('Sheet1')) {
@@ -562,14 +554,40 @@ class ExcelService {
     } catch (e) {
       print('⚠️ 저장 전 Sheet1 삭제 중 오류 (무시): $e');
     }
-    
+
+    // 웹: 파일 시스템이 없으므로 브라우저 다운로드로 처리
+    if (kIsWeb) {
+      final excelBytes = excel.save();
+      if (excelBytes == null) {
+        throw Exception('Excel 파일 생성 실패: excelBytes가 null입니다');
+      }
+      await saveFileOnWeb(
+        Uint8List.fromList(excelBytes),
+        fileName,
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+      // 웹에서는 실제 파일이 아니므로 반환값을 사용하면 안 됨 (호출부에서 kIsWeb 분기 필수)
+      return File(fileName);
+    }
+
+    // 임시 디렉토리에 파일 저장
+    final directory = await getTemporaryDirectory();
+
+    // 디렉토리가 존재하는지 확인하고 없으면 생성
+    if (!await directory.exists()) {
+      await directory.create(recursive: true);
+      print('📁 디렉토리 생성: ${directory.path}');
+    }
+
+    final file = File('${directory.path}/$fileName');
+
     // Excel 저장
     try {
       final excelBytes = excel.save();
       if (excelBytes == null) {
         throw Exception('Excel 파일 생성 실패: excelBytes가 null입니다');
       }
-      
+
       await file.writeAsBytes(excelBytes);
       print('✅ Excel 파일 저장 완료: ${file.path}');
       print('📄 파일 크기: ${excelBytes.length} bytes');
@@ -749,15 +767,8 @@ class ExcelService {
       }
     }
     
-    // 파일 저장
-    final directory = await getTemporaryDirectory();
-    if (!await directory.exists()) {
-      await directory.create(recursive: true);
-    }
-    
     final fileName = 'Detalle_Cliente_${clienteNombre.replaceAll(RegExp(r'[^\w\s-]'), '_')}_${DateFormat('yyyyMMdd_HHmmss').format(now)}.xlsx';
-    final file = File('${directory.path}/$fileName');
-    
+
     // Excel 저장 전에 Sheet1이 남아있는지 다시 확인하고 삭제
     try {
       if (excel.sheets.keys.contains('Sheet1')) {
@@ -768,12 +779,35 @@ class ExcelService {
     } catch (e) {
       print('⚠️ 저장 전 Sheet1 삭제 중 오류 (무시): $e');
     }
-    
+
+    // 웹: 브라우저 다운로드로 처리
+    if (kIsWeb) {
+      final excelBytes = excel.save();
+      if (excelBytes == null) {
+        throw Exception('Excel 파일 생성 실패: excelBytes가 null입니다');
+      }
+      await saveFileOnWeb(
+        Uint8List.fromList(excelBytes),
+        fileName,
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+      // 웹에서는 실제 파일이 아니므로 반환값을 사용하면 안 됨
+      return File(fileName);
+    }
+
+    // 파일 저장
+    final directory = await getTemporaryDirectory();
+    if (!await directory.exists()) {
+      await directory.create(recursive: true);
+    }
+
+    final file = File('${directory.path}/$fileName');
+
     final excelBytes = excel.save();
     if (excelBytes != null) {
       await file.writeAsBytes(excelBytes);
     }
-    
+
     return file;
   }
 }

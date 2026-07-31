@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, kIsWeb;
 
 /// 플랫폼 타입
 enum PlatformType {
@@ -30,7 +30,16 @@ class PlatformUtils {
     return PlatformType.mobile;
   }
   
+  /// 웹 플랫폼인지 확인
+  static bool isWeb() {
+    return kIsWeb;
+  }
+
   /// 데스크톱 플랫폼인지 확인
+  ///
+  /// 참고: 웹에서도 defaultTargetPlatform은 브라우저가 실행 중인 OS를 반환하므로,
+  /// 데스크톱 브라우저에서는 true가 됨 — 레이아웃(왼쪽 메뉴 등) 판정에는 의도된 동작.
+  /// 파일 시스템/window_manager 등 네이티브 기능 판정에는 반드시 !kIsWeb를 함께 사용할 것.
   static bool isDesktop() {
     return [
       TargetPlatform.windows,

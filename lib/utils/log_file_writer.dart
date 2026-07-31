@@ -14,6 +14,11 @@ class LogFileWriter {
 
   /// 로그 파일 작성자 초기화
   static Future<void> initialize({BuildContext? context}) async {
+    // 웹: 파일 시스템이 없으므로 파일 로깅 비활성화 (콘솔 로깅만 사용)
+    if (kIsWeb) {
+      debugPrint('🌐 웹 플랫폼: 파일 로깅 비활성화 (콘솔 로깅만 사용)');
+      return;
+    }
     try {
       // 디버그 모드에서만 파일 로깅 활성화
       if (kDebugMode) {
@@ -78,6 +83,8 @@ class LogFileWriter {
 
   /// 로그를 파일에 쓰기 (내부 메서드)
   static Future<void> _writeToFile(String message) async {
+    // 웹: 파일 쓰기 미지원 — 조용히 무시
+    if (kIsWeb) return;
     if (_logFile == null) {
       // 아직 초기화되지 않았으면 버퍼에 저장
       _logBuffer.add(message);
@@ -132,6 +139,8 @@ class LogFileWriter {
 
   /// 모든 로그 파일 목록 가져오기
   static Future<List<File>> getAllLogFiles() async {
+    // 웹: 파일 시스템 없음
+    if (kIsWeb) return [];
     try {
       final directory = await getApplicationDocumentsDirectory();
       final logDir = Directory('${directory.path}/logs');
@@ -204,6 +213,8 @@ bool _isFileLogging = false;
 
 /// debugPrint를 오버라이드하여 파일에도 저장하는 확장
 void setupFileLogging() {
+  // 웹: 파일 로깅 미지원
+  if (kIsWeb) return;
   if (kDebugMode) {
     // 기존 debugPrint를 백업
     final originalDebugPrint = debugPrint;

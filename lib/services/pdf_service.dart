@@ -1,9 +1,11 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
 import '../widgets/report_utils.dart';
+import '../utils/web_compat/web_file_saver.dart';
 
 // ReportUtils의 formatValue 함수를 사용하기 위한 헬퍼
 String _formatValue(dynamic value) {
@@ -110,18 +112,27 @@ class PdfService {
       ),
     );
 
+    final fileName = '${reportTitle}_${DateFormat('yyyyMMdd_HHmmss').format(now)}.pdf';
+
+    // 웹: 파일 시스템이 없으므로 브라우저 다운로드로 처리
+    if (kIsWeb) {
+      final pdfBytes = await pdf.save();
+      await saveFileOnWeb(pdfBytes, fileName, 'application/pdf');
+      // 웹에서는 실제 파일이 아니므로 반환값을 사용하면 안 됨 (호출부에서 kIsWeb 분기 필수)
+      return File(fileName);
+    }
+
     // 임시 디렉토리에 파일 저장
     final directory = await getTemporaryDirectory();
-    
+
     // 디렉토리가 존재하는지 확인하고 없으면 생성
     if (!await directory.exists()) {
       await directory.create(recursive: true);
       print('📁 디렉토리 생성: ${directory.path}');
     }
-    
-    final fileName = '${reportTitle}_${DateFormat('yyyyMMdd_HHmmss').format(now)}.pdf';
+
     final file = File('${directory.path}/$fileName');
-    
+
     // PDF 저장
     try {
       final pdfBytes = await pdf.save();
@@ -573,18 +584,27 @@ class PdfService {
       ),
     );
 
+    final fileName = 'Detalle_Cliente_${clienteNombre.replaceAll(RegExp(r'[^\w\s-]'), '_')}_${DateFormat('yyyyMMdd_HHmmss').format(now)}.pdf';
+
+    // 웹: 브라우저 다운로드로 처리
+    if (kIsWeb) {
+      final pdfBytes = await pdf.save();
+      await saveFileOnWeb(pdfBytes, fileName, 'application/pdf');
+      // 웹에서는 실제 파일이 아니므로 반환값을 사용하면 안 됨
+      return File(fileName);
+    }
+
     // 임시 디렉토리에 파일 저장
     final directory = await getTemporaryDirectory();
     if (!await directory.exists()) {
       await directory.create(recursive: true);
     }
-    
-    final fileName = 'Detalle_Cliente_${clienteNombre.replaceAll(RegExp(r'[^\w\s-]'), '_')}_${DateFormat('yyyyMMdd_HHmmss').format(now)}.pdf';
+
     final file = File('${directory.path}/$fileName');
-    
+
     final pdfBytes = await pdf.save();
     await file.writeAsBytes(pdfBytes);
-    
+
     return file;
   }
 }
