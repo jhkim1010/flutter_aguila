@@ -56,6 +56,12 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01-column-alignment P02 | 1 | 1 tasks | 0 files |
 | Phase 02-table-ux P01 | 15 | 2 tasks | 4 files |
 
+## Quick Tasks Completed
+
+| Date | Slug | Description | Commit |
+|------|------|-------------|--------|
+| 2026-07-31 | msix-config-real-values | Windows MSIX 빌드 실패 해결 — msix_config 플레이스홀더 교체 + CI 인증서 프롬프트 차단 | 3b272ff, b7ff40e |
+
 ## Accumulated Context
 
 ### Decisions
