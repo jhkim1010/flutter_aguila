@@ -61,6 +61,7 @@ Progress: [░░░░░░░░░░] 0%
 | Date | Slug | Description | Commit |
 |------|------|-------------|--------|
 | 2026-07-31 | msix-config-real-values | Windows MSIX 빌드 실패 해결 — msix_config 플레이스홀더 교체 + CI 인증서 프롬프트 차단 | 3b272ff, b7ff40e |
+| 2026-07-31 | msix-code-signing | 자체 서명 인증서로 MSIX 서명 — Windows 설치 가능해짐 (PC별 .cer 등록 1회 필요) | 630dd2f |
 
 ## Accumulated Context
 
