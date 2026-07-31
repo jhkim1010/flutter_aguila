@@ -1,0 +1,137 @@
+name: Windows Build
+
+# Windows 설치 파일은 Windows 호스트에서만 빌드 가능하다.
+# macOS/Linux 에서 `flutter build windows` 는 다음 에러로 거부된다:
+#   "build windows" only supported on Windows hosts.
+# 따라서 windows-latest 러너에서 빌드해 아티팩트로 내려받는다.
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_msix:
+        description: 'MSIX 설치 패키지도 생성 (서명 없음 - 설치하려면 신뢰할 수 있는 인증서 필요)'
+        type: boolean
+        default: false
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+    # 빌드 결과에 영향이 없는 변경만 있을 때는 Windows 러너를 돌리지 않는다
+    # (Windows 러너는 Actions 무료 분에서 Linux 대비 2배 차감된다)
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.planning/**'
+      - '.gsd/**'
+
+# 동일 ref 에서 빌드가 중복 실행되지 않도록 이전 실행을 취소한다
+concurrency:
+  group: windows-build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # 로컬 개발 환경과 동일한 버전으로 고정 (재현 가능한 빌드)
+  FLUTTER_VERSION: '3.41.2'
+  # windows/CMakeLists.txt 의 BINARY_NAME
+  BINARY_NAME: 'Be_Cool'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      # claudekit 은 .gitmodules 없는 gitlink 라서 submodule 체크아웃을 켜면 실패한다.
+      # Flutter 빌드에 필요 없으므로 받지 않는다.
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Enable Windows desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        # 정적 분석 실패로 빌드를 막지 않는다. 현재 error 는 0건이지만
+        # info/warning 이 1200건 이상 남아 있어 --fatal-infos 는 켜지 않는다.
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+        continue-on-error: true
+
+      - name: Build Windows release
+        run: flutter build windows --release
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          # pubspec.yaml 의 `version: 1.0.0+1` 에서 1.0.0 만 추출
+          version=$(grep -m1 '^version:' pubspec.yaml | sed -E 's/^version:[[:space:]]*([^+]+).*/\1/' | tr -d '[:space:]')
+          if [ -z "$version" ]; then
+            echo "pubspec.yaml 에서 version 을 읽지 못했습니다." >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Resolved version: $version"
+
+      - name: Package portable ZIP
+        shell: pwsh
+        run: |
+          $releaseDir = "build\windows\x64\runner\Release"
+          if (-not (Test-Path $releaseDir)) {
+            Write-Error "빌드 산출물 디렉터리를 찾을 수 없습니다: $releaseDir"
+            exit 1
+          }
+          if (-not (Test-Path "$releaseDir\$env:BINARY_NAME.exe")) {
+            Write-Error "실행 파일이 없습니다: $releaseDir\$env:BINARY_NAME.exe"
+            exit 1
+          }
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          $zip = "dist\$env:BINARY_NAME-windows-x64-${{ steps.version.outputs.version }}.zip"
+          Compress-Archive -Path "$releaseDir\*" -DestinationPath $zip -Force
+          Write-Host "Created $zip"
+          Get-ChildItem dist
+
+      - name: Build MSIX installer
+        if: inputs.build_msix
+        shell: pwsh
+        run: |
+          # pubspec.yaml 을 건드리지 않도록 global activate 로 실행한다.
+          dart pub global activate msix
+          dart pub global run msix:create --build-windows false
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          $msix = Get-ChildItem -Path build\windows -Recurse -Filter *.msix -ErrorAction SilentlyContinue
+          if (-not $msix) {
+            Write-Error "MSIX 파일이 생성되지 않았습니다."
+            exit 1
+          }
+          $msix | ForEach-Object { Copy-Item $_.FullName -Destination dist }
+          Get-ChildItem dist
+
+      - name: Upload portable ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BINARY_NAME }}-windows-x64-${{ steps.version.outputs.version }}
+          path: dist/*.zip
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload MSIX
+        if: inputs.build_msix
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BINARY_NAME }}-windows-msix-${{ steps.version.outputs.version }}
+          path: dist/*.msix
+          if-no-files-found: error
+          retention-days: 30
