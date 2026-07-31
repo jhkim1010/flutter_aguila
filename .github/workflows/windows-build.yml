@@ -124,6 +124,32 @@ jobs:
           Write-Host "Created $zip"
           Get-ChildItem dist
 
+      # 파일 하나로 끝나는 설치 프로그램. MSIX 와 달리 Windows 가 인증서를
+      # 요구하지 않으므로 대상 PC 에서 사전 등록 작업이 필요 없다.
+      - name: Build setup.exe (Inno Setup)
+        shell: pwsh
+        env:
+          APP_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          choco install innosetup --no-progress -y
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            Write-Error "ISCC.exe 를 찾을 수 없습니다: $iscc"
+            exit 1
+          }
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          # SourceDir/OutputDir 은 .iss 위치 기준 상대경로가 아니라 절대경로로 넘긴다.
+          & $iscc `
+            "/DAppVersion=$env:APP_VERSION" `
+            "/DSourceDir=$PWD\build\windows\x64\runner\Release" `
+            "/DOutputDir=$PWD\dist" `
+            "windows\installer\Be_Cool.iss"
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Inno Setup 컴파일 실패 (exit $LASTEXITCODE)"
+            exit 1
+          }
+          Get-ChildItem dist
+
       - name: Build MSIX installer
         if: inputs.build_msix
         shell: pwsh
@@ -170,6 +196,15 @@ jobs:
           }
           $msix | ForEach-Object { Copy-Item $_.FullName -Destination dist }
           Get-ChildItem dist
+
+      - name: Upload setup.exe
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BINARY_NAME }}-windows-setup-${{ steps.version.outputs.version }}
+          path: dist/*.exe
+          if-no-files-found: error
+          retention-days: 30
 
       # MSIX 단계가 깨져도 이미 완성된 포터블 ZIP 은 받을 수 있어야 한다.
       # 실제로 run 30654185780 / 30655247769 둘 다 ZIP 은 만들어졌는데
