@@ -18,36 +18,96 @@ class GastosBuilder {
     const TableColumnDef(key: 'sucursal', label: 'Sucursal', defaultWidth: 120, sortable: true),
   ];
 
+  /// summary_by_rubro 에서 codigo_rubro → descripcion_rubro 맵 추출
+  ///
+  /// 서버의 gastos 행에는 rubro 설명이 없고 rubro 코드가 `codigo` 키로만 온다.
+  /// Rubro 칼럼은 이 맵으로 조인해서 채운다.
+  static Map<String, String> buildRubroLabels(dynamic summaryByRubro) {
+    if (summaryByRubro is! List) return const {};
+
+    final labels = <String, String>{};
+    for (final row in summaryByRubro) {
+      if (row is! Map) continue;
+      final code = row['codigo_rubro']?.toString();
+      final descripcion = row['descripcion_rubro']?.toString();
+      if (code == null || code.isEmpty || descripcion == null) continue;
+      labels[code] = descripcion;
+    }
+    return labels;
+  }
+
+  /// 한 행에서 rubro 표시값 결정 (행에 rubro 가 직접 있으면 우선, 없으면 codigo 로 조인)
+  static String resolveRubroLabel(
+    Map<String, dynamic> item,
+    Map<String, String> rubroLabels,
+  ) {
+    final direct = item['rubro']?.toString();
+    if (direct != null && direct.isNotEmpty) return direct;
+
+    final code = item['codigo']?.toString() ?? '';
+    return rubroLabels[code] ?? '';
+  }
+
   /// 상세 내역 테이블 행 데이터 빌드 (ResizableDataTable용)
-  static List<List<Widget>> buildRows(List<dynamic> data) {
+  ///
+  /// [columnKeys] 로 넘긴 키 목록의 순서/개수 그대로 셀을 만든다.
+  /// 칼럼 정의와 반드시 같은 목록을 넘겨야 ResizableDataTable 의 셀 수 불일치 assert 를 피할 수 있다.
+  static List<List<Widget>> buildRows(
+    List<dynamic> data, {
+    List<String>? columnKeys,
+    Map<String, String> rubroLabels = const {},
+  }) {
+    final keys = columnKeys ?? buildColumnDefs().map((c) => c.key).toList();
     return data
         .whereType<Map<String, dynamic>>()
-        .map((item) => _buildRowCells(item))
+        .map((item) => _buildRowCells(item, keys, rubroLabels))
         .toList();
   }
 
-  static List<Widget> _buildRowCells(Map<String, dynamic> item) {
-    String val(String key) => item[key]?.toString() ?? '';
+  static List<Widget> _buildRowCells(
+    Map<String, dynamic> item,
+    List<String> keys,
+    Map<String, String> rubroLabels,
+  ) {
+    return keys.map((key) => _buildRowCell(item, key, rubroLabels)).toList();
+  }
 
-    // costo: 통화 형식
-    final costoRaw = item['costo'];
-    final costoNum = num.tryParse(
-          costoRaw?.toString().replaceAll(',', '').replaceAll('\$', '') ?? '0') ??
-        0;
-    final formattedCosto = NumberFormat.currency(
-      symbol: '\$',
-      decimalDigits: 2,
-    ).format(costoNum);
+  /// 칼럼 키 하나에 대응하는 셀 위젯 생성
+  static Widget _buildRowCell(
+    Map<String, dynamic> item,
+    String key,
+    Map<String, String> rubroLabels,
+  ) {
+    const baseStyle = TextStyle(fontSize: 12);
 
-    return [
-      Text(val('fecha'),    style: const TextStyle(fontSize: 12)),
-      Text(val('hora'),     style: const TextStyle(fontSize: 12)),
-      Text(val('tema'),     style: const TextStyle(fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis),
-      Text(val('rubro'),    style: const TextStyle(fontSize: 12)),
-      Text(val('codigo'),   style: const TextStyle(fontSize: 12)),
-      Text(formattedCosto,  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.red), textAlign: TextAlign.right),
-      Text(val('sucursal'), style: const TextStyle(fontSize: 12)),
-    ];
+    switch (key) {
+      // costo: 통화 형식
+      case 'costo':
+        final costoRaw = item['costo'];
+        final costoNum = num.tryParse(
+              costoRaw?.toString().replaceAll(',', '').replaceAll('\$', '') ?? '0') ??
+            0;
+        return Text(
+          NumberFormat.currency(symbol: '\$', decimalDigits: 2).format(costoNum),
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.red),
+          textAlign: TextAlign.right,
+        );
+
+      // rubro: 서버 행에 없는 칼럼 - codigo(=codigo_rubro)로 summary_by_rubro 와 조인
+      case 'rubro':
+        return Text(resolveRubroLabel(item, rubroLabels), style: baseStyle);
+
+      case 'tema':
+        return Text(
+          item['tema']?.toString() ?? '',
+          style: baseStyle,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        );
+
+      default:
+        return Text(item[key]?.toString() ?? '', style: baseStyle);
+    }
   }
 
   /// Gastos 콘텐츠 빌드
@@ -66,6 +126,9 @@ class GastosBuilder {
     Map<String, double>? columnWidths,
     void Function(String key, double newWidth)? onColumnResize,
   }) {
+    // Rubro 칼럼 조인용 맵 (codigo_rubro → descripcion_rubro)
+    final rubroLabels = buildRubroLabels(data['summary_by_rubro']);
+
     // summary 카드
     Widget? summaryCard;
     if (data.containsKey('summary') && data['summary'] is Map) {
@@ -139,6 +202,7 @@ class GastosBuilder {
           horizontalScrollController: horizontalScrollController,
           columnWidths: columnWidths,
           onColumnResize: onColumnResize,
+          rubroLabels: rubroLabels,
         );
       }
     }
@@ -183,6 +247,7 @@ class GastosBuilder {
           horizontalScrollController: horizontalScrollController,
           columnWidths: columnWidths,
           onColumnResize: onColumnResize,
+          rubroLabels: rubroLabels,
         );
       }
     }
@@ -919,6 +984,7 @@ class GastosBuilder {
     ScrollController? horizontalScrollController,
     Map<String, double>? columnWidths,
     void Function(String key, double newWidth)? onColumnResize,
+    Map<String, String> rubroLabels = const {},
   }) {
     if (detailList.isEmpty) {
       return const Center(
@@ -940,8 +1006,9 @@ class GastosBuilder {
           return 0;
         }
 
-        final aValue = a[sortColumn];
-        final bValue = b[sortColumn];
+        // rubro 는 행에 없는 파생 칼럼이므로 조인된 표시값으로 비교한다
+        final aValue = sortColumn == 'rubro' ? resolveRubroLabel(a, rubroLabels) : a[sortColumn];
+        final bValue = sortColumn == 'rubro' ? resolveRubroLabel(b, rubroLabels) : b[sortColumn];
 
         if (aValue == null && bValue == null) return 0;
         if (aValue == null) return sortAscending ? -1 : 1;
@@ -980,52 +1047,23 @@ class GastosBuilder {
       });
     }
 
-    // 첫 번째 항목에서 키 가져오기
-    final firstItem = sortedList.first as Map<String, dynamic>;
-    final keys = firstItem.keys.toList();
-    
-    // 칼럼 순서 정의
-    final columnOrder = [
-      'fecha',
-      'hora',
-      'tema',
-      'rubro',
-      'codigo',
-      'costo',
-      'sucursal',
-    ];
-    
-    // 정의된 순서대로 정렬하고, 없는 키는 뒤에 추가
-    final orderedKeys = <String>[];
-    for (var key in columnOrder) {
-      if (keys.contains(key)) {
-        orderedKeys.add(key);
-      }
-    }
-    for (var key in keys) {
-      if (!orderedKeys.contains(key)) {
-        orderedKeys.add(key);
-      }
-    }
-
     const reportColor = Colors.red;
 
-    // 칼럼 정의 (buildColumnDefs() 기준) 및 너비 병합
-    final colDefs = buildColumnDefs();
-    // orderedKeys에 실제 존재하는 컬럼만 colDefs에서 필터링
-    final activeColDefs = colDefs.where((c) => orderedKeys.contains(c.key)).toList();
-    // orderedKeys에 있지만 colDefs에 없는 추가 키도 포함
-    for (final key in orderedKeys) {
-      if (!activeColDefs.any((c) => c.key == key)) {
-        activeColDefs.add(TableColumnDef(key: key, label: _getColumnLabel(key), defaultWidth: 150));
-      }
-    }
+    // 칼럼은 buildColumnDefs() 정의만 사용한다.
+    // 서버 응답에는 id_ga/utime/borrado/tipo 등 내부 칼럼이 함께 오지만 표에 노출하지 않는다.
+    // 칼럼 목록과 행 셀을 같은 키 목록에서 뽑아야 ResizableDataTable 의 셀 수 불일치 assert 를 피할 수 있다.
+    final activeColDefs = buildColumnDefs();
+    final columnKeys = activeColDefs.map((c) => c.key).toList();
 
     final defaults = {for (final c in activeColDefs) c.key: c.defaultWidth};
     final mergedWidths = Map<String, double>.from(defaults)
       ..addAll(columnWidths ?? {});
 
-    final rows = buildRows(sortedList);
+    final rows = buildRows(
+      sortedList,
+      columnKeys: columnKeys,
+      rubroLabels: rubroLabels,
+    );
 
     // 합계 행 빌드 (footer)
     final footerRow = _buildFixedTotalRow(
@@ -1046,20 +1084,6 @@ class GastosBuilder {
       scrollController: scrollController,
       footerWidget: footerRow,
     );
-  }
-
-  /// 칼럼 라벨 가져오기
-  static String _getColumnLabel(String key) {
-    final labels = {
-      'fecha': 'Fecha',
-      'hora': 'Hora',
-      'tema': 'Tema',
-      'rubro': 'Rubro',
-      'codigo': 'Código',
-      'costo': 'Costo',
-      'sucursal': 'Sucursal',
-    };
-    return labels[key] ?? key;
   }
 
   /// 고정된 합계 행 빌드 (화면 하단에 고정, 현재 보이는 항목들의 합계)
