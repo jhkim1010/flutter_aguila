@@ -130,7 +130,12 @@ jobs:
         run: |
           # pubspec.yaml 을 건드리지 않도록 global activate 로 실행한다.
           dart pub global activate msix
-          dart pub global run msix:create --build-windows false
+          # 서명 인증서를 지정하지 않으면 msix 가 test_certificate.pfx 를 만든 뒤
+          #   Do you want to install the certificate: "test_certificate.pfx" ? (y/N)
+          # 로 stdin 을 기다리다가 러너에서 다음으로 죽는다:
+          #   Unhandled exception: type 'Null' is not a subtype of type 'FutureOr<String>'
+          # MSIX 자체는 이미 생성된 뒤이므로 프롬프트만 끄면 된다.
+          dart pub global run msix:create --build-windows false --install-certificate false
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           $msix = Get-ChildItem -Path build\windows -Recurse -Filter *.msix -ErrorAction SilentlyContinue
           if (-not $msix) {
@@ -140,7 +145,11 @@ jobs:
           $msix | ForEach-Object { Copy-Item $_.FullName -Destination dist }
           Get-ChildItem dist
 
+      # MSIX 단계가 깨져도 이미 완성된 포터블 ZIP 은 받을 수 있어야 한다.
+      # 실제로 run 30654185780 / 30655247769 둘 다 ZIP 은 만들어졌는데
+      # MSIX 실패로 job 이 죽어 아티팩트가 하나도 남지 않았다.
       - name: Upload portable ZIP
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.BINARY_NAME }}-windows-x64-${{ steps.version.outputs.version }}
@@ -148,11 +157,14 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      # msix:create 는 .msix 를 만든 뒤 인증서 프롬프트에서 죽을 수 있다.
+      # 그때도 파일은 dist 에 있으므로 실패한 실행에서도 업로드를 시도한다.
+      # 파일이 정말 없으면 if-no-files-found: warn 으로 조용히 넘어간다.
       - name: Upload MSIX
-        if: inputs.build_msix
+        if: ${{ inputs.build_msix && !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.BINARY_NAME }}-windows-msix-${{ steps.version.outputs.version }}
           path: dist/*.msix
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 30
