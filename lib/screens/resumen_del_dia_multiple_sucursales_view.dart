@@ -1428,11 +1428,12 @@ class ResumenDelDiaMultipleSucursalesView extends StatelessWidget {
                     cells: [
                       DataCell(Text(stock['sucursal'].toString())),
                       DataCell(Text(stock['itemCount'].toString())),
+                      // tVentas 만 금액. 나머지는 수량이므로 통화 기호를 붙이지 않는다.
                       DataCell(Text(_formatValue(stock['tVentas'], isCurrency: true))),
-                      DataCell(Text(_formatValue(stock['tIngresos'], isCurrency: true))),
-                      DataCell(Text(_formatValue(stock['tOffset'], isCurrency: true))),
-                      DataCell(Text(_formatValue(stock['hVentas'], isCurrency: true))),
-                      DataCell(Text(_formatValue(stock['hIngresos'], isCurrency: true))),
+                      DataCell(Text(_formatValue(stock['tIngresos']))),
+                      DataCell(Text(_formatValue(stock['tOffset']))),
+                      DataCell(Text(_formatValue(stock['hVentas']))),
+                      DataCell(Text(_formatValue(stock['hIngresos']))),
                       DataCell(Text(_formatValue(stock['finalStock']))),
                     ],
                   )),
@@ -1443,11 +1444,12 @@ class ResumenDelDiaMultipleSucursalesView extends StatelessWidget {
                     cells: [
                       const DataCell(Text('Total', style: TextStyle(fontWeight: FontWeight.bold))),
                       DataCell(Text(totalItemCount.toStringAsFixed(0), style: const TextStyle(fontWeight: FontWeight.bold))),
+                      // tVentas 만 금액. 나머지는 수량이므로 통화 기호를 붙이지 않는다.
                       DataCell(Text(_formatValue(totalTVentas, isCurrency: true), style: const TextStyle(fontWeight: FontWeight.bold))),
-                      DataCell(Text(_formatValue(totalTIngresos, isCurrency: true), style: const TextStyle(fontWeight: FontWeight.bold))),
-                      DataCell(Text(_formatValue(totalTOffset, isCurrency: true), style: const TextStyle(fontWeight: FontWeight.bold))),
-                      DataCell(Text(_formatValue(totalHVentas, isCurrency: true), style: const TextStyle(fontWeight: FontWeight.bold))),
-                      DataCell(Text(_formatValue(totalHIngresos, isCurrency: true), style: const TextStyle(fontWeight: FontWeight.bold))),
+                      DataCell(Text(_formatValue(totalTIngresos), style: const TextStyle(fontWeight: FontWeight.bold))),
+                      DataCell(Text(_formatValue(totalTOffset), style: const TextStyle(fontWeight: FontWeight.bold))),
+                      DataCell(Text(_formatValue(totalHVentas), style: const TextStyle(fontWeight: FontWeight.bold))),
+                      DataCell(Text(_formatValue(totalHIngresos), style: const TextStyle(fontWeight: FontWeight.bold))),
                       DataCell(Text(_formatValue(totalFinalStock), style: const TextStyle(fontWeight: FontWeight.bold))),
                     ],
                   ),
