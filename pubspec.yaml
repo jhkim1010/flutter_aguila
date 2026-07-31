@@ -46,7 +46,10 @@ flutter_launcher_icons:
   image_path: "assets/icon.png"
 
 msix_config:
-  display_name: Flutter Águila
-  publisher_display_name: Your Name
-  identity_name: com.yourcompany.flutter_aguila
+  # identity_name 은 android applicationId 와 동일하게 맞춘다.
+  # 플레이스홀더(com.yourcompany.*)를 두면 msix:create 가
+  # "invalid identity name" 으로 실패해 Windows CI 의 아티팩트 업로드까지 막힌다.
+  display_name: Be COOL
+  publisher_display_name: Cool Sistema
+  identity_name: com.coolsistema.becoolaguila
   logo_path: assets\icon.png
