@@ -83,7 +83,14 @@ jobs:
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
         continue-on-error: true
 
+      # local_auth_windows 1.0.11 은 <experimental/coroutine> 을 사용하는데
+      # 러너의 MSVC 는 이를 static_assert 에러(STL1011)로 처리해 빌드가 깨진다.
+      #   error C2338: static assertion failed: 'error STL1011: ... deprecated ...'
+      # 컴파일러가 안내하는 매크로를 CL 환경변수로 주입해 우회한다.
+      # 근본 해결은 local_auth 3.x (local_auth_windows 2.x) 로 올리는 것.
       - name: Build Windows release
+        env:
+          CL: /D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS
         run: flutter build windows --release
 
       - name: Resolve version
