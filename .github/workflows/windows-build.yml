@@ -63,6 +63,20 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      # lib/generated/ 는 .gitignore 되어 있어 체크아웃에 build_info.dart 가 없다.
+      # 없으면 이를 import 하는 resumen_del_dia_screen.dart / report_screen_legacy.dart 가
+      # "Error when reading 'lib/generated/build_info.dart'" 로 컴파일에 실패한다.
+      # 프로젝트의 기존 생성 스크립트를 그대로 사용해 빌드 날짜 로직을 한 곳에 유지한다.
+      - name: Generate build info
+        shell: bash
+        run: |
+          bash scripts/inject_build_date.sh
+          if [ ! -f lib/generated/build_info.dart ]; then
+            echo "build_info.dart 가 생성되지 않았습니다." >&2
+            exit 1
+          fi
+          cat lib/generated/build_info.dart
+
       - name: Analyze
         # 정적 분석 실패로 빌드를 막지 않는다. 현재 error 는 0건이지만
         # info/warning 이 1200건 이상 남아 있어 --fatal-infos 는 켜지 않는다.
