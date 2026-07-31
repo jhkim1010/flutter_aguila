@@ -52,4 +52,8 @@ msix_config:
   display_name: Be COOL
   publisher_display_name: Cool Sistema
   identity_name: com.coolsistema.becoolaguila
+  # 서명 인증서의 Subject 와 한 글자도 다르면 Windows 가 설치를 거부한다.
+  # ~/code-signing/becool-cert.pem 의 Subject 이며, 인증서를 재발급하면 함께 고쳐야 한다.
+  # 확인: openssl x509 -in becool-cert.pem -noout -subject -nameopt RFC2253
+  publisher: CN=Cool Sistema, O=Cool Sistema, C=AR
   logo_path: assets\icon.png

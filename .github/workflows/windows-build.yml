@@ -127,15 +127,41 @@ jobs:
       - name: Build MSIX installer
         if: inputs.build_msix
         shell: pwsh
+        env:
+          # 시크릿은 run 본문에 ${{ }} 로 직접 박지 않는다 (스크립트 주입 방지).
+          CERT_PFX_BASE64: ${{ secrets.WINDOWS_CERT_PFX_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
         run: |
           # pubspec.yaml 을 건드리지 않도록 global activate 로 실행한다.
           dart pub global activate msix
+
           # 서명 인증서를 지정하지 않으면 msix 가 test_certificate.pfx 를 만든 뒤
           #   Do you want to install the certificate: "test_certificate.pfx" ? (y/N)
           # 로 stdin 을 기다리다가 러너에서 다음으로 죽는다:
           #   Unhandled exception: type 'Null' is not a subtype of type 'FutureOr<String>'
           # MSIX 자체는 이미 생성된 뒤이므로 프롬프트만 끄면 된다.
-          dart pub global run msix:create --build-windows false --install-certificate false
+          $msixArgs = @('msix:create', '--build-windows', 'false', '--install-certificate', 'false')
+
+          # 시크릿이 있으면 자체 서명 인증서로 서명한다. 없으면 msix 가 만드는
+          # 테스트 인증서로 폴백한다 — 포크나 시크릿 미설정 환경에서도 빌드는 통과해야 한다.
+          # 서명된 MSIX 를 설치하려면 대상 PC 에 BeCool-codesign.cer 를
+          # LocalMachine\TrustedPeople 에 한 번 등록해야 한다.
+          $pfxPath = Join-Path $env:RUNNER_TEMP 'codesign.pfx'
+          if ($env:CERT_PFX_BASE64) {
+            [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:CERT_PFX_BASE64))
+            $msixArgs += @('--certificate-path', $pfxPath, '--certificate-password', $env:CERT_PASSWORD)
+            Write-Host "Signing with the repository code-signing certificate."
+          } else {
+            Write-Warning "WINDOWS_CERT_PFX_BASE64 가 없습니다. 설치 불가한 테스트 인증서로 서명됩니다."
+          }
+
+          try {
+            dart pub global run @msixArgs
+          } finally {
+            # 서명이 끝나면 러너 디스크에 개인키를 남기지 않는다.
+            Remove-Item $pfxPath -Force -ErrorAction SilentlyContinue
+          }
+
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           $msix = Get-ChildItem -Path build\windows -Recurse -Filter *.msix -ErrorAction SilentlyContinue
           if (-not $msix) {
