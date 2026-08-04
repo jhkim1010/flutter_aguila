@@ -1,0 +1,69 @@
+---
+type: quick
+slug: release-installers-to-dropbox
+status: complete
+created: 2026-08-04
+completed: 2026-08-04
+files_modified:
+  - scripts/release.sh
+---
+
+# Summary: 릴리스 원커맨드 스크립트
+
+**`./scripts/release.sh` 하나로 빌드 날짜 주입 → APK 빌드 → push → Windows CI 대기 → 아티팩트 다운로드 → Dropbox 배포 폴더 복사까지 진행한다**
+
+## 결과
+
+`scripts/release.sh` 신설 (실행 권한 포함). 복사 대상 3종:
+
+| 파일 | 출처 |
+|---|---|
+| `Be_Cool_Setup_v{ver}_{date}.exe` | CI 아티팩트 (Inno Setup) |
+| `Be_Cool_windows_portable_v{ver}_{date}.zip` | CI 아티팩트 |
+| `Be_Cool_android_v{ver}_{date}.apk` | 로컬 `flutter build apk --release` |
+
+목적지 고정: `~/Dropbox/ACE_3_uversion/BeCool instaladores`
+
+## 구현 결정
+
+- **빌드 날짜 파일만 스테이징한다.** `git add -A` 를 쓰면 작업 트리의 무관한 변경까지
+  릴리스 커밋에 딸려 들어간다. `BUILD_DATE_FILES` 배열에 든 3개만 add 한다.
+- **이미 스테이징된 변경이 있으면 중단한다.** 그대로 두면 빌드 날짜 커밋에 섞인다.
+- **덮어쓰지 않는다.** 같은 이름이 있으면 내용을 비교해서 같으면 건너뛰고, 다르면
+  `_2`, `_3` 을 붙인다. Dropbox 배포본은 이미 배포됐을 수 있어 조용히 날리면 안 된다.
+- **같은 날 재실행 시 CI 가 안 도는 문제를 처리한다.** 빌드 날짜가 그대로면 커밋할 것이
+  없어 push 가 no-op 이 되고 push 트리거도 안 걸린다. HEAD sha 로 기존 run 을 찾고,
+  없으면 `workflow_dispatch` 로 직접 띄운다.
+- **run 조회에 재시도를 둔다.** push 직후 run 이 API 에 뜨기까지 몇 초 걸린다 (4초 × 15회).
+- **`mktemp -d` + `trap cleanup EXIT`** — 중간에 죽어도 임시 디렉터리가 남지 않는다.
+- **`--no-wait` 는 재개 명령을 출력한다.** 나중에 `--run-id N --no-apk --no-push` 로 회수.
+
+## 검증
+
+| 항목 | 결과 |
+|---|---|
+| `bash -n scripts/release.sh` | 통과 |
+| `shellcheck` | 미설치 — 실행 못 함 |
+| `-h` 사용법 출력 | 정상 |
+| 알 수 없는 옵션 거부 | 정상 (사용법 출력 후 종료) |
+| 실제 실행 `--run-id 30873981193 --no-apk --no-push` | **성공** — 프리플라이트 → CI 상태 확인 → 아티팩트 2개 다운로드 → 복사 |
+| 중복 검사 | 동작 확인 — 내용 같은 setup.exe 를 "건너뜀" 처리 |
+
+**미검증:** APK 빌드 경로와 commit·push 경로는 이번 실행에서 플래그로 건너뛰었다.
+두 단계 모두 이 세션에서 수동으로는 성공했지만(APK 빌드 완료, `84c4dbe..23bb681` push),
+스크립트를 통해서는 아직 돌려보지 않았다. `_2` 접미사 분기와 `workflow_dispatch`
+폴백도 실행되지 않았다.
+
+## 배포된 파일 (2026-08-04)
+
+`~/Dropbox/ACE_3_uversion/BeCool instaladores/` 에 3종 모두 존재:
+
+- `Be_Cool_Setup_v1.0.0_2026-08-04.exe` (12M)
+- `Be_Cool_android_v1.0.0_2026-08-04.apk` (60M)
+- `Be_Cool_windows_portable_v1.0.0_2026-08-04.zip` (14M)
+
+## 다음에 릴리스할 때
+
+```bash
+./scripts/release.sh
+```
