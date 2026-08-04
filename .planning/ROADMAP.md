@@ -15,6 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 1: Column Alignment** - Stocks 리포트 헤더/행 칼럼 폭 완벽 일치 보장
 - [ ] **Phase 2: Table UX** - 칼럼 정렬, 필터, 페이지네이션 인터랙션 개선
 - [ ] **Phase 3: Riverpod Caching** - 리포트 데이터 캐싱을 Riverpod provider로 관리
+- [ ] **Phase 4: Multi-Sucursal Resumen** - 다중 지점 Resumen del Día를 카드 뷰(Total 우선) + 지점 선택 + 테이블 토글로 개편
 
 ## Phase Details
 
@@ -61,13 +62,33 @@ Plans:
   3. 기존 setState 기반 동작이 모두 정상 작동한다(회귀 없음)
 **Plans**: TBD
 
+### Phase 4: Multi-Sucursal Resumen
+**Goal**: 지점이 2개 이상일 때 Resumen del Día가 기본으로 전 지점 합계(Total)를 단일 지점과 동일한 카드 레이아웃으로 보여주고, 사용자가 콤보박스로 개별 지점을, 토글로 기존 비교 테이블을 선택할 수 있다
+**Depends on**: Nothing (기존 Resumen 화면에 한정, Phase 1~3과 독립)
+**Requirements**: MSUC-01, MSUC-02, MSUC-03, MSUC-04, MSUC-05
+**Success Criteria** (what must be TRUE):
+  1. 지점이 2개 이상인 날짜로 Resumen del Día를 열면 전 지점 합계가 카드 레이아웃으로 표시된다 (기존 비교 테이블이 첫 화면이 아니다)
+  2. 우측 상단 콤보박스에서 Sucursal N을 고르면 서버 재요청 없이 해당 지점 값만으로 카드가 갱신된다
+  3. 카드/테이블 토글로 기존 비교 테이블로 전환되며, 테이블 모드에서는 지점 콤보박스가 보이지 않는다
+  4. Stock Resumen 섹션에 지점별 데이터가 아님(DB 전역)이 화면에 명시된다
+  5. FVentas del Mes 섹션에 어느 월 범위인지가 표시된다
+**Plans**: 3 plans
+
+Plans:
+- [ ] 04-01-PLAN.md — 지점 필터 유틸 + MultiSucursalView 신설 + 두 기존 뷰에 headerTrailing 슬롯 + 부모 분기 교체
+- [ ] 04-02-PLAN.md — Stock Resumen "DB 전역" 배지 (단일/비교 뷰 양쪽)
+- [ ] 04-03-PLAN.md — FVentas del Mes 서버 월 범위 검증 후 범위 라벨 추가 (사용자 확인 필요)
+
+**UI hint**: yes
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3
+Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Column Alignment | 1/2 | In Progress|  |
 | 2. Table UX | 0/2 | Not started | - |
 | 3. Riverpod Caching | 0/TBD | Not started | - |
+| 4. Multi-Sucursal Resumen | 0/3 | Not started | - |
