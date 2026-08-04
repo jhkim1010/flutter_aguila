@@ -35,6 +35,10 @@ readonly BUILD_DATE_FILES=(
 
 readonly APK_SOURCE="build/app/outputs/flutter-apk/app-release.apk"
 
+# macOS DMG 는 기존 스크립트가 만든다. 산출물은 build/macos/*.dmg 로 떨어진다.
+readonly MACOS_BUILD_SCRIPT="build_macos_installer.sh"
+readonly MACOS_DMG_DIR="build/macos"
+
 # CI 대기 상한. 워크플로 자체 timeout 이 45분이라 여유를 둔다.
 readonly CI_WAIT_TIMEOUT_SECONDS=3600
 
@@ -44,6 +48,7 @@ readonly CI_WAIT_TIMEOUT_SECONDS=3600
 
 DEST="$DEFAULT_DEST"
 DO_APK=true
+DO_MACOS=true
 DO_PUSH=true
 DO_WAIT=true
 RUN_ID=""
@@ -52,16 +57,18 @@ usage() {
   cat <<'EOF'
 사용법: ./scripts/release.sh [옵션]
 
-빌드 날짜 주입 → APK 빌드 → commit·push → Windows CI 대기 → 아티팩트 다운로드
-→ 설치 파일 3종을 Dropbox 배포 폴더로 복사.
+빌드 날짜 주입 → APK·DMG 빌드 → commit·push → Windows CI 대기 → 아티팩트 다운로드
+→ 설치 파일 4종을 Dropbox 배포 폴더로 복사.
 
 복사되는 파일:
   Be_Cool_Setup_v{version}_{date}.exe             Windows 설치 프로그램
   Be_Cool_android_v{version}_{date}.apk           Android APK
+  Be_Cool_macOS_v{version}_{date}.dmg             macOS DMG
   Be_Cool_windows_portable_v{version}_{date}.zip  설치 없이 쓰는 Windows 포터블
 
 옵션:
-  --no-apk         APK 빌드를 건너뛴다. Windows 만 다시 받을 때 쓴다.
+  --no-apk         APK 빌드를 건너뛴다.
+  --no-macos       macOS DMG 빌드를 건너뛴다.
   --no-push        commit·push 를 건너뛴다. 이미 push 된 상태에서 재실행할 때.
   --no-wait        CI 완료를 기다리지 않는다. run 을 띄우고 바로 끝낸다.
   --run-id <id>    새로 트리거하지 않고 지정한 run 의 아티팩트를 받는다.
@@ -70,17 +77,18 @@ usage() {
   -h, --help       이 도움말.
 
 예시:
-  ./scripts/release.sh                  전체 파이프라인
-  ./scripts/release.sh --no-apk         Windows 만 다시 받기
-  ./scripts/release.sh --run-id 30873981193 --no-apk --no-push
-                                        지난 run 의 아티팩트만 회수
+  ./scripts/release.sh                            전체 파이프라인
+  ./scripts/release.sh --no-apk --no-macos        Windows 만 다시 받기
+  ./scripts/release.sh --run-id 30873981193 --no-apk --no-macos --no-push
+                                                  지난 run 의 아티팩트만 회수
 EOF
 }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --no-apk)  DO_APK=false; shift ;;
-    --no-push) DO_PUSH=false; shift ;;
+    --no-apk)   DO_APK=false; shift ;;
+    --no-macos) DO_MACOS=false; shift ;;
+    --no-push)  DO_PUSH=false; shift ;;
     --no-wait) DO_WAIT=false; shift ;;
     --run-id)
       [[ $# -ge 2 ]] || { echo "❌ --run-id 에 값이 필요합니다." >&2; exit 1; }
@@ -154,8 +162,14 @@ command -v git >/dev/null     || die "git 이 없습니다."
 command -v gh >/dev/null      || die "GitHub CLI(gh) 가 없습니다. brew install gh"
 gh auth status >/dev/null 2>&1 || die "gh 인증이 안 되어 있습니다. gh auth login"
 
-if [[ "$DO_APK" == true ]]; then
+if [[ "$DO_APK" == true || "$DO_MACOS" == true ]]; then
   command -v flutter >/dev/null || die "flutter 가 없습니다."
+fi
+
+# macOS DMG 는 macOS 호스트에서만 만들 수 있다.
+if [[ "$DO_MACOS" == true ]]; then
+  [[ "$OSTYPE" == darwin* ]] || die "macOS DMG 는 macOS 에서만 빌드됩니다. --no-macos 를 쓰세요."
+  [[ -f "$MACOS_BUILD_SCRIPT" ]] || die "$MACOS_BUILD_SCRIPT 가 없습니다."
 fi
 
 [[ -d "$DEST" ]] || die "배포 폴더가 없습니다: $DEST
@@ -206,6 +220,34 @@ if [[ "$DO_APK" == true ]]; then
   log "   ✓ $APK_SOURCE ($(du -h "$APK_SOURCE" | cut -f1 | tr -d ' '))"
 else
   step "APK 빌드 건너뜀 (--no-apk)"
+fi
+
+# ============================================
+# 2b. macOS DMG 빌드
+# ============================================
+
+DMG_SOURCE=""
+if [[ "$DO_MACOS" == true ]]; then
+  step "macOS DMG 빌드 (몇 분 걸립니다)"
+
+  # 기존 DMG 를 지워서 아래 find 가 이번 빌드 산출물만 집게 한다.
+  rm -f "$MACOS_DMG_DIR"/*.dmg 2>/dev/null || true
+
+  bash "$MACOS_BUILD_SCRIPT" >/dev/null || die "macOS DMG 빌드 실패.
+로그를 보려면 직접 실행하세요: bash $MACOS_BUILD_SCRIPT"
+
+  DMG_SOURCE="$(find "$MACOS_DMG_DIR" -maxdepth 1 -name '*.dmg' | head -1)"
+  [[ -n "$DMG_SOURCE" ]] || die "DMG 가 생성되지 않았습니다: $MACOS_DMG_DIR"
+  log "   ✓ $(basename "$DMG_SOURCE") ($(du -h "$DMG_SOURCE" | cut -f1 | tr -d ' '))"
+
+  # 서명 없는 앱은 다른 Mac 에서 Gatekeeper 에 막힌다. DMG 안의
+  # '앱_실행하기.command' 로 우회하도록 build_macos_installer.sh 가 안내한다.
+  if ! security find-identity -v -p codesigning 2>/dev/null | grep -q "Developer ID Application"; then
+    warn "Developer ID 인증서가 없어 DMG 가 서명되지 않았습니다."
+    warn "다른 Mac 에서 '확인할 수 없는 개발자' 경고가 납니다."
+  fi
+else
+  step "macOS DMG 빌드 건너뜀 (--no-macos)"
 fi
 
 # ============================================
@@ -340,6 +382,10 @@ fi
 
 if [[ "$DO_APK" == true ]]; then
   copy_artifact "$PROJECT_ROOT/$APK_SOURCE" "Be_Cool_android_v${VERSION}_${BUILD_DATE}" "apk"
+fi
+
+if [[ -n "$DMG_SOURCE" ]]; then
+  copy_artifact "$PROJECT_ROOT/$DMG_SOURCE" "Be_Cool_macOS_v${VERSION}_${BUILD_DATE}" "dmg"
 fi
 
 # ============================================

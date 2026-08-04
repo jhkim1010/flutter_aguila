@@ -21,6 +21,7 @@ files_modified:
 | `Be_Cool_Setup_v{ver}_{date}.exe` | CI 아티팩트 (Inno Setup) |
 | `Be_Cool_windows_portable_v{ver}_{date}.zip` | CI 아티팩트 |
 | `Be_Cool_android_v{ver}_{date}.apk` | 로컬 `flutter build apk --release` |
+| `Be_Cool_macOS_v{ver}_{date}.dmg` | 로컬 `build_macos_installer.sh` |
 
 목적지 고정: `~/Dropbox/ACE_3_uversion/BeCool instaladores`
 
@@ -62,8 +63,40 @@ files_modified:
 - `Be_Cool_android_v1.0.0_2026-08-04.apk` (60M)
 - `Be_Cool_windows_portable_v1.0.0_2026-08-04.zip` (14M)
 
+## 후속: macOS DMG 추가 (2026-08-04)
+
+`release.sh` 에 macOS 를 붙였다. DMG 자체는 기존 `build_macos_installer.sh` 가 만들고,
+`release.sh` 는 그것을 호출한 뒤 산출물을 배포 폴더로 옮긴다. `--no-macos` 로 끌 수 있고,
+darwin 이 아니면 프리플라이트에서 막는다.
+
+### 발견한 버그 — 파일명에 캐리지 리턴
+
+`pubspec.yaml` 이 **CRLF** 파일이라 다음 파싱이 값 끝에 `\r` 을 남겼다:
+
+```sh
+BUILD_NUMBER=$(grep '^version:' pubspec.yaml | sed 's/.*+//')   # → "1\r"
+```
+
+이 값이 DMG 파일명에 들어가 `Be_COOL_macOS_v1.0.0_1\r.dmg` 가 만들어졌다.
+`ls` 로 디렉터리를 보면 멀쩡해 보이는데, 이름을 그대로 타이핑해 접근하면
+`No such file or directory` 가 난다. 이 이름의 파일이 Dropbox 최상위에도 복사돼 있었다.
+
+`build_macos_installer.sh`, `build_installers.sh`, `build_installers_all.sh` 세 곳 모두
+같은 파싱을 쓰고 있었다. 전부 `| tr -d '\r'` 을 붙였다. Dropbox 의 깨진 이름 파일은
+정상 이름으로 rename 했다.
+
+`scripts/release.sh` 와 `.github/workflows/windows-build.yml` 은 `tr -d '[:space:]'` 를
+쓰고 있어 영향이 없었다.
+
+### 서명 상태
+
+`security find-identity -v -p codesigning` → **0 valid identities**. DMG 는 서명되지 않는다.
+다른 Mac 에서 "확인할 수 없는 개발자" 경고가 나며, DMG 안의 `앱_실행하기.command` 로
+우회해야 한다. `release.sh` 가 이 경우 경고를 출력한다.
+
 ## 다음에 릴리스할 때
 
 ```bash
-./scripts/release.sh
+becool-release              # 4종 전부
+becool-release --no-macos   # macOS 빼고
 ```

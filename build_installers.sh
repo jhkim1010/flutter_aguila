@@ -19,8 +19,10 @@ cd "$SCRIPT_DIR"
 
 # 앱 정보
 APP_NAME="Be COOL"
-VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | sed 's/+.*//')
-BUILD_NUMBER=$(grep '^version:' pubspec.yaml | sed 's/.*+//')
+# pubspec.yaml 은 CRLF 파일이라 tr -d '\r' 없이는 값 끝에 캐리지 리턴이 붙는다.
+# 그대로 파일명에 쓰면 'Be_COOL_..._1\r.dmg' 처럼 접근 불가능한 이름이 만들어진다.
+VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | sed 's/+.*//' | tr -d '\r')
+BUILD_NUMBER=$(grep '^version:' pubspec.yaml | sed 's/.*+//' | tr -d '\r')
 
 # 출력 디렉토리 설정
 OUTPUT_DIR="$SCRIPT_DIR/build/installers"
