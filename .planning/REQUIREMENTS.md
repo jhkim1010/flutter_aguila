@@ -31,6 +31,11 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [ ] **MSUC-04**: Stock Resumen이 지점별 데이터가 아님(DB 전역)을 화면에 명시
 - [ ] **MSUC-05**: FVentas del Mes의 대상 월 범위를 화면에 표시
 
+### FVentas 기간 합계
+
+- [ ] **FVT-01**: FVentas 합계 행의 금액이 조회 기간 전체를 반영 (로드된 100건이 아님)
+- [ ] **FVT-02**: FVentas 합계 행에 조회 기간 전체 건수 표시
+
 ## v2 Requirements
 
 Deferred to future release. Tracked but not in current roadmap.
@@ -79,12 +84,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MSUC-03 | Phase 4 | Pending |
 | MSUC-04 | Phase 4 | Pending |
 | MSUC-05 | Phase 4 | Pending |
+| FVT-01 | Phase 5 | Blocked (서버 응답 확인 대기) |
+| FVT-02 | Phase 5 | Blocked (서버 응답 확인 대기) |
 
 **Coverage:**
-- v1 requirements: 12 total
-- Mapped to phases: 12
+- v1 requirements: 14 total
+- Mapped to phases: 14
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-05*
-*Last updated: 2026-08-03 — Phase 4 (다중 지점 Resumen del Día) 요구사항 추가*
+*Last updated: 2026-08-03 — Phase 4 (다중 지점 Resumen del Día), Phase 5 (FVentas 기간 합계) 요구사항 추가*
