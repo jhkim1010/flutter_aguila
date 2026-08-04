@@ -24,6 +24,96 @@ class ItemsBuilder {
     const TableColumnDef(key: 'timporte',      label: 'T.Importe',        defaultWidth: 120, textAlign: TextAlign.right),
   ];
 
+  /// 숫자로 다뤄야 하는 칼럼. 문자열로 비교하면 "9" > "16" 이 되어버린다.
+  static const Set<String> _numericKeys = {
+    'totalCantidad', 'tprendas', 'timporte',
+  };
+
+  /// 정렬 지정이 없을 때의 기본 칼럼 — 수량이 많은 제품이 위로 온다.
+  static const String defaultSortColumn = 'totalCantidad';
+
+  /// 실제로 정렬에 쓸 칼럼을 정한다. 쓸 수 없으면 null (= 기본 정렬).
+  ///
+  /// `_sortColumn` 은 보고서 화면 전체가 공유하는 상태라, 다른 보고서에서 고른
+  /// 칼럼 키(예: fventas 의 `monto`)가 그대로 넘어올 수 있다. Items 데이터에 없는
+  /// 키로 정렬하면 전 행이 "값 없음"이 되어 순서가 사실상 무작위가 된다.
+  ///
+  /// 정렬과 헤더 화살표가 서로 다른 판정을 하지 않도록 양쪽 모두 이 함수를 쓴다.
+  static String? resolveSortColumn(List<dynamic> products, String? sortColumn) {
+    if (sortColumn == null) return null;
+
+    final firstRow = products.firstWhere(
+      (e) => e is Map<String, dynamic>,
+      orElse: () => null,
+    );
+    final knownKeys = firstRow is Map<String, dynamic>
+        ? firstRow.keys.toSet()
+        : itemsColumnKeys.toSet();
+
+    if (knownKeys.contains(sortColumn)) return sortColumn;
+
+    debugPrint('⚠️ [ItemsBuilder] 정렬 칼럼 "$sortColumn" 이 Items 데이터에 없습니다. '
+        '기본값 $defaultSortColumn 으로 정렬합니다.');
+    return null;
+  }
+
+  /// Productos 목록 정렬.
+  ///
+  /// [sortColumn] 이 null 이면 [defaultSortColumn] 내림차순으로 떨어진다.
+  /// 화면에 자를 항목을 고르기 전에 호출해야 상위 N 건이 실제 상위가 된다.
+  ///
+  /// 원본 리스트는 건드리지 않고 정렬된 새 리스트를 돌려준다.
+  static List<dynamic> sortProducts(
+    List<dynamic> products,
+    String? sortColumn,
+    bool sortAscending,
+  ) {
+    final requested = resolveSortColumn(products, sortColumn);
+    final key = requested ?? defaultSortColumn;
+    // 기본 정렬은 "많은 것부터". 사용자가 칼럼을 고른 뒤에는 그 방향을 따른다.
+    final ascending = requested == null ? false : sortAscending;
+
+    final sorted = List<dynamic>.from(products);
+    sorted.sort((a, b) {
+      if (a is! Map<String, dynamic> || b is! Map<String, dynamic>) return 0;
+
+      final aRaw = a[key];
+      final bRaw = b[key];
+
+      // 값이 없는 행은 방향과 무관하게 항상 아래로 보낸다.
+      // 그러지 않으면 오름차순에서 빈 행이 목록 맨 위를 차지한다.
+      final aMissing = aRaw == null || aRaw.toString().trim().isEmpty;
+      final bMissing = bRaw == null || bRaw.toString().trim().isEmpty;
+      if (aMissing && bMissing) return 0;
+      if (aMissing) return 1;
+      if (bMissing) return -1;
+
+      int result;
+      if (_numericKeys.contains(key)) {
+        final aNum = num.tryParse(
+                aRaw.toString().replaceAll(',', '').replaceAll('\$', '')) ??
+            0;
+        final bNum = num.tryParse(
+                bRaw.toString().replaceAll(',', '').replaceAll('\$', '')) ??
+            0;
+        result = aNum.compareTo(bNum);
+      } else {
+        result = aRaw
+            .toString()
+            .toLowerCase()
+            .compareTo(bRaw.toString().toLowerCase());
+      }
+
+      return ascending ? result : -result;
+    });
+
+    debugPrint('🔢 [ItemsBuilder] Productos 정렬: $key '
+        '${ascending ? '오름차순' : '내림차순'}'
+        '${sortColumn == null ? ' (기본값)' : ''} — ${sorted.length}행');
+
+    return sorted;
+  }
+
   /// 데이터 리스트를 셀 위젯 리스트로 변환 (ResizableDataTable용).
   ///
   /// [columnKeys] 는 실제로 화면에 그려질 칼럼의 키 순서다. 셀은 반드시 이 목록에서
@@ -383,6 +473,18 @@ class ItemsBuilder {
               }
             }
             
+            // 정렬은 displayedItemsCount 로 자르기 "전"에 해야 한다.
+            // 자른 뒤 정렬하면 화면에 보이는 100건 안에서만 순서가 바뀌어,
+            // 실제 상위 항목이 아니라 "먼저 로드된 것 중 상위"가 나온다.
+            productsList = sortProducts(productsList, sortColumn, sortAscending);
+
+            // 헤더 화살표는 실제 정렬 상태를 가리켜야 한다. sortColumn 이 null 인
+            // 기본 상태에서 그대로 넘기면 totalCantidad 내림차순으로 정렬돼 있는데도
+            // 화살표가 어디에도 안 붙어, 정렬이 안 된 것처럼 보인다.
+            final sortedByKey = resolveSortColumn(productsList, sortColumn);
+            final effectiveSortColumn = sortedByKey ?? defaultSortColumn;
+            final effectiveSortAscending = sortedByKey == null ? false : sortAscending;
+
             // productsTable 생성 (빈 리스트여도 대형화면에서는 테이블 표시)
             debugPrint('═══════════════════════════════════════════════════════');
             debugPrint('📊 [ItemsBuilder] productsTable 생성 시작');
@@ -482,8 +584,8 @@ class ItemsBuilder {
                 rows: rows,
                 columnWidths: mergedWidths,
                 onColumnResize: onColumnResize ?? (_, __) {},
-                sortColumn: sortColumn,
-                sortAscending: sortAscending,
+                sortColumn: effectiveSortColumn,
+                sortAscending: effectiveSortAscending,
                 onSort: (column, ascending) => onSort(column, ascending),
                 headerColor: reportColor ?? Colors.blue,
                 scrollController: scrollController,
