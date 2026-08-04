@@ -65,6 +65,7 @@ Phase 04는 이 둘과 독립이라 먼저 실행됐다.
 | Date | Slug | Description | Commit |
 |------|------|-------------|--------|
 | 2026-07-31 | msix-config-real-values | Windows MSIX 빌드 실패 해결 — msix_config 플레이스홀더 교체 + CI 인증서 프롬프트 차단 | 3b272ff, b7ff40e |
+| 2026-08-04 | items-column-cell-mismatch | Items 리포트 assertion 수정 — 셀을 칼럼 키에서 파생, 칼럼 구성 진단 로그 추가 | (아래) |
 | 2026-08-04 | release-installers-to-dropbox | scripts/release.sh 신설 — 빌드→push→CI 대기→아티팩트 회수→'BeCool instaladores' 폴더 복사 원커맨드 | (아래) |
 | 2026-07-31 | msix-code-signing | 자체 서명 인증서로 MSIX 서명 — Windows 설치 가능해짐 (PC별 .cer 등록 1회 필요) | 630dd2f |
 

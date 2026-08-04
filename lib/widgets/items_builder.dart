@@ -25,61 +25,70 @@ class ItemsBuilder {
   ];
 
   /// 데이터 리스트를 셀 위젯 리스트로 변환 (ResizableDataTable용).
-  static List<List<Widget>> buildRows(List<dynamic> data) {
+  ///
+  /// [columnKeys] 는 실제로 화면에 그려질 칼럼의 키 순서다. 셀은 반드시 이 목록에서
+  /// 파생되어야 한다 — 셀 목록을 따로 하드코딩하면 칼럼이 데이터에 따라 늘거나 줄 때
+  /// ResizableDataTable 의 `row.length == columns.length` assertion 이 깨진다.
+  /// 생략하면 기본 칼럼 정의를 쓴다.
+  static List<List<Widget>> buildRows(
+    List<dynamic> data, {
+    List<String>? columnKeys,
+  }) {
+    final keys = columnKeys ?? buildColumnDefs().map((c) => c.key).toList();
     return data
         .whereType<Map<String, dynamic>>()
-        .map((item) => _buildRowCells(item))
+        .map((item) => _buildRowCells(item, keys))
         .toList();
   }
 
-  static List<Widget> _buildRowCells(Map<String, dynamic> item) {
-    String val(String key) => item[key]?.toString() ?? '';
+  static List<Widget> _buildRowCells(
+    Map<String, dynamic> item,
+    List<String> keys,
+  ) {
+    return keys.map((key) => _buildRowCell(item, key)).toList();
+  }
 
-    // totalCantidad: 숫자 포맷
-    final cantidadRaw = item['totalCantidad'];
-    final cantidadNum = num.tryParse(
-          cantidadRaw?.toString().replaceAll(',', '') ?? '0') ??
-        0;
-    final formattedCantidad = NumberFormat('#,##0').format(cantidadNum);
+  /// 칼럼 키 하나에 대응하는 셀 위젯 생성
+  static Widget _buildRowCell(Map<String, dynamic> item, String key) {
+    final baseStyle = TextStyle(fontSize: 10, color: Colors.grey[700]);
 
-    // tprendas: 숫자 포맷
-    final tprendasRaw = item['tprendas'];
-    final tprendasNum = num.tryParse(
-          tprendasRaw?.toString().replaceAll(',', '') ?? '0') ??
-        0;
-    final formattedTprendas = NumberFormat('#,##0').format(tprendasNum);
+    /// 콤마와 통화 기호를 걷어내고 천단위 구분 형식으로 되돌린다.
+    String formatNumber(String field) {
+      final raw = item[field]?.toString().replaceAll(',', '').replaceAll('\$', '');
+      return NumberFormat('#,##0').format(num.tryParse(raw ?? '0') ?? 0);
+    }
 
-    // timporte: 숫자 포맷
-    final timporteRaw = item['timporte'];
-    final timporteNum = num.tryParse(
-          timporteRaw?.toString().replaceAll(',', '').replaceAll('\$', '') ?? '0') ??
-        0;
-    final formattedTimporte = NumberFormat('#,##0').format(timporteNum);
-
-    return [
-      Text(val('codigo1'),
+    switch (key) {
+      case 'codigo1':
+        return Text(
+          item['codigo1']?.toString() ?? '',
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-          maxLines: 1, overflow: TextOverflow.ellipsis),
-      Text(val('desc1'),
-          style: TextStyle(fontSize: 10, color: Colors.grey[700]),
-          maxLines: 2, overflow: TextOverflow.ellipsis),
-      Text(val('ProductName'),
-          style: TextStyle(fontSize: 10, color: Colors.grey[700]),
-          maxLines: 2, overflow: TextOverflow.ellipsis),
-      Text(formattedCantidad,
-          style: TextStyle(fontSize: 10, color: Colors.grey[700]),
-          textAlign: TextAlign.right),
-      Text(val('CategoryCode'),
-          style: TextStyle(fontSize: 10, color: Colors.grey[700])),
-      Text(val('CompanyCode'),
-          style: TextStyle(fontSize: 10, color: Colors.grey[700])),
-      Text(formattedTprendas,
-          style: TextStyle(fontSize: 10, color: Colors.grey[700]),
-          textAlign: TextAlign.right),
-      Text(formattedTimporte,
-          style: TextStyle(fontSize: 10, color: Colors.grey[700]),
-          textAlign: TextAlign.right),
-    ];
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        );
+
+      case 'desc1':
+      case 'ProductName':
+        return Text(
+          item[key]?.toString() ?? '',
+          style: baseStyle,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        );
+
+      case 'totalCantidad':
+      case 'tprendas':
+      case 'timporte':
+        return Text(
+          formatNumber(key),
+          style: baseStyle,
+          textAlign: TextAlign.right,
+        );
+
+      // CategoryCode / CompanyCode 및 서버가 새로 내려준 미지의 칼럼
+      default:
+        return Text(item[key]?.toString() ?? '', style: baseStyle);
+    }
   }
 
   /// Items 콘텐츠 빌드 (화면 크기에 따라 적절한 레이아웃 선택)
@@ -432,7 +441,41 @@ class ItemsBuilder {
               final mergedWidths = Map<String, double>.from(defaults)
                 ..addAll(columnWidths ?? {});
 
-              final rows = buildRows(productsList.take(displayedItemsCount).toList());
+              // 칼럼은 응답 키에서 파생되므로 서버 스키마가 바뀌면 개수가 달라진다.
+              // 어떤 키가 승격·탈락했는지 남겨두지 않으면 assertion 이 터졌을 때
+              // 응답을 다시 받아보기 전까지 원인을 알 수 없다.
+              final activeKeys = activeColDefs.map((c) => c.key).toList();
+              final definedKeys = colDefs.map((c) => c.key).toSet();
+              final promotedKeys = activeKeys.where((k) => !definedKeys.contains(k)).toList();
+              final droppedKeys = definedKeys
+                  .where((k) => !activeKeys.contains(k))
+                  .toList();
+
+              debugPrint('───────────────────────────────────────────────────────');
+              debugPrint('🧮 [ItemsBuilder] 칼럼 구성 진단');
+              debugPrint('   → 활성 칼럼 ${activeKeys.length}개: $activeKeys');
+              debugPrint('   → 응답 키 ${dataKeys.length}개: ${dataKeys.toList()}');
+              if (promotedKeys.isNotEmpty) {
+                debugPrint('   → ➕ 응답에만 있어 칼럼으로 추가된 키: $promotedKeys');
+              }
+              if (droppedKeys.isNotEmpty) {
+                debugPrint('   → ➖ 응답에 없어 빠진 칼럼: $droppedKeys');
+              }
+
+              final rows = buildRows(
+                productsList.take(displayedItemsCount).toList(),
+                columnKeys: activeKeys,
+              );
+
+              // 셀은 activeKeys 에서 파생되므로 정상적으로는 항상 일치한다.
+              // 어긋난다면 buildRows 쪽이 깨진 것이므로 assertion 전에 잡아낸다.
+              final firstRowLength = rows.isNotEmpty ? rows.first.length : activeKeys.length;
+              if (firstRowLength != activeColDefs.length) {
+                debugPrint('   → ⚠️ 불일치! 행 셀 $firstRowLength개 vs 칼럼 ${activeColDefs.length}개');
+              } else {
+                debugPrint('   → ✅ 행 셀 $firstRowLength개 = 칼럼 ${activeColDefs.length}개');
+              }
+              debugPrint('───────────────────────────────────────────────────────');
 
               productsTable = ResizableDataTable(
                 columns: activeColDefs,
