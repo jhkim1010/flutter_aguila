@@ -25,10 +25,10 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### 다중 지점 Resumen del Día
 
-- [ ] **MSUC-01**: 지점이 2개 이상일 때 전 지점 합계(Total)가 단일 지점과 동일한 카드 레이아웃으로 먼저 표시
-- [ ] **MSUC-02**: 콤보박스로 개별 sucursal 선택 시 서버 재요청 없이 해당 지점 값으로 카드 갱신
-- [ ] **MSUC-03**: 카드/테이블 토글로 기존 비교 테이블 복귀 가능, 테이블 모드에서는 지점 콤보 숨김
-- [ ] **MSUC-04**: Stock Resumen이 지점별 데이터가 아님(DB 전역)을 화면에 명시
+- [x] **MSUC-01**: 지점이 2개 이상일 때 전 지점 합계(Total)가 단일 지점과 동일한 카드 레이아웃으로 먼저 표시
+- [x] **MSUC-02**: 콤보박스로 개별 sucursal 선택 시 서버 재요청 없이 해당 지점 값으로 카드 갱신
+- [x] **MSUC-03**: 카드/테이블 토글로 기존 비교 테이블 복귀 가능, 테이블 모드에서는 지점 콤보 숨김
+- [x] **MSUC-04**: Stock Resumen이 지점별 데이터가 아님(DB 전역)을 화면에 명시
 - [ ] **MSUC-05**: FVentas del Mes의 대상 월 범위를 화면에 표시
 
 ### FVentas 기간 합계
@@ -79,11 +79,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TBL-02 | Phase 2 | Complete |
 | TBL-03 | Phase 2 | Complete |
 | RVP-01 | Phase 3 | Pending |
-| MSUC-01 | Phase 4 | Pending |
-| MSUC-02 | Phase 4 | Pending |
-| MSUC-03 | Phase 4 | Pending |
-| MSUC-04 | Phase 4 | Pending |
-| MSUC-05 | Phase 4 | Pending |
+| MSUC-01 | Phase 4 | Complete |
+| MSUC-02 | Phase 4 | Complete |
+| MSUC-03 | Phase 4 | Complete |
+| MSUC-04 | Phase 4 | Complete |
+| MSUC-05 | Phase 4 | Partial — 월 라벨만, 범위 미표시 (서버 검증 대기) |
 | FVT-01 | Phase 5 | Blocked (서버 응답 확인 대기) |
 | FVT-02 | Phase 5 | Blocked (서버 응답 확인 대기) |
 

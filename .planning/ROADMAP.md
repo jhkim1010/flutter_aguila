@@ -76,9 +76,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — 지점 필터 유틸 + MultiSucursalView 신설 + 두 기존 뷰에 headerTrailing 슬롯 + 부모 분기 교체
-- [ ] 04-02-PLAN.md — Stock Resumen "DB 전역" 배지 (단일/비교 뷰 양쪽)
-- [ ] 04-03-PLAN.md — FVentas del Mes 서버 월 범위 검증 후 범위 라벨 추가 (사용자 확인 필요)
+- [x] 04-01-PLAN.md — 지점 필터 유틸 + MultiSucursalView 신설 + 두 기존 뷰에 headerTrailing 슬롯 + 부모 분기 교체
+- [x] 04-02-PLAN.md — Stock Resumen "DB 전역" 배지 (단일/비교 뷰 양쪽)
+- [~] 04-03-PLAN.md — FVentas del Mes 월 라벨 **부분 완료**. 서버 집계 범위 미검증이라 범위 라벨 대신 `yyyy-MM` 월 라벨만 표시 (04-03-SUMMARY.md 참고)
 
 **UI hint**: yes
 
@@ -123,5 +123,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Column Alignment | 1/2 | In Progress|  |
 | 2. Table UX | 0/2 | Not started | - |
 | 3. Riverpod Caching | 0/TBD | Not started | - |
-| 4. Multi-Sucursal Resumen | 0/3 | Not started | - |
+| 4. Multi-Sucursal Resumen | 2.5/3 | Mostly complete — 04-03 서버 범위 검증 대기 | 2026-08-03 |
 | 5. FVentas Period Totals | 0/TBD | Blocked — 서버 응답 확인 대기 | - |
