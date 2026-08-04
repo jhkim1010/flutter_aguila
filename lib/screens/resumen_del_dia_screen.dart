@@ -15,7 +15,7 @@ import 'main_connection_screen.dart' show ServerType, MainConnectionScreen;
 import 'connection_screen.dart' hide ServerType;
 import 'report_screen.dart';
 import 'resumen_del_dia_single_sucursal_view.dart';
-import 'resumen_del_dia_multiple_sucursales_view.dart';
+import 'resumen_del_dia_multi_sucursal_view.dart';
 
 class ResumenDelDiaScreen extends StatefulWidget {
   final String serverUrl;
@@ -2053,7 +2053,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
       debugPrint('   → data 키: ${_data!.keys.toList()}');
       debugPrint('═══════════════════════════════════════════════════════');
       
-      return ResumenDelDiaMultipleSucursalesView(
+      return ResumenDelDiaMultiSucursalView(
         data: _data!,
         selectedDate: _selectedDate,
         serverUrl: widget.serverUrl,
@@ -2065,6 +2065,7 @@ class _ResumenDelDiaScreenState extends State<ResumenDelDiaScreen> {
             _currentReport = reportType.toString().split('.').last;
           });
         },
+        errorMessage: _errorMessage,
       );
     }
     

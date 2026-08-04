@@ -17,7 +17,10 @@ class ResumenDelDiaMultipleSucursalesView extends StatelessWidget {
   final Function() onRefresh;
   final Function() onSelectDate;
   final Function(ReportType) onReportTypeSelected;
-  
+  /// 날짜 버튼 줄 우측에 꽂을 컨트롤 (카드/테이블 토글).
+  /// null이면 기존처럼 날짜 버튼만 가운데 표시한다.
+  final Widget? headerTrailing;
+
   const ResumenDelDiaMultipleSucursalesView({
     super.key,
     required this.data,
@@ -26,6 +29,7 @@ class ResumenDelDiaMultipleSucursalesView extends StatelessWidget {
     required this.onRefresh,
     required this.onSelectDate,
     required this.onReportTypeSelected,
+    this.headerTrailing,
   });
 
   @override
@@ -442,13 +446,20 @@ class ResumenDelDiaMultipleSucursalesView extends StatelessWidget {
                             if (hasStockData) ...[
                               Padding(
                                 padding: const EdgeInsets.only(bottom: 16),
-                                child: Text(
-                                  'Stock Resumen',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.grey[800],
-                                  ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'Stock Resumen',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.grey[800],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    _buildGlobalDataBadge(),
+                                  ],
                                 ),
                               ),
                               ...stockWidgets,
@@ -545,13 +556,20 @@ class ResumenDelDiaMultipleSucursalesView extends StatelessWidget {
                   children: [
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-                      child: Text(
-                        'Stock Resumen',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey[800],
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Stock Resumen',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey[800],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          _buildGlobalDataBadge(),
+                        ],
                       ),
                     ),
                     ...stockWidgets,
@@ -1139,26 +1157,83 @@ class ResumenDelDiaMultipleSucursalesView extends StatelessWidget {
   ///
   /// 여러 sucursal 뷰에는 이 버튼이 없어서 다른 날짜를 조회할 방법이 없었다.
   /// _buildDateHeader 는 서버가 응답한 fecha 를 보여주는 표시 전용이라 탭해도 반응하지 않는다.
+  /// 지점별로 나뉘지 않는 전역 데이터임을 알리는 배지.
+  /// stock_resumen은 sucursal 키가 없어 어느 지점을 골라도 값이 같다.
+  Widget _buildGlobalDataBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.amber[50],
+        border: Border.all(color: Colors.amber[300]!),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        'DB 전역',
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: Colors.amber[900],
+        ),
+      ),
+    );
+  }
+
+  /// 날짜 선택 버튼 (가운데) + headerTrailing 컨트롤 (우측).
+  /// 좁은 화면에서는 한 줄에 넣으면 넘치므로 버튼 아래로 내린다.
   Widget _buildDateSelectorButton() {
     final labelDate = selectedDate ?? DateTime.now();
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        ElevatedButton.icon(
-          onPressed: onSelectDate,
-          icon: const Icon(Icons.calendar_today),
-          label: Text(
-            DateFormat('yyyy-MM-dd').format(labelDate),
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            backgroundColor: Colors.blue[700],
-            foregroundColor: Colors.white,
-          ),
-        ),
-      ],
+    final dateButton = ElevatedButton.icon(
+      onPressed: onSelectDate,
+      icon: const Icon(Icons.calendar_today),
+      label: Text(
+        DateFormat('yyyy-MM-dd').format(labelDate),
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      ),
+      style: ElevatedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        backgroundColor: Colors.blue[700],
+        foregroundColor: Colors.white,
+      ),
+    );
+
+    if (headerTrailing == null) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [dateButton],
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 600) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [dateButton],
+              ),
+              const SizedBox(height: 8),
+              headerTrailing!,
+            ],
+          );
+        }
+
+        // Spacer와 우측 Expanded가 같은 flex를 가지므로 날짜 버튼이 가운데 유지된다
+        return Row(
+          children: [
+            const Spacer(),
+            dateButton,
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: headerTrailing!,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 

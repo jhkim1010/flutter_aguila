@@ -18,7 +18,10 @@ class ResumenDelDiaSingleSucursalView extends StatelessWidget {
   final Function() onSelectDate;
   final Function(ReportType) onReportTypeSelected;
   final String? errorMessage;
-  
+  /// 날짜 버튼 줄 우측에 꽂을 컨트롤 (지점 콤보 + 카드/테이블 토글).
+  /// null이면 기존처럼 날짜 버튼만 가운데 표시한다.
+  final Widget? headerTrailing;
+
   const ResumenDelDiaSingleSucursalView({
     super.key,
     required this.data,
@@ -28,6 +31,7 @@ class ResumenDelDiaSingleSucursalView extends StatelessWidget {
     required this.onSelectDate,
     required this.onReportTypeSelected,
     this.errorMessage,
+    this.headerTrailing,
   });
 
   @override
@@ -103,29 +107,10 @@ class ResumenDelDiaSingleSucursalView extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // 날짜 선택 버튼 (맨 윗줄)
+                      // 날짜 선택 버튼 (맨 윗줄) + 우측 컨트롤 슬롯
                       Container(
                         margin: const EdgeInsets.only(bottom: 16),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            ElevatedButton.icon(
-                              onPressed: onSelectDate,
-                              icon: const Icon(Icons.calendar_today),
-                              label: Text(
-                                selectedDate != null
-                                    ? DateFormat('yyyy-MM-dd').format(selectedDate!)
-                                    : DateFormat('yyyy-MM-dd').format(DateTime.now()),
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                                backgroundColor: Colors.blue[700],
-                                foregroundColor: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
+                        child: _buildDateHeaderRow(),
                       ),
                       // 에러가 있지만 데이터도 있는 경우 경고 배너 표시
                       if (errorMessage != null && data.isNotEmpty)
@@ -467,7 +452,7 @@ class ResumenDelDiaSingleSucursalView extends StatelessWidget {
                               if (fventasMesWidgets.isNotEmpty) {
                                 renderedSectionCount++;
                                 debugPrint('      ✅ FVentas Mes 섹션 렌더링됨 (총 섹션: $renderedSectionCount)');
-                                return _buildSection(context, 'FVentas del Mes', fventasMesWidgets, isLarge);
+                                return _buildSection(context, 'FVentas del Mes', fventasMesWidgets, isLarge, titleBadge: _buildMonthLabel());
                               } else {
                                 debugPrint('      ⚠️ FVentas Mes 위젯이 비어있음');
                                 return const SizedBox.shrink();
@@ -516,7 +501,7 @@ class ResumenDelDiaSingleSucursalView extends StatelessWidget {
                             if (stockWidgets.isNotEmpty) {
                               renderedSectionCount++;
                               debugPrint('   ✅ Stock Resumen 섹션 렌더링됨 (총 섹션: $renderedSectionCount)');
-                              return _buildSection(context, 'Stock Resumen', stockWidgets, isLarge, useGrid: false, onTap: () {
+                              return _buildSection(context, 'Stock Resumen', stockWidgets, isLarge, useGrid: false, titleBadge: _buildGlobalDataBadge(), onTap: () {
                                 onReportTypeSelected(ReportType.stocks);
                               });
                             } else {
@@ -541,7 +526,66 @@ class ResumenDelDiaSingleSucursalView extends StatelessWidget {
   }
 
   // ==================== 공통 헬퍼 함수들 ====================
-  
+
+  /// 날짜 선택 버튼 (가운데) + headerTrailing 컨트롤 (우측).
+  /// 좁은 화면에서는 한 줄에 넣으면 넘치므로 버튼 아래로 내린다.
+  Widget _buildDateHeaderRow() {
+    final dateButton = ElevatedButton.icon(
+      onPressed: onSelectDate,
+      icon: const Icon(Icons.calendar_today),
+      label: Text(
+        selectedDate != null
+            ? DateFormat('yyyy-MM-dd').format(selectedDate!)
+            : DateFormat('yyyy-MM-dd').format(DateTime.now()),
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      ),
+      style: ElevatedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        backgroundColor: Colors.blue[700],
+        foregroundColor: Colors.white,
+      ),
+    );
+
+    if (headerTrailing == null) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [dateButton],
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 600) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [dateButton],
+              ),
+              const SizedBox(height: 8),
+              headerTrailing!,
+            ],
+          );
+        }
+
+        // Spacer와 우측 Expanded가 같은 flex를 가지므로 날짜 버튼이 가운데 유지된다
+        return Row(
+          children: [
+            const Spacer(),
+            dateButton,
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: headerTrailing!,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   bool _isLargeScreen(BuildContext context) {
     if (PlatformUtils.isDesktop()) {
       return true;
@@ -552,7 +596,54 @@ class ResumenDelDiaSingleSucursalView extends StatelessWidget {
     return false;
   }
 
-  Widget _buildSection(BuildContext context, String title, List<Widget> children, bool isLarge, {VoidCallback? onTap, bool useGrid = true}) {
+  /// FVentas del Mes가 어느 달 기준인지 알리는 배지.
+  ///
+  /// 선택 날짜에서 연-월만 뽑는다. 서버 응답 필드에 의존하지 않는다.
+  /// 날짜 범위(01~말일)까지 쓰지 않는 이유: 앱은 date만 보내고 집계 범위는
+  /// 서버 SQL이 정한다. 서버가 1일~선택일로 자르고 있다면 범위 표기가 거짓이
+  /// 된다. 월 표기는 어느 쪽이든 참이다. 서버 동작 확인 후 범위로 확장할 것.
+  Widget _buildMonthLabel() {
+    final base = selectedDate ?? DateTime.now();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        border: Border.all(color: Colors.grey[400]!),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        DateFormat('yyyy-MM').format(base),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: Colors.grey[700],
+        ),
+      ),
+    );
+  }
+
+  /// 지점별로 나뉘지 않는 전역 데이터임을 알리는 배지.
+  /// 지점을 골라도 값이 그대로인 섹션에 붙여 오해를 막는다.
+  Widget _buildGlobalDataBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.amber[50],
+        border: Border.all(color: Colors.amber[300]!),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        'DB 전역',
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: Colors.amber[900],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSection(BuildContext context, String title, List<Widget> children, bool isLarge, {VoidCallback? onTap, bool useGrid = true, Widget? titleBadge}) {
     if (children.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -576,6 +667,11 @@ class ResumenDelDiaSingleSucursalView extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (titleBadge != null) ...[
+                  const SizedBox(width: 8),
+                  titleBadge,
+                  const SizedBox(width: 4),
+                ],
                 if (onTap != null)
                   Icon(
                     Icons.arrow_forward_ios,
