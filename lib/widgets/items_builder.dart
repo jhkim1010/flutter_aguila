@@ -42,11 +42,13 @@ class ItemsBuilder {
   static String? resolveSortColumn(List<dynamic> products, String? sortColumn) {
     if (sortColumn == null) return null;
 
-    final firstRow = products.firstWhere(
-      (e) => e is Map<String, dynamic>,
-      orElse: () => null,
-    );
-    final knownKeys = firstRow is Map<String, dynamic>
+    // firstWhere(orElse: () => null) 은 쓸 수 없다. products 의 런타임 타입이
+    // List<Map<String, dynamic>> 이면 orElse 가 Map 을 돌려줘야 해서
+    //   type '() => Null' is not a subtype of type '(() => Map<String, dynamic>)?'
+    // 로 터진다. JSON 디코딩 결과는 List<dynamic> 이라 앱에서는 드러나지 않지만,
+    // 리스트 타입에 기대지 않도록 직접 훑는다.
+    final firstRow = products.whereType<Map<String, dynamic>>().firstOrNull;
+    final knownKeys = firstRow != null
         ? firstRow.keys.toSet()
         : itemsColumnKeys.toSet();
 
