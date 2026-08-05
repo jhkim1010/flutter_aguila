@@ -1,7 +1,7 @@
 name: flutter_app
 description: A Flutter app for database connection with celebration animation
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.5+2
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
