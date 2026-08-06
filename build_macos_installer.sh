@@ -74,6 +74,12 @@ if [ ! -d "$APP_BUNDLE" ]; then
     fi
 fi
 
+# 실제로 찾은 번들 이름으로 맞춘다. Xcode 가 내놓는 이름은 AppInfo.xcconfig 의
+# PRODUCT_NAME(=Be_Cool)이라 "$APP_NAME.app"(=Be COOL.app) 과 다르다.
+# 이 값을 안 맞추면 cp 로 복사한 뒤의 경로가 어긋나서 재서명이 조용히 실패하고,
+# 마지막에 안내하는 xattr 경로도 존재하지 않는 앱을 가리킨다.
+APP_BUNDLE_NAME="$(basename "$APP_BUNDLE")"
+
 echo ""
 echo "✅ 앱 번들 빌드 성공!"
 echo "   위치: $APP_BUNDLE"
