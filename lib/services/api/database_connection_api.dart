@@ -60,7 +60,7 @@ class DatabaseConnectionApi {
 
       print('=== 기존 연결 끊기 시도 ===');
       print('URL: ${_httpHandler.serverUrl}/api/disconnect');
-      print('Headers: $headers');
+      print('Headers: ${redactSensitiveHeaders(headers)}');
 
       bool success = false;
       int attempt = 0;
@@ -151,7 +151,12 @@ class DatabaseConnectionApi {
     
     print('=== 연결 시도 ===');
     print('URL: $url');
-    print('Request Body: $requestBody');
+    // requestBody 를 그대로 찍으면 password 가 평문으로 나간다. 실제 전송에는
+    // requestBody 를 쓰고, 로그에는 가린 사본만 보여준다.
+    print('Request Body: ${jsonEncode({
+          ...request.toJson(),
+          'password': '***',
+        })}');
     print('Headers: Content-Type: application/json');
     
     try {

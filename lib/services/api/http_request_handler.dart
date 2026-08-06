@@ -4,6 +4,27 @@ import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatf
 import '../secure_storage_helper.dart';
 import '../../utils/ssl_client_helper.dart';
 
+/// 로그에 찍어도 되도록 민감한 헤더 값을 가린 사본을 만든다.
+///
+/// `print('Headers: $headers')` 처럼 Map 을 통째로 찍으면 x-db-password 가
+/// 평문으로 새어 나간다. 특히 웹 빌드에서는 print 가 브라우저 콘솔로 나가므로
+/// 사용자가 F12 만 눌러도 자기 DB 비밀번호를 읽을 수 있다.
+/// 원본 Map 은 건드리지 않는다 — 실제 요청에는 그대로 쓰여야 한다.
+Map<String, String> redactSensitiveHeaders(Map<String, String> headers) {
+  const sensitiveKeys = {
+    'x-db-password',
+    'db-password',
+    'authorization',
+    'cookie',
+  };
+  return {
+    for (final entry in headers.entries)
+      entry.key: sensitiveKeys.contains(entry.key.toLowerCase())
+          ? '***'
+          : entry.value,
+  };
+}
+
 /// 공통 HTTP 요청 핸들러
 class HttpRequestHandler {
   final String serverUrl;
@@ -93,7 +114,7 @@ class HttpRequestHandler {
       
       print('=== GET $endpoint 요청 ===');
       print('URL: $uriWithQuery');
-      print('Headers: $headers');
+      print('Headers: ${redactSensitiveHeaders(headers)}');
       if (queryParameters != null && queryParameters.isNotEmpty) {
         print('Query Parameters: $queryParameters');
       }
@@ -187,7 +208,7 @@ class HttpRequestHandler {
       
       print('=== POST $endpoint 요청 ===');
       print('URL: $serverUrl$endpoint');
-      print('Headers: $headers');
+      print('Headers: ${redactSensitiveHeaders(headers)}');
       print('Timeout: $timeoutSeconds초');
       print('Request Body Length: ${json.encode(body).length} bytes');
       
