@@ -121,7 +121,7 @@ void main() {
       expect(s.total.count, 463 + 14 + 21);
     });
 
-    test('otros 가 있으면 담고 총합에도 반영한다', () {
+    test('otros 는 담아서 드러내되 총합에는 넣지 않는다', () {
       final json = serverSummary()
         ..remove('total')
         ..['otros'] = [
@@ -138,7 +138,9 @@ void main() {
       expect(s.otros, hasLength(1));
       expect(s.otros.first.label, '99');
       expect(s.otros.first.amount.count, 2);
-      expect(s.total.monto, 71450500 + 762300 + 1000 - 3509000);
+      // 모르는 코드는 더할지 뺄지 알 수 없어 총합에 넣지 않는다.
+      // 서버 buildFventasSummary 도 같은 규칙이다.
+      expect(s.total.monto, 71450500 + 762300 - 3509000);
     });
 
     test('summary 블록이 없거나 모양이 다르면 null', () {
@@ -222,8 +224,8 @@ void main() {
       expect(s.facturas.subtotal.monto, 1000);
       expect(s.otros, hasLength(1));
       expect(s.otros.first.label, '99');
-      // 조용히 사라지지 않고 총합에는 들어간다
-      expect(s.total.monto, 1777);
+      // 부호를 모르므로 총합에는 넣지 않는다. 대신 Otros 줄로 드러난다.
+      expect(s.total.monto, 1000);
     });
 
     test('tipofactura 가 비었거나 Map 이 아닌 행은 건너뛴다', () {

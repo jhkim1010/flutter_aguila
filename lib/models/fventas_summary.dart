@@ -207,15 +207,16 @@ class FventasSummary {
       ? FventasGroup.fromJson(Map<String, dynamic>.from(value))
       : FventasGroup.empty;
 
+  /// otros 는 총합에 넣지 않는다 — 모르는 코드는 더할지 뺄지 알 수 없다.
+  /// 서버(routes/fventas.js 의 buildFventasSummary)도 같은 규칙이다.
+  /// 대신 푸터가 Otros 줄로 따로 보여주므로 조용히 사라지지는 않는다.
   static FventasAmount _computeTotal(
     FventasGroup facturas,
     FventasGroup debitos,
     FventasGroup creditos,
     List<FventasOtro> otros,
   ) {
-    final otrosSum =
-        otros.fold(FventasAmount.zero, (sum, o) => sum + o.amount);
-    final positives = facturas.subtotal + debitos.subtotal + otrosSum;
+    final positives = facturas.subtotal + debitos.subtotal;
     final c = creditos.subtotal;
     return FventasAmount(
       // 건수는 Nota de Crédito 도 발행된 comprobante 이므로 더한다.
