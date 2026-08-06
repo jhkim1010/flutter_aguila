@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'report_utils.dart';
 import 'report_table_builder.dart';
+import '../models/fventas_summary.dart';
 
 /// Items/Ingresos 보고서용 StatefulWidget: DataTable의 실제 칼럼 너비를 측정하여 헤더와 푸터에 적용
 class ItemsTableWithMeasuredColumns extends StatefulWidget {
@@ -22,6 +23,9 @@ class ItemsTableWithMeasuredColumns extends StatefulWidget {
   final ScrollController? horizontalScrollController;
   final void Function(String columnKey, double newWidth)? onColumnResize;
 
+  /// fventas 푸터용 기간 전체 집계 (서버 summary 블록)
+  final FventasSummary? fventasSummary;
+
   const ItemsTableWithMeasuredColumns({
     super.key,
     required this.keys,
@@ -40,6 +44,7 @@ class ItemsTableWithMeasuredColumns extends StatefulWidget {
     required this.scrollController,
     this.horizontalScrollController,
     this.onColumnResize,
+    this.fventasSummary,
   });
 
   @override
@@ -739,6 +744,7 @@ class _ItemsTableWithMeasuredColumnsState extends State<ItemsTableWithMeasuredCo
           dataList: widget.dataList,
           reportType: widget.reportType,
           unit: widget.unit,
+          fventasSummary: widget.fventasSummary,
         );
         
         // 항상 footer를 화면/패널 하단에 고정하기 위해 높이 제약 사용

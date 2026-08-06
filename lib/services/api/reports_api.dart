@@ -323,13 +323,16 @@ class ReportsApi {
   /// 날짜 필터링: fecha, fecha_inicio, fecha_fin
   /// 검색: filtering_word (clientenombre, dni, numfactura, tipofactura에서 검색)
   /// 필터링: sucursal
-  /// 페이지네이션: last_id_fventa (id_fventa 기준)
+  /// 페이지네이션: offset (서버가 limit=100 고정으로 잘라서 준다)
+  ///
+  /// 서버(routes/fventas.js)는 offset 만 읽는다. 예전 주석에 있던
+  /// last_id_fventa 는 서버가 무시하므로 보내지 않는다.
   Future<Map<String, dynamic>> getFVentasReport({
     String? filteringWord,
     String? currentDate,
     String? unit, // 'vcode', 'day', 'month', 'year'
     Map<String, dynamic>? filters,
-    String? lastIdFventa, // 페이지네이션용
+    int? offset, // 페이지네이션용 (0, 100, 200 ...)
   }) async {
     const endpoint = '/api/fventas';
     final queryParams = <String, String>{};
@@ -384,9 +387,9 @@ class ReportsApi {
       queryParams['unit'] = unit;
     }
     
-    // 페이지네이션: last_id_fventa
-    if (lastIdFventa != null && lastIdFventa.isNotEmpty) {
-      queryParams['last_id_fventa'] = lastIdFventa;
+    // 페이지네이션: offset
+    if (offset != null && offset > 0) {
+      queryParams['offset'] = offset.toString();
     }
     
     // 디버깅: fventas 요청 파라미터 로깅

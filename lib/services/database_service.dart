@@ -223,13 +223,13 @@ class DatabaseService {
     String? currentDate,
     String? unit, // 'vcode', 'day', 'month', 'year'
     Map<String, dynamic>? filters,
-    String? lastIdFventa, // 페이지네이션용
+    int? offset, // 페이지네이션용 (0, 100, 200 ...)
   }) => _reportsApi.getFVentasReport(
     filteringWord: filteringWord,
     currentDate: currentDate,
     unit: unit,
     filters: filters,
-    lastIdFventa: lastIdFventa,
+    offset: offset,
   );
   
   /// FVentas 특정 항목 조회

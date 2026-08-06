@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../models/fventas_summary.dart';
 import 'report_utils.dart';
 import '../utils/mobile_layout_helper.dart';
 import 'report_table_header_footer.dart';
@@ -307,6 +308,7 @@ class ReportTableBuilder {
     Function(Map<String, dynamic>)? onRowTap, // 행 단일 클릭 콜백
     Map<String, double>? externalColumnWidths, // Items/Ingresos/Gastos 칼럼 리사이즈용
     void Function(String columnKey, double newWidth)? onColumnResize,
+    FventasSummary? fventasSummary, // fventas 푸터용 기간 전체 집계 (서버 summary 블록)
   }) {
     // 디버깅: buildTableFromList 시작
     debugPrint('═══════════════════════════════════════════════════════');
@@ -695,6 +697,7 @@ class ReportTableBuilder {
                       color,
                       columnWidths: dynamicColumnWidths,
                       dataList: dataList,
+                      fventasSummary: fventasSummary,
                       reportType: reportType,
                     ),
                   );
@@ -791,6 +794,7 @@ class ReportTableBuilder {
         columnWidths: columnWidths,
         displayedList: displayedList,
         dataList: dataList,
+        fventasSummary: fventasSummary,
         reportType: reportType,
         onRowDoubleTap: onRowDoubleTap,
         onRowTap: onRowTap,
@@ -1464,6 +1468,7 @@ class ReportTableBuilder {
                                 color, 
                                 columnWidths: finalColumnWidths, // 2배 증가된 칼럼 너비 사용
                                 dataList: dataList,
+                                fventasSummary: fventasSummary,
                                 reportType: reportType,
                                 explicitWidth: footerWidth, // fventas/ventas/clientes/alertas의 경우 명시적 너비 전달
                               );
@@ -1756,13 +1761,15 @@ class ReportTableBuilder {
           List<dynamic>? dataList,
           ReportType? reportType,
           double? explicitWidth,
-          String? unit}) =>
+          String? unit,
+          FventasSummary? fventasSummary}) =>
       ReportTableHeaderFooter.buildFixedTotalRow(keys, displayedList, reportColor,
           columnWidths: columnWidths,
           dataList: dataList,
           reportType: reportType,
           explicitWidth: explicitWidth,
-          unit: unit);
+          unit: unit,
+          fventasSummary: fventasSummary);
 
   /// Forwarding alias — see [ReportTableHeaderFooter.buildHeaderRow].
   static Widget buildHeaderRow(

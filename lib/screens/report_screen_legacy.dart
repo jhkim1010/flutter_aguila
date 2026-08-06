@@ -15,6 +15,7 @@ import '../utils/report_data_utils.dart';
 import '../widgets/report_utils.dart';
 import '../widgets/items_date_range_selector.dart';
 import '../widgets/report_table_builder.dart';
+import '../models/fventas_summary.dart';
 import '../widgets/codigos_builder.dart';
 import '../widgets/resizable_data_table.dart';
 import '../widgets/stocks_builder.dart';
@@ -45,6 +46,14 @@ part 'helpers/report_utils_mixin.dart';
 
 // Library-level constant accessible from all part files
 const int _itemsPerPage = 100;
+
+// 서버(routes/fventas.js)가 고정으로 쓰는 페이지 크기.
+// 응답에 pagination 이 없을 때 "더 있는지" 를 이 값으로 추정한다.
+const int _kFventasPageSize = 100;
+
+// 전체 로드 시 요청 상한. 서버가 hasMore 를 계속 true 로 주는 경우에도
+// 무한 요청으로 번지지 않게 막는다. 100건/페이지 기준 5만건.
+const int _kFventasMaxPages = 500;
 
 // ReportType is used by ReportScreenLegacy; export from report_screen.dart
 
@@ -163,6 +172,22 @@ abstract class _ReportScreenStateBase extends State<ReportScreenLegacy> {
   bool _clientesIsLoadingMore = false;
   String? _clientesSortColumn;
   bool _clientesSortAscending = false;
+
+  // FVentas 페이지네이션. 서버(routes/fventas.js)가 limit=100 으로 고정해 자르므로,
+  // 기간을 넓혀도 첫 응답은 100건뿐이다. 나머지는 offset 으로 이어 받아야 한다.
+  int _fventasOffset = 0;
+  bool _fventasHasMore = false;
+  bool _fventasIsLoadingMore = false;
+  // summary 블록을 주지 않는 옛 서버에서만, 기간 전체 합계를 푸터에 띄우려고
+  // 모든 페이지를 받는다. 그동안 푸터 합계는 부분값이라 진행 상태를 들고 있는다.
+  bool _fventasIsLoadingAll = false;
+  int _fventasTotalCount = 0;
+  // 필터/기간이 바뀌면 이전 전체 로드 루프가 새 데이터에 덧붙이지 않도록 세대를 올린다.
+  int _fventasLoadGeneration = 0;
+  // _loadData 의 setState 가 끝난 뒤 전체 로드를 시작하기 위한 플래그.
+  bool _fventasPendingLoadAll = false;
+  // 서버가 주는 기간 전체 집계. 이게 있으면 푸터 합계를 위해 페이지를 다 받을 필요가 없다.
+  FventasSummary? _fventasSummary;
 
   OverlayEntry? _clienteDetailOverlayEntry;
   Map<String, dynamic>? _currentClienteDetailData;
@@ -510,6 +535,15 @@ class _ReportScreenLegacyState extends _ReportScreenStateBase
         _clientesSortAscending = false;
         // Clientes 보고서로 전환 시 OverlayEntry 닫기
         _closeClienteDetailOverlay();
+      } else if (widget.reportType == ReportType.fventas) {
+        _fventasOffset = 0;
+        _fventasHasMore = false;
+        _fventasIsLoadingMore = false;
+        _fventasIsLoadingAll = false;
+        _fventasTotalCount = 0;
+        _fventasSummary = null;
+        _fventasLoadGeneration++;
+        _closeClienteDetailOverlay();
       } else {
         // 다른 보고서로 전환 시에도 OverlayEntry 닫기
         _closeClienteDetailOverlay();
@@ -682,8 +716,17 @@ class _ReportScreenLegacyState extends _ReportScreenStateBase
       _clientesOffset = 0;
       _clientesHasMore = false;
       _clientesIsLoadingMore = false;
+    } else if (widget.reportType == ReportType.fventas) {
+      _fventasOffset = 0;
+      _fventasHasMore = false;
+      _fventasIsLoadingMore = false;
+      _fventasIsLoadingAll = false;
+      _fventasTotalCount = 0;
+      _fventasSummary = null;
+      // 진행 중인 전체 로드 루프를 무효화한다.
+      _fventasLoadGeneration++;
     }
-    
+
     await _loadData();
   }
 
@@ -6481,6 +6524,9 @@ class _ReportScreenLegacyState extends _ReportScreenStateBase
             horizontalScrollController: _horizontalScrollController,
             reportColor: widget.reportType == ReportType.ventas ? Colors.purple : null,
             unit: unitToPass,
+            // fventas 푸터는 서버 summary(기간 전체 집계)로 그린다. null 이면
+            // 푸터가 받아둔 행으로 직접 계산한다(옛 서버 대비).
+            fventasSummary: widget.reportType == ReportType.fventas ? _fventasSummary : null,
             onRowDoubleTap: widget.reportType == ReportType.ventas ? _handleRowDoubleTap : null,
             onRowTap: widget.reportType == ReportType.ventas && 
                       _ventasUnit != 'vcode' ? _handleRowTap : null, // day/month/year 단위에서는 단일 클릭으로 sucursal 필터링

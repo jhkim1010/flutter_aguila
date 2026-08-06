@@ -1,12 +1,13 @@
 // Header row and total row builders extracted from ReportTableBuilder.
 import 'package:flutter/material.dart';
+import '../models/fventas_summary.dart';
 import 'report_utils.dart';
 import 'report_table_column_widths.dart';
 import 'report_table_measured_columns.dart';
 import 'report_table_builder.dart';
 
 class ReportTableHeaderFooter {
-  static Widget buildFixedTotalRow(List<String> keys, List<dynamic> displayedList, Color reportColor, {Map<String, double>? columnWidths, List<dynamic>? dataList, ReportType? reportType, double? explicitWidth, String? unit}) {
+  static Widget buildFixedTotalRow(List<String> keys, List<dynamic> displayedList, Color reportColor, {Map<String, double>? columnWidths, List<dynamic>? dataList, ReportType? reportType, double? explicitWidth, String? unit, FventasSummary? fventasSummary}) {
     // 디버깅: 함수 진입 확인 (가장 먼저 실행)
     debugPrint('═══════════════════════════════════════════════════════');
     debugPrint('🔍 [_buildFixedTotalRow] 함수 진입');
@@ -17,46 +18,28 @@ class ReportTableHeaderFooter {
     debugPrint('   → dataList.length: ${dataList?.length ?? 0}');
     debugPrint('   → reportType: $reportType');
     
-    // items/ingresos 보고서의 경우 전체 데이터(dataList)를 사용하여 합계 계산
-    // 다른 보고서는 displayedList 사용 (페이지네이션된 경우)
-    final listForTotal = ((reportType == ReportType.items || reportType == ReportType.ingresos) && dataList != null && dataList.isNotEmpty) 
-        ? dataList 
+    // items/ingresos/fventas 는 전체 데이터(dataList)로 합계를 낸다.
+    // 다른 보고서는 화면에 뿌린 만큼(displayedList)만 더한다.
+    //
+    // fventas 는 서버가 100건씩 잘라 주므로 화면에 보이는 것만 더하면 기간을 넓혀도
+    // 합계가 100건치에 머문다. 서버 summary 가 없는 옛 서버에서는 로더가 전체
+    // 페이지를 받아 dataList 에 채우므로, 여기서는 그 전체를 써야 합계가 맞는다.
+    final listForTotal = ((reportType == ReportType.items ||
+                reportType == ReportType.ingresos ||
+                reportType == ReportType.fventas) &&
+            dataList != null &&
+            dataList.isNotEmpty)
+        ? dataList
         : displayedList;
     
     debugPrint('   → 합계 계산에 사용할 리스트 길이: ${listForTotal.length}');
     
-    // fventas 보고서의 경우 factura A와 B 각각의 개수와 monto 합계만 계산
-    Map<String, dynamic>? fventasSummary;
+    // fventas: 서버 summary 블록이 요청 기간 전체를 이미 집계해서 준다.
+    // 그게 없을 때만(옛 서버) 받아둔 행으로 직접 계산한다.
+    FventasSummary? summary = fventasSummary;
     if (reportType == ReportType.fventas) {
-      int countA = 0;
-      int countB = 0;
-      double montoA = 0.0;
-      double montoB = 0.0;
-      
-      for (var item in listForTotal) {
-        if (item is Map<String, dynamic>) {
-          final tipofactura = item['tipofactura']?.toString() ?? '';
-          final monto = (item['monto'] as num?)?.toDouble() ?? 0.0;
-          
-          if (tipofactura == 'A') {
-            countA++;
-            montoA += monto;
-          } else if (tipofactura == 'B') {
-            countB++;
-            montoB += monto;
-          }
-        }
-      }
-      
-      fventasSummary = {
-        'countA': countA,
-        'countB': countB,
-        'montoA': montoA,
-        'montoB': montoB,
-      };
-      
-      debugPrint('   → [FVentas] Factura A: $countA개, Monto: $montoA');
-      debugPrint('   → [FVentas] Factura B: $countB개, Monto: $montoB');
+      summary ??= FventasSummary.fromRows(listForTotal);
+      debugPrint('   → [FVentas] ${summary.debugDescription()}');
     }
     
     // 각 칼럼별 합계 계산 (fventas가 아닌 경우에만)
@@ -198,12 +181,9 @@ class ReportTableHeaderFooter {
               
               // fventas의 경우 추가 디버깅
               if (reportType == ReportType.fventas) {
+                // 요약 밴드는 그룹 3줄 + 총계 1줄이라 100px 안팎이 정상이다.
                 debugPrint('   → [FVentas 푸터] 높이 확인: ${renderBox.size.height}');
-                debugPrint('   → [FVentas 푸터] 예상 높이: 56.0 (1줄)');
-                if (renderBox.size.height > 60) {
-                  debugPrint('   ⚠️ [FVentas 푸터] 높이가 60px 이상입니다! 2줄로 표시되고 있을 가능성');
-                }
-                
+
                 // RenderObject 트리 확인
                 debugPrint('   → [FVentas 푸터] RenderBox 타입: ${renderBox.runtimeType}');
                 debugPrint('   → [FVentas 푸터] RenderBox constraints: ${renderBox.constraints}');
@@ -225,116 +205,16 @@ class ReportTableHeaderFooter {
           
           // Footer는 수평 스크롤 컨트롤러를 사용하지 않음 (전체가 하나의 스크롤로 동기화됨)
           
-          // fventas 보고서의 경우 factura A와 B 각각의 개수와 monto 합계를 1줄로 표시
-          if (reportType == ReportType.fventas && fventasSummary != null) {
-            debugPrint('═══════════════════════════════════════════════════════');
-            debugPrint('🔍 [FVentas 푸터] 1줄 표시 시작');
-            debugPrint('   → fventasSummary: $fventasSummary');
-            debugPrint('   → keys: $keys');
-            debugPrint('   → keys.length: ${keys.length}');
-            
-            // tipofactura와 monto 컬럼의 위치 찾기
-            int tipofacturaIndex = keys.indexOf('tipofactura');
-            int montoIndex = keys.indexOf('monto');
-            
-            debugPrint('   → tipofacturaIndex: $tipofacturaIndex');
-            debugPrint('   → montoIndex: $montoIndex');
-            
-            if (tipofacturaIndex == -1) tipofacturaIndex = 0;
-            if (montoIndex == -1) montoIndex = keys.length - 1;
-            
-            debugPrint('   → 조정 후 tipofacturaIndex: $tipofacturaIndex');
-            debugPrint('   → 조정 후 montoIndex: $montoIndex');
-            
-            // Factura A와 B를 1줄로 표시
-            final rowWidget = Row(
-                mainAxisSize: MainAxisSize.min,
-                children: keys.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final key = entry.value;
-                  final columnWidth = finalColumnWidths[key] ?? 150.0;
-                  
-                debugPrint('   → [푸터 셀] index=$index, key=$key, width=$columnWidth');
-                
-                // tipofactura 컬럼에 Factura A와 B 정보를 모두 표시
-                  if (index == tipofacturaIndex) {
-                  final text = 'Factura A: ${fventasSummary!['countA']} | Factura B: ${fventasSummary['countB']}';
-                  debugPrint('   → [푸터 셀] tipofactura 컬럼 텍스트: "$text"');
-                  debugPrint('   → [푸터 셀] tipofactura 컬럼 너비: $columnWidth');
-                  
-                    return SizedBox(
-                      width: columnWidth,
-                      child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                        height: 56.0,
-                        child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            text,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            maxLines: 1,
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }
-                // monto 컬럼에 Factura A와 B의 monto 합계를 모두 표시 (showTpago false면 ****)
-                  else if (index == montoIndex) {
-                  final montoAText = ReportUtils.formatValueForTotalRow(fventasSummary!['montoA'] as double, 'monto');
-                  final montoBText = ReportUtils.formatValueForTotalRow(fventasSummary['montoB'] as double, 'monto');
-                  final text = '$montoAText | $montoBText';
-                  debugPrint('   → [푸터 셀] monto 컬럼 텍스트: "$text"');
-                  debugPrint('   → [푸터 셀] monto 컬럼 너비: $columnWidth');
-                  
-                    return SizedBox(
-                      width: columnWidth,
-                      child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                        height: 56.0,
-                        child: Align(
-                        alignment: Alignment.centerRight,
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerRight,
-                          child: Text(
-                            text,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            maxLines: 1,
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }
-                  // 다른 컬럼은 빈 칸
-                  else {
-                    return SizedBox(
-                      width: columnWidth,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        height: 56.0,
-                        child: const SizedBox.shrink(),
-                      ),
-                    );
-                  }
-                }).toList(),
-              );
-            
-            debugPrint('   → [FVentas 푸터] Row 위젯 생성 완료');
-            debugPrint('   → [FVentas 푸터] Row children 개수: ${rowWidget.children.length}');
-            debugPrint('═══════════════════════════════════════════════════════');
-            
-            return rowWidget;
+          // fventas: 타입별 건수 + 순액/IVA/총액을 요약 밴드로 표시
+          if (reportType == ReportType.fventas && summary != null) {
+            debugPrint('🔍 [FVentas 푸터] 요약 밴드 생성');
+            // 칼럼 폭에 맞춘 한 줄로는 12개 칸 + 총합/IVA 가 들어가지 않는다.
+            // 칼럼 정렬을 포기하고 가로 전체를 쓰는 요약 밴드로 그린다.
+            return _buildFventasSummaryBand(
+              summary,
+              reportColor,
+              explicitWidth: explicitWidth,
+            );
           }
           
           // Alertas 보고서의 경우 총 로그 개수만 표시
@@ -1092,6 +972,230 @@ class ReportTableHeaderFooter {
           ),
         );
       }).toList(),
+    );
+  }
+
+  /// FVentas 요약 밴드.
+  ///
+  /// 서버 summary 는 Factura / Nota de Débito / Nota de Crédito 를 각각
+  /// letra(A·B·C·M)별로 쪼개서 준다. 칼럼 폭에 맞춘 한 줄에는 들어가지 않으므로
+  /// 칼럼 정렬을 포기하고 그룹당 한 줄씩 쌓은 뒤 마지막에 총계 줄을 놓는다.
+  static Widget _buildFventasSummaryBand(
+    FventasSummary summary,
+    Color reportColor, {
+    double? explicitWidth,
+  }) {
+    String money(double value) =>
+        ReportUtils.formatValueForTotalRow(value, 'monto');
+
+    // 0.21 → '21%', 0.105 → '10.5%'
+    String ratePercent() {
+      final pct = summary.ivaRate * 100;
+      final text = pct == pct.roundToDouble()
+          ? pct.toStringAsFixed(0)
+          : pct.toStringAsFixed(1);
+      return '$text%';
+    }
+
+    /// letra 한 칸: "A 48 18.150.000" (letra · 건수 · 금액).
+    ///
+    /// 건수가 0 이어도 서버가 보냈으면 그대로 보여준다 — 0 인 것과 아예 없는
+    /// 것은 다른 정보다. 대신 흐리게 눌러서 눈에 덜 걸리게 한다.
+    Widget letraChip(String letra, FventasAmount amount) {
+      final isZero = amount.count == 0;
+      return Padding(
+        padding: const EdgeInsets.only(right: 14),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              letra,
+              style: TextStyle(fontSize: 11, color: Colors.grey[700]),
+            ),
+            const SizedBox(width: 3),
+            Text(
+              '${amount.count}',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: isZero ? Colors.grey[500] : Colors.black87,
+              ),
+            ),
+            const SizedBox(width: 5),
+            Text(
+              money(amount.monto),
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: isZero ? Colors.grey[500] : Colors.black54,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    /// 그룹 한 줄: 이름 | letra별 건수 | 소계 건수 | 소계 금액
+    /// [negative] 면 Nota de Crédito 처럼 총합에서 빠지므로 앞에 '−' 를 붙인다.
+    Widget groupRow(String title, FventasGroup group, {bool negative = false}) {
+      final letras = group.letras;
+      if (letras.isEmpty && group.subtotal.isEmpty) {
+        return const SizedBox.shrink();
+      }
+      final montoText = money(group.subtotal.monto);
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 1),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 120,
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: reportColor,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Expanded(
+              child: Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  for (final letra in letras)
+                    letraChip(letra, group.byLetra[letra]!),
+                ],
+              ),
+            ),
+            // letra 칸들과 소계를 눈으로 갈라준다. 금액이 나란히 늘어서면
+            // 마지막 것이 또 하나의 letra 처럼 보이기 때문.
+            Container(
+              width: 1,
+              height: 14,
+              margin: const EdgeInsets.symmetric(horizontal: 8),
+              color: reportColor.withOpacity(0.25),
+            ),
+            SizedBox(
+              width: 56,
+              child: Text(
+                '${group.subtotal.count}',
+                textAlign: TextAlign.right,
+                style: const TextStyle(fontSize: 11, color: Colors.black54),
+              ),
+            ),
+            SizedBox(
+              width: 130,
+              child: Text(
+                negative ? '−$montoText' : montoText,
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: negative ? Colors.red[700] : Colors.black87,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    /// 총계 줄의 항목: "라벨 값"
+    Widget totalItem(String label, String value, {bool emphasize = false}) {
+      return Padding(
+        padding: const EdgeInsets.only(right: 16),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(fontSize: 11, color: Colors.grey[700]),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: emphasize ? 14 : 12,
+                fontWeight: FontWeight.bold,
+                color: emphasize ? reportColor : Colors.black87,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // 서버가 세 그룹 어디에도 못 넣은 코드. 보통 비어 있지만, 값이 있으면
+    // 조용히 삼키지 않고 드러낸다 — 총합에는 이미 반영돼 있다.
+    final otrosRow = summary.otros.isEmpty
+        ? const SizedBox.shrink()
+        : Padding(
+            padding: const EdgeInsets.symmetric(vertical: 1),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 120,
+                  child: Text(
+                    'Otros',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: reportColor,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      for (final otro in summary.otros)
+                        letraChip(otro.label, otro.amount),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+
+    return Container(
+      width: explicitWidth ?? double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: reportColor.withOpacity(0.08),
+        border: Border(
+          top: BorderSide(color: reportColor.withOpacity(0.3), width: 2),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          groupRow('Facturas', summary.facturas),
+          groupRow('Notas de Débito', summary.notasDebito),
+          groupRow('Notas de Crédito', summary.notasCredito, negative: true),
+          otrosRow,
+          Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 2),
+            child: Divider(
+              height: 1,
+              thickness: 1,
+              color: reportColor.withOpacity(0.3),
+            ),
+          ),
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              totalItem('Comprobantes', '${summary.total.count}'),
+              totalItem('Neto', money(summary.total.neto)),
+              totalItem('IVA ${ratePercent()}', money(summary.total.iva)),
+              totalItem('TOTAL', money(summary.total.monto), emphasize: true),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

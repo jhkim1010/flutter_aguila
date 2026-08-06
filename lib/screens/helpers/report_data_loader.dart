@@ -523,48 +523,10 @@ mixin ReportDataLoaderMixin on _ReportScreenStateBase {
           }
           break;
         case ReportType.fventas:
-          // current_date 사용 (기본값: 오늘)
-          final now = DateTime.now();
-          var startDate = _ventasStartDate ?? now;
-          var endDate = _ventasEndDate ?? now;
           final currentFilteringWord = filteringWord ?? _filteringWordController.text.trim();
-          
-          print('📅 FVentas 보고서 - 초기 날짜 상태:');
-          print('  - _ventasStartDate: $_ventasStartDate');
-          print('  - _ventasEndDate: $_ventasEndDate');
-          print('  - startDate (사용할 값): $startDate');
-          print('  - endDate (사용할 값): $endDate');
-          print('  - unit: $_ventasUnit');
-          
-          // month unit일 때 날짜 범위를 정확히 설정
-          if (_ventasUnit == 'month') {
-            // 시작 날짜: 해당 월의 1일
-            startDate = DateTime(startDate.year, startDate.month, 1);
-            // 종료 날짜: 해당 월의 마지막 날 (다음 달의 0일 = 이번 달의 마지막 날)
-            endDate = DateTime(endDate.year, endDate.month + 1, 0);
-            print('  - month unit 적용 후: startDate=$startDate, endDate=$endDate');
-          }
-          // year unit일 때 날짜 범위를 정확히 설정
-          else if (_ventasUnit == 'year') {
-            // 시작 날짜: 시작 연도의 1월 1일
-            final startYear = startDate.year;
-            startDate = DateTime(startYear, 1, 1);
-            // 종료 날짜: 종료 연도의 12월 31일
-            final endYear = endDate.year;
-            endDate = DateTime(endYear, 12, 31);
-            print('  - year unit 적용 후: startDate=$startDate, endDate=$endDate');
-            // 연도 범위가 여러 연도에 걸쳐 있으면, 각 연도별로 1월 1일~12월 31일 범위를 보장
-            // (서버가 unit=year일 때 자동으로 연도별 그룹화하므로, fecha_inicio와 fecha_fin만 정확히 설정하면 됨)
-          }
-          
-          // fecha_inicio와 fecha_fin만 사용 (currentDate는 전달하지 않음 - 단일 날짜 필터링 방지)
-          final filters = <String, dynamic>{
-            'fecha_inicio': DateFormat('yyyy-MM-dd').format(startDate),
-            'fecha_fin': DateFormat('yyyy-MM-dd').format(endDate),
-          };
-          if (_selectedSucursal != null) {
-            filters['sucursal'] = _selectedSucursal;
-          }
+
+          // 다음 페이지도 같은 범위를 물어봐야 하므로 필터 구성은 헬퍼 하나로 모은다.
+          final filters = _buildFventasFilters();
           print('📅 FVentas 보고서 요청 - 최종 날짜 범위: ${filters['fecha_inicio']} ~ ${filters['fecha_fin']}, filteringWord: $currentFilteringWord, unit: $_ventasUnit, sucursal: $_selectedSucursal');
           // fventas 보고서의 filteringWord는 클라이언트 측에서만 필터링 (cuit, cliente 필드)
           // 서버로 전달하지 않음
@@ -597,6 +559,9 @@ mixin ReportDataLoaderMixin on _ReportScreenStateBase {
             debugPrint('   ⚠️ data[\'data\']가 없거나 List가 아닙니다!');
             debugPrint('   → data[\'data\']: ${data['data']}');
           }
+          // 첫 페이지 이후를 이어 받으려면 여기서 offset/hasMore 를 잡아둬야 한다.
+          // 이 값을 안 읽으면 서버가 잘라준 100건이 전부인 것처럼 보인다.
+          _fventasOffset = (data['data'] is List) ? (data['data'] as List).length : 0;
           if (data.containsKey('pagination') && data['pagination'] is Map) {
             final pagination = data['pagination'] as Map<String, dynamic>;
             debugPrint('   → pagination 정보:');
@@ -605,10 +570,28 @@ mixin ReportDataLoaderMixin on _ReportScreenStateBase {
             debugPrint('      - hasMore: ${pagination['hasMore']}');
             debugPrint('      - offset: ${pagination['offset']}');
             debugPrint('      - limit: ${pagination['limit']}');
+            _fventasHasMore = pagination['hasMore'] == true;
+            // 서버가 주는 전체 건수. 금액 SUM 은 안 주지만 건수는 정확하다.
+            _fventasTotalCount =
+                int.tryParse(pagination['total']?.toString() ?? '') ?? 0;
           } else {
             debugPrint('   ⚠️ pagination 정보가 없습니다.');
+            // pagination 이 없으면 서버 limit(100) 만큼 꽉 찼는지로 추정한다.
+            _fventasHasMore = _fventasOffset >= _kFventasPageSize;
           }
+          // 서버 summary: 요청 기간 **전체**를 집계해서 준다(limit 과 무관).
+          // 이게 있으면 푸터 합계를 위해 페이지를 다 받을 이유가 없다.
+          _fventasSummary = FventasSummary.fromJson(data['summary']);
+          if (_fventasSummary != null) {
+            debugPrint('   → summary: ${_fventasSummary!.debugDescription()}');
+          } else {
+            debugPrint('   ⚠️ summary 블록이 없습니다 - 푸터 합계는 전체 페이지를 받아 계산합니다.');
+          }
+          debugPrint('   → _fventasOffset=$_fventasOffset, _fventasHasMore=$_fventasHasMore');
           debugPrint('═══════════════════════════════════════════════════════');
+          // summary 가 없을 때만 전체 페이지를 강제로 받는다. 기간이 넓으면
+          // 100건씩 수백 번 요청이 나가므로, 서버가 집계를 주면 하지 않는다.
+          _fventasPendingLoadAll = _fventasHasMore && _fventasSummary == null;
           break;
         case ReportType.alertas:
           // alertas 보고서는 날짜 범위 필터 사용 (기본값: 오늘부터 오늘까지)
@@ -1092,7 +1075,14 @@ mixin ReportDataLoaderMixin on _ReportScreenStateBase {
           debugPrint('🔵🔵🔵 [report_screen.dart:2601] setState 내부 _ventasUnit 최종 확인: $_ventasUnit');
         }
       });
-      
+
+      // FVentas: 서버가 100건씩만 주므로, 기간 전체 합계를 푸터에 띄우려면
+      // 남은 페이지를 다 받아와야 한다. setState 가 끝난 뒤에 시작한다.
+      if (_fventasPendingLoadAll) {
+        _fventasPendingLoadAll = false;
+        unawaited(_loadAllFventasPages());
+      }
+
       debugPrint('📊 [report_screen.dart:2626] _loadData() 완료');
       if (widget.reportType == ReportType.ventas) {
         debugPrint('   → [report_screen.dart:2627] [Ventas] _loadData 완료 후 _ventasUnit 확인');
@@ -1397,6 +1387,160 @@ mixin ReportDataLoaderMixin on _ReportScreenStateBase {
     }
   }
 
+  /// FVentas 요청 필터 구성 (초기 로드와 다음 페이지가 같은 범위를 봐야 한다)
+  ///
+  /// month/year unit 은 사용자가 고른 날짜를 월초~월말 / 연초~연말로 넓힌다.
+  /// 이 보정이 두 곳에서 갈라지면 2페이지부터 다른 기간을 물어보게 된다.
+  Map<String, dynamic> _buildFventasFilters() {
+    final now = DateTime.now();
+    var startDate = _ventasStartDate ?? now;
+    var endDate = _ventasEndDate ?? now;
+
+    if (_ventasUnit == 'month') {
+      // 시작: 해당 월 1일, 종료: 해당 월 마지막 날(다음 달 0일)
+      startDate = DateTime(startDate.year, startDate.month, 1);
+      endDate = DateTime(endDate.year, endDate.month + 1, 0);
+    } else if (_ventasUnit == 'year') {
+      // 시작: 시작 연도 1월 1일, 종료: 종료 연도 12월 31일
+      startDate = DateTime(startDate.year, 1, 1);
+      endDate = DateTime(endDate.year, 12, 31);
+    }
+
+    // fecha_inicio/fecha_fin 만 사용한다 (fecha 를 같이 보내면 단일 날짜로 걸린다)
+    final filters = <String, dynamic>{
+      'fecha_inicio': DateFormat('yyyy-MM-dd').format(startDate),
+      'fecha_fin': DateFormat('yyyy-MM-dd').format(endDate),
+    };
+    if (_selectedSucursal != null) {
+      filters['sucursal'] = _selectedSucursal;
+    }
+    return filters;
+  }
+
+  /// FVentas 전체 페이지 로드
+  ///
+  /// summary 블록을 주지 않는 옛 서버 전용 경로다. 그 경우 기간 전체 합계를
+  /// 푸터에 띄우려면 모든 행이 필요한데, 한 번에 100건씩이라 총 건수/100 만큼
+  /// 요청이 나간다. 서버가 summary 를 주면 이 루프는 아예 돌지 않는다.
+  ///
+  /// 기간이나 필터가 바뀌면 세대(_fventasLoadGeneration)가 올라가고, 이전 루프는
+  /// 다음 반복에서 스스로 빠진다. 그러지 않으면 예전 기간의 행이 새 목록에 섞인다.
+  Future<void> _loadAllFventasPages() async {
+    if (widget.reportType != ReportType.fventas) return;
+    if (_fventasIsLoadingAll) return;
+
+    final generation = _fventasLoadGeneration;
+
+    if (mounted) {
+      setState(() {
+        _fventasIsLoadingAll = true;
+      });
+    }
+
+    try {
+      var guard = 0;
+      while (_fventasHasMore && mounted) {
+        // 기간/필터가 바뀌었으면 이 루프는 낡은 것이다.
+        if (generation != _fventasLoadGeneration) {
+          print('ℹ️ FVentas 전체 로드 취소됨 (기간/필터 변경)');
+          return;
+        }
+
+        // 서버가 hasMore 를 계속 true 로 주는 이상 상황에서 무한 요청이 되지 않도록.
+        if (++guard > _kFventasMaxPages) {
+          print('⚠️ FVentas 전체 로드 상한(${_kFventasMaxPages}페이지) 도달 - 중단');
+          break;
+        }
+
+        final before = _fventasOffset;
+        await _loadNextFventasPage();
+        // 진전이 없으면(오류 등) 같은 요청을 반복하지 않고 멈춘다.
+        if (_fventasOffset == before) {
+          print('⚠️ FVentas 전체 로드: 진전 없음 - 중단');
+          break;
+        }
+
+        print('📊 FVentas 전체 로드 진행: $_fventasOffset / $_fventasTotalCount');
+      }
+    } finally {
+      if (mounted && generation == _fventasLoadGeneration) {
+        setState(() {
+          _fventasIsLoadingAll = false;
+        });
+        print('✅ FVentas 전체 로드 완료: $_fventasOffset건 (합계는 전체 기간 기준)');
+      }
+    }
+  }
+
+  /// FVentas 다음 페이지 로드 (offset 기반)
+  ///
+  /// 서버는 limit=100 고정이라 기간을 넓혀도 한 번에 100건만 준다.
+  /// 받은 데이터를 이어 붙이고, 화면 표시 상한(_displayedItemsCount)도 같이 올린다.
+  /// 상한을 안 올리면 데이터는 늘었는데 화면은 그대로여서 고쳐도 티가 안 난다.
+  Future<void> _loadNextFventasPage() async {
+    if (widget.reportType != ReportType.fventas) return;
+    if (!_fventasHasMore) return;
+    if (_fventasIsLoadingMore) return; // 중복 요청 방지
+
+    setState(() {
+      _fventasIsLoadingMore = true;
+    });
+
+    try {
+      print('📄 다음 FVentas 페이지 로드 중... (offset=$_fventasOffset)');
+      final response = await _databaseService.getFVentasReport(
+        filteringWord: null, // filteringWord 는 클라이언트에서만 거른다
+        currentDate: null,
+        unit: _ventasUnit,
+        filters: _buildFventasFilters(),
+        offset: _fventasOffset,
+      );
+
+      final newData = (response['data'] is List)
+          ? response['data'] as List
+          : const <dynamic>[];
+
+      if (newData.isEmpty || _data == null || _data!['data'] is! List) {
+        _fventasHasMore = false;
+        print('ℹ️ 모든 FVentas 페이지 로드 완료');
+        return;
+      }
+
+      final currentData = _data!['data'] as List;
+      final merged = [...currentData, ...newData];
+
+      // pagination 이 있으면 그 값을 믿고, 없으면 페이지가 꽉 찼는지로 판단한다.
+      final pagination = response['pagination'];
+      final hasMore = (pagination is Map && pagination.containsKey('hasMore'))
+          ? pagination['hasMore'] == true
+          : newData.length >= _kFventasPageSize;
+
+      // summary 는 페이지마다 같은 값(기간 전체)이지만, 서버가 갱신해 주면 반영한다.
+      final pageSummary = FventasSummary.fromJson(response['summary']);
+
+      setState(() {
+        _data = {..._data!, 'data': merged};
+        if (pageSummary != null) _fventasSummary = pageSummary;
+        _fventasOffset = merged.length;
+        _fventasHasMore = hasMore;
+        // 새로 받은 만큼 표시 상한도 올린다.
+        _displayedItemsCount = merged.length;
+        // 합계 캐시는 데이터가 늘었으니 무효화한다.
+        ReportTotalRowBuilder.clearCache();
+      });
+
+      print('✅ 다음 페이지 로드됨: ${newData.length}개 (총 ${merged.length}개, hasMore=$hasMore)');
+    } catch (e) {
+      print('❌ FVentas 다음 페이지 로드 실패: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _fventasIsLoadingMore = false;
+        });
+      }
+    }
+  }
+
   // 스크롤 이벤트 처리 (무한 스크롤)
   void _onScroll() {
     if (widget.reportType == ReportType.codigos || widget.reportType == ReportType.todocodigos) {
@@ -1420,6 +1564,13 @@ mixin ReportDataLoaderMixin on _ReportScreenStateBase {
         if (currentScroll >= maxScroll * 0.75) {
           _loadNextClientesPage();
         }
+      }
+    } else if (widget.reportType == ReportType.fventas) {
+      // FVentas 는 서버가 100건씩 잘라 주므로 다음 페이지를 서버에서 받아와야 한다.
+      // _loadMoreItems() 처럼 표시 상한만 올리면 이미 받은 100건이 전부라 아무 변화가 없다.
+      if (_scrollController.hasClients &&
+          _scrollController.position.pixels >= _scrollController.position.maxScrollExtent * 0.8) {
+        _loadNextFventasPage();
       }
     } else {
       // 다른 보고서의 경우 기존 로직 사용
