@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../l10n/app_localizations.dart';
+import '../models/fventas_summary.dart';
 import '../utils/platform_utils.dart';
 import '../widgets/report_utils.dart';
 import '../services/config_service.dart';
@@ -1073,23 +1074,33 @@ class ResumenDelDiaSingleSucursalView extends StatelessWidget {
         
         result['items'] = grouped.values.toList();
         
+        // 분류는 FventasSummary.classify 하나로 통일한다 — FVentas 푸터,
+        // 백엔드 buildFventasSummary 와 같은 규칙이어야 화면마다 숫자가 갈리지 않는다.
         int totalCount = 0;
         double totalSumMonto = 0.0;
         int notaCreditoCount = 0;
         double notaCreditoSumMonto = 0.0;
-        
-        const notaCreditoTypes = ['C', 'NCA', 'NCB', 'NCM'];
-        
+
         for (var item in grouped.values) {
-          final tipofactura = item['tipofactura']?.toString() ?? '';
+          final tipofactura =
+              item['tipofactura']?.toString().trim().toUpperCase() ?? '';
           final count = item['count'] as int? ?? 0;
           final sumMonto = (item['sum_monto'] as num?)?.toDouble() ?? 0.0;
-          
-          if (notaCreditoTypes.contains(tipofactura)) {
+
+          final kind = FventasSummary.classify(tipofactura)?.$1;
+          if (kind == null) {
+            // 모르는 코드는 더할지 뺄지 알 수 없다. 서버도 총계에서 뺀다.
+            debugPrint('   → 미분류 comprobante ($tipofactura) 총계 제외: count=$count, sum_monto=$sumMonto');
+            continue;
+          }
+
+          if (kind == FventasKind.credito) {
             notaCreditoCount += count;
             notaCreditoSumMonto += sumMonto;
             debugPrint('   → Nota de Credito ($tipofactura) 발견: count=$count, sum_monto=$sumMonto');
           } else {
+            // Factura A/B/C/M 과 Nota de Débito 는 합산.
+            // 'C' 는 Factura C 다 — monotributista 가 발행하는 매출 전표이므로 빼면 안 된다.
             totalCount += count;
             totalSumMonto += sumMonto;
           }
@@ -1678,18 +1689,26 @@ class ResumenDelDiaSingleSucursalView extends StatelessWidget {
       if (fventasMes.containsKey('items') && fventasMes['items'] is List) {
         final items = fventasMes['items'] as List;
         
-        double totalFacturaAB = 0.0;
+        // Factura 합계와 Nota de Credito 합계. 분류는 FventasSummary.classify
+        // 하나로 통일한다 — 예전엔 A/B 만 더하고 'C' 를 빼서, Factura C 와 M 이
+        // 월 매출에서 통째로 빠지거나 거꾸로 차감되고 있었다.
+        double totalFacturas = 0.0;
         double totalNotaCredito = 0.0;
-        
+
         for (var item in items) {
           if (item is Map<String, dynamic>) {
             final tipofactura = item['tipofactura']?.toString() ?? 'Unknown';
             final totalVentasMes = (item['total_ventas_mes'] as num?)?.toDouble() ?? 0.0;
-            
-            if (tipofactura == 'A' || tipofactura == 'B') {
-              totalFacturaAB += totalVentasMes;
-            } else if (tipofactura == 'C') {
-              totalNotaCredito = totalVentasMes;
+
+            // 누적은 반드시 += 다 — 예전 '=' 는 NC 종류가 둘 이상이면 마지막
+            // 하나만 반영해서 나머지를 조용히 삼켰다.
+            final kind = FventasSummary.classify(
+              tipofactura.trim().toUpperCase(),
+            )?.$1;
+            if (kind == FventasKind.factura || kind == FventasKind.debito) {
+              totalFacturas += totalVentasMes;
+            } else if (kind == FventasKind.credito) {
+              totalNotaCredito += totalVentasMes;
             }
             
             if (totalVentasMes > 0) {
@@ -1770,8 +1789,9 @@ class ResumenDelDiaSingleSucursalView extends StatelessWidget {
           }
         }
         
-        final totalFacturaMes = totalFacturaAB - totalNotaCredito;
-        if (totalFacturaMes > 0 || totalFacturaAB > 0) {
+        // Factura(A/B/C/M) + ND - NC = 총 factura 금액
+        final totalFacturaMes = totalFacturas - totalNotaCredito;
+        if (totalFacturaMes > 0 || totalFacturas > 0) {
           final totalIvaAmount = totalFacturaMes * ivaRate;
           
           cards.add(
