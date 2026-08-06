@@ -206,13 +206,26 @@ void main() {
         row('B', 100),
         row('NCA', 50),
         row('NDB', 20),
-        row('C', 10), // resumen_del_dia 의 레거시 'C' = Nota de Crédito
+        row('C', 10),
       ]);
 
-      expect(s.facturas.letras, ['A', 'B']);
-      expect(s.notasCredito.letras, ['A', 'C']);
+      expect(s.facturas.letras, ['A', 'B', 'C']);
+      expect(s.notasCredito.letras, ['A']);
       expect(s.notasDebito.letras, ['B']);
       expect(s.otros, isEmpty);
+    });
+
+    test("'C' 는 Factura C 다 - 매출에서 빼면 안 된다", () {
+      // 발행자가 monotributista 인 경우에만 발행된다. 판매이므로 더한다.
+      // resumen_del_dia 쪽은 이걸 Nota de Crédito 로 보고 빼고 있다(버그).
+      final s = FventasSummary.fromRows([
+        row('A', 1000),
+        row('C', 500),
+      ]);
+
+      expect(s.facturas.byLetra['C']!.count, 1);
+      expect(s.notasCredito.subtotal.count, 0);
+      expect(s.total.monto, 1500); // 1000 - 500 이 아니다
     });
 
     test('모르는 코드는 Factura 로 넘기지 않고 otros 로 드러낸다', () {

@@ -334,8 +334,12 @@ class FventasSummary {
     if (tipo.startsWith('ND') && tipo.length == 3) {
       return (FventasKind.debito, tipo.substring(2));
     }
-    if (tipo == 'C') return (FventasKind.credito, 'C'); // resumen_del_dia 의 레거시 'C'
-    if (const ['A', 'B', 'M'].contains(tipo)) return (FventasKind.factura, tipo);
+    // 'C' 는 Factura C 다 (발행자가 monotributista 인 경우에만 발행된다).
+    // resumen_del_dia_screen / resumen_del_dia_single_sucursal_view 는 'C' 를
+    // Nota de Crédito 로 보고 매출에서 빼는데, 그쪽이 틀렸다.
+    if (const ['A', 'B', 'C', 'M'].contains(tipo)) {
+      return (FventasKind.factura, tipo);
+    }
 
     return null;
   }
