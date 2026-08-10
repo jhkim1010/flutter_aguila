@@ -21,8 +21,23 @@ class SecureStorageHelper {
   );
 
   // 일반 데이터용 shared preferences
-  static Future<SharedPreferences> get _prefs async => 
+  static Future<SharedPreferences> get _prefs async =>
       await SharedPreferences.getInstance();
+
+  /// 값을 로그에 그대로 찍으면 안 되는 키.
+  ///
+  /// macOS 와 웹은 비밀번호도 SharedPreferences 로 가므로 save() 에 'password'
+  /// 가 들어온다. 웹에서는 print 가 브라우저 콘솔로 나가 사용자가 F12 만 눌러도
+  /// 읽을 수 있다.
+  static const Set<String> _sensitiveKeys = {'password'};
+
+  /// 로그용 값 — 민감한 키면 길이만 남긴다. 길이는 저장 성공 여부를 확인하는
+  /// 기존 디버깅 흐름에 필요해서 유지한다.
+  static String _valueForLog(String key, String? value) {
+    if (value == null) return '(null)';
+    if (!_sensitiveKeys.contains(key.toLowerCase())) return value;
+    return '*** (길이: ${value.length})';
+  }
 
   /// 중요 데이터 저장 (비밀번호만)
   static Future<bool> saveSecure(String key, String value) async {
@@ -78,7 +93,7 @@ class SecureStorageHelper {
   /// 일반 데이터 저장 (데이터베이스 이름, 사용자 이름 등)
   static Future<bool> save(String key, String value) async {
     try {
-      print('   📝 SharedPreferences 저장 시작: key="$key", value="$value"');
+      print('   📝 SharedPreferences 저장 시작: key="$key", value="${_valueForLog(key, value)}"');
       final prefs = await _prefs;
       final result = await prefs.setString(key, value);
       print('   ${result ? "✅" : "❌"} SharedPreferences 저장 결과: $result');
@@ -89,8 +104,8 @@ class SecureStorageHelper {
           print('   ✅ SharedPreferences 저장 확인 성공');
         } else {
           print('   ⚠️ SharedPreferences 저장 확인 실패: 저장된 값이 다름');
-          print('   원본: "$value"');
-          print('   저장된 값: "${saved ?? "(null)"}"');
+          print('   원본: "${_valueForLog(key, value)}"');
+          print('   저장된 값: "${_valueForLog(key, saved)}"');
         }
       }
       return result;
